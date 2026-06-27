@@ -1,0 +1,273 @@
+/* ============================================================
+   CBP Racing — sistema de diseño base
+   Tokens, reset, tipografía, primitivas, animaciones
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* ── Color ──────────────────────────────────────────── */
+  --papaya:       #FF6A00;   /* acento de acción */
+  --papaya-deep:  #E85D00;   /* hover */
+  --papaya-soft:  #FFF1E6;   /* fondo papaya muy claro */
+
+  --carbon:   #0B0B0D;       /* topbar, hero oscuro, titular sólido */
+  --ink:      #17181C;       /* texto principal */
+  --muted:    #6E7075;       /* texto secundario */
+  --ghost:    #C7C6C1;       /* segundo tono del titular a dos tonos */
+  --bone:     #F5F4F1;       /* fondo de la app (hueso cálido) */
+  --line:     #E4E3DE;       /* hairlines */
+  --white:    #FFFFFF;       /* tarjetas, superficies */
+
+  /* superficies del login oscuro */
+  --carbon-surface: #141519;
+  --carbon-border:  #25262C;
+
+  /* feedback */
+  --error:    #E5484D;
+  --success:  #2FA968;
+
+  /* ── Tipografía ─────────────────────────────────────── */
+  --font-display: 'Saira Condensed', 'Arial Narrow', sans-serif;
+  --font-body:    'Archivo', system-ui, -apple-system, sans-serif;
+  --font-mono:    'JetBrains Mono', 'SF Mono', monospace;
+
+  /* ── Geometría ──────────────────────────────────────── */
+  --notch:    16px;          /* tamaño de la esquina cortada */
+  --notch-sm: 10px;
+  --radius:   3px;           /* radio mínimo, casi recto (racing) */
+
+  /* ── Sombras ────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(11,11,13,0.06);
+  --shadow-md: 0 8px 24px rgba(11,11,13,0.10);
+  --shadow-lg: 0 24px 60px rgba(11,11,13,0.20);
+
+  /* ── Transiciones ───────────────────────────────────── */
+  --ease:      cubic-bezier(0.22, 1, 0.36, 1);
+  --t-fast:    140ms var(--ease);
+  --t-base:    240ms var(--ease);
+  --t-slow:    420ms var(--ease);
+}
+
+html {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  color: var(--ink);
+  background: var(--bone);
+  min-height: 100dvh;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+img { max-width: 100%; display: block; }
+
+::selection { background: var(--papaya); color: var(--white); }
+
+/* ============================================================
+   Titular condensado a dos tonos — la firma tipográfica
+   ============================================================ */
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 0.9;
+  letter-spacing: 0.005em;
+}
+
+.display .solid { color: var(--ink); display: block; }
+.display .ghost { color: var(--ghost); display: block; }
+
+/* Eyebrow: etiqueta tracked con marca papaya */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+
+.eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 22px;
+  height: 3px;
+  background: var(--papaya);
+}
+
+/* ============================================================
+   Botones
+   ============================================================ */
+
+.btn {
+  --pad-x: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6875rem var(--pad-x);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: background var(--t-fast), color var(--t-fast),
+              transform var(--t-fast), box-shadow var(--t-fast);
+  white-space: nowrap;
+  border-radius: var(--radius);
+}
+
+.btn:active { transform: translateY(1px); }
+
+/* CTA papaya con esquina cortada */
+.btn-primary {
+  background: var(--papaya);
+  color: var(--white);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--notch-sm)),
+                     calc(100% - var(--notch-sm)) 100%, 0 100%);
+}
+.btn-primary:hover { background: var(--papaya-deep); }
+
+.btn-secondary {
+  background: var(--white);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.btn-secondary:hover { border-color: var(--ink); }
+
+/* Botón fantasma sobre fondo oscuro */
+.btn-ghost-dark {
+  background: transparent;
+  color: rgba(255,255,255,0.65);
+}
+.btn-ghost-dark:hover { color: var(--white); }
+
+/* Flecha que se desliza */
+.arrow {
+  display: inline-block;
+  transition: transform var(--t-fast);
+}
+.has-arrow:hover .arrow { transform: translate(3px, -3px); }
+
+/* ============================================================
+   Badges / chips
+   ============================================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 2px;
+  line-height: 1.2;
+}
+
+.badge-type {
+  background: var(--carbon);
+  color: var(--white);
+}
+.badge-difficulty {
+  background: var(--papaya-soft);
+  color: var(--papaya-deep);
+}
+.badge-duration {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+
+/* ============================================================
+   Utilidades
+   ============================================================ */
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); border: 0;
+}
+
+.hidden { display: none !important; }
+
+/* ============================================================
+   Animaciones
+   ============================================================ */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes shimmer {
+  0%   { background-position: -420px 0; }
+  100% { background-position: 420px 0; }
+}
+
+@keyframes wipeIn {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+
+.animate-shake  { animation: shake 0.42s var(--ease); }
+.animate-fadeIn { animation: riseIn 0.45s var(--ease) both; }
+
+.skeleton {
+  background: linear-gradient(90deg, #ECEBE6 25%, #F4F3EF 50%, #ECEBE6 75%);
+  background-size: 840px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: var(--radius);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

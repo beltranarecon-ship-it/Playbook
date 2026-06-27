@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playbook CBP · Acceso</title>
+  <meta name="description" content="Club Baloncesto Palencia · Biblioteca de ejercicios">
+  <meta name="theme-color" content="#0B0B0D">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/assets/icons/favicon.ico">
+  <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/auth.css">
+
+  <script type="importmap">
+  {
+    "imports": {
+      "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2"
+    }
+  }
+  </script>
+</head>
+<body class="auth-page">
+
+  <div class="auth-bg" aria-hidden="true"></div>
+
+  <div class="auth-shell" id="auth-shell">
+
+    <header class="auth-head">
+      <div class="auth-logo-row">
+        <img src="/assets/icons/logo-cbp.png" alt="Escudo Club Baloncesto Palencia"
+             onerror="this.style.display='none'">
+        <span class="auth-mark">Club Baloncesto Palencia</span>
+      </div>
+      <h1 class="auth-title">
+        <span class="solid">Playbook</span>
+        <span class="ghost">CBP</span>
+      </h1>
+      <p class="auth-sub">Biblioteca de ejercicios y sesiones del cuerpo técnico. Acceso para entrenadores del club.</p>
+    </header>
+
+    <form class="auth-form" id="login-form" novalidate>
+
+      <div id="auth-error" class="auth-error" role="alert" hidden></div>
+
+      <div class="field">
+        <label class="field-label-dark" for="email">Correo electrónico</label>
+        <input class="input-dark" type="email" id="email" name="email"
+               placeholder="entrenador@cbpalencia.es" autocomplete="email" required>
+      </div>
+
+      <div class="field">
+        <label class="field-label-dark" for="password">Contraseña</label>
+        <input class="input-dark" type="password" id="password" name="password"
+               placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+
+      <label class="remember">
+        <input type="checkbox" id="remember" name="remember" checked>
+        <span>Recordar este dispositivo</span>
+      </label>
+
+      <button type="submit" class="btn-enter" id="btn-login">
+        <span class="btn-label">Entrar</span>
+        <span class="arrow" aria-hidden="true">→</span>
+      </button>
+
+    </form>
+
+    <p class="auth-foot">Playbook CBP v2 · Temporada 2025/26</p>
+
+  </div>
+
+  <script type="module">
+    import { redirectIfAuthenticated, login } from '/js/auth.js';
+
+    redirectIfAuthenticated();
+
+    const form    = document.getElementById('login-form');
+    const emailEl = document.getElementById('email');
+    const passEl  = document.getElementById('password');
+    const errorEl = document.getElementById('auth-error');
+    const btnEl   = document.getElementById('btn-login');
+    const shellEl = document.getElementById('auth-shell');
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+      shellEl.classList.remove('animate-shake');
+      void shellEl.offsetWidth;
+      shellEl.classList.add('animate-shake');
+      emailEl.classList.add('error');
+      passEl.classList.add('error');
+    }
+
+    function clearError() {
+      errorEl.hidden = true;
+      errorEl.textContent = '';
+      emailEl.classList.remove('error');
+      passEl.classList.remove('error');
+    }
+
+    function setLoading(loading) {
+      btnEl.disabled = loading;
+      btnEl.innerHTML = loading
+        ? '<span class="btn-spinner"></span><span class="btn-label">Entrando</span>'
+        : '<span class="btn-label">Entrar</span><span class="arrow" aria-hidden="true">→</span>';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const email    = emailEl.value.trim();
+      const password = passEl.value;
+
+      if (!email || !password) {
+        showError('Introduce tu correo y contraseña.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await login(email, password);
+        window.location.replace('/app.html');
+      } catch (err) {
+        const msg = err.message?.includes('Invalid login credentials')
+          ? 'Correo o contraseña incorrectos.'
+          : 'No se pudo iniciar sesión. Inténtalo de nuevo.';
+        showError(msg);
+        setLoading(false);
+      }
+    });
+
+    [emailEl, passEl].forEach(el => el.addEventListener('input', clearError));
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+  </script>
+
+</body>
+</html>

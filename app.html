@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Playbook CBP</title>
+  <meta name="theme-color" content="#0B0B0D">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/assets/icons/favicon.ico">
+  <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    /* Jerarquía tipográfica: Archivo (cuerpo) · Saira Condensed (titulares) · JetBrains Mono (datos) */
+    body { font-family: 'Archivo', system-ui, sans-serif; }
+    h1, h2, h3, .display, .topbar-brand span { font-family: 'Saira Condensed', 'Arial Narrow', sans-serif; }
+    .view-meta, .topbar-avatar { font-family: 'JetBrains Mono', monospace; }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2"
+    }
+  }
+  </script>
+</head>
+<body class="app-layout">
+
+  <div class="speed-bar" aria-hidden="true"></div>
+
+  <!-- ── Topbar ──────────────────────────────────────── -->
+  <header class="topbar">
+    <a class="topbar-brand" href="/app.html">
+      <img src="/assets/icons/logo-cbp.png" alt="CBP"
+           onerror="this.style.display='none'" width="30" height="30">
+      <span>Playbook CBP</span>
+    </a>
+
+    <nav class="topbar-nav" aria-label="Navegación principal">
+      <button class="nav-item active" data-view="ejercicios" type="button">Ejercicios</button>
+      <button class="nav-item" data-view="sesiones" type="button">Sesiones</button>
+    </nav>
+
+    <div class="topbar-actions">
+      <div class="topbar-user">
+        <div class="topbar-avatar" id="user-avatar">·</div>
+        <span id="user-name"></span>
+      </div>
+      <button class="btn-logout" id="btn-logout" type="button" title="Cerrar sesión" aria-label="Cerrar sesión">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Contenido ───────────────────────────────────── -->
+  <main class="app-main">
+
+    <!-- Vista: Ejercicios -->
+    <section data-view-panel="ejercicios">
+      <div class="view-hero">
+        <div class="view-hero-text">
+          <span class="eyebrow">Biblioteca</span>
+          <h1 class="display view-title">
+            <span class="solid">Ejercicios</span>
+            <span class="ghost">del club</span>
+          </h1>
+          <p class="view-meta" id="results-count">Cargando…</p>
+        </div>
+        <button class="btn btn-primary has-arrow" id="btn-nuevo-ejercicio" type="button">
+          Nuevo ejercicio
+          <span class="arrow" aria-hidden="true">↗</span>
+        </button>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+          </svg>
+          <input class="search-input" type="search" id="search-ejercicios"
+                 placeholder="Buscar ejercicio  /" autocomplete="off">
+        </div>
+
+        <select class="select" id="filter-type">
+          <option value="">Todos los tipos</option>
+          <option value="técnico">Técnico</option>
+          <option value="táctico">Táctico</option>
+          <option value="físico">Físico</option>
+          <option value="juego">Juego</option>
+        </select>
+
+        <select class="select" id="filter-category">
+          <option value="">Todas las categorías</option>
+          <option value="ataque">Ataque</option>
+          <option value="defensa">Defensa</option>
+          <option value="transición">Transición</option>
+          <option value="tiro">Tiro</option>
+          <option value="pase">Pase</option>
+          <option value="bote">Bote</option>
+          <option value="bloqueo">Bloqueo</option>
+          <option value="rebote">Rebote</option>
+          <option value="contraataque">Contraataque</option>
+          <option value="presión">Presión</option>
+        </select>
+      </div>
+
+      <div class="exercises-grid" id="exercises-grid"></div>
+    </section>
+
+    <!-- Vista: Sesiones (placeholder Fase 1) -->
+    <section data-view-panel="sesiones" hidden>
+      <div class="view-hero">
+        <div class="view-hero-text">
+          <span class="eyebrow">Planificación</span>
+          <h1 class="display view-title">
+            <span class="solid">Sesiones</span>
+            <span class="ghost">de entreno</span>
+          </h1>
+        </div>
+      </div>
+      <div class="placeholder-view">
+        <p class="empty-state-display">Próxima parada</p>
+        <p>El planificador de sesiones llega en una fase posterior. Por ahora, construye tu biblioteca de ejercicios.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Modal: Nuevo ejercicio ──────────────────────── -->
+  <div class="modal-overlay" id="modal-nuevo-ejercicio" hidden role="dialog"
+       aria-modal="true" aria-labelledby="modal-nuevo-ejercicio-title">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-nuevo-ejercicio-title">Nuevo ejercicio</h2>
+        <button class="modal-close" type="button" aria-label="Cerrar">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M6 18 18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <form id="form-nuevo-ejercicio" novalidate>
+        <div class="modal-body">
+
+          <div class="field-group">
+            <label class="field-label" for="ej-name">Nombre <span class="required">*</span></label>
+            <input class="field-input" type="text" id="ej-name" name="name"
+                   placeholder="Bloqueo directo base-pívot" required maxlength="120">
+          </div>
+
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="ej-type">Tipo</label>
+              <select class="field-select" id="ej-type" name="type">
+                <option value="">Sin tipo</option>
+                <option value="técnico">Técnico</option>
+                <option value="táctico">Táctico</option>
+                <option value="físico">Físico</option>
+                <option value="juego">Juego</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="ej-category">Categoría</label>
+              <select class="field-select" id="ej-category" name="category">
+                <option value="">Sin categoría</option>
+                <option value="ataque">Ataque</option>
+                <option value="defensa">Defensa</option>
+                <option value="transición">Transición</option>
+                <option value="tiro">Tiro</option>
+                <option value="pase">Pase</option>
+                <option value="bote">Bote</option>
+                <option value="bloqueo">Bloqueo</option>
+                <option value="rebote">Rebote</option>
+                <option value="contraataque">Contraataque</option>
+                <option value="presión">Presión</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label" for="ej-difficulty">Dificultad</label>
+              <select class="field-select" id="ej-difficulty" name="difficulty">
+                <option value="">Sin definir</option>
+                <option value="1">1 · Iniciación</option>
+                <option value="2">2 · Básico</option>
+                <option value="3">3 · Medio</option>
+                <option value="4">4 · Avanzado</option>
+                <option value="5">5 · Experto</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="ej-duration">Duración (min)</label>
+              <input class="field-input" type="number" id="ej-duration" name="duration_min"
+                     placeholder="10" min="1" max="120">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="ej-description">Descripción</label>
+            <textarea class="field-textarea" id="ej-description" name="description"
+                      placeholder="Objetivo y desarrollo del ejercicio." rows="3" maxlength="1000"></textarea>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar ejercicio</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <script type="module" src="/js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+  </script>
+
+</body>
+</html>
