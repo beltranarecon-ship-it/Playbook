@@ -5,7 +5,7 @@ import { supabase } from '../supabase-client.js';
 export async function getEjercicios({ busqueda, type, category } = {}) {
   let query = supabase
     .from('exercises')
-    .select('id, name, type, category, difficulty, duration_min, description, tags, created_by, created_at')
+    .select('id, name, type, category, difficulty, duration_min, description, tags, poster, created_by, created_at')
     .eq('is_archived', false)
     .order('created_at', { ascending: false });
 
@@ -60,6 +60,18 @@ export async function updateEjercicio(id, campos) {
 
   if (error) throw error;
   return data;
+}
+
+// ── GIF de la miniatura (carga diferida en hover §19) ────
+
+export async function getThumbnailGif(id) {
+  const { data, error } = await supabase
+    .from('exercises')
+    .select('thumbnail')
+    .eq('id', id)
+    .single();
+  if (error) return null;
+  return data?.thumbnail || null;
 }
 
 // ── Archivar (soft delete) ───────────────────────────────

@@ -1,0 +1,25 @@
+# Configuración local del entorno de desarrollo (no es del proyecto)
+.claude/
+
+# Dependencias y artefactos de build
+node_modules/
+.netlify/
+dist/
+
+# Variables de entorno — las claves de servidor van en Netlify, nunca aquí
+.env
+.env.*
+!.env.example
+
+# Sistema operativo / editores
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Temporales
+*.log
+*.tmp

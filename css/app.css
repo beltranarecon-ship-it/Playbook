@@ -240,6 +240,20 @@
 }
 .exercise-card:hover::before { transform: scaleX(1); }
 
+.exercise-card-thumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  margin: -0.25rem -0.25rem 0.875rem;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0b2330;
+}
+.exercise-card-thumb .thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 .exercise-card-header {
   display: flex;
   align-items: flex-start;

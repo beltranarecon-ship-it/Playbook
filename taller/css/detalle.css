@@ -1,0 +1,87 @@
+/* ============================================================
+   detalle.css — vista de detalle (§14), proyector (§14.1) y modal.
+   ============================================================ */
+
+.detalle-grid {
+  width: min(100% - var(--sp-5) * 2, var(--maxw));
+  margin-inline: auto;
+  padding-block: var(--sp-6);
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--sp-6);
+  align-items: start;
+}
+.detalle-canvas { position: sticky; top: calc(var(--header-h) + var(--sp-5)); }
+.detalle-side { display: grid; gap: var(--sp-4); }
+
+.detalle-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.act-fav.is-fav { color: var(--color-favorite); border-color: var(--color-favorite); }
+.act-danger:hover { color: var(--color-danger); }
+
+/* ---- Ficha ---- */
+.ficha-rows { display: grid; }
+.ficha-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-2) 0; border-bottom: 1px solid var(--color-border); }
+.ficha-row:last-child { border-bottom: none; }
+.ficha-row small { color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .06em; font-size: var(--fs-300); }
+.ficha-row span { font-weight: 600; text-align: right; }
+.ficha-tags { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ficha-sec { display: grid; gap: 2px; }
+.ficha-sec__t { color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .06em; font-size: var(--fs-300); }
+
+.detalle-loading { display: grid; place-content: center; min-height: 60vh; }
+.detalle-error { width: min(540px, 92%); margin: var(--sp-8) auto; text-align: center; display: grid; gap: var(--sp-3); place-items: center; }
+.spinner-lg { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--color-border); border-top-color: var(--color-accent); animation: spin .8s linear infinite; }
+
+@media (max-width: 1024px) {
+  .detalle-grid { grid-template-columns: 1fr; }
+  .detalle-canvas { position: static; }
+}
+
+/* ============================================================
+   Proyector (§14.1)
+   ============================================================ */
+.proyector { position: fixed; inset: 0; z-index: var(--z-projector); background: #000; color: #fff; }
+.proyector.is-idle { cursor: none; }
+/* Pista a pantalla completa en paisaje, sin barra lateral (§14). */
+.proyector--full { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--sp-4); }
+.proyector__stage { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-width: 0; width: 100%; }
+/* La pista apaisada (aspect 1.414) se hace tan grande como permita el viewport:
+   limitada por el ancho (97vw) o por la altura (la pista mide alto·1.414 de ancho). */
+.proyector--full .court { width: min(97vw, calc(94vh * 297 / 210)); height: auto; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+/* Controles: barra flotante centrada abajo, se desvanece con la inactividad. */
+.proyector__controls {
+  position: absolute; bottom: var(--sp-5); left: 50%; transform: translateX(-50%);
+  width: min(560px, 80vw); transition: opacity var(--dur-3) var(--ease);
+}
+.proyector.is-idle .proyector__controls { opacity: 0; pointer-events: none; }
+/* Nombre (arriba-izq) y atajos (arriba-der): superpuestos, se desvanecen. */
+.proyector__title {
+  position: absolute; top: var(--sp-5); left: var(--sp-6);
+  font-family: var(--font-display); text-transform: uppercase; font-size: var(--fs-700);
+  line-height: 1; letter-spacing: .02em; max-width: 60vw; pointer-events: none;
+  transition: opacity var(--dur-3) var(--ease);
+}
+.proyector__hint {
+  position: absolute; top: var(--sp-5); right: var(--sp-6); max-width: 32vw; text-align: right;
+  color: #94A3B8; font-size: var(--fs-300);
+  transition: opacity var(--dur-3) var(--ease);
+}
+.proyector.is-idle .proyector__title, .proyector.is-idle .proyector__hint { opacity: 0; }
+
+/* ============================================================
+   Modal (§14)
+   ============================================================ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: var(--overlay);
+  display: grid; place-items: center; padding: var(--sp-4);
+  opacity: 0; transition: opacity var(--dur-2) var(--ease);
+}
+.modal-overlay.is-in { opacity: 1; }
+.modal-box { width: min(440px, 100%); background: var(--color-surface); border-radius: var(--r-lg); box-shadow: var(--sh-pop); overflow: hidden; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--color-border); }
+.modal-title { font-size: var(--fs-600); }
+.modal-x { font-size: 22px; line-height: 1; color: var(--color-text-muted); width: 32px; height: 32px; border-radius: var(--r-sm); }
+.modal-x:hover { background: var(--surface-2); color: var(--color-text); }
+.modal-body { padding: var(--sp-5); color: var(--color-text); }
+.modal-foot { display: flex; justify-content: flex-end; gap: var(--sp-2); padding: var(--sp-4) var(--sp-5); border-top: 1px solid var(--color-border); }

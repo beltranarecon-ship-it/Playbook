@@ -1,8 +1,9 @@
 // Service Worker — Playbook CBP v2
-// Estrategia: cache-first para assets estáticos.
+// Estrategia: network-first (sirve código fresco online; cae a caché offline).
+// Cache-first servía módulos del Taller obsoletos; network-first lo evita.
 // Las llamadas a Supabase y esm.sh NUNCA se cachean aquí.
 
-const CACHE_NAME = 'cbp-v2-shell-v1';
+const CACHE_NAME = 'cbp-v2-shell-v9'; // v9: arreglos de la revisión adversarial M5-M7
 
 const PRECACHE_ASSETS = [
   '/index.html',
@@ -15,6 +16,16 @@ const PRECACHE_ASSETS = [
   '/js/auth.js',
   '/js/app.js',
   '/js/modules/ejercicios.js',
+  // Shell de la SPA Equipos/Sesiones (M2)
+  '/equipos/index.html',
+  '/equipos/css/panel.css',
+  '/equipos/css/calendario.css',
+  '/equipos/js/main.js',
+  '/equipos/js/router.js',
+  '/equipos/js/store.js',
+  '/equipos/js/config.js',
+  '/equipos/js/ui/dom.js',
+  '/equipos/js/ui/chrome.js',
   // Los iconos se cachean si existen, pero no bloquean la instalación del SW
 ];
 
@@ -59,21 +70,14 @@ self.addEventListener('fetch', (event) => {
   // Solo GET
   if (event.request.method !== 'GET') return;
 
+  // Network-first: intenta la red (código fresco) y cae a la caché si falla.
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        // Cachear solo respuestas válidas de nuestro origen
-        if (
-          response.ok &&
-          response.type === 'basic' &&
-          url.origin === self.location.origin
-        ) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      });
-    })
+    fetch(event.request).then(response => {
+      if (response.ok && response.type === 'basic' && url.origin === self.location.origin) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+      }
+      return response;
+    }).catch(() => caches.match(event.request))
   );
 });

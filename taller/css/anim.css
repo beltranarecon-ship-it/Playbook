@@ -1,0 +1,74 @@
+/* ============================================================
+   anim.css — barra de controles de reproducción (§11).
+   ============================================================ */
+
+.anim-controls {
+  width: 100%;
+  background: var(--color-deep);
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  display: grid;
+  gap: var(--sp-2);
+  margin-top: -2px;
+}
+.anim-controls__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 36px;
+}
+
+.ac-btn {
+  width: 34px; height: 34px;
+  display: inline-grid; place-items: center;
+  border-radius: var(--r-sm);
+  color: #94A3B8;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.ac-btn:hover { color: var(--accent-soft); background: rgba(255,255,255,.07); }
+.ac-play {
+  color: #fff;
+  background: var(--color-accent);
+  width: 40px; height: 34px;
+}
+.ac-play:hover { color: #fff; background: var(--color-accent-hover); }
+.ac-loop.is-active { color: var(--color-ball); }
+
+.ac-speed { display: inline-flex; gap: 4px; margin-left: var(--sp-2); }
+.ac-pill {
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono);
+  font-size: var(--fs-300);
+  color: #94A3B8;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.ac-pill:hover { color: var(--accent-soft); }
+.ac-pill.is-active { background: var(--color-accent); color: #fff; }
+
+.ac-phase { margin-left: auto; color: #6B7280; font-size: var(--fs-300); }
+
+.ac-progress {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none; appearance: none;
+  background: rgba(255,255,255,.14);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  accent-color: var(--color-accent);
+}
+.ac-progress::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--color-ball);
+  border: 2px solid #fff;
+  cursor: grab;
+}
+.ac-progress::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--color-ball);
+  cursor: grab;
+}

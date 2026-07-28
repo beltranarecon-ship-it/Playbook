@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harness manual · Tramo 1 (vista previa y chips) — solo desarrollo</title>
+  <link rel="stylesheet" href="/taller/css/tokens.css">
+  <link rel="stylesheet" href="/taller/css/base.css">
+  <link rel="stylesheet" href="/taller/css/canvas.css">
+  <link rel="stylesheet" href="/taller/css/anim.css">
+  <link rel="stylesheet" href="/taller/css/wizard.css">
+  <style>
+    body { font-family: 'Hanken Grotesk', system-ui, sans-serif; padding: 16px; }
+    .harness { display: grid; grid-template-columns: 420px 1fr; gap: 24px; align-items: start; }
+    .harness .court-wrap { max-width: 460px; }
+  </style>
+</head>
+<body>
+  <div class="harness">
+    <div id="panel"></div>
+    <div id="courtHost"></div>
+  </div>
+  <script type="module">
+    // Harness manual del Tramo 1: monta el Stage y el paso 2 REALES sin el
+    // guard de sesión. Solo para verificación en desarrollo; se borra después.
+    import { Stage } from '/taller/js/canvas/stage.js';
+    import { paso2 } from '/taller/js/wizard/paso2.js';
+
+    const stage = new Stage({ pista: 'entera' });
+    document.getElementById('courtHost').append(stage.el);
+
+    // tablero: 2 atacantes + 1 defensor + balón (como haría el paso 1)
+    stage.board.add({ kind: 'jugador', equipo: 'A' }, 0.5, 0.72);
+    stage.board.add({ kind: 'jugador', equipo: 'A' }, 0.35, 0.64);
+    stage.board.add({ kind: 'jugador', equipo: 'B' }, 0.5, 0.6);
+    stage.board.add({ kind: 'balon' }, 0.51, 0.72);
+
+    const draft = {
+      descripcion_texto: 'El equipo 2 defiende. A1 penetra y dobla el pase a A2 para el tiro en la canasta 2.',
+      tipo_pista: 'entera',
+      animacion: null,
+    };
+    const { el } = paso2({ draft, stage });
+    document.getElementById('panel').append(el);
+    window.__stage = stage; window.__draft = draft;
+  </script>
+</body>
+</html>

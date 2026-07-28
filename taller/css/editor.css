@@ -1,0 +1,39 @@
+/* ============================================================
+   editor.css — modo edición a pantalla completa (§3).
+   El layout .editor-grid base vive en base.css; aquí van las piezas.
+   ============================================================ */
+
+.editor-canvas { display: flex; align-items: flex-start; justify-content: center; min-width: 0; }
+.editor-canvas .court-wrap { width: 100%; }
+
+.editor-side { min-width: 0; }
+.editor-side__in { padding: var(--sp-5); }
+
+/* ---- Storyboard reordenable ---- */
+.editor-storyboard { padding: var(--sp-3) var(--sp-4); display: grid; gap: var(--sp-2); }
+.story-strip { display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: 4px; }
+.fase-card {
+  flex: none; width: 88px; height: 56px;
+  border: 1.5px solid var(--color-border); border-radius: var(--r-md);
+  background: var(--color-surface);
+  display: grid; place-content: center; gap: 2px;
+  cursor: grab;
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), background var(--dur-1);
+}
+.fase-card:hover { border-color: var(--color-accent); }
+.fase-card.is-active { border-color: var(--color-accent); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-tint); }
+.fase-card.drop { border-style: dashed; border-color: var(--color-ball); }
+.fase-card__n { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-500); text-align: center; line-height: 1; }
+.fase-card__d { font-size: var(--fs-300); color: var(--color-text-muted); text-align: center; }
+.fase-add {
+  flex: none; width: 48px;
+  border: 1.5px dashed var(--color-border); border-radius: var(--r-md);
+  color: var(--color-accent); font-size: 24px; line-height: 1;
+  background: var(--color-surface);
+  transition: border-color var(--dur-1) var(--ease), background var(--dur-1);
+}
+.fase-add:hover { border-color: var(--color-accent); background: var(--accent-tint); }
+
+/* ---- Lista de movimientos de la fase ---- */
+.mov-list { display: grid; gap: 4px; }
+.mov-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: 5px var(--sp-2); background: var(--surface-2); border-radius: var(--r-sm); font-size: var(--fs-400); }

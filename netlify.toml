@@ -13,6 +13,50 @@
   to   = "/proyector.html"
   status = 200
 
+# Taller de ejercicios (SPA): todas las rutas /ejercicios/* sirven su index
+[[redirects]]
+  from = "/ejercicios/*"
+  to   = "/taller/index.html"
+  status = 200
+
+# Equipos/Sesiones (SPA hermana): /equipos/* y /sesiones/* sirven su index
+[[redirects]]
+  from = "/equipos"
+  to   = "/equipos/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/equipos/*"
+  to   = "/equipos/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/sesiones"
+  to   = "/equipos/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/sesiones/*"
+  to   = "/equipos/index.html"
+  status = 200
+
+# Partidos (M6) y dossier (M7): mismas SPA, mismos fallbacks. Sin estas
+# reglas, recargar /partidos/:id o /dossier/:id devuelve 404 en producción.
+[[redirects]]
+  from = "/partidos/*"
+  to   = "/equipos/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dossier"
+  to   = "/equipos/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dossier/*"
+  to   = "/equipos/index.html"
+  status = 200
+
 # Headers de seguridad para todos los archivos
 [[headers]]
   for = "/*"

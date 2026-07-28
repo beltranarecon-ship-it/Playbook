@@ -1,0 +1,175 @@
+/* ============================================================
+   calendario.css — vistas mes/semana. Estados por estilo:
+   preliminar = contorno discontinuo · programada = relleno suave
+   realizada = sólido · cancelada = tachado. --team-color = banda.
+   ============================================================ */
+
+/* ── Barra superior ───────────────────────────────────────── */
+.eq-cal-barra {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin: 1.25rem 0 1rem;
+}
+.eq-cal-nav { display: flex; align-items: center; gap: 0.5rem; }
+.eq-cal-titulo {
+  font-family: var(--font-display); text-transform: uppercase; font-weight: 800;
+  font-size: 1.375rem; margin-left: 0.625rem;
+}
+.eq-cal-controles { display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap; }
+.eq-segmento {
+  display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; background: var(--white);
+}
+.eq-segmento-btn {
+  padding: 0.5rem 1rem; font-size: 0.8125rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
+  transition: all var(--t-fast);
+}
+.eq-segmento-btn.sel { background: var(--carbon); color: var(--white); }
+
+/* ── Vista MES ────────────────────────────────────────────── */
+.eq-cal { background: var(--white); border: 1px solid var(--line); }
+.eq-cal-cabecera {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+.eq-cal-cabecera span {
+  padding: 0.5rem; text-align: center;
+  font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted);
+}
+.eq-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.eq-cal-dia {
+  min-height: 88px; padding: 0.375rem;
+  border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  cursor: pointer; display: flex; flex-direction: column; gap: 0.25rem;
+  transition: background var(--t-fast);
+}
+.eq-cal-dia:nth-child(7n) { border-right: none; }
+.eq-cal-dia:hover { background: var(--bone); }
+.eq-cal-dia:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--papaya); }
+.eq-cal-dia.fuera .eq-cal-num { color: var(--ghost); }
+.eq-cal-dia.sin-entreno {
+  background: repeating-linear-gradient(-45deg, transparent 0 7px, rgba(110,112,117,0.06) 7px 9px);
+}
+.eq-cal-dia.hoy .eq-cal-num {
+  background: var(--papaya); color: var(--white);
+}
+.eq-cal-num {
+  width: 24px; height: 24px; display: inline-flex; align-items: center;
+  justify-content: center; font-size: 0.75rem; font-weight: 700;
+  border-radius: 50%; flex: none;
+}
+.eq-cal-chips { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+
+/* ── Chips de sesión (mes y semana) ───────────────────────── */
+.eq-ses {
+  display: flex; align-items: center; gap: 0.375rem;
+  width: 100%; text-align: left;
+  font-size: 0.6875rem; line-height: 1.3; padding: 2px 5px;
+  border-left: 3px solid var(--team-color, var(--muted));
+  border-radius: 2px; min-height: 20px;
+  transition: filter var(--t-fast);
+}
+.eq-ses:hover { filter: brightness(0.94); }
+.eq-ses-hora { font-weight: 700; flex: none; }
+.eq-ses-equipo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.eq-ses-preliminar {
+  background: transparent; color: var(--muted);
+  border-top: 1px dashed var(--line); border-right: 1px dashed var(--line); border-bottom: 1px dashed var(--line);
+}
+.eq-ses-programada { background: color-mix(in srgb, var(--team-color, var(--muted)) 12%, var(--white)); color: var(--ink); }
+.eq-ses-realizada { background: var(--team-color, var(--muted)); color: var(--white); }
+.eq-ses-cancelada { background: var(--bone); color: var(--muted); text-decoration: line-through; }
+
+/* ── Vista SEMANA ─────────────────────────────────────────── */
+.eq-semana { display: flex; flex-direction: column; gap: 0.375rem; }
+.eq-semana-dia {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--white); border: 1px solid var(--line);
+  padding: 0.625rem 0.875rem; border-radius: var(--radius); cursor: pointer;
+  transition: border-color var(--t-fast);
+}
+.eq-semana-dia:hover { border-color: var(--ink); }
+.eq-semana-dia:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--papaya); }
+.eq-semana-dia.hoy .eq-cal-num { background: var(--papaya); color: var(--white); }
+.eq-semana-dia.sin-entreno {
+  background: repeating-linear-gradient(-45deg, var(--white) 0 7px, rgba(110,112,117,0.05) 7px 9px);
+}
+.eq-semana-fecha { display: flex; flex-direction: column; align-items: center; width: 5.5rem; flex: none; }
+.eq-semana-dow { font-size: 0.6875rem; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+.eq-semana-chips { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.eq-semana-chips .eq-ses { font-size: 0.8125rem; padding: 4px 8px; }
+.eq-semana-vacio { color: var(--ghost); font-size: 0.8125rem; }
+
+/* ── Objetivos en el calendario (M3) ──────────────────────── */
+/* Banda fina = un objetivo cubre ese día; su color es el EQUIPO. */
+.eq-cal-objs { display: flex; gap: 2px; }
+.eq-cal-obj {
+  height: 3px; flex: 1; max-width: 22px;
+  border-radius: 2px; background: var(--muted);
+}
+.eq-leyenda-obj { display: inline-flex; align-items: center; gap: 0.375rem; }
+.eq-leyenda-obj .eq-cal-obj { width: 14px; flex: none; }
+
+/* Día elegido como inicio del objetivo (modo selección) */
+.eq-cal-dia.sel-obj {
+  box-shadow: inset 0 0 0 2px var(--papaya);
+  background: color-mix(in srgb, var(--papaya) 8%, var(--white));
+}
+
+/* Barra de ayuda del modo selección */
+.eq-cal-hint {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  margin-bottom: 0.75rem; padding: 0.5rem 0.875rem;
+  background: color-mix(in srgb, var(--papaya) 9%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--papaya) 35%, var(--line));
+  border-radius: var(--radius); font-size: 0.875rem; font-weight: 600;
+}
+
+/* Semana: objetivos del día como etiquetas compactas */
+.eq-semana-objs {
+  display: flex; flex-direction: column; gap: 2px;
+  max-width: 30%; flex: none;
+}
+.eq-semana-obj {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  font-size: 0.75rem; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Panel de día: objetivos activos + título heredado de la sesión */
+.eq-dia-objs {
+  display: flex; flex-direction: column; gap: 0.375rem;
+  margin-bottom: 0.875rem;
+}
+.eq-dia-ses-titulo { font-size: 0.8125rem; font-weight: 600; }
+
+/* ── Leyenda ──────────────────────────────────────────────── */
+.eq-leyenda { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+.eq-leyenda-item {
+  font-size: 0.6875rem; padding: 3px 9px; border-radius: 2px;
+  --team-color: var(--muted);
+}
+
+/* ── Panel de día (dentro del modal) ──────────────────────── */
+.eq-dia-lista { display: flex; flex-direction: column; gap: 0.625rem; }
+.eq-dia-ses {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  border: 1px solid var(--line);
+  padding: 0.625rem 0.875rem; border-radius: var(--radius); flex-wrap: wrap;
+}
+.eq-dia-ses-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.eq-dia-ses-equipo { font-weight: 700; display: flex; align-items: center; gap: 0.375rem; }
+.eq-dia-ses-meta { font-size: 0.75rem; color: var(--muted); }
+.eq-dia-ses-acciones { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+.eq-dia-alta {
+  margin-top: 1.25rem; border-top: 1px solid var(--line); padding-top: 1.25rem;
+  display: flex; flex-direction: column; gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .eq-cal-dia { min-height: 64px; }
+  .eq-ses-equipo { display: none; }        /* móvil: chip compacto solo hora */
+  .eq-cal-titulo { font-size: 1.125rem; }
+}

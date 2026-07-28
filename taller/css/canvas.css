@@ -1,0 +1,129 @@
+/* ============================================================
+   canvas.css — pista, lienzo, paleta de elementos y requisitos.
+   ============================================================ */
+
+.court-wrap { display: flex; flex-direction: column; align-items: center; gap: 0; width: 100%; }
+
+.court {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--court-aspect, .707);
+  background: #0b2330;
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--sh-2);
+  touch-action: none;
+  outline: none;
+}
+.court:focus-visible { box-shadow: var(--sh-2), 0 0 0 3px var(--accent-tint); }
+.court__bg {
+  position: absolute; inset: 0;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.court__layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+.court.is-placing { cursor: crosshair; }
+
+/* Modo paisaje (proyector §14): el lienzo es apaisado y los símbolos se dibujan
+   ya rotados vía CourtView.toPx (quedan derechos). Solo hay que girar la imagen
+   de fondo 90°: se dimensiona como retrato (70.71% × 141.42% del contenedor
+   apaisado) y se rota sobre su centro para rellenar exactamente la caja. */
+.court--landscape .court__bg {
+  inset: auto; top: 50%; left: 50%;
+  width: 70.71%; height: 141.42%;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* En desktop la pista se ajusta a la altura del viewport (es vertical). */
+@media (min-width: 1025px) {
+  .court { width: auto; height: clamp(380px, calc(100vh - var(--header-h) - 150px), 820px); }
+}
+
+/* ---- Paleta (§7.1) ----------------------------------------- */
+.palette { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.palette__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--r-pill);
+  background: var(--color-surface);
+  font-weight: 600;
+  font-size: var(--fs-400);
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), background var(--dur-1);
+}
+.palette__item:hover { border-color: var(--color-accent); }
+.palette__item.is-armed {
+  border-color: var(--color-accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+.pal-swatch {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.85);
+  flex: none;
+}
+.pal-swatch--ball { width: 14px; height: 14px; }
+.pal-swatch--cono {
+  width: 0; height: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 17px solid var(--c);
+}
+.pal-arc {
+  position: absolute;
+  top: -4px; left: 50%;
+  transform: translateX(-50%);
+  width: 15px; height: 8px;
+  border: 2px solid #fff;
+  border-bottom: none;
+  border-radius: 9px 9px 0 0;
+}
+
+/* ---- Requisitos en vivo (§7.3) ----------------------------- */
+.reqs { display: flex; gap: var(--sp-5); margin-top: var(--sp-4); }
+.reqs .stat { display: grid; gap: 2px; }
+.reqs .stat small {
+  color: var(--color-text-muted);
+  font-size: var(--fs-300);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.reqs .stat b { font-size: var(--fs-700); font-family: var(--font-display); line-height: 1; }
+
+/* ---- Etiqueta "Canasta 1/2" al pasar el ratón por un aro ----
+   (solo pasos de edición; overlay decorativo, no captura eventos) */
+.court-basket-tip {
+  position: absolute; z-index: 6;
+  transform: translate(-50%, calc(-100% - 10px));
+  padding: 3px 10px;
+  border-radius: var(--r-pill, 999px);
+  background: rgba(0, 25, 56, .92);
+  color: #fff;
+  font-family: var(--font-display, inherit);
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-1, .12s) ease;
+}
+.court-basket-tip.is-on { opacity: 1; }
+.court-basket-tip::after {
+  content: '';
+  position: absolute; left: 50%; top: 100%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(0, 25, 56, .92);
+}
+
+/* ---- Hueco para los controles de animación (Bloque 3) ------ */
+.court-controls-slot { width: 100%; }

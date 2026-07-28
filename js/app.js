@@ -1,5 +1,5 @@
 import { requireAuth, getProfile, logout, onAuthChange } from './auth.js';
-import { getEjercicios, createEjercicio, archivarEjercicio } from './modules/ejercicios.js';
+import { getEjercicios, createEjercicio, archivarEjercicio, getThumbnailGif } from './modules/ejercicios.js';
 import { EXERCISE_TYPES, EXERCISE_CATEGORIES, DIFFICULTY_LABELS } from './config.js';
 
 // ── Estado global de la sesión ───────────────────────────
@@ -113,6 +113,7 @@ function renderEjerciciosGrid(data) {
   grid.innerHTML = data.map((ej, i) => `
     <article class="exercise-card animate-fadeIn" data-id="${ej.id}"
       style="animation-delay:${i * 30}ms">
+      ${ej.poster ? `<div class="exercise-card-thumb"><img class="thumb-img" src="${ej.poster}" alt="" loading="lazy"></div>` : ''}
       <div class="exercise-card-header">
         <h3 class="exercise-card-name">${escapeHtml(ej.name)}</h3>
       </div>
@@ -127,6 +128,20 @@ function renderEjerciciosGrid(data) {
 
   grid.querySelectorAll('.exercise-card').forEach(card => {
     card.addEventListener('click', () => openEjercicioDetail(card.dataset.id));
+    // miniatura: póster en reposo, GIF en hover (carga diferida) §19
+    const img = card.querySelector('.thumb-img');
+    if (img) {
+      const poster = img.src; let gif = null; let loading = false;
+      card.addEventListener('mouseenter', async () => {
+        if (gif) { img.src = gif; return; }
+        if (loading) return;
+        loading = true;
+        const g = await getThumbnailGif(card.dataset.id);
+        loading = false;
+        if (g) { gif = g; img.src = g; }
+      });
+      card.addEventListener('mouseleave', () => { img.src = poster; });
+    }
   });
 }
 
@@ -177,15 +192,13 @@ function setupEjerciciosToolbar() {
 
 function setupNuevoEjercicioBtn() {
   document.getElementById('btn-nuevo-ejercicio')
-    .addEventListener('click', () => openModalNuevoEjercicio());
+    .addEventListener('click', () => { window.location.href = '/ejercicios/nuevo'; });
 }
 
-// ── Detail placeholder ───────────────────────────────────
+// ── Abrir en el Taller ───────────────────────────────────
 
 function openEjercicioDetail(id) {
-  const ej = ejercicios.find(e => e.id === id);
-  if (!ej) return;
-  showToast(`«${ej.name}» — editor completo llega en Fase 3`, 'info');
+  window.location.href = '/ejercicios/' + id;
 }
 
 // ── Modal: Nuevo ejercicio ───────────────────────────────
@@ -265,9 +278,9 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     document.getElementById('search-ejercicios')?.focus();
   }
-  // N → nuevo ejercicio (solo si no hay modal abierto)
+  // N → nuevo ejercicio (abre el Taller)
   if (e.key === 'n' && !isInputFocused() && !hasOpenModal()) {
-    openModalNuevoEjercicio();
+    window.location.href = '/ejercicios/nuevo';
   }
 });
 
