@@ -29,15 +29,29 @@ import { fileURLToPath } from 'node:url';
 import {
   TIPOS, RAMAS, NIVELES, PISTAS, BLOQUE_KEYS, DENSIDAD_KEYS, OPOSICION,
   NIVELES_EXIGENCIA, REQUISITOS_OBLIGATORIOS, REQUISITOS_CONDICIONALES,
-  tagsDesconocidos,
+  DOSIS_UNIDADES, tagsDesconocidos,
 } from './vocabulario.mjs';
 import { huecos, revisarInvariantes, validarMapa, MAPA, OBJETIVO_TOTAL } from './mapa.mjs';
-import { aroExacto } from '../../taller/js/canvas/anclas.js';
+import { aroExacto, ANCLAS } from '../../taller/js/canvas/anclas.js';
 
-/* Fuera de la pista dibujada. No es [0,1] a secas: un jugador en
-   x=0.999 está fuera del campo aunque el número sea legal. */
-const MARGEN = 0.02;
-const dentro = (v) => typeof v === 'number' && v >= -MARGEN && v <= 1 + MARGEN;
+/* Dentro de la PISTA, no dentro del lienzo. Es una distinción que
+   importa: en una entera las bandas están en x 0,057-0,942, así que
+   un jugador en x=0,9 está fuera del campo aunque [0,1] lo admita; y
+   en una media —que está dibujada en paisaje— el campo va de x 0,146
+   (fondo) a 0,829 (medio campo). Los límites son los MEDIDOS sobre el
+   arte real de cada SVG, no estimaciones.
+   Se deja holgura para el jugador que saca de banda o de fondo. */
+const HOLGURA = 0.04;
+
+function limites(pista) {
+  const f = ANCLAS[pista]?.frame;
+  if (!f) return null;
+  if (f.sideline && f.baseline) return { x: f.sideline, y: f.baseline };            // enteras (retrato)
+  if (f.baseline_x != null) return { x: [f.baseline_x, f.halfcourt_x], y: f.sideline_y }; // medias (paisaje)
+  return null;
+}
+
+const enRango = (v, [a, b]) => typeof v === 'number' && v >= a - HOLGURA && v <= b + HOLGURA;
 
 /* Dos jugadores más cerca que esto se pintan encima y no se lee nada. */
 const SEPARACION_MINIMA = 0.035;
@@ -115,18 +129,32 @@ export function revisaFicha(f) {
       E(`requisito_previo menciona una edad o categoría ("${r.requisito_previo}") — D9 pide saber hacer, no cumplir años`);
     }
 
-    /* D5 · con dos canastas y pista entera no hay excusa para una cola larga. */
+    /* D5 · con dos canastas y pista entera no hay excusa para una cola
+       larga. No aplica cuando todos trabajan a la vez: ahí no hay cola. */
     const porEstacion = r.jugadores_max / Math.max(1, r.estaciones || 1);
-    if (r.oposicion === 'nula' && porEstacion > 8) {
+    if (!r.simultaneo && r.oposicion === 'nula' && porEstacion > 8) {
       A(`${r.jugadores_max} jugadores sin oposición y sin declarar estaciones: revisa que no salgan filas de más de 4 (D5)`);
     }
 
-    /* La dosis tiene que caber en la duración declarada. */
+    /* La dosis tiene que caber en la duración declarada. Ojo con la
+       unidad: en un juego continuo la cantidad son SEGUNDOS, no
+       repeticiones, y confundirlas multiplicaba el trabajo por cuatro. */
     const d = r.dosis;
+    if (d && (d.cantidad === undefined || d.cantidad === null)) {
+      /* El contrato viejo decía `repeticiones`. Sin este aviso, una ficha
+         antigua pasaba entera en silencio: Number(undefined)||0 daba cero
+         y el cálculo de si cabe en la duración nunca saltaba. */
+      E(`dosis sin \`cantidad\`${d.repeticiones !== undefined ? ' (¿viene del contrato viejo, que la llamaba `repeticiones`?)' : ''}`);
+    }
     if (d && f.duration_max) {
-      const seg = (Number(d.series) || 1) * ((Number(d.repeticiones) || 0) * 4 + (Number(d.descanso) || 0));
-      if (seg > f.duration_max * 60 * 1.5) {
-        A(`la dosis (${d.series}x${d.repeticiones}, ${d.descanso}s) no cabe en ${f.duration_max} min`);
+      const u = DOSIS_UNIDADES[d.unidad || 'repeticiones'];
+      if (!u) {
+        E(`dosis.unidad "${d.unidad}" desconocida (${Object.keys(DOSIS_UNIDADES).join(' | ')})`);
+      } else {
+        const seg = (Number(d.series) || 1) * ((Number(d.cantidad) || 0) * u.segundosPorRepeticion + (Number(d.descanso) || 0));
+        if (seg > f.duration_max * 60 * 1.5) {
+          A(`la dosis (${d.series}x${d.cantidad} ${u.label}, ${d.descanso}s de descanso) no cabe en ${f.duration_max} min`);
+        }
       }
     }
   }
@@ -149,11 +177,14 @@ export function revisaGeometria(f) {
   if (!a) { avisos.push('sin animación (montaje pendiente)'); return { errores, avisos }; }
   if (a.pista && a.pista !== f.tipo_pista) errores.push(`la animación es de pista "${a.pista}" y la ficha dice "${f.tipo_pista}"`);
 
+  const lim = limites(a.pista || f.tipo_pista);
+  if (!lim) avisos.push(`sin marco medido para la pista "${a.pista || f.tipo_pista}": no se comprueban los límites`);
+
   const fuera = [];
   const mira = (p, qué) => {
-    if (!p) return;
+    if (!p || !lim) return;
     const [x, y] = Array.isArray(p) ? p : [p.x, p.y];
-    if (!dentro(x) || !dentro(y)) fuera.push(`${qué} en (${Number(x).toFixed(2)}, ${Number(y).toFixed(2)})`);
+    if (!enRango(x, lim.x) || !enRango(y, lim.y)) fuera.push(`${qué} en (${Number(x).toFixed(2)}, ${Number(y).toFixed(2)})`);
   };
 
   for (const j of a.jugadores || []) mira(j.posicion_inicial, `jugador ${j.id}`);
@@ -176,6 +207,20 @@ export function revisaGeometria(f) {
   /* Conos de fila sin configurar: la cola no se dibuja. */
   for (const c of a.conos || []) {
     if (c.funcion === 'fila' && !c.fila_config) errores.push(`cono ${c.id} es de fila y no tiene fila_config`);
+  }
+
+  /* Conos de rodear que nadie rodea. El compilador NO deduce el slalom
+     de que haya conos en el tablero: la intención tiene que declarar un
+     evento `rodea_cono` por cada uno. Si no, el jugador va en línea
+     recta y se los salta — y la ficha promete un slalom que la
+     animación no enseña. Un recorrido que de verdad sortea conos tiene
+     más de dos nodos. */
+  const aRodear = (a.conos || []).filter((c) => c.funcion === 'rodear');
+  if (aRodear.length) {
+    const haySlalom = (a.fases || []).some((fa) => (fa.movimientos || []).some((m) => (m.path || []).length > 2));
+    if (!haySlalom) {
+      errores.push(`${aRodear.length} cono(s) de rodear y ningún recorrido los sortea: falta declarar los eventos rodea_cono`);
+    }
   }
 
   const aro = aroExacto(a.pista || f.tipo_pista, a.canasta || 'norte');
@@ -206,6 +251,15 @@ export function revisaGeometria(f) {
   }
 
   if (fuera.length) errores.push(`fuera de la pista: ${fuera.slice(0, 5).join('; ')}${fuera.length > 5 ? ` y ${fuera.length - 5} más` : ''}`);
+
+  /* Animación donde nadie se mueve nunca. A veces es legítimo —una
+     serie de tiro desde un sitio fijo— pero casi siempre significa que
+     falta la mitad del ejercicio: un "pase y sigue" sin el "sigue" es
+     un triángulo de estatuas. Por eso avisa y no falla. */
+  if ((a.fases || []).length) {
+    const movs = (a.fases || []).reduce((n, fa) => n + (fa.movimientos || []).length, 0);
+    if (!movs) avisos.push('nadie se mueve en toda la animación: ¿falta alguna fase de desplazamiento?');
+  }
 
   return { errores, avisos };
 }

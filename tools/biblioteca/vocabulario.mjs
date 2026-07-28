@@ -134,9 +134,31 @@ export const REQUISITOS_OBLIGATORIOS = [
   'densidad',          // 'alta' | 'media' | 'baja'
   'oposicion',         // 'nula' | 'pasiva' | 'semiactiva' | 'real'
   'requisito_previo',  // string — QUÉ hay que saber hacer ya. NUNCA una edad.
-  'dosis',             // { series, repeticiones, descanso }
+  'dosis',             // { series, cantidad, unidad, descanso } — ver DOSIS_UNIDADES
   'criterio_exito',    // string — cuándo está bien hecho y cómo se compite
 ];
+
+/**
+ * Unidad de la dosis. Salió del piloto: en un juego continuo como un
+ * pilla-pilla, "90" no son noventa repeticiones sino noventa segundos
+ * de juego, y tratarlo como repeticiones hacía que el linter calculara
+ * seis minutos de trabajo donde hay minuto y medio.
+ *
+ * `segundosPorRepeticion` es lo que se estima que dura UNA repetición
+ * discreta: sirve para comprobar que la dosis cabe en la duración
+ * declarada, no para prescribir nada.
+ */
+export const DOSIS_UNIDADES = {
+  repeticiones: { label: 'repeticiones', segundosPorRepeticion: 4 },
+  segundos: { label: 'segundos de trabajo', segundosPorRepeticion: 1 },
+};
+
+/**
+ * `simultaneo: true` = todos trabajan a la vez, cada uno con su balón
+ * o en su espacio. No hay colas posibles, así que la comprobación de
+ * fila larga (D5) no aplica. También salió del piloto.
+ */
+export const REQUISITOS_OPCIONALES = ['estaciones', 'simultaneo', 'aplicacion', 'justificacion_densidad'];
 
 /**
  * Campos obligatorios SOLO en ciertos casos (DOCTRINA.md).

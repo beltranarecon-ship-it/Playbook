@@ -41,7 +41,7 @@ export const FICHA_BUENA = {
     densidad: 'alta',
     oposicion: 'nula',
     requisito_previo: 'coordinar dos apoyos con el balón en las manos sin dar pasos',
-    dosis: { series: 3, repeticiones: 6, descanso: 30 },
+    dosis: { series: 3, cantidad: 6, unidad: 'repeticiones', descanso: 30 },
     criterio_exito: 'ocho de cada diez entradas terminan con el balón tocando tablero antes que el aro',
     aplicacion: '2c2 en media pista con entrada obligatoria tras pase',
   },
@@ -134,6 +134,39 @@ const CASOS = [
     espera: /el tiro acaba a .* del aro/,
   },
   { que: 'sin animación: aviso, no error', mut: (f) => { delete f.animacion; }, espera: null, esperaAviso: /sin animaci[óo]n/ },
+
+  // ---- lo que salió del piloto ----
+  {
+    // El compilador NO deduce el slalom de que haya conos: hay que
+    // declarar los eventos rodea_cono. Sin ellos el jugador va recto y
+    // la ficha promete un slalom que la animación no enseña.
+    que: 'PILOTO · conos de rodear que nadie rodea',
+    mut: (f) => { f.animacion.conos.push({ id: 'c1', posicion: [0.4, 0.5], funcion: 'rodear', fila_config: null }); },
+    espera: /ning[úu]n recorrido los sortea/,
+  },
+  {
+    que: 'PILOTO · dosis del contrato viejo pasaba en silencio',
+    mut: (f) => { f.requisitos.dosis = { series: 3, repeticiones: 6, descanso: 30 }; },
+    espera: /dosis sin `cantidad`.*contrato viejo/,
+  },
+  {
+    que: 'PILOTO · unidad de dosis desconocida',
+    mut: (f) => { f.requisitos.dosis = { series: 3, cantidad: 6, unidad: 'minutos', descanso: 30 }; },
+    espera: /unidad "minutos" desconocida/,
+  },
+  {
+    // En un juego continuo la cantidad son SEGUNDOS: tratarlos como
+    // repeticiones multiplicaba el trabajo por cuatro y hacía saltar un
+    // aviso falso de "no cabe en la duración".
+    que: 'PILOTO · 90 segundos de juego continuo caben en 8 min',
+    mut: (f) => { f.duration_max = 8; f.requisitos.dosis = { series: 3, cantidad: 90, unidad: 'segundos', descanso: 45 }; },
+    espera: null,
+  },
+  {
+    que: 'PILOTO · trabajo simultáneo no dispara el aviso de colas',
+    mut: (f) => { f.requisitos.jugadores_max = 16; f.requisitos.estaciones = 1; f.requisitos.simultaneo = true; },
+    espera: null,
+  },
 ];
 
 export function autoprueba() {
