@@ -2,6 +2,16 @@
   publish = "."
   functions = "netlify/functions"
 
+# Arneses de desarrollo (/dev/*): están en el repo a propósito —abren vistas
+# con datos inventados y sin cuenta— pero NO se sirven en producción. El
+# propio arnés ya se niega a arrancar fuera de localhost; esto es la segunda
+# cerradura, para que la URL ni exista. force: gana a los ficheros estáticos.
+[[redirects]]
+  from   = "/dev/*"
+  to     = "/index.html"
+  status = 404
+  force  = true
+
 # Redirige /app a app.html (permite abrir la URL directa sin 404)
 [[redirects]]
   from = "/app"
