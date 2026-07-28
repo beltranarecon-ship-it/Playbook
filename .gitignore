@@ -23,3 +23,7 @@ Desktop.ini
 # Temporales
 *.log
 *.tmp
+
+# Copias de seguridad de la biblioteca (pósters y GIFs en base64: pesan
+# megas y son un volcado de datos, no código)
+tools/biblioteca/copias/
