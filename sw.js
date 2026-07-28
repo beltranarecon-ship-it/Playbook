@@ -3,7 +3,7 @@
 // Cache-first servía módulos del Taller obsoletos; network-first lo evita.
 // Las llamadas a Supabase y esm.sh NUNCA se cachean aquí.
 
-const CACHE_NAME = 'cbp-v2-shell-v9'; // v9: arreglos de la revisión adversarial M5-M7
+const CACHE_NAME = 'cbp-v2-shell-v10'; // v10: visor de ejercicio en el planificador
 
 const PRECACHE_ASSETS = [
   '/index.html',

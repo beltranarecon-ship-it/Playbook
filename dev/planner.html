@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEV · planificador con datos falsos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/equipos/css/panel.css">
+  <link rel="stylesheet" href="/equipos/css/calendario.css">
+  <link rel="stylesheet" href="/equipos/css/visor.css">
+  <style>
+    body { font-family: 'Archivo', system-ui, sans-serif; }
+    h1, h2, h3, .display, .topbar-brand span { font-family: 'Saira Condensed', 'Arial Narrow', sans-serif; }
+    .view-meta, .eq-cal-num, .eq-jugador-dorsal { font-family: 'JetBrains Mono', monospace; }
+  </style>
+
+  <!-- ============================================================
+       ARNÉS DE DESARROLLO — /dev/planner.html
+       Abre el planificador (/sesiones/:id) con una sesión, un equipo,
+       una plantilla de bloques y una biblioteca INVENTADOS, sin tocar
+       Supabase ni necesitar cuenta. Sirve para trabajar el visor, la
+       curva y el picker con datos estables y para probar estados que
+       cuesta reproducir a mano (?estado=realizada | cancelada).
+
+       Vive fuera de /equipos a propósito: serve.py y netlify.toml
+       reescriben /equipos/* a la SPA, así que aquí dentro no se podría
+       servir un HTML suelto.
+
+       NO es parte de la app. Se planta una sesión falsa en el
+       localStorage REAL ('cbp-auth'), así que fuera de localhost se
+       niega a arrancar: si alguien abriera esto en producción, la app
+       de verdad se creería con sesión y fallaría en cada consulta.
+       ============================================================ -->
+  <script>
+  (function () {
+    const local = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+    if (!local) {
+      document.documentElement.innerHTML = '<body style="font:16px system-ui;padding:3rem">'
+        + 'Arnés de desarrollo. Solo funciona en localhost.</body>';
+      throw new Error('dev harness fuera de localhost');
+    }
+    const AHORA = Math.floor(Date.now() / 1000);
+    localStorage.setItem('cbp-auth', JSON.stringify({
+      access_token: 'dev', token_type: 'bearer', expires_in: 31536000,
+      expires_at: AHORA + 31536000, refresh_token: 'dev',
+      user: { id: 'u1', aud: 'authenticated', role: 'authenticated', email: 'dev@local',
+              app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' },
+    }));
+
+    const P = {
+      aro: [0.499, 0.091], poste_bajo_izq: [0.376, 0.111], codo_der: [0.622, 0.236],
+      base: [0.499, 0.306], esquina_izq: [0.087, 0.08], tiro_libre: [0.499, 0.236],
+    };
+    const nodo = ([x, y]) => ({ x, y, tipo_nodo: 'lineal' });
+    const via = (a, b) => [nodo(a), nodo(b)];
+
+    const ANIM = {
+      pista: 'entera', canasta: 'norte',
+      jugadores: [
+        { id: 'A1', equipo: 'A', tipo: 'atacante', posicion_inicial: P.base, dorsal: 4 },
+        { id: 'A5', equipo: 'A', tipo: 'atacante', posicion_inicial: P.esquina_izq, dorsal: 9 },
+        { id: 'B1', equipo: 'B', tipo: 'defensor', posicion_inicial: [0.5, 0.24], dorsal: 4 },
+      ],
+      balones: [{ id: 'b1', posicion_inicial: P.base, portador_id: 'A1' }],
+      conos: [{ id: 'c1', posicion: [0.56, 0.27], funcion: 'rodear', fila_config: null }],
+      fases: [
+        { id: 'f1', duracion_ms: 1100, pausa_post_ms: 300, defensores: ['B1'],
+          movimientos: [
+            { elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: via(P.base, P.codo_der) },
+            { elemento_id: 'B1', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: via([0.5, 0.24], [0.6, 0.2]) },
+          ], pases: [], tiros: [], bloqueos: [] },
+        { id: 'f2', duracion_ms: 900, pausa_post_ms: 250, defensores: ['B1'],
+          movimientos: [{ elemento_id: 'A5', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: via(P.esquina_izq, P.poste_bajo_izq) }],
+          pases: [], tiros: [], bloqueos: [] },
+        { id: 'f3', duracion_ms: 500, pausa_post_ms: 250, defensores: ['B1'],
+          movimientos: [], tiros: [], bloqueos: [],
+          pases: [{ id: 'p1', de_id: 'A1', a_id: 'A5', balon_id: 'b1', duracion_ms: 450, path: via(P.codo_der, P.poste_bajo_izq) }] },
+        { id: 'f4', duracion_ms: 800, pausa_post_ms: 400, defensores: ['B1'],
+          movimientos: [], pases: [], bloqueos: [],
+          tiros: [{ jugador_id: 'A5', balon_id: 'b1', canasta: 'norte', path: via(P.poste_bajo_izq, P.aro) }] },
+      ],
+    };
+
+    const BIBLIO = [
+      { id: 'e1', name: 'Flecha de tiro', type: 'Tiro', category: 'ataque', difficulty: 3, duration_min: 8, intensidad: 3, tags: ['tiro', 'entrada'], description: 'Serie de tiro tras bote.' },
+      { id: 'e2', name: 'Rueda de entradas', type: 'Tiro', category: 'ataque', difficulty: 2, duration_min: 10, intensidad: 4, tags: ['entrada'], description: 'Dos filas, entrada y rebote.' },
+      { id: 'e3', name: 'Defensa del bloqueo directo', type: 'Defensa', category: 'defensa', difficulty: 5, duration_min: 15, intensidad: 4, tags: ['bloqueo directo'], description: 'Pasar por debajo y recuperar.' },
+      { id: 'e4', name: '3vs3 con ventaja', type: '3vs3', category: 'ataque', difficulty: 4, duration_min: 12, intensidad: 5, tags: ['ventaja'], description: null },
+      { id: 'e5', name: 'Calentamiento articular', type: 'Calentamiento', category: null, difficulty: 1, duration_min: 6, intensidad: 1, tags: [], description: null },
+      { id: 'e6', name: 'Bote con dos balones', type: 'Bote', category: null, difficulty: 3, duration_min: 7, intensidad: 2, tags: ['bote'], description: null },
+      { id: 'e7', name: 'Contraataque 3x2', type: 'Contraataque', category: 'transición', difficulty: 4, duration_min: 14, intensidad: 5, tags: ['contraataque'], description: null },
+    ];
+
+    const FICHA = {
+      e1: { ...BIBLIO[0], dificultad_label: 'Medio', duration_max: 12, tipo_pista: 'entera',
+            categoria_rama: 'Basket', categoria_nivel: ['Cadete'], autor_nombre: 'Beltrán',
+            descripcion_texto: 'El base sortea el cono, ataca el codo y busca al poste que llega desde la esquina.\n\nSi la ayuda llega tarde, el poste tira; si llega a tiempo, se devuelve el balón fuera.',
+            objetivos: 'Leer la ayuda del lado débil y decidir tiro o devolución.',
+            variantes: 'Añadir un segundo defensor. Empezar desde el otro lado.',
+            notas: 'Insistir en el pie de pivote al recibir.',
+            requisitos: { jugadores: 3, balones: 1, conos: 1 }, animacion: ANIM, favorito: true },
+      e2: { ...BIBLIO[1], dificultad_label: 'Iniciación', duration_max: null, tipo_pista: 'media',
+            categoria_rama: 'Minibasket', categoria_nivel: ['Alevín'], autor_nombre: 'Beltrán',
+            descripcion_texto: 'Dos filas, entrada a canasta y rebote.', objetivos: null, variantes: null, notas: null,
+            requisitos: { jugadores: 6, balones: 2, conos: 0 },
+            animacion: { pista: 'media', canasta: 'norte',
+              jugadores: [{ id: 'A1', equipo: 'A', posicion_inicial: [0.75, 0.3], dorsal: 1 },
+                          { id: 'A2', equipo: 'A', posicion_inicial: [0.75, 0.7], dorsal: 2 }],
+              balones: [{ id: 'b1', posicion_inicial: [0.75, 0.3], portador_id: 'A1' }],
+              conos: [], fases: [] } },
+      e3: { ...BIBLIO[2], dificultad_label: 'Avanzado', duration_max: null, tipo_pista: 'entera',
+            categoria_rama: 'Basket', categoria_nivel: ['Junior'], autor_nombre: null,
+            descripcion_texto: null, objetivos: 'Defender el bloqueo directo sin cambiar.',
+            variantes: null, notas: null, requisitos: { jugadores: 4, balones: 1, conos: 0 },
+            animacion: null },
+      e5: { ...BIBLIO[4], dificultad_label: 'Iniciación', duration_max: null, tipo_pista: 'media',
+            categoria_rama: null, categoria_nivel: [], autor_nombre: 'Beltrán',
+            descripcion_texto: 'Movilidad articular de tobillo, cadera y hombro antes de tocar balón.',
+            objetivos: null, variantes: null, notas: null,
+            requisitos: { jugadores: 12, balones: 0, conos: 0 }, animacion: null },
+      e7: { ...BIBLIO[6], dificultad_label: 'Medio', duration_max: 18, tipo_pista: 'entera',
+            categoria_rama: 'Basket', categoria_nivel: ['Cadete'], autor_nombre: 'Beltrán',
+            descripcion_texto: 'Tres atacantes corren contra dos defensores tras rebote defensivo.',
+            objetivos: 'Decidir rápido en superioridad.', variantes: 'Empezar desde saque de fondo.',
+            notas: null, requisitos: { jugadores: 5, balones: 1, conos: 0 },
+            animacion: { pista: 'entera', canasta: 'sur',
+              jugadores: [
+                { id: 'A1', equipo: 'A', posicion_inicial: [0.5, 0.2], dorsal: 1 },
+                { id: 'A2', equipo: 'A', posicion_inicial: [0.15, 0.3], dorsal: 2 },
+                { id: 'A3', equipo: 'A', posicion_inicial: [0.85, 0.3], dorsal: 3 },
+                { id: 'B4', equipo: 'B', posicion_inicial: [0.5, 0.7], dorsal: 4 },
+                { id: 'B5', equipo: 'B', posicion_inicial: [0.5, 0.85], dorsal: 5 }],
+              balones: [{ id: 'b1', posicion_inicial: [0.5, 0.2], portador_id: 'A1' }],
+              conos: [],
+              fases: [
+                { id: 'f1', duracion_ms: 1200, pausa_post_ms: 300, defensores: ['B4', 'B5'],
+                  movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: via([0.5, 0.2], [0.499, 0.694]) }],
+                  pases: [], tiros: [], bloqueos: [] },
+                { id: 'f2', duracion_ms: 500, pausa_post_ms: 250, defensores: ['B4', 'B5'],
+                  movimientos: [], tiros: [], bloqueos: [],
+                  pases: [{ id: 'p1', de_id: 'A1', a_id: 'A3', balon_id: 'b1', path: via([0.499, 0.694], [0.912, 0.92]) }] },
+                { id: 'f3', duracion_ms: 800, pausa_post_ms: 400, defensores: ['B4', 'B5'],
+                  movimientos: [], pases: [], bloqueos: [],
+                  tiros: [{ jugador_id: 'A3', balon_id: 'b1', canasta: 'sur', path: via([0.912, 0.92], [0.499, 0.894]) }] }] } },
+    };
+
+    const SESION = {
+      id: 'demo', team_id: 't1', season_id: 's1', fecha: '2026-08-22',
+      hora_inicio: '10:00:00', hora_fin: '11:30:00', lugar: 'Pabellón Municipal',
+      estado: new URLSearchParams(location.search).get('estado') || 'programada',
+      titulo: null, origen: 'manual', slot_id: null, slot_date: null,
+      slot_duracion_min: 90, carga_total: null, notas: null, material: null,
+      evaluada_at: null, motivo_cancelacion: null,
+    };
+
+    const TABLAS = {
+      sessions: [SESION],
+      teams: [{ id: 't1', name: 'Cadete A', category: 'cadete',
+                team_coaches: [{ coach_id: 'u1', rol: 'principal', profiles: { full_name: 'Beltrán' } }],
+                team_settings: { color: '#1F6FEB', dia_convocatoria: 5 } }],
+      session_blocks: [
+        { id: 'sb1', session_id: 'demo', exercise_id: 'e5', orden: 0, titulo: 'Calentamiento articular', duracion_min: 8, intensidad: 1, notas: null },
+        { id: 'sb2', session_id: 'demo', exercise_id: 'e1', orden: 1, titulo: 'Flecha de tiro', duracion_min: 14, intensidad: 3, notas: 'Ojo al pie de pivote' },
+        { id: 'sb3', session_id: 'demo', exercise_id: null, orden: 2, titulo: 'Charla táctica', duracion_min: 5, intensidad: 1, notas: null },
+        { id: 'sb4', session_id: 'demo', exercise_id: 'e7', orden: 3, titulo: 'Contraataque 3x2', duracion_min: 18, intensidad: 5, notas: null },
+        { id: 'sb5', session_id: 'demo', exercise_id: 'e3', orden: 4, titulo: 'Defensa del bloqueo directo', duracion_min: 15, intensidad: 4, notas: null },
+      ],
+      session_objectives: [{ session_id: 'demo', objective_id: 'o1' }],
+      objectives: [
+        { id: 'o1', team_id: 't1', season_id: 's1', titulo: 'Tiro tras bote con equilibrio', descripcion: 'Salir del bote y tirar sin caerse', categoria: 'técnico', fecha_inicio: '2026-08-01', fecha_fin: '2026-10-31', estado: 'activo', created_at: '2026-07-01T00:00:00Z' },
+        { id: 'o2', team_id: 't1', season_id: 's1', titulo: 'Defensa del bloqueo directo', descripcion: null, categoria: 'táctico', fecha_inicio: '2026-09-01', fecha_fin: '2026-12-31', estado: 'activo', created_at: '2026-07-01T00:00:00Z' },
+      ],
+      profiles: [{ id: 'u1', full_name: 'Beltrán', role: 'coach' }],
+    };
+
+    const real = window.fetch.bind(window);
+    window.fetch = function (entrada, opciones) {
+      const url = typeof entrada === 'string' ? entrada : entrada.url;
+      const cab = new Headers((opciones && opciones.headers) || (entrada && entrada.headers) || {});
+
+      if (url.includes('/auth/v1/')) {
+        return Promise.resolve(new Response(JSON.stringify({ error: 'dev' }), { status: 400, headers: { 'Content-Type': 'application/json' } }));
+      }
+      if (!url.includes('/rest/v1/')) return real(entrada, opciones);
+
+      const u = new URL(url);
+      const tabla = u.pathname.split('/rest/v1/')[1].split('?')[0];
+      let filas = TABLAS[tabla] ? TABLAS[tabla].slice() : [];
+
+      if (tabla === 'exercises') {
+        const idEq = u.searchParams.get('id');
+        if (idEq && idEq.startsWith('eq.')) {
+          const f = FICHA[idEq.slice(3)];
+          filas = f ? [f] : [];
+        } else {
+          filas = BIBLIO.slice();
+        }
+      } else {
+        // filtros eq. sencillos, suficientes para el arnés
+        for (const [clave, valor] of u.searchParams) {
+          if (clave === 'select' || clave === 'order' || clave === 'limit') continue;
+          if (!String(valor).startsWith('eq.')) continue;
+          const v = String(valor).slice(3);
+          filas = filas.filter((r) => String(r[clave]) === v);
+        }
+      }
+
+      console.log('[arnés]', tabla, u.search, '→', filas.length, 'filas');
+      const objeto = (cab.get('Accept') || '').includes('pgrst.object');
+      const cuerpo = objeto ? (filas[0] ?? null) : filas;
+      return Promise.resolve(new Response(JSON.stringify(cuerpo), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      }));
+    };
+
+    history.replaceState({}, '', '/sesiones/demo');
+  })();
+  </script>
+
+  <script type="importmap">
+  { "imports": { "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2" } }
+  </script>
+</head>
+<body class="app-layout eq-body">
+  <main class="app-main eq-main" id="app"></main>
+  <script type="module" src="/equipos/js/main.js"></script>
+</body>
+</html>

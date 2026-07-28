@@ -54,7 +54,11 @@ export function icon(d, { size = 22, fill = 'none', stroke = 'currentColor', wid
   }, ...paths);
 }
 
+// 'title' está aquí porque dentro de un <svg> es el tooltip nativo del
+// elemento (y sin el namespace SVG el navegador no lo enseña). Nadie
+// construye el <title> del documento con h(), así que no hay conflicto.
 const SVG_TAGS = new Set([
   'svg', 'path', 'g', 'circle', 'rect', 'line', 'polygon', 'polyline',
   'ellipse', 'text', 'defs', 'use', 'marker', 'image', 'tspan', 'clipPath',
+  'title',
 ]);

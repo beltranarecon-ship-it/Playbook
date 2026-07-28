@@ -6,7 +6,9 @@
 
 import { h } from './dom.js';
 
-export function abrirModal({ titulo, cuerpo, pie, alCerrar }) {
+/** `clase` viaja al overlay: deja que un modal concreto (el picker de
+ *  ejercicios, el visor en móvil) pida más ancho sin tocar el resto. */
+export function abrirModal({ titulo, cuerpo, pie, alCerrar, clase = '' }) {
   const cerrar = () => {
     document.removeEventListener('keydown', onKey);
     overlay.remove();
@@ -15,7 +17,7 @@ export function abrirModal({ titulo, cuerpo, pie, alCerrar }) {
   const onKey = (e) => { if (e.key === 'Escape') cerrar(); };
 
   const overlay = h('div', {
-    class: 'modal-overlay', role: 'dialog', 'aria-modal': 'true',
+    class: 'modal-overlay' + (clase ? ' ' + clase : ''), role: 'dialog', 'aria-modal': 'true',
     onClick: (e) => { if (e.target === overlay) cerrar(); },
   },
     h('div', { class: 'modal' },

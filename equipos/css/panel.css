@@ -29,6 +29,13 @@
   .eq-tabbar { display: none; }
   .eq-main { padding-bottom: 3rem; }
 }
+/* En móvil manda la tab-bar de abajo: la navegación de la topbar no
+   cabía en 375 px y empujaba la página a 426, con scroll horizontal en
+   TODAS las vistas del módulo. Se oculta solo aquí (.eq-body), no en la
+   app raíz, que no tiene tab-bar que la sustituya. */
+@media (max-width: 719px) {
+  .eq-body .topbar-nav { display: none; }
+}
 
 /* ── Tarjetas de equipo ───────────────────────────────────── */
 .eq-grid {
@@ -228,11 +235,44 @@
 .eq-sug-meta { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
 
 /* ── Planificador de sesión (M4) ──────────────────────────── */
-.eq-planner { max-width: 760px; }
+/* Dos columnas: el plan a la izquierda, el visor del bloque a la
+   derecha. Por debajo de 1100px el visor no cabe al lado y se abre en
+   un modal (lo decide el JS con la MISMA media query). */
+.eq-planner { max-width: 1240px; }
+.eq-planner-grid { display: flex; flex-direction: column; gap: 1.5rem; }
+.eq-planner-col { min-width: 0; }
+.eq-planner-visor { display: none; }
+
+@media (min-width: 1100px) {
+  .eq-planner-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(370px, 430px);
+    gap: 2rem; align-items: start;
+  }
+  .eq-planner-visor {
+    display: block;
+    position: sticky; top: 1.5rem;
+    max-height: calc(100dvh - 3rem);
+  }
+  .eq-planner-visor .eq-visor { max-height: calc(100dvh - 3rem); }
+}
+
 .eq-planner-top {
   display: flex; align-items: center; justify-content: space-between;
   gap: 1rem; margin-bottom: 0.5rem;
 }
+.eq-planner-top-der { display: flex; align-items: center; gap: 0.75rem; }
+/* Indicador de guardado: gris cuando todo está a salvo, papaya cuando
+   hay algo que perder. Sustituye al susto de "¿le he dado a guardar?". */
+.eq-guardado {
+  font-size: 0.6875rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ghost);
+}
+.eq-guardado.is-sucio { color: var(--papaya); }
+.eq-guardado:empty { display: none; }
+
+.btn-sm { padding: 0.4375rem 0.875rem; font-size: 0.75rem; }
 .eq-volver { font-weight: 600; font-size: 0.875rem; color: var(--muted); text-decoration: none; }
 .eq-volver:hover { color: var(--ink); }
 .eq-estado-badge {
@@ -259,31 +299,74 @@
 /* Bloques */
 .eq-bloques { display: flex; flex-direction: column; gap: 0.5rem; }
 .eq-bloque {
-  display: flex; gap: 0.75rem; align-items: stretch;
+  display: flex; gap: 0.5rem; align-items: stretch;
   background: var(--white); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 0.625rem 0.75rem;
+  cursor: pointer;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
 }
+.eq-bloque:hover { border-color: var(--ghost); }
+/* Seleccionado = lo que se está viendo en el visor. Mismo lenguaje que
+   el ítem elegido del picker (borde papaya + fondo tenue), para que
+   "esto es lo que estás mirando" se diga igual en toda la pantalla. */
+.eq-bloque.is-sel {
+  border-color: var(--papaya); background: var(--papaya-soft);
+  box-shadow: var(--shadow-sm);
+}
+.eq-bloque:focus-visible { outline: 2px solid var(--papaya); outline-offset: 2px; }
+.eq-bloque.is-arrastrando { opacity: 0.4; }
+
+.eq-bloque-asa {
+  display: flex; align-items: center; justify-content: center;
+  flex: none; width: 1rem; margin-left: -0.25rem;
+  color: var(--line); cursor: grab;
+  transition: color var(--t-fast);
+}
+.eq-bloque:hover .eq-bloque-asa { color: var(--ghost); }
+.eq-bloque-asa:active { cursor: grabbing; }
+
 .eq-bloque-orden {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  justify-content: center; flex: none; width: 2rem;
+  justify-content: center; flex: none; width: 1.75rem;
 }
 .eq-bloque-n { font-family: var(--font-display); font-weight: 800; font-size: 1rem; color: var(--muted); }
+.eq-bloque.is-sel .eq-bloque-n { color: var(--papaya); }
 .eq-mov {
   width: 22px; height: 20px; line-height: 1; border-radius: 4px;
   color: var(--muted); background: var(--bone); font-size: 0.75rem;
 }
 .eq-mov:hover:not(:disabled) { color: var(--ink); background: var(--line); }
 .eq-mov:disabled { opacity: 0.3; cursor: default; }
-.eq-bloque-cuerpo { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.eq-bloque-cuerpo { flex: 1; display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
 .eq-bloque-cab { display: flex; align-items: center; gap: 0.5rem; }
 .eq-bloque-titulo { font-weight: 600; flex: 1; min-width: 0; }
-.eq-bloque-link { color: var(--ink); text-decoration: none; }
-.eq-bloque-link:hover { color: var(--papaya); text-decoration: underline; }
 .eq-bloque-titulo-input { flex: 1; }
+.eq-bloque-marca { color: var(--papaya); font-size: 0.875rem; flex: none; }
+.eq-bloque-meta {
+  font-size: 0.75rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.eq-bloque-meta.is-roto { color: var(--error); text-transform: none; letter-spacing: 0; }
 .eq-bloque-ctrls { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .eq-bloque-dur { display: inline-flex; align-items: center; gap: 0.375rem; }
 .eq-bloque-dur .field-input { width: 4.5rem; }
 .eq-bloque-dur-u { font-size: 0.8125rem; color: var(--muted); }
+
+/* Duplicar / quitar: se esconden hasta que hacen falta en escritorio;
+   en pantallas táctiles no hay "hover" que valga, así que se quedan. */
+.eq-bloque-acc { display: flex; flex-direction: column; gap: 2px; flex: none; }
+.eq-bloque-icono {
+  width: 26px; height: 26px; display: grid; place-items: center;
+  color: var(--ghost); border-radius: var(--radius);
+  transition: color var(--t-fast), background var(--t-fast);
+}
+.eq-bloque-icono:hover { color: var(--ink); background: var(--bone); }
+.eq-bloque-icono-x:hover { color: var(--error); }
+@media (hover: hover) {
+  .eq-bloque-acc { opacity: 0; transition: opacity var(--t-fast); }
+  .eq-bloque:hover .eq-bloque-acc,
+  .eq-bloque:focus-within .eq-bloque-acc { opacity: 1; }
+}
 
 /* Bloque en modo solo-lectura (sesión realizada/cancelada) */
 .eq-bloque-ro { background: var(--bone); }
@@ -306,19 +389,43 @@
 .eq-carga-num { font-family: var(--font-display); font-weight: 800; font-size: 1.75rem; line-height: 1; }
 .eq-carga-lbl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .eq-carga-aviso {
-  align-self: center; font-size: 0.8125rem; font-weight: 600; color: var(--papaya-deep, var(--papaya));
-  background: color-mix(in srgb, var(--papaya) 10%, var(--white));
-  border: 1px solid color-mix(in srgb, var(--papaya) 30%, var(--line));
+  align-self: center; font-size: 0.8125rem; font-weight: 600;
   padding: 0.375rem 0.75rem; border-radius: var(--radius);
+  color: var(--papaya-deep); background: var(--papaya-soft);
+  border: 1px solid color-mix(in srgb, var(--papaya) 30%, var(--line));
 }
+/* Pasarse de tiempo y quedarse corto no son el mismo problema: pasarse
+   se lo come el entreno siguiente, quedarse corto deja pista pagada sin
+   usar. Mismo peso visual, distinto color. */
+.eq-carga-aviso.is-corto { color: var(--muted); background: var(--bone); border-color: var(--line); }
+
 .eq-curva-wrap {
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 0.5rem; overflow-x: auto;
+  padding: 0.5rem;
 }
-.eq-curva { display: block; width: 100%; height: 120px; }
+.eq-curva { display: block; width: 100%; height: auto; }
 .eq-curva-guia { stroke: var(--line); stroke-width: 1; }
-.eq-curva-area { fill: color-mix(in srgb, var(--papaya) 16%, transparent); stroke: none; }
+.eq-curva-ejex { stroke: var(--ghost); stroke-width: 1; }
+.eq-curva-eje {
+  fill: var(--muted); font-family: var(--font-mono); font-size: 9px;
+}
+.eq-curva-eje-u { fill: var(--ghost); font-size: 8px; text-transform: uppercase; }
+/* Cada escalón es su bloque: se puede pinchar para abrirlo en el visor. */
+.eq-curva-seg {
+  fill: color-mix(in srgb, var(--papaya) 16%, transparent);
+  stroke: var(--white); stroke-width: 1;
+  cursor: pointer;
+  transition: fill var(--t-fast);
+}
+.eq-curva-seg:hover { fill: color-mix(in srgb, var(--papaya) 30%, transparent); }
+.eq-curva-seg.is-sel { fill: color-mix(in srgb, var(--papaya) 45%, transparent); }
 .eq-curva-linea { fill: none; stroke: var(--papaya); stroke-width: 2; stroke-linejoin: round; }
+/* Marca del horario del equipo: hasta aquí llega la pista alquilada. */
+.eq-curva-slot { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.55; }
+.eq-curva-slot-lbl {
+  fill: var(--ink); font-family: var(--font-mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
 .eq-curva-vacia { padding: 2rem; text-align: center; color: var(--ghost); font-size: 0.875rem; }
 
 /* Barra de acciones */
@@ -329,17 +436,67 @@
 .eq-planner-barra-sec { display: flex; gap: 0.5rem; }
 .eq-planner-guardar { min-width: 12rem; }
 
-/* Picker de ejercicios */
-.eq-picker { display: flex; flex-direction: column; gap: 0.625rem; }
-.eq-picker-lista { display: flex; flex-direction: column; gap: 0.25rem; max-height: 45vh; overflow-y: auto; }
-.eq-picker-item {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem;
-  text-align: left; padding: 0.5rem 0.75rem; border-radius: var(--radius);
-  border: 1px solid transparent; transition: all var(--t-fast);
+/* ── Picker de ejercicios ─────────────────────────────────────
+   Dos paneles: la lista a la izquierda, la pizarra animada a la
+   derecha. Elegir un ejercicio por el nombre es adivinar; verlo
+   moverse antes de meterlo en el plan es decidir. */
+.modal-picker .modal { max-width: 1060px; }
+.modal-visor .modal { max-width: 560px; }
+.modal-visor .modal-body { padding: 0; }
+
+.eq-picker { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+@media (min-width: 860px) {
+  .eq-picker { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
 }
-.eq-picker-item:hover { border-color: var(--papaya); background: var(--bone); }
+.eq-picker-col { display: flex; flex-direction: column; gap: 0.625rem; min-width: 0; }
+.eq-picker-lista {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  max-height: 46vh; overflow-y: auto;
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 0.25rem;
+}
+.eq-picker-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  text-align: left; padding: 0.5rem 0.625rem; border-radius: var(--radius);
+  border: 1px solid transparent; cursor: pointer;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.eq-picker-item:hover { background: var(--bone); }
+.eq-picker-item.is-sel { border-color: var(--papaya); background: var(--papaya-soft); }
+.eq-picker-item:focus-visible { outline: 2px solid var(--papaya); outline-offset: -2px; }
+.eq-picker-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .eq-picker-nombre { font-weight: 600; }
-.eq-picker-meta { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+.eq-picker-meta { font-size: 0.75rem; color: var(--muted); }
+.eq-picker-mas {
+  flex: none; width: 26px; height: 26px; border-radius: var(--radius);
+  display: grid; place-items: center;
+  font-size: 1.125rem; line-height: 1; color: var(--muted);
+  border: 1px solid var(--line); background: var(--white);
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.eq-picker-mas:hover { color: var(--white); background: var(--papaya); border-color: var(--papaya); }
+.eq-picker-tipos { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.eq-picker-tipo {
+  padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--white);
+  font-size: 0.6875rem; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.eq-picker-tipo:hover { border-color: var(--ink); color: var(--ink); }
+.eq-picker-tipo.is-on { background: var(--ink); border-color: var(--ink); color: var(--white); }
+.eq-picker-contador { font-size: 0.75rem; color: var(--ghost); }
+/* Frontera entre "esto va con tus objetivos" y "el resto": el ranking
+   ordena, no esconde, y hay que ver dónde deja de ser recomendación. */
+.eq-picker-sep {
+  font-size: 0.625rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ghost);
+  padding: 0.5rem 0.625rem 0.25rem;
+}
+.eq-picker-sep + .eq-picker-item { border-top: none; }
+.eq-picker-previo { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+.eq-picker-previo .eq-visor { max-height: 58vh; }
+.eq-picker-add:disabled { opacity: 0.45; cursor: default; }
 
 @media (max-width: 560px) {
   .eq-bloque-ctrls { gap: 0.625rem; }

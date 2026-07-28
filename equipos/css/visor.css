@@ -1,0 +1,319 @@
+/* ============================================================
+   visor.css — visor de ejercicio del planificador.
+
+   El motor de dibujo es el del Taller y trae sus propias clases
+   (.court, .anim-controls, .ac-*, .proyector*). El Taller las viste
+   con SUS tokens (--color-accent, --sp-*, --r-lg…), que aquí no
+   existen: importar su CSS metería un sistema de diseño entero en
+   Equipos y chocaría con base.css. Así que se re-visten aquí, cortas
+   y con los tokens de Equipos (papaya/carbon/bone/notch).
+
+   Regla: en este archivo NO se inventan colores nuevos; todo sale de
+   base.css salvo el verde de la pista, que es del arte del Taller.
+   ============================================================ */
+
+/* ── Pista (canvas del Taller) ─────────────────────────────── */
+.court {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--court-aspect, 1.414);
+  background: #0b2330;                       /* madera oscura del arte */
+  overflow: hidden;
+  touch-action: none;
+  outline: none;
+}
+.court__bg {
+  position: absolute; inset: 0;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.court__layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* Apaisado: el lienzo invierte la relación de aspecto y los símbolos ya
+   se dibujan rotados vía CourtView.toPx (quedan derechos). Solo hay que
+   girar la IMAGEN de fondo: se dimensiona como retrato (70.71% × 141.42%
+   de la caja apaisada) y se rota sobre su centro para rellenarla exacta. */
+.court--landscape .court__bg {
+  inset: auto; top: 50%; left: 50%;
+  width: 70.71%; height: 141.42%;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* ── Barra de transporte ───────────────────────────────────── */
+.anim-controls {
+  width: 100%;
+  background: var(--carbon);
+  padding: 0.375rem 0.625rem 0.625rem;
+  display: grid;
+  gap: 0.375rem;
+}
+.anim-controls__row { display: flex; align-items: center; gap: 2px; min-height: 34px; }
+
+.ac-btn {
+  width: 32px; height: 32px;
+  display: inline-grid; place-items: center;
+  border-radius: var(--radius);
+  color: rgba(255,255,255,0.55);
+  transition: color var(--t-fast), background var(--t-fast);
+}
+.ac-btn:hover { color: var(--white); background: rgba(255,255,255,0.09); }
+.ac-play { color: var(--white); background: var(--papaya); width: 38px; height: 32px; }
+.ac-play:hover { color: var(--white); background: var(--papaya-deep); }
+.ac-loop.is-active { color: var(--papaya); }
+
+.ac-speed { display: inline-flex; gap: 3px; margin-left: 0.375rem; }
+.ac-pill {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: rgba(255,255,255,0.55);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.ac-pill:hover { color: var(--white); }
+.ac-pill.is-active { background: var(--papaya); color: var(--white); }
+
+.ac-phase {
+  margin-left: auto;
+  color: rgba(255,255,255,0.5);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+.ac-progress {
+  width: 100%; height: 5px;
+  -webkit-appearance: none; appearance: none;
+  background: rgba(255,255,255,0.16);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ac-progress::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--papaya); border: 2px solid var(--white); cursor: grab;
+}
+.ac-progress::-moz-range-thumb {
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--papaya); border: 2px solid var(--white); cursor: grab;
+}
+
+/* ── Proyector a pantalla completa ─────────────────────────── */
+/* z-index por encima del modal de Equipos (200): desde el visor se
+   puede abrir el proyector estando dentro del picker en móvil. */
+.proyector { position: fixed; inset: 0; z-index: 300; background: #000; color: var(--white); }
+.proyector.is-idle { cursor: none; }
+.proyector--full {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 1rem;
+}
+.proyector__stage {
+  flex: 1 1 auto; width: 100%; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+/* La pista apaisada se hace tan grande como permita el viewport: la
+   limita el ancho (97vw) o la altura (alto × 297/210). */
+.proyector--full .court {
+  width: min(97vw, calc(94vh * 297 / 210));
+  height: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.proyector__controls {
+  position: absolute; bottom: 1.75rem; left: 50%; transform: translateX(-50%);
+  width: min(560px, 80vw);
+  transition: opacity var(--t-slow);
+}
+.proyector.is-idle .proyector__controls { opacity: 0; pointer-events: none; }
+.proyector__title {
+  position: absolute; top: 1.5rem; left: 2rem;
+  font-family: var(--font-display); font-weight: 800;
+  text-transform: uppercase; font-size: 2rem; line-height: 1; letter-spacing: 0.01em;
+  max-width: 60vw; pointer-events: none;
+  transition: opacity var(--t-slow);
+}
+.proyector__hint {
+  position: absolute; top: 1.75rem; right: 2rem; max-width: 32vw; text-align: right;
+  color: rgba(255,255,255,0.5); font-size: 0.75rem; font-family: var(--font-mono);
+  transition: opacity var(--t-slow);
+}
+.proyector.is-idle .proyector__title,
+.proyector.is-idle .proyector__hint { opacity: 0; }
+
+/* ============================================================
+   El visor
+   ============================================================ */
+.eq-visor {
+  display: flex; flex-direction: column;
+  background: var(--white);
+  border: 1px solid var(--line);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--notch)),
+                     calc(100% - var(--notch)) 100%, 0 100%);
+  overflow: hidden;
+}
+
+/* ── Cabecera ── */
+.eq-vhead {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.875rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.eq-vhead-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.eq-vtitulo {
+  font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
+  font-size: 1.25rem; line-height: 1.05; letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+}
+.eq-visor.is-vacio .eq-vtitulo { color: var(--muted); }
+
+.eq-vchips { display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; }
+.eq-vchip {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bone);
+  font-size: 0.6875rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.eq-vchip-tipo { border-color: var(--ink); color: var(--ink); background: var(--white); }
+.eq-vchip-dif.dif--ini { border-color: #2FA968; color: #1d7a49; background: #EAF7F0; }
+.eq-vchip-dif.dif--med { border-color: #C89B00; color: #8a6b00; background: #FBF4DF; }
+.eq-vchip-dif.dif--adv { border-color: #C0392B; color: #9c2e22; background: #FBEDEB; }
+
+/* medidor de intensidad en modo lectura */
+.eq-vint { display: inline-flex; gap: 2px; align-items: center; }
+.eq-vint-seg {
+  width: 9px; height: 12px;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+.eq-vint-seg.on { background: var(--papaya); border-color: var(--papaya); }
+
+.eq-vacciones { display: flex; gap: 0.25rem; flex: none; }
+.eq-vbtn {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--white);
+  transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+.eq-vbtn:hover { color: var(--papaya); border-color: var(--papaya); background: var(--papaya-soft); }
+
+/* ── Pista ── */
+.eq-vpista { background: var(--carbon); display: flex; flex-direction: column; }
+.eq-vpista.is-sin-anim .court { display: none; }
+.eq-vnota {
+  color: rgba(255,255,255,0.55);
+  font-size: 0.75rem;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+.eq-vnota:empty { display: none; }
+
+/* ── Pestañas ── */
+.eq-vtabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); }
+.eq-vtab {
+  padding: 0.625rem 1rem;
+  font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.eq-vtab:hover { color: var(--ink); }
+.eq-vtab.is-activa { color: var(--ink); border-bottom-color: var(--papaya); }
+
+/* ── Cuerpo ── */
+.eq-vcuerpo {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex; flex-direction: column; gap: 1rem;
+  font-size: 0.875rem;
+}
+.eq-vsec { display: flex; flex-direction: column; gap: 0.375rem; }
+.eq-vsec-t {
+  font-size: 0.6875rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--muted);
+}
+.eq-vsec p { line-height: 1.55; }
+
+/* guion fase a fase */
+.eq-vguion { display: flex; flex-direction: column; gap: 0.75rem; }
+.eq-vfases { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.eq-vfase {
+  display: flex; gap: 0.625rem; align-items: baseline;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--radius);
+  background: var(--white);
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.eq-vfase:hover { background: var(--bone); }
+.eq-vfase.is-activa { background: var(--papaya-soft); }
+.eq-vfase-n {
+  flex: none;
+  font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 700;
+  color: var(--muted); min-width: 1.1rem;
+}
+.eq-vfase.is-activa .eq-vfase-n { color: var(--papaya); }
+.eq-vfase-txt { line-height: 1.5; }
+.eq-vpie { font-size: 0.75rem; color: var(--ghost); }
+
+/* ficha */
+.eq-vficha { display: flex; flex-direction: column; gap: 1rem; }
+.eq-vfilas { display: flex; flex-direction: column; }
+.eq-vfila {
+  display: flex; gap: 0.75rem; justify-content: space-between; align-items: baseline;
+  padding: 0.4375rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.eq-vfila:last-child { border-bottom: none; }
+.eq-vfila-l {
+  font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); white-space: nowrap;
+}
+.eq-vfila-v { text-align: right; font-weight: 600; }
+.eq-vtags { display: flex; flex-wrap: wrap; gap: 0.3125rem; }
+.eq-vtag {
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--bone); border: 1px solid var(--line);
+  font-size: 0.6875rem; color: var(--muted);
+}
+
+/* notas del bloque */
+.eq-vnotas {
+  display: flex; flex-direction: column; gap: 0.375rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.875rem;
+  margin-top: auto;
+}
+.eq-vnotas-txt { resize: vertical; min-height: 4.5rem; font-size: 0.875rem; }
+
+/* vacío y esqueleto */
+.eq-vvacio {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  text-align: center; color: var(--ghost);
+  padding: 2rem 1rem;
+}
+.eq-vvacio-t { font-weight: 700; color: var(--muted); }
+.eq-vskel { display: flex; flex-direction: column; gap: 0.5rem; }
+.eq-vskel i {
+  height: 0.75rem; border-radius: 2px;
+  background: linear-gradient(90deg, var(--bone), var(--line), var(--bone));
+  background-size: 200% 100%;
+  animation: eqSkel 1.2s linear infinite;
+}
+.eq-vskel i:nth-child(2) { width: 85%; }
+.eq-vskel i:nth-child(3) { width: 60%; }
+@keyframes eqSkel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .eq-vskel i { animation: none; }
+}
