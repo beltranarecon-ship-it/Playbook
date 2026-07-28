@@ -14,7 +14,18 @@ export function abrirModal({ titulo, cuerpo, pie, alCerrar, clase = '' }) {
     overlay.remove();
     alCerrar?.();
   };
-  const onKey = (e) => { if (e.key === 'Escape') cerrar(); };
+  // Escape lo atiende SOLO la capa de más arriba. Sin esto, con el proyector
+  // abierto encima del picker un único Escape cerraba los dos: se iba el
+  // proyector y, de paso, la búsqueda, el filtro y la selección del picker.
+  // Los dos listeners cuelgan de `document`, así que stopPropagation no vale
+  // (ni siquiera el inmediato: el de la modal se registró antes y corre
+  // primero). Se decide por orden en el DOM, que es el orden de apilado.
+  const onKey = (e) => {
+    if (e.key !== 'Escape') return;
+    const capas = document.querySelectorAll('.modal-overlay, .proyector');
+    if (capas[capas.length - 1] !== overlay) return;
+    cerrar();
+  };
 
   const overlay = h('div', {
     class: 'modal-overlay' + (clase ? ' ' + clase : ''), role: 'dialog', 'aria-modal': 'true',

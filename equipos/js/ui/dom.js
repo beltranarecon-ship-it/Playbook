@@ -15,6 +15,12 @@ export function h(tag, attrs = {}, ...children) {
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
     else if (k === 'html') el.innerHTML = v;
     else if (k === 'ref' && typeof v === 'function') v(el);
+    // <textarea> NO tiene atributo `value`: su contenido es el nodo de texto
+    // hijo. Con setAttribute el campo salía EN BLANCO aunque hubiera texto
+    // guardado, y al escribir encima se perdía lo anterior. Se asigna la
+    // propiedad. (Las demás vistas ya lo pasaban como hijo; esto cubre el
+    // día que alguien vuelva a escribir `value:` sin acordarse.)
+    else if (k === 'value' && tag === 'textarea') el.value = v;
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
     else if (v === true) el.setAttribute(k, '');
     else el.setAttribute(k, v);

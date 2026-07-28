@@ -81,6 +81,7 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
   let engine = null;
   let ctrl = null;
   let guion = null;
+  let proyector = null;      // handle del proyector abierto, para poder cerrarlo
 
   // ── lienzo (se construye UNA vez) ───────────────────────────
   // rotate 90: apaisado, como el proyector. En una columna lateral de
@@ -287,7 +288,9 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
       ficha?.animacion ? h('button', {
         class: 'eq-vbtn', type: 'button', title: 'Ver a pantalla completa (proyector)',
         'aria-label': 'Abrir en el proyector',
-        onClick: () => abrirProyector(ficha.animacion, { nombre: ficha.name }),
+        // se guarda el handle: si el entrenador navega fuera con el proyector
+        // abierto, destroy() lo cierra en vez de dejar un telón negro encima
+        onClick: () => { proyector = abrirProyector(ficha.animacion, { nombre: ficha.name }); },
       }, icon(ICO.proyector, { size: 18 })) : null,
       bloque.exercise_id ? h('a', {
         class: 'eq-vbtn', href: `/ejercicios/${bloque.exercise_id}`,
@@ -329,6 +332,10 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
     } catch (e) {
       if (!vivo || mio !== turno) return;
       pintaPista(null);
+      // sin ficha no hay nada que enseñar en las pestañas, y dejarlas puestas
+      // hacía que un clic en "Ficha" borrase el mensaje de error y dejara el
+      // panel en blanco sin manera de recuperarlo
+      elTabs.replaceChildren();
       mount(elCuerpo, h('p', { class: 'eq-ayuda' },
         e.message === 'NO_EXISTE'
           ? 'Este ejercicio ya no está en la biblioteca. El bloque sigue en el plan con su nombre.'
@@ -365,9 +372,18 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
     vaciar,
     /** Re-pinta la cabecera cuando cambian duración o intensidad del bloque. */
     refrescarCabecera: () => { if (bloque) pintaCabecera(); },
+    /**
+     * Para el reloj de la animación sin perder el bloque cargado. Lo llama el
+     * planificador al cerrar el modal en móvil: allí el visor vuelve a una
+     * columna con display:none, y el motor seguía repintando un lienzo
+     * invisible a 60 fps (CourtView no llega a poner w=0 al ocultarse, así
+     * que la guarda de render() tampoco cortaba). Batería del entrenador.
+     */
+    pausar: () => engine?.pause(),
     get bloqueActual() { return bloque; },
     destroy() {
       vivo = false;
+      proyector?.cerrar?.();
       engine?.destroy();
       view.destroy();
     },

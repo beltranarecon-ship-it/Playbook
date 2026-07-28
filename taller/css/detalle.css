@@ -66,7 +66,25 @@
   color: #94A3B8; font-size: var(--fs-300);
   transition: opacity var(--dur-3) var(--ease);
 }
+/* Salida siempre alcanzable: sin Fullscreen API (iPhone) no hay
+   fullscreenchange y sin teclado no hay Escape. Se desvanece con el resto
+   para no salir en la proyección, y vuelve al primer toque. */
+.proyector__cerrar {
+  position: absolute; top: var(--sp-4); right: var(--sp-4);
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  font-size: 1.75rem; line-height: 1;
+  color: #fff;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 50%;
+  transition: opacity var(--dur-3) var(--ease), background var(--dur-1) var(--ease);
+}
+.proyector__cerrar:hover { background: rgba(255,255,255,.22); }
+.proyector.is-idle .proyector__cerrar { opacity: 0; pointer-events: none; }
 .proyector.is-idle .proyector__title, .proyector.is-idle .proyector__hint { opacity: 0; }
+/* Con el botón arriba a la derecha, los atajos se apartan. */
+.proyector__hint { right: calc(var(--sp-6) + 3.5rem); }
 
 /* ============================================================
    Modal (§14)

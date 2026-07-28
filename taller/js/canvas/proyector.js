@@ -17,18 +17,35 @@ export function abrirProyector(animacion, meta = {}) {
   const engine = new AnimationEngine(view, animacion, { autoplay: true, loop: true });
   const ctrl = controls(engine);
 
+  // Botón de salida SIEMPRE presente. Hasta ahora las únicas salidas eran la
+  // tecla Escape y el evento fullscreenchange: en un iPhone no existe
+  // Element.requestFullscreen, así que no se entraba en pantalla completa,
+  // fullscreenchange no se disparaba nunca y sin teclado no había Escape —
+  // el proyector tapaba la app entera sin forma de cerrarlo salvo recargar
+  // (perdiendo el plan a medio escribir). Desde el visor del planificador se
+  // abre justo desde el móvil, así que la trampa era alcanzable de verdad.
+  const btnCerrar = h('button', {
+    class: 'proyector__cerrar', type: 'button',
+    title: 'Salir del proyector', 'aria-label': 'Salir del proyector',
+  }, '×');
+  btnCerrar.addEventListener('click', () => cerrar());
+
   const root = h('div', { class: 'proyector proyector--full' },
     h('div', { class: 'proyector__title' }, meta.nombre || 'Ejercicio'),
+    btnCerrar,
     h('div', { class: 'proyector__stage' }, view.root, h('div', { class: 'proyector__controls' }, ctrl.el)),
     h('p', { class: 'proyector__hint mono' }, 'Espacio play · ← → fases · R reinicio · L bucle · 1/2/3 velocidad · Esc salir'),
   );
   document.body.append(root);
   if (root.requestFullscreen) root.requestFullscreen().catch(() => {});
 
-  // ocultar controles tras 3s de inactividad
+  // Ocultar controles tras 3s de inactividad. En táctil no hay mousemove, así
+  // que también despierta al tocar: si no, el botón de salir se desvanecía a
+  // los 3 segundos y en un móvil ya no había forma de traerlo de vuelta.
   let hideTimer;
   const showControls = () => { root.classList.remove('is-idle'); clearTimeout(hideTimer); hideTimer = setTimeout(() => root.classList.add('is-idle'), 3000); };
   root.addEventListener('mousemove', showControls);
+  root.addEventListener('pointerdown', showControls);
   showControls();
 
   // atajos §14.1

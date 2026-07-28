@@ -138,8 +138,27 @@
   color: rgba(255,255,255,0.5); font-size: 0.75rem; font-family: var(--font-mono);
   transition: opacity var(--t-slow);
 }
+/* Salida siempre alcanzable: sin Fullscreen API (iPhone) no hay
+   fullscreenchange y sin teclado no hay Escape. Se desvanece con el resto
+   para no salir en la proyección, y vuelve al primer toque. */
+.proyector__cerrar {
+  position: absolute; top: 1rem; right: 1rem;
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  font-size: 1.75rem; line-height: 1;
+  color: var(--white);
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 50%;
+  transition: opacity var(--t-slow), background var(--t-fast);
+}
+.proyector__cerrar:hover { background: rgba(255,255,255,0.22); }
+.proyector.is-idle .proyector__cerrar,
 .proyector.is-idle .proyector__title,
 .proyector.is-idle .proyector__hint { opacity: 0; }
+.proyector.is-idle .proyector__cerrar { pointer-events: none; }
+/* Con el botón arriba a la derecha, los atajos se apartan. */
+.proyector__hint { right: 5rem; }
 
 /* ============================================================
    El visor

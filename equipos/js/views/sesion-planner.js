@@ -98,6 +98,8 @@ export function render(root, params) {
   let sucio = false;
   let selUid = null;             // bloque enfocado en el visor
   let modalVisor = null;
+  let modalPicker = null;
+  let ordenAntesDeArrastrar = null;
 
   const marcaSucio = () => { sucio = true; pintaEstadoGuardado(); };
   const nodoCurva = h('div', { class: 'eq-curva-wrap' });
@@ -108,7 +110,7 @@ export function render(root, params) {
 
   const visor = crearVisor({
     soloLectura: () => soloLectura,
-    onNotas: () => marcaSucio(),
+    onNotas: (b) => { marcaSucio(); refrescaMarcaNotas(b); },
   });
   anfitrionVisor.append(visor.el);
 
@@ -140,6 +142,11 @@ export function render(root, params) {
   }
 
   function selecciona(b, { abrirEnMovil = true } = {}) {
+    // Si ya hay sitio al lado, el modal sobra: se cierra ANTES de pintar para
+    // que el visor vuelva a su columna. Cubre el caso en que la ventana creció
+    // sin que llegara el evento 'resize' (pasa en navegadores embebidos y al
+    // girar algunos móviles), sin depender de que ningún evento se dispare.
+    if (hayHueco() && modalVisor) modalVisor.cerrar();
     selUid = b.uid;
     marcaSeleccion();
     visor.mostrar(b);
@@ -159,9 +166,25 @@ export function render(root, params) {
       titulo: 'Ejercicio',
       clase: 'modal-visor',
       cuerpo: visor.el,
-      alCerrar: () => { modalVisor = null; anfitrionVisor.append(visor.el); },
+      alCerrar: () => {
+        modalVisor = null;
+        anfitrionVisor.append(visor.el);
+        // vuelve a una columna oculta: parar el reloj o seguiría animando
+        // un lienzo invisible mientras el entrenador edita el plan
+        visor.pausar();
+      },
     });
   }
+
+  // Si la ventana cruza a escritorio con el modal abierto (girar la tablet,
+  // ensanchar), la columna del visor aparece VACÍA porque el visor sigue
+  // prestado al modal. Se cierra el modal y el nodo vuelve a su sitio.
+  // Se escucha 'resize' y no el 'change' de matchMedia porque resize llega
+  // en más sitios (incluidos los navegadores embebidos que emulan el
+  // viewport sin notificar las media queries) y aquí el coste es cero: solo
+  // se hace algo si además hay un modal abierto.
+  const alRedimensionar = () => { if (modalVisor && hayHueco()) modalVisor.cerrar(); };
+  window.addEventListener('resize', alRedimensionar);
 
   // ── curva de carga ─────────────────────────────────────────
   function dibujaCurva() {
@@ -300,7 +323,7 @@ export function render(root, params) {
     const cuerpo = h('div', { class: 'eq-bloque-cuerpo' },
       h('div', { class: 'eq-bloque-cab' },
         tituloEl,
-        b.notas ? h('span', { class: 'eq-bloque-marca', title: 'Tiene notas para esta sesión' }, '✎') : null,
+        tieneNotas(b) ? h('span', { class: 'eq-bloque-marca', title: 'Tiene notas para esta sesión' }, '✎') : null,
       ),
       meta ? h('p', { class: 'eq-bloque-meta' + (meta === 'Ya no está en la biblioteca' ? ' is-roto' : '') }, meta) : null,
       soloLectura
@@ -374,10 +397,22 @@ export function render(root, params) {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', b.uid);   // Firefox no arranca sin datos
       fila.classList.add('is-arrastrando');
+      ordenAntesDeArrastrar = bloques.map((x) => x.uid);
     });
-    fila.addEventListener('dragend', () => {
+    fila.addEventListener('dragend', (e) => {
       fila.classList.remove('is-arrastrando');
       fila.draggable = false;
+      // Arrastre CANCELADO (Escape, o soltar fuera de la lista): el navegador
+      // no deshace nada porque los nodos los movió dragover a mano, así que
+      // el cambio se quedaba puesto y se daba por bueno. Se restaura.
+      if (e.dataTransfer?.dropEffect === 'none' && ordenAntesDeArrastrar) {
+        const porUid = new Map(bloques.map((x) => [x.uid, x]));
+        bloques = ordenAntesDeArrastrar.map((u) => porUid.get(u)).filter(Boolean);
+        ordenAntesDeArrastrar = null;
+        pintaBloques();
+        return;
+      }
+      ordenAntesDeArrastrar = null;
       sincronizaOrdenDesdeDOM();
     });
     return fila;
@@ -392,6 +427,21 @@ export function render(root, params) {
     bloques = orden.map((u) => porUid.get(u)).filter(Boolean);
     marcaSucio();
     pintaBloques();
+  }
+
+  const tieneNotas = (b) => !!String(b?.notas || '').trim();
+
+  /** Enciende o apaga el ✎ de la fila SIN repintar la lista: repintar
+   *  mientras se escribe en el visor robaría el cursor del textarea. */
+  function refrescaMarcaNotas(b) {
+    const cab = nodoBloques.querySelector(`.eq-bloque[data-uid="${b.uid}"] .eq-bloque-cab`);
+    if (!cab) return;
+    const marca = cab.querySelector('.eq-bloque-marca');
+    if (tieneNotas(b) && !marca) {
+      cab.append(h('span', { class: 'eq-bloque-marca', title: 'Tiene notas para esta sesión' }, '✎'));
+    } else if (!tieneNotas(b) && marca) {
+      marca.remove();
+    }
   }
 
   function pintaBloques() {
@@ -409,6 +459,12 @@ export function render(root, params) {
     if (j < 0 || j >= bloques.length) return;
     [bloques[i], bloques[j]] = [bloques[j], bloques[i]];
     marcaSucio(); pintaBloques();
+    // pintaBloques() rehace la lista entera, así que el botón que se acaba de
+    // pulsar deja de existir y el foco se cae al body: con teclado había que
+    // volver a tabular hasta la fila para dar el segundo salto. Se devuelve el
+    // foco al mismo botón de la fila, ya en su posición nueva.
+    const filaNueva = nodoBloques.querySelectorAll('.eq-bloque')[j];
+    filaNueva?.querySelectorAll('.eq-mov')[d > 0 ? 1 : 0]?.focus();
   }
 
   function quitaBloque(i) {
@@ -569,7 +625,7 @@ export function render(root, params) {
 
     contadorEl = h('span', { class: 'eq-picker-contador' });
 
-    const md = abrirModal({
+    const md = modalPicker = abrirModal({
       titulo: 'Añadir ejercicios',
       clase: 'modal-picker',
       cuerpo: h('div', { class: 'eq-picker' },
@@ -591,7 +647,7 @@ export function render(root, params) {
         }, '+ Bloque libre'),
         h('button', { class: 'btn btn-primary', type: 'button', onClick: () => md.cerrar() }, 'Listo'),
       ],
-      alCerrar: () => previo.destroy(),
+      alCerrar: () => { modalPicker = null; previo.destroy(); },
     });
     pintaLista();
     buscador.focus();
@@ -806,8 +862,14 @@ export function render(root, params) {
   })();
 
   return {
+    // Los modales cuelgan de <body>, no de #app: el router solo vacía #app, así
+    // que si no se cierran aquí, volver atrás con el picker abierto dejaba un
+    // telón fijo tapando el calendario, con su Escape y su segundo visor
+    // (CourtView + motor a 60 fps) vivos para siempre.
     destroy() {
       window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('resize', alRedimensionar);
+      modalPicker?.cerrar?.();
       modalVisor?.cerrar?.();
       visor.destroy();
     },
