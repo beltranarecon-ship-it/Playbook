@@ -98,7 +98,11 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
   const elChips = h('div', { class: 'eq-vchips' });
   const elAcciones = h('div', { class: 'eq-vacciones' });
   const elTabs = h('div', { class: 'eq-vtabs', role: 'tablist' });
-  const elCuerpo = h('div', { class: 'eq-vcuerpo' });
+  // El panel que gobiernan las pestañas. Sin role=tabpanel ni aria-labelledby,
+  // un lector de pantalla anuncia "pestaña" y no encuentra qué controla.
+  const elCuerpo = h('div', {
+    class: 'eq-vcuerpo', id: 'eq-vpanel', role: 'tabpanel', tabindex: '0',
+  });
 
   const el = h('aside', { class: 'eq-visor', 'aria-live': 'polite' },
     h('div', { class: 'eq-vhead' },
@@ -152,8 +156,19 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
     if (!bloque) { elTabs.replaceChildren(); return; }
     const tab = (id, txt) => h('button', {
       class: 'eq-vtab' + (pestaña === id ? ' is-activa' : ''), type: 'button',
-      role: 'tab', 'aria-selected': String(pestaña === id),
-      onClick: () => { pestaña = id; pintaTabs(); pintaCuerpo(); },
+      role: 'tab', id: `eq-vtab-${id}`, 'aria-selected': String(pestaña === id),
+      'aria-controls': 'eq-vpanel',
+      // fuera del flujo de tabulación la que no está activa: el patrón de
+      // pestañas se recorre con flechas, no con Tab
+      tabindex: pestaña === id ? '0' : '-1',
+      onKeydown: (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        const otras = [...elTabs.querySelectorAll('.eq-vtab')];
+        const i = otras.indexOf(e.currentTarget);
+        otras[(i + (e.key === 'ArrowRight' ? 1 : otras.length - 1)) % otras.length]?.click();
+      },
+      onClick: () => { pestaña = id; pintaTabs(); pintaCuerpo(); elTabs.querySelector('.is-activa')?.focus(); },
     }, txt);
     elTabs.replaceChildren(
       tab('guion', 'Cómo se juega'),

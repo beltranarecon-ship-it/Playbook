@@ -354,7 +354,12 @@ export function render(root, params) {
       role: 'button', tabindex: '0',
       'aria-label': `Ver ${b.titulo || 'bloque'} en el visor`,
       onClick: () => selecciona(b),
+      // La fila es un botón y DENTRO lleva campos. Los eventos de teclado de
+      // esos campos burbujean hasta aquí: sin este filtro, la barra
+      // espaciadora del título de un bloque libre se la comía el preventDefault
+      // y no se podía escribir "Charla táctica" — solo "Charlatáctica".
       onKeydown: (e) => {
+        if (e.target !== e.currentTarget) return;
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selecciona(b); }
       },
     },
