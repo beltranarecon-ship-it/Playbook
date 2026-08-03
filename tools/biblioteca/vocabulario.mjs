@@ -93,6 +93,10 @@ export const TAGS = [
   'contraataque', 'transición', 'balance defensivo', 'carriles',
   // defensa
   'defensa individual', 'postura defensiva', 'desplazamiento defensivo',
+  // Concepto propio, distinto de 'defensa individual' y de 'línea de
+  // pase': con D22 el núcleo mini NO niega el pase, así que lo que se
+  // enseña es colocarse viendo a la vez al par y al balón.
+  'defensa sin balón',
   'línea de pase', 'ayuda', 'recuperación', 'defensa del bote',
   'rebote defensivo', 'rebote ofensivo', 'bloqueo de rebote',
   // formato y método

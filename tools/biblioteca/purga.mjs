@@ -72,6 +72,53 @@ Es una clave de administrador: no la pegues en el chat ni en el código.
   process.exit(1);
 }
 
+/**
+ * Comprueba que la clave es de SERVICIO antes de tocar nada.
+ *
+ * Sin esto el fallo es silencioso y engañoso: con la clave anónima, RLS
+ * devuelve cero filas, el inventario dice "la tabla ya está vacía" y el
+ * script sale con éxito. Quien se fíe da por purgada una biblioteca que
+ * sigue entera, y luego importa encima. Es el mismo patrón que el DELETE
+ * rechazado por RLS que tampoco da error.
+ *
+ * Hay dos familias de claves conviviendo en Supabase:
+ *   · JWT clásico (eyJ...) — el rol viaja dentro y se puede leer.
+ *   · Clave nueva — `sb_secret_...` es la de servicio y
+ *     `sb_publishable_...` es la pública.
+ */
+function compruebaClave(k) {
+  if (k.startsWith('sb_secret_')) return { ok: true, rol: 'secret key' };
+  if (k.startsWith('sb_publishable_')) return { ok: false, rol: 'publishable key (pública)' };
+
+  const partes = k.split('.');
+  if (partes.length === 3) {
+    try {
+      const p = JSON.parse(Buffer.from(partes[1], 'base64').toString('utf8'));
+      return { ok: p.role === 'service_role', rol: p.role || '(sin rol)' };
+    } catch { /* no era un JWT legible */ }
+  }
+  return { ok: false, rol: 'formato no reconocido' };
+}
+
+const chequeo = compruebaClave(CLAVE);
+if (!chequeo.ok) {
+  console.error(`
+Esa clave no es la de servicio: es "${chequeo.rol}".
+
+Con ella el borrado NO funcionaría y —lo que es peor— tampoco daría
+error: RLS devolvería cero filas, el inventario diría que la tabla ya
+está vacía y te quedarías creyendo que se purgó algo.
+
+La que hace falta está en Supabase → Project Settings → API, como
+"service_role" (un JWT largo cuyo rol dice service_role) o como una
+"secret key" que empieza por sb_secret_. Hay que pulsar Reveal.
+
+OJO: la clave anónima y la publishable son PÚBLICAS por diseño — de
+hecho una de ellas ya está en js/config.js. No sirven para esto.
+`);
+  process.exit(1);
+}
+
 const CABECERAS = { apikey: CLAVE, Authorization: `Bearer ${CLAVE}`, 'Content-Type': 'application/json' };
 
 /* ---------- utilidades de PostgREST ---------------------------- */
