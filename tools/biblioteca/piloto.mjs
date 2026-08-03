@@ -20,33 +20,9 @@
 import { writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compilarAnimacion } from '../../taller/js/ia/compilador.js';
-import { posicionesDe } from '../../taller/js/canvas/anclas.js';
+import { jug, balon, cono, fila, M, E, compilarFichas } from './montaje.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
-
-/* ---- tablero: mismas formas que usa el Taller ------------------ */
-let _n = 0;
-const jug = (equipo, label, x, y, extra = {}) =>
-  ({ id: `el_${++_n}`, kind: 'jugador', equipo, label: String(label), dorsal: null, nombre: null, x, y, ...extra });
-const balon = (x, y) => ({ id: `el_balon_${++_n}`, kind: 'balon', x, y, portador_id: null });
-/* El `id` es opcional pero hace falta ponerlo en los conos de RODEAR:
-   el compilador no deduce el slalom de que haya conos en el tablero —
-   la intención tiene que declarar un evento `rodea_cono` nombrando
-   cada uno. Sin eso el jugador va en línea recta y se los salta. */
-const cono = (x, y, funcion = 'decorativo', fila_config = null, id = null) =>
-  ({ id: id || `el_cono_${++_n}`, kind: 'cono', x, y, funcion, fila_config });
-
-/* Anclas medidas de la media pista de minibasket. Se usan por nombre
-   en vez de a ojo: son las mismas que nombra el guion automático
-   (DOCTRINA D15), así que la ficha y el texto generado coinciden. */
-const M = posicionesDe('media', 'norte');
-const E = posicionesDe('entera', 'norte');
-
-/* Atajo: fila de n jugadores en (x,y) avanzando en `grados`
-   (0 = hacia la derecha del lienzo). */
-const fila = (x, y, n, grados, equipo = 'A') =>
-  cono(x, y, 'fila', { n_jugadores: n, direccion_grados: grados, equipo });
 
 /* ---- las fichas ------------------------------------------------- */
 
@@ -673,39 +649,8 @@ export const PILOTO = [
   },
 ];
 
-/* ---- montaje estático (juegos abiertos) ------------------------
-   Misma forma que animacionDesdeBoard() del Taller: posiciones sí,
-   fases no. El visor dibuja la pista y el proyector queda quieto,
-   que es lo honesto con un juego que puede acabar de mil maneras. */
-function soloMontaje(elementos, pista) {
-  return {
-    pista,
-    jugadores: elementos.filter((e) => e.kind === 'jugador').map((e) => ({
-      id: `${e.equipo}${e.label}`, equipo: e.equipo,
-      tipo: e.equipo === 'A' ? 'atacante' : 'defensor',
-      posicion_inicial: [e.x, e.y], tiene_balon: false, dorsal: null, nombre: null,
-    })),
-    balones: elementos.filter((e) => e.kind === 'balon').map((e, i) => ({ id: `balon_${i + 1}`, posicion_inicial: [e.x, e.y], portador_id: null })),
-    conos: elementos.filter((e) => e.kind === 'cono').map((e, i) => ({ id: e.id || `cono_${i + 1}`, posicion: [e.x, e.y], funcion: e.funcion || 'decorativo', fila_config: e.fila_config || null })),
-    fases: [],
-    canasta: 'norte',
-    warnings: [],
-  };
-}
-
 /** Fichas listas para el linter y para el importador. */
-export function construir() {
-  return PILOTO.map((f) => {
-    const { tablero, intent, ...ficha } = f;
-    const elementos = tablero();
-    ficha.animacion = intent
-      ? compilarAnimacion(intent, elementos, ficha.tipo_pista)
-      : soloMontaje(elementos, ficha.tipo_pista);
-    ficha.autor_nombre = 'Biblioteca CBP';
-    ficha.favorito = false;
-    return ficha;
-  });
-}
+export const construir = () => compilarFichas(PILOTO);
 
 /* ---- CLI --------------------------------------------------------- */
 
