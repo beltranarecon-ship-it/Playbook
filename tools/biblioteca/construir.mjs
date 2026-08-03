@@ -24,6 +24,7 @@ import { TANDA_03 } from './tanda-03.mjs';
 import { TANDA_04 } from './tanda-04.mjs';
 import { TANDA_05 } from './tanda-05.mjs';
 import { TANDA_06 } from './tanda-06.mjs';
+import { TANDA_07 } from './tanda-07.mjs';
 import { MAPA, OBJETIVO_TOTAL } from './mapa.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,7 @@ export const TANDAS = [
   { nombre: 'tanda-04 · pase, entrada, juego de dos y contraataque', fichas: TANDA_04 },
   { nombre: 'tanda-05 · manejo, pies, rebote, calentamiento y psicomotricidad', fichas: TANDA_05 },
   { nombre: 'tanda-06 · profundidad en juego reducido, tiro, bote, 1c1 y defensa', fichas: TANDA_06 },
+  { nombre: 'tanda-07 · manejo, rebote, calentamiento y psicomotricidad', fichas: TANDA_07 },
 ];
 
 export function biblioteca() {
