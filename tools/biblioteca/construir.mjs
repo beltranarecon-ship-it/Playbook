@@ -21,6 +21,7 @@ import { compilarFichas } from './montaje.mjs';
 import { PILOTO } from './piloto.mjs';
 import { TANDA_02 } from './tanda-02.mjs';
 import { TANDA_03 } from './tanda-03.mjs';
+import { TANDA_04 } from './tanda-04.mjs';
 import { MAPA, OBJETIVO_TOTAL } from './mapa.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -30,6 +31,7 @@ export const TANDAS = [
   { nombre: 'piloto', fichas: PILOTO },
   { nombre: 'tanda-02 · tiro y bote', fichas: TANDA_02 },
   { nombre: 'tanda-03 · 1c1, defensa y juego reducido', fichas: TANDA_03 },
+  { nombre: 'tanda-04 · pase, entrada, juego de dos y contraataque', fichas: TANDA_04 },
 ];
 
 export function biblioteca() {
