@@ -117,6 +117,11 @@ export function render(root, { id } = {}) {
         ...(f.tiros || []).map((t) => h('div', { class: 'mov-row' }, h('span', null, t.jugador_id), h('span', { class: 'muted mono' }, 'tiro'))),
         movs === 0 ? h('p', { class: 'muted' }, 'Selecciona una flecha en el lienzo para editar sus nodos.') : null,
       ),
+      // Los extremos de una flecha no son libres: los pone la ficha (o el
+      // balón). Decirlo aquí ahorra el intento de arrastrarlos y el
+      // desconcierto de que "no se mueven".
+      h('p', { class: 'muted editor-pista' },
+        'Los nodos huecos van pegados a la ficha o al balón. Mueve el final de una flecha y las fases siguientes se recolocan solas.'),
       h('button', { class: 'btn btn--ghost act-danger btn--sm', type: 'button', onClick: () => deleteFase(k) }, 'Eliminar fase'),
       collapsible({ label: 'Metadatos', open: false, content: metaForm() }),
     ));

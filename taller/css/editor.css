@@ -35,5 +35,9 @@
 .fase-add:hover { border-color: var(--color-accent); background: var(--accent-tint); }
 
 /* ---- Lista de movimientos de la fase ---- */
+/* Regla de la edición, dicha una vez y sin gritar: los extremos de las
+   flechas los pone la ficha, no el ratón. */
+.editor-pista { font-size: var(--fs-300); line-height: 1.45; }
+
 .mov-list { display: grid; gap: 4px; }
 .mov-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: 5px var(--sp-2); background: var(--surface-2); border-radius: var(--r-sm); font-size: var(--fs-400); }

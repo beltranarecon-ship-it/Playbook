@@ -2561,6 +2561,150 @@ casos.push({
   },
 });
 
+/* Tramo 6.3 — reanclado de flechas. restPositions ya recolocaba las
+   FICHAS (caso de arriba), pero las flechas son coordenadas guardadas y
+   se quedaban donde estaban: el jugador aparecía en su sitio nuevo y su
+   flecha seguía saliendo del viejo. Medido sobre la biblioteca real:
+   2,1 m de separación entre un jugador y el origen de su propia flecha. */
+
+const animEdicion = () => ({
+  pista: 'media',
+  jugadores: [
+    { id: 'A1', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.62, 0.28], tiene_balon: true },
+    { id: 'A2', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.62, 0.72], tiene_balon: false },
+  ],
+  balones: [{ id: 'b1', posicion_inicial: [0.62, 0.28], portador_id: 'A1' }],
+  conos: [],
+  fases: [
+    { id: 'f1', movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: [{ x: 0.62, y: 0.28 }, { x: 0.45, y: 0.35 }] }], pases: [], tiros: [], bloqueos: [] },
+    { id: 'f2', movimientos: [], pases: [{ id: 'p1', de_id: 'A1', a_id: 'A2', balon_id: 'b1', path: [{ x: 0.45, y: 0.35 }, { x: 0.62, y: 0.72 }] }], tiros: [], bloqueos: [] },
+    { id: 'f3', movimientos: [{ elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: [{ x: 0.62, y: 0.72 }, { x: 0.3, y: 0.6 }] }], pases: [], tiros: [], bloqueos: [] },
+  ],
+});
+
+casos.push({
+  categoria: 'Edición manual (Tramo 6)',
+  nombre: 'edit_reancla_flecha_de_la_fase_siguiente',
+  pista: 'media',
+  sinGenerica: true,
+  async run() {
+    const { reanclarPaths } = await import('../js/canvas/rest-positions.js');
+    const anim = animEdicion();
+    // el entrenador arrastra el final del bote de la fase 1
+    const p = anim.fases[0].movimientos[0].path;
+    p[p.length - 1] = { x: 0.25, y: 0.5 };
+    const pase = anim.fases[1].pases[0];
+    const antes = { ...pase.path[0] };
+    reanclarPaths(anim);
+    return { antes, despues: pase.path[0], destino: pase.path[1] };
+  },
+  check({ antes, despues, destino }) {
+    if (dxy(antes.x, antes.y, 0.45, 0.35) > 1e-9) return ko('el pase debía salir del punto viejo antes de reanclar');
+    if (dxy(despues.x, despues.y, 0.25, 0.5) > 1e-9) return ko(`el pase debía salir de donde acabó el bote (0.25, 0.5); sale de (${despues.x}, ${despues.y})`);
+    if (dxy(destino.x, destino.y, 0.62, 0.72) > 1e-9) return ko(`el destino del pase debía seguir en el receptor (0.62, 0.72); está en (${destino.x}, ${destino.y})`);
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Edición manual (Tramo 6)',
+  nombre: 'edit_reancla_en_cadena_dos_fases_por_delante',
+  pista: 'media',
+  sinGenerica: true,
+  // No basta con arreglar la fase siguiente: el receptor recibe donde
+  // está, y de ahí arranca SU flecha dos fases después.
+  async run() {
+    const { reanclarPaths } = await import('../js/canvas/rest-positions.js');
+    const anim = animEdicion();
+    // ahora se mueve al receptor: se arrastra el final de su carrera
+    anim.jugadores[1].posicion_inicial = [0.7, 0.9];
+    reanclarPaths(anim);
+    return {
+      finPase: anim.fases[1].pases[0].path[1],
+      inicioF3: anim.fases[2].movimientos[0].path[0],
+      finF3: anim.fases[2].movimientos[0].path.at(-1),
+    };
+  },
+  check({ finPase, inicioF3, finF3 }) {
+    if (dxy(finPase.x, finPase.y, 0.7, 0.9) > 1e-9) return ko(`el pase debía llegar al receptor (0.7, 0.9); llega a (${finPase.x}, ${finPase.y})`);
+    if (dxy(inicioF3.x, inicioF3.y, 0.7, 0.9) > 1e-9) return ko(`la flecha de la fase 3 debía arrancar en (0.7, 0.9); arranca en (${inicioF3.x}, ${inicioF3.y})`);
+    if (dxy(finF3.x, finF3.y, 0.3, 0.6) > 1e-9) return ko('el DESTINO de la fase 3 es del entrenador y no se debe tocar');
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Edición manual (Tramo 6)',
+  nombre: 'edit_reanclar_no_toca_los_nodos_de_en_medio',
+  pista: 'media',
+  sinGenerica: true,
+  // La curva que dibuja el entrenador es suya. Solo se recalculan los
+  // nodos que son CONSECUENCIA de dónde está la ficha.
+  async run() {
+    const { reanclarPaths } = await import('../js/canvas/rest-positions.js');
+    const anim = animEdicion();
+    const p = anim.fases[0].movimientos[0].path;
+    p.splice(1, 0, { x: 0.55, y: 0.1, tipo_nodo: 'lineal' });   // rodeo a mano
+    anim.jugadores[0].posicion_inicial = [0.8, 0.2];            // y se mueve la salida
+    const tocado = reanclarPaths(anim);
+    return { tocado, ini: p[0], medio: p[1], fin: p[2] };
+  },
+  check({ tocado, ini, medio, fin }) {
+    if (!tocado) return ko('reanclarPaths debía avisar de que ha movido algo');
+    if (dxy(ini.x, ini.y, 0.8, 0.2) > 1e-9) return ko(`el origen debía seguir a la ficha (0.8, 0.2); está en (${ini.x}, ${ini.y})`);
+    if (dxy(medio.x, medio.y, 0.55, 0.1) > 1e-9) return ko('el nodo de en medio es del entrenador y no se debe tocar');
+    if (dxy(fin.x, fin.y, 0.45, 0.35) > 1e-9) return ko('el destino es del entrenador y no se debe tocar');
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Edición manual (Tramo 6)',
+  nombre: 'edit_reanclar_es_idempotente',
+  pista: 'media',
+  sinGenerica: true,
+  // Sobre una animación ya coherente no debe cambiar NADA: si no, el
+  // editor marcaría el ejercicio como sucio solo por abrirlo.
+  async run() {
+    const { reanclarPaths } = await import('../js/canvas/rest-positions.js');
+    const anim = animEdicion();
+    const primera = reanclarPaths(anim);
+    const foto = JSON.stringify(anim);
+    const segunda = reanclarPaths(anim);
+    return { primera, segunda, igual: foto === JSON.stringify(anim) };
+  },
+  check({ primera, segunda, igual }) {
+    if (primera) return ko('una animación recién compilada ya es coherente: no debía tocarse nada');
+    if (segunda) return ko('reanclar dos veces seguidas debía ser inofensivo');
+    if (!igual) return ko('la segunda pasada cambió la animación');
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Edición manual (Tramo 6)',
+  nombre: 'edit_nodos_fijos_no_se_pueden_arrastrar',
+  pista: 'media',
+  sinGenerica: true,
+  async run() {
+    const { nodosFijos } = await import('../js/canvas/rest-positions.js');
+    return {
+      mov: [...nodosFijos('run', 3)].sort(),
+      corte: [...nodosFijos('cut', 2)].sort(),
+      pase: [...nodosFijos('pass', 2)].sort(),
+      paseCurvo: [...nodosFijos('pass', 4)].sort(),
+    };
+  },
+  check({ mov, corte, pase, paseCurvo }) {
+    const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    if (!eq(mov, [0])) return ko(`en un movimiento solo se ancla el origen; salió ${JSON.stringify(mov)}`);
+    if (!eq(corte, [0])) return ko(`en un corte solo se ancla el origen; salió ${JSON.stringify(corte)}`);
+    if (!eq(pase, [0, 1])) return ko(`en un pase se anclan los dos extremos; salió ${JSON.stringify(pase)}`);
+    if (!eq(paseCurvo, [0, 3])) return ko(`en un pase curvo se anclan los extremos y NO los de en medio; salió ${JSON.stringify(paseCurvo)}`);
+    return ok();
+  },
+});
+
 casos.push({
   categoria: 'Edición manual (Tramo 6)',
   nombre: 'edit_destino_reresuelve_defensa',

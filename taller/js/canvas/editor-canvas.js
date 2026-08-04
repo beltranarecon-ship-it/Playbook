@@ -12,7 +12,7 @@ import { drawArrow } from './arrows.js';
 import { drawPlayer, drawBall, drawCone, radii } from './symbols.js';
 import { flattenPath } from './geometry.js';
 import { COLORS, TAU } from './colors.js';
-import { restPositions } from './rest-positions.js';
+import { restPositions, reanclarPaths, nodosFijos } from './rest-positions.js';
 
 // restPositions vive en su propio módulo puro (sin DOM) para que el banco
 // (Node) pueda probar la propagación de posiciones; se re-exporta aquí por
@@ -37,6 +37,7 @@ export class EditorCanvas {
     this.selNode = -1;
     this._drag = null;
     this._listeners = {};
+    reanclarPaths(anim);
     this.starts = restPositions(anim);
     // Rol por fase (§10), igual que AnimationEngine: si alguna fase declara
     // "defensores" es el modelo nuevo (equipos neutrales); si ninguna lo
@@ -51,7 +52,15 @@ export class EditorCanvas {
   _emit(ev, d) { (this._listeners[ev] || []).forEach((f) => f(d)); }
 
   setFase(k) { this.k = k; this.sel = null; this.selNode = -1; this.render(); }
-  refresh() { this.starts = restPositions(this.anim); this.render(); }
+
+  /* Reanclar ANTES de recolocar las fichas es lo que hace que mover una
+     flecha arrastre a las fases siguientes: si no, el jugador aparecía
+     en su sitio nuevo y su flecha seguía saliendo del viejo. */
+  refresh() {
+    reanclarPaths(this.anim);
+    this.starts = restPositions(this.anim);
+    this.render();
+  }
 
   /** Reemplaza la animación mostrada conservando la fase actual (Tramo 6.2:
    *  re-resolución tras cada edición). Suelta la selección y recalcula los
@@ -60,6 +69,7 @@ export class EditorCanvas {
     this.anim = anim;
     this.usesPhaseRoles = (anim.fases || []).some((f) => Array.isArray(f.defensores));
     this.sel = null; this.selNode = -1;
+    reanclarPaths(anim);
     this.starts = restPositions(anim);
     this.k = Math.max(0, Math.min(this.k, (anim.fases || []).length - 1));
     this.render();
@@ -128,10 +138,21 @@ export class EditorCanvas {
   _pt(ev) { const [x, y] = this.view.pointerNorm(ev); return { x, y }; }
   _r() { return Math.max(0.014, 14 / (this.view.w || 600)); } // radio de nodo en norm
 
+  /** Nodos de la flecha seleccionada que NO se pueden arrastrar: son
+   *  consecuencia de dónde están las fichas (origen de cualquier flecha,
+   *  y también el destino de un pase, que lo pone el receptor). Dejar
+   *  arrastrarlos sería mentir: reanclarPaths los devuelve a su sitio. */
+  _fijos() { return this.sel ? nodosFijos(this.sel.type, this.sel.path.length) : new Set(); }
+
   _hitNode(pt) {
     if (!this.sel) return -1;
     const r = this._r();
-    for (let i = this.sel.path.length - 1; i >= 0; i--) { const n = this.sel.path[i]; if (Math.hypot(pt.x - n.x, pt.y - n.y) <= r) return i; }
+    const fijos = this._fijos();
+    for (let i = this.sel.path.length - 1; i >= 0; i--) {
+      if (fijos.has(i)) continue;
+      const n = this.sel.path[i];
+      if (Math.hypot(pt.x - n.x, pt.y - n.y) <= r) return i;
+    }
     return -1;
   }
   _hitHandle(pt) {
@@ -204,10 +225,21 @@ export class EditorCanvas {
         ctx.beginPath(); ctx.rect(hp.x - s, hp.y - s, s * 2, s * 2); ctx.fill(); ctx.stroke();
       }
     }
-    // nodos (círculos blancos; el seleccionado en papaya)
+    // Nodos. Los que se pueden mover son círculos blancos (el
+    // seleccionado, papaya). Los ANCLADOS —el origen de la flecha, y el
+    // destino si es un pase— se dibujan como un aro pequeño y hueco: no
+    // se pueden arrastrar porque los pone la ficha, y verlos distintos
+    // ahorra el intento y el desconcierto de que "no se mueve".
+    const fijos = this._fijos();
     for (let i = 0; i < path.length; i++) {
-      const np = toPx(path[i]); const rad = 6.5 * scale;
-      ctx.beginPath(); ctx.arc(np.x, np.y, rad, 0, TAU);
+      const np = toPx(path[i]);
+      if (fijos.has(i)) {
+        ctx.beginPath(); ctx.arc(np.x, np.y, 4.5 * scale, 0, TAU);
+        ctx.strokeStyle = COLORS.accent; ctx.lineWidth = 1.5 * scale;
+        ctx.setLineDash([2.5 * scale, 2 * scale]); ctx.stroke(); ctx.setLineDash([]);
+        continue;
+      }
+      ctx.beginPath(); ctx.arc(np.x, np.y, 6.5 * scale, 0, TAU);
       ctx.fillStyle = i === this.selNode ? COLORS.ball : '#fff';
       ctx.strokeStyle = COLORS.accent; ctx.lineWidth = 2 * scale;
       ctx.fill(); ctx.stroke();
