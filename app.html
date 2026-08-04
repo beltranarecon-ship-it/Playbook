@@ -88,26 +88,17 @@
                  placeholder="Buscar ejercicio  /" autocomplete="off">
         </div>
 
-        <select class="select" id="filter-type">
+        <!-- Las opciones las rellena app.js DESDE la biblioteca, con el
+             número de ejercicios de cada una. Escritas a mano aquí se
+             desincronizaban del contenido sin que nadie se enterara: las
+             cuatro de tipo no casaban con ningún ejercicio y las de
+             categoría dejaban 52 de 97 fuera del alcance del filtro. -->
+        <select class="select" id="filter-type" aria-label="Filtrar por tipo">
           <option value="">Todos los tipos</option>
-          <option value="técnico">Técnico</option>
-          <option value="táctico">Táctico</option>
-          <option value="físico">Físico</option>
-          <option value="juego">Juego</option>
         </select>
 
-        <select class="select" id="filter-category">
-          <option value="">Todas las categorías</option>
-          <option value="ataque">Ataque</option>
-          <option value="defensa">Defensa</option>
-          <option value="transición">Transición</option>
-          <option value="tiro">Tiro</option>
-          <option value="pase">Pase</option>
-          <option value="bote">Bote</option>
-          <option value="bloqueo">Bloqueo</option>
-          <option value="rebote">Rebote</option>
-          <option value="contraataque">Contraataque</option>
-          <option value="presión">Presión</option>
+        <select class="select" id="filter-category" aria-label="Filtrar por contenido">
+          <option value="">Todos los contenidos</option>
         </select>
       </div>
 
@@ -116,91 +107,6 @@
 
   </main>
 
-  <!-- ── Modal: Nuevo ejercicio ──────────────────────── -->
-  <div class="modal-overlay" id="modal-nuevo-ejercicio" hidden role="dialog"
-       aria-modal="true" aria-labelledby="modal-nuevo-ejercicio-title">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 class="modal-title" id="modal-nuevo-ejercicio-title">Nuevo ejercicio</h2>
-        <button class="modal-close" type="button" aria-label="Cerrar">
-          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M6 18 18 6M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-
-      <form id="form-nuevo-ejercicio" novalidate>
-        <div class="modal-body">
-
-          <div class="field-group">
-            <label class="field-label" for="ej-name">Nombre <span class="required">*</span></label>
-            <input class="field-input" type="text" id="ej-name" name="name"
-                   placeholder="Bloqueo directo base-pívot" required maxlength="120">
-          </div>
-
-          <div class="field-row">
-            <div class="field-group">
-              <label class="field-label" for="ej-type">Tipo</label>
-              <select class="field-select" id="ej-type" name="type">
-                <option value="">Sin tipo</option>
-                <option value="técnico">Técnico</option>
-                <option value="táctico">Táctico</option>
-                <option value="físico">Físico</option>
-                <option value="juego">Juego</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label class="field-label" for="ej-category">Categoría</label>
-              <select class="field-select" id="ej-category" name="category">
-                <option value="">Sin categoría</option>
-                <option value="ataque">Ataque</option>
-                <option value="defensa">Defensa</option>
-                <option value="transición">Transición</option>
-                <option value="tiro">Tiro</option>
-                <option value="pase">Pase</option>
-                <option value="bote">Bote</option>
-                <option value="bloqueo">Bloqueo</option>
-                <option value="rebote">Rebote</option>
-                <option value="contraataque">Contraataque</option>
-                <option value="presión">Presión</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="field-row">
-            <div class="field-group">
-              <label class="field-label" for="ej-difficulty">Dificultad</label>
-              <select class="field-select" id="ej-difficulty" name="difficulty">
-                <option value="">Sin definir</option>
-                <option value="1">1 · Iniciación</option>
-                <option value="2">2 · Básico</option>
-                <option value="3">3 · Medio</option>
-                <option value="4">4 · Avanzado</option>
-                <option value="5">5 · Experto</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label class="field-label" for="ej-duration">Duración (min)</label>
-              <input class="field-input" type="number" id="ej-duration" name="duration_min"
-                     placeholder="10" min="1" max="120">
-            </div>
-          </div>
-
-          <div class="field-group">
-            <label class="field-label" for="ej-description">Descripción</label>
-            <textarea class="field-textarea" id="ej-description" name="description"
-                      placeholder="Objetivo y desarrollo del ejercicio." rows="3" maxlength="1000"></textarea>
-          </div>
-
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-close">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar ejercicio</button>
-        </div>
-      </form>
-    </div>
-  </div>
 
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
 

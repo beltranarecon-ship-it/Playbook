@@ -20,8 +20,8 @@ de las intenciones.
 
 | | |
 |---|---|
-| ✅ **Hecho** | Prioridad 1 (la ficha enseña lo que tiene) y Prioridad 2 (geometría de las finalizaciones + cierre de ciclo), con las reglas de linter que impiden la recaída y las 97 fichas ya actualizadas en Supabase. |
-| ⬜ **Pendiente** | Prioridades 3 a 8: buscador y filtros, propagación en el editor, campo de organización para 12, miniaturas, niveles como dato, y la limpieza de coherencia que queda. |
+| ✅ **Hecho** | Prioridad 1 (la ficha enseña lo que tiene), Prioridad 2 (geometría de las finalizaciones + cierre de ciclo, con reglas de linter que impiden la recaída y las 97 fichas actualizadas en Supabase) y Prioridad 3 (buscador y filtros). |
+| ⬜ **Pendiente** | Prioridades 4 a 8: propagación en el editor, campo de organización para 12, miniaturas, niveles como dato, y la limpieza de coherencia que queda. |
 
 Lo verificado sobre la base de datos después de los arreglos:
 
@@ -33,6 +33,9 @@ Lo verificado sobre la base de datos después de los arreglos:
 | Fases muertas («nadie se mueve») | 1 | **0** |
 | Fichas de jugador inertes | 13 | **4**, todas legítimas |
 | Campos de la ficha invisibles en el Taller | 13 + el desarrollo | **0** |
+| Ejercicios que encuentra el filtro de tipo | 0 de 97 | **97** |
+| Ejercicios alcanzables por el filtro de contenido | 45 de 97 | **97** |
+| Campos sobre los que busca el buscador | 1 (el nombre) | **5**, y sin tildes |
 | Casos en los dos bancos tocados (motor + linter) | 132 | **138**, todos en verde |
 
 ---

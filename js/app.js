@@ -1,6 +1,10 @@
 import { requireAuth, getProfile, logout, onAuthChange } from './auth.js';
-import { getEjercicios, createEjercicio, archivarEjercicio, getThumbnailGif } from './modules/ejercicios.js';
-import { EXERCISE_TYPES, EXERCISE_CATEGORIES, DIFFICULTY_LABELS } from './config.js';
+import { getEjercicios, getThumbnailGif } from './modules/ejercicios.js';
+// La etiqueta de dificultad sale del Taller, no de una tabla propia: había
+// DOS escalas para la misma columna (aquí 1-5 con cinco nombres, allí 1-6
+// con tres) y el mismo ejercicio se anunciaba distinto en la tarjeta y en
+// su ficha.
+import { dificultadDe } from '../taller/js/config.js';
 
 // ── Estado global de la sesión ───────────────────────────
 let currentUser    = null;
@@ -119,7 +123,7 @@ function renderEjerciciosGrid(data) {
       </div>
       <div class="exercise-card-meta">
         ${ej.type ? `<span class="badge badge-type">${ej.type}</span>` : ''}
-        ${ej.difficulty ? `<span class="badge badge-difficulty">${DIFFICULTY_LABELS[ej.difficulty] ?? ej.difficulty}</span>` : ''}
+        ${ej.difficulty ? `<span class="badge badge-difficulty">${escapeHtml(ej.dificultad_label || dificultadDe(ej.difficulty).label)}</span>` : ''}
         ${ej.duration_min ? `<span class="badge badge-duration">${ej.duration_min} min</span>` : ''}
       </div>
       ${ej.description ? `<p class="exercise-card-desc">${escapeHtml(ej.description)}</p>` : ''}
@@ -159,35 +163,84 @@ function renderSkeletons(grid, n) {
   `).join('');
 }
 
+/* ── Buscador y filtros ───────────────────────────────────
+   Los dos desplegables se construyen DESDE LOS DATOS, no desde una
+   lista escrita a mano. La lista a mano existía y se había
+   desincronizado del todo: ofrecía «técnico / táctico / físico / juego»
+   cuando los tipos reales son «Tiro, Bote, 1vs1…», así que las cuatro
+   opciones devolvían cero ejercicios; y de las diez categorías, cuatro
+   no existían y faltaban ocho de los bloques de contenido reales, con
+   lo que 52 de los 97 ejercicios no se podían encontrar por categoría.
+
+   Generándolos desde la biblioteca no pueden volver a desincronizarse:
+   si mañana aparece un bloque nuevo, aparece solo en el filtro. Y el
+   número entre paréntesis dice cuántos hay antes de elegir, que es
+   media respuesta. */
+
+/** Sin tildes y en minúsculas: en el pabellón nadie escribe «penetración». */
+const sinTildes = (s) => String(s ?? '')
+  .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+/** Texto sobre el que busca el buscador: nombre, descripción y etiquetas. */
+const textoBuscable = (ej) => sinTildes([
+  ej.name, ej.description, ej.category, ej.type, ...(ej.tags || []),
+].filter(Boolean).join(' '));
+
+function rellenaFiltro(select, valores, etiquetaTodos) {
+  const previo = select.value;
+  const cuenta = new Map();
+  for (const v of valores) if (v) cuenta.set(v, (cuenta.get(v) || 0) + 1);
+  const ordenadas = [...cuenta.keys()].sort((a, b) => a.localeCompare(b, 'es'));
+
+  select.replaceChildren();
+  select.append(new Option(etiquetaTodos, ''));
+  for (const v of ordenadas) select.append(new Option(`${v} (${cuenta.get(v)})`, v));
+  // conservar la elección del entrenador si sigue existiendo
+  if (previo && cuenta.has(previo)) select.value = previo;
+}
+
 function setupEjerciciosToolbar() {
   const searchEl   = document.getElementById('search-ejercicios');
   const typeSelect = document.getElementById('filter-type');
   const catSelect  = document.getElementById('filter-category');
+  const countEl    = document.getElementById('results-count');
+
+  rellenaFiltro(typeSelect, ejercicios.map(e => e.type), 'Todos los tipos');
+  rellenaFiltro(catSelect, ejercicios.map(e => e.category), 'Todos los contenidos');
 
   const applyFilters = () => {
-    const busqueda = searchEl.value.trim().toLowerCase();
+    const busqueda = sinTildes(searchEl.value.trim());
     const type     = typeSelect.value;
     const category = catSelect.value;
+    // varias palabras = todas tienen que aparecer ("tiro entrada")
+    const palabras = busqueda ? busqueda.split(/\s+/) : [];
 
     const filtered = ejercicios.filter(ej => {
-      const matchName = !busqueda || ej.name.toLowerCase().includes(busqueda);
-      const matchType = !type || ej.type === type;
-      const matchCat  = !category || ej.category === category;
-      return matchName && matchType && matchCat;
+      if (type && ej.type !== type) return false;
+      if (category && ej.category !== category) return false;
+      if (!palabras.length) return true;
+      const texto = ej._buscable ??= textoBuscable(ej);
+      return palabras.every(p => texto.includes(p));
     });
 
     renderEjerciciosGrid(filtered);
-    document.getElementById('results-count').textContent =
-      `${filtered.length} ejercicio${filtered.length !== 1 ? 's' : ''}`;
+    const filtrando = busqueda || type || category;
+    countEl.textContent = filtrando
+      ? `${filtered.length} de ${ejercicios.length} ejercicios`
+      : `${ejercicios.length} ejercicio${ejercicios.length !== 1 ? 's' : ''}`;
   };
 
-  searchEl.addEventListener('input', () => {
+  // Se vuelven a vincular en cada entrada a la vista, así que primero se
+  // sueltan los de la vez anterior: si no, volver cinco veces a la
+  // pestaña dejaba cinco escuchadores y cada tecla repintaba cinco veces.
+  searchEl.oninput = () => {
     clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(applyFilters, 250);
-  });
+    searchTimeout = setTimeout(applyFilters, 200);
+  };
+  typeSelect.onchange = applyFilters;
+  catSelect.onchange = applyFilters;
 
-  typeSelect.addEventListener('change', applyFilters);
-  catSelect.addEventListener('change', applyFilters);
+  applyFilters();   // deja el contador y la rejilla de acuerdo con los filtros vivos
 }
 
 function setupNuevoEjercicioBtn() {
@@ -199,54 +252,6 @@ function setupNuevoEjercicioBtn() {
 
 function openEjercicioDetail(id) {
   window.location.href = '/ejercicios/' + id;
-}
-
-// ── Modal: Nuevo ejercicio ───────────────────────────────
-
-function openModalNuevoEjercicio() {
-  const overlay = document.getElementById('modal-nuevo-ejercicio');
-  overlay.hidden = false;
-
-  const form = overlay.querySelector('form');
-  form.reset();
-
-  overlay.querySelector('.modal-close').onclick = () => closeModal(overlay);
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay); });
-
-  document.addEventListener('keydown', function onEsc(e) {
-    if (e.key === 'Escape') { closeModal(overlay); document.removeEventListener('keydown', onEsc); }
-  });
-
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = form.querySelector('[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = 'Guardando…';
-
-    try {
-      const nuevo = await createEjercicio({
-        name:         form.elements.name.value,
-        type:         form.elements.type.value,
-        category:     form.elements.category.value,
-        difficulty:   form.elements.difficulty.value,
-        duration_min: form.elements.duration_min.value,
-        description:  form.elements.description.value,
-      });
-      ejercicios.unshift(nuevo);
-      renderEjerciciosGrid(ejercicios);
-      closeModal(overlay);
-      showToast(`Ejercicio «${nuevo.name}» creado`, 'success');
-    } catch (err) {
-      showToast('Error al guardar: ' + err.message, 'error');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Guardar ejercicio';
-    }
-  };
-}
-
-function closeModal(overlay) {
-  overlay.hidden = true;
 }
 
 // ── Toast ────────────────────────────────────────────────
@@ -289,8 +294,12 @@ function isInputFocused() {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
+/* Cualquier modal visible, no uno concreto: cuando el modal de "nuevo
+   ejercicio" se quitó (el botón abre el Taller desde hace tiempo, así que
+   era código muerto), preguntar por su id devolvía `!undefined` = true y
+   el atajo N dejaba de funcionar para siempre. */
 function hasOpenModal() {
-  return !document.getElementById('modal-nuevo-ejercicio')?.hidden;
+  return !!document.querySelector('.modal-overlay:not([hidden])');
 }
 
 // ── Arrancar ─────────────────────────────────────────────

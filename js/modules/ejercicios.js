@@ -2,65 +2,51 @@ import { supabase } from '../supabase-client.js';
 
 // ── Listado ──────────────────────────────────────────────
 
-export async function getEjercicios({ busqueda, type, category } = {}) {
-  let query = supabase
+/* Tope de seguridad. PostgREST corta en 1000 filas SIN AVISAR, así que
+   una biblioteca que crezca por encima se quedaría a medias en silencio
+   y el entrenador buscaría un ejercicio que sí existe y no aparecería.
+   Se pide uno de más: si vuelven TOPE+1, es que hay más y hay que
+   paginar de verdad — y se dice en la consola en vez de disimularlo. */
+const TOPE = 500;
+
+/**
+ * La biblioteca entera para la rejilla. El filtrado y la búsqueda son
+ * de cliente (app.js) porque son instantáneos y hay que combinarlos:
+ * el servidor solo recorta lo archivado.
+ *
+ * Antes esta consulta aceptaba `busqueda`, `type` y `category` y los
+ * traducía a filtros de servidor que NADIE le pasaba nunca — app.js
+ * llama a getEjercicios() sin argumentos y filtra por su cuenta. Eran
+ * tres caminos muertos, y uno de ellos (ilike solo sobre `name`)
+ * describía mal lo que la aplicación hace de verdad.
+ */
+export async function getEjercicios() {
+  const { data, error } = await supabase
     .from('exercises')
-    .select('id, name, type, category, difficulty, duration_min, description, tags, poster, created_by, created_at')
+    .select('id, name, type, category, difficulty, dificultad_label, duration_min, description, tags, poster, created_by, created_at')
     .eq('is_archived', false)
-    .order('created_at', { ascending: false });
-
-  if (busqueda?.trim()) {
-    query = query.ilike('name', `%${busqueda.trim()}%`);
-  }
-  if (type) {
-    query = query.eq('type', type);
-  }
-  if (category) {
-    query = query.eq('category', category);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data ?? [];
-}
-
-// ── Crear ────────────────────────────────────────────────
-
-export async function createEjercicio({ name, type, category, difficulty, duration_min, description, tags }) {
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const { data, error } = await supabase
-    .from('exercises')
-    .insert({
-      name:         name.trim(),
-      type:         type || null,
-      category:     category || null,
-      difficulty:   difficulty ? Number(difficulty) : null,
-      duration_min: duration_min ? Number(duration_min) : null,
-      description:  description?.trim() || null,
-      tags:         tags ?? [],
-      created_by:   user.id,
-    })
-    .select()
-    .single();
+    .order('created_at', { ascending: false })
+    .limit(TOPE + 1);
 
   if (error) throw error;
-  return data;
+  const filas = data ?? [];
+  if (filas.length > TOPE) {
+    console.warn(`[CBP] La biblioteca pasa de ${TOPE} ejercicios: la rejilla los está mostrando todos y hay que paginar.`);
+  }
+  return filas;
 }
 
-// ── Actualizar ───────────────────────────────────────────
+/* ── Crear, actualizar y archivar: NO viven aquí ──────────
+   Se quitaron createEjercicio(), updateEjercicio() y
+   archivarEjercicio(): ninguna tenía ya quien la llamara y las tres
+   eran una segunda puerta a la misma tabla.
 
-export async function updateEjercicio(id, campos) {
-  const { data, error } = await supabase
-    .from('exercises')
-    .update(campos)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
+   Alta y edición pasan por el Taller (taller/js/supabase/ejercicios.js),
+   que escribe la ficha ENTERA — animación, requisitos, objetivos,
+   variantes, notas. La de aquí insertaba media docena de campos sueltos
+   y dejaba un ejercicio sin pizarra ni requisitos, que es justo lo que
+   la ficha nueva y el linter no pueden completar solos. Mantenerla era
+   dejar una trampa cargada para el siguiente que pasara por aquí. */
 
 // ── GIF de la miniatura (carga diferida en hover §19) ────
 
@@ -74,13 +60,3 @@ export async function getThumbnailGif(id) {
   return data?.thumbnail || null;
 }
 
-// ── Archivar (soft delete) ───────────────────────────────
-
-export async function archivarEjercicio(id) {
-  const { error } = await supabase
-    .from('exercises')
-    .update({ is_archived: true })
-    .eq('id', id);
-
-  if (error) throw error;
-}
