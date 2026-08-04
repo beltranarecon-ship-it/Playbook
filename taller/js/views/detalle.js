@@ -12,6 +12,10 @@ import { toast } from '../ui/toast.js';
 import { confirmModal } from '../ui/modal.js';
 import { getEjercicio, duplicarEjercicio, setFavorito, eliminarEjercicio } from '../supabase/ejercicios.js';
 import { dificultadDe } from '../config.js';
+import {
+  PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA,
+  textoDosis, textoJugadores, textoCanastas, textoDuracion, niveles,
+} from '../ficha.js';
 
 const STAR = 'M11.48 3.5a.56.56 0 0 1 1.04 0l2.17 4.4 4.85.7a.56.56 0 0 1 .31.96l-3.51 3.42.83 4.83a.56.56 0 0 1-.81.59L12 16.9l-4.34 2.28a.56.56 0 0 1-.81-.59l.83-4.83-3.51-3.42a.56.56 0 0 1 .31-.96l4.85-.7Z';
 
@@ -52,7 +56,7 @@ export function render(root, { id } = {}) {
 
     mount(body, h('div', { class: 'detalle-grid' },
       h('section', { class: 'detalle-canvas' }, stage.el),
-      h('aside', { class: 'detalle-side' }, acciones(ej, anim), ficha(ej)),
+      h('aside', { class: 'detalle-side' }, acciones(ej, anim), ...ficha(ej)),
     ));
   }
 
@@ -105,33 +109,98 @@ export function render(root, { id } = {}) {
   return { destroy() { document.removeEventListener('keydown', onKey); proj?.cerrar?.(); stage?.destroy(); view.remove(); } };
 }
 
-/* ---- Ficha de metadatos (§14) ---- */
+/* ============================================================
+   Ficha del ejercicio (§14).
+
+   Orden pensado para el pabellón, no para la base de datos: primero
+   lo que decide si el ejercicio se puede montar HOY (gente, aros,
+   material, dosis), después cómo se juega, después cómo se sube o se
+   baja de nivel, y al final los datos de catálogo.
+
+   Antes esta función pintaba `requisitos.jugadores`, `.balones` y
+   `.conos` — tres campos que NINGUNA ficha de la biblioteca tiene: las
+   tres filas se descartaban en silencio y el panel quedaba casi vacío.
+   Lo que sí hay (jugadores_min/max, canastas, material, densidad,
+   oposicion, requisito_previo, dosis, criterio_exito, aplicacion) no se
+   enseñaba en ninguna parte, y el desarrollo del ejercicio —el campo
+   más largo y más útil— tampoco.
+   ============================================================ */
+
 function ficha(ej) {
   const dif = ej.difficulty ? dificultadDe(ej.difficulty) : null;
+  const r = ej.requisitos || {};
   const row = (label, val) => (val == null || val === '' || (Array.isArray(val) && !val.length)) ? null
     : h('div', { class: 'ficha-row' }, h('small', null, label), h('span', null, Array.isArray(val) ? val.join(' · ') : String(val)));
-  const reqs = ej.requisitos || {};
-  return h('div', { class: 'ficha card flow' },
-    h('p', { class: 'eyebrow' }, 'Ficha'),
+
+  const dosis = textoDosis(r.dosis);
+  const escalones = niveles(ej.variantes);
+
+  /* --- 1 · se puede montar hoy? ------------------------------- */
+  const montaje = h('div', { class: 'ficha card flow' },
+    h('p', { class: 'eyebrow' }, 'Montaje'),
     h('div', { class: 'ficha-rows' },
+      row('Jugadores', textoJugadores(r)),
+      row('Estaciones', r.estaciones > 1 ? `${r.estaciones} a la vez` : null),
+      row('Canastas', textoCanastas(r)),
+      row('Material', r.material),
+      row('Pista', PISTA_LABEL[ej.tipo_pista] || null),
+      row('Duración', textoDuracion(ej)),
+    ),
+    dosis ? h('div', { class: 'ficha-dosis' }, h('small', null, 'Dosis'), h('strong', null, dosis)) : null,
+  );
+
+  /* --- 2 · cómo se juega -------------------------------------- */
+  const juego = h('div', { class: 'ficha card flow' },
+    h('p', { class: 'eyebrow' }, 'Cómo se juega'),
+    ej.description ? h('p', { class: 'ficha-idea' }, ej.description) : null,
+    seccion('Desarrollo', ej.descripcion_texto),
+    seccion('Objetivo', ej.objetivos),
+    seccion('Está bien hecho cuando', r.criterio_exito),
+    seccion('Antes hace falta saber', r.requisito_previo),
+    seccion('Se aplica en', r.aplicacion),
+  );
+
+  /* --- 3 · subir y bajar el listón ---------------------------- */
+  const exigencia = h('div', { class: 'ficha card flow' },
+    h('p', { class: 'eyebrow' }, 'Exigencia'),
+    h('div', { class: 'ficha-chips' },
+      r.densidad ? h('span', { class: `ficha-chip dens--${r.densidad}`, title: DENSIDAD_AYUDA[r.densidad] || '' }, `densidad ${r.densidad}`) : null,
+      r.oposicion ? h('span', { class: `ficha-chip opo--${r.oposicion}`, title: OPOSICION_AYUDA[r.oposicion] || '' }, `oposición ${r.oposicion}`) : null,
+      ej.intensidad ? h('span', { class: 'ficha-chip' }, `intensidad ${ej.intensidad}/5`) : null,
+    ),
+    r.justificacion_densidad ? seccion('Por qué se acepta esta densidad', r.justificacion_densidad) : null,
+    escalones
+      ? h('div', { class: 'ficha-niveles' }, ...escalones.map((e) => h('div', { class: 'ficha-nivel' },
+          h('small', null, e.nivel), h('p', null, e.texto))))
+      : seccion('Variantes', ej.variantes),
+    seccion('Puntos clave y errores frecuentes', ej.notas),
+  );
+
+  /* --- 4 · catálogo ------------------------------------------- */
+  const datos = h('div', { class: 'ficha card flow' },
+    h('p', { class: 'eyebrow' }, 'Datos'),
+    h('div', { class: 'ficha-rows' },
+      row('Contenido', ej.category),
       row('Tipo', ej.type),
-      row('Categoría', [ej.categoria_rama, ...(ej.categoria_nivel || [])].filter(Boolean)),
       dif ? h('div', { class: 'ficha-row' }, h('small', null, 'Dificultad'), h('span', { class: `dif-pill ${dif.clase}` }, ej.dificultad_label || dif.label)) : null,
-      row('Duración', ej.duration_min ? (ej.duration_max && ej.duration_max !== ej.duration_min ? `${ej.duration_min}–${ej.duration_max} min` : `${ej.duration_min} min`) : null),
+      row('Categoría', [ej.categoria_rama, ...(ej.categoria_nivel || [])].filter(Boolean)),
       row('Autor', ej.autor_nombre),
-      row('Jugadores', reqs.jugadores),
-      row('Balones', reqs.balones),
-      row('Conos', reqs.conos),
     ),
     (ej.tags && ej.tags.length) ? h('div', { class: 'ficha-tags' }, ...ej.tags.map((t) => h('span', { class: 'tag' }, t))) : null,
-    ej.objetivos ? seccion('Objetivos', ej.objetivos) : null,
-    ej.variantes ? seccion('Variantes', ej.variantes) : null,
-    ej.notas ? seccion('Notas', ej.notas) : null,
   );
+
+  return [montaje, juego, exigencia, datos];
 }
 
+/** Sección de texto; null si no hay nada que enseñar (así una ficha
+ *  incompleta no deja títulos huérfanos). Respeta los saltos dobles. */
 function seccion(titulo, texto) {
-  return h('div', { class: 'ficha-sec' }, h('small', { class: 'ficha-sec__t' }, titulo), h('p', null, texto));
+  const t = String(texto ?? '').trim();
+  if (!t) return null;
+  return h('div', { class: 'ficha-sec' },
+    h('small', { class: 'ficha-sec__t' }, titulo),
+    ...t.split(/\n{2,}/).map((p) => h('p', null, p.trim())),
+  );
 }
 
 // Navegación: las rutas internas del Taller (/ejercicios/*) van por el router

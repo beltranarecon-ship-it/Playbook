@@ -170,9 +170,11 @@ export const TANDA_04 = [
     ],
     intent: {
       canasta: 'norte',
+      // 'aro': el contacto es AL SALTAR bajo el aro. Con 'canasta' el
+      // atacante frenaba a 2,6 m, donde no hay contacto que aguantar.
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'aro' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
       ],
     },
   },
@@ -202,9 +204,15 @@ export const TANDA_04 = [
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'poste_bajo_der' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: 'poste_bajo_izq' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }] },
+        /* El defensor esperaba bajo el aro sin hacer nada en toda la
+           animación; ahora al menos consta como defensor y se ajusta.
+           Y el cruce termina PEGADO al aro por el lado izquierdo (que es
+           lo que significa "mano cambiada bajo el aro"): antes acababa en
+           el ancla del poste bajo, a 2,6 m, y desde ahí ya no es una
+           mano cambiada, es un tiro. */
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'poste_bajo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: { x: 0.196, y: 0.455 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
       ],
     },
   },
@@ -236,8 +244,14 @@ export const TANDA_04 = [
       canasta: 'norte',
       fases: [
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
-        { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: 'poste_bajo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
-        { eventos: [{ jugador: 'A2', tipo: 'tiro', hacia: 'canasta' }] },
+        /* "por línea de fondo" quiere decir pegado al fondo: primero se
+           mete por el pasillo estrecho (el punto explícito va casi sobre
+           la línea) y solo después se termina en el aro. Antes acababa en
+           el ancla del poste bajo y tiraba desde 2,4 m, que no es una
+           entrada por el fondo sino una parada a media distancia. */
+        { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: { x: 0.186, y: 0.66 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
+        { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: 'aro' }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
+        { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
     },
   },
@@ -370,10 +384,21 @@ export const TANDA_04 = [
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'A2', tipo: 'bloqueo', bloqueado_id: 'B3' }, { jugador: 'B3', tipo: 'defiende', marca: 'A3' }] },
-        { eventos: [{ jugador: 'A3', tipo: 'corte', hacia: 'escolta_izq' }, { jugador: 'B3', tipo: 'defiende', marca: 'A3' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A3' }] },
-        { eventos: [{ jugador: 'A3', tipo: 'tiro', hacia: 'canasta' }] },
+        /* Faltaban dos cosas que la ficha sí cuenta: que los DOS
+           defensores intentan impedirlo (B2 no aparecía en ninguna fase,
+           quieto toda la animación) y que "el bloqueador, después de
+           bloquear, se abre a la esquina" — que es la continuación que
+           hace del bloqueo indirecto algo más que un obstáculo. */
+        { eventos: [{ jugador: 'A2', tipo: 'bloqueo', bloqueado_id: 'B3' }, { jugador: 'B3', tipo: 'defiende', marca: 'A3' }, { jugador: 'B2', tipo: 'defiende', marca: 'A2' }] },
+        { eventos: [{ jugador: 'A3', tipo: 'corte', hacia: 'escolta_izq' }, { jugador: 'B3', tipo: 'defiende', marca: 'A3' }, { jugador: 'B2', tipo: 'defiende', marca: 'A2' }] },
+        {
+          eventos: [
+            { jugador: 'A2', tipo: 'corte', hacia: 'esquina_izq' },
+            { jugador: 'A1', tipo: 'pase', a: 'A3' },
+            { jugador: 'B2', tipo: 'defiende', marca: 'A2' },
+          ],
+        },
+        { eventos: [{ jugador: 'A3', tipo: 'tiro' }] },
       ],
     },
   },

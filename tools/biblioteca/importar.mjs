@@ -16,6 +16,14 @@
      node tools/biblioteca/importar.mjs             → ensayo, no escribe
      node tools/biblioteca/importar.mjs --confirmar → importa de verdad
      node tools/biblioteca/importar.mjs --revertir <manifiesto.json>
+
+   Y para corregir fichas YA importadas (una animación mal, una errata):
+     node tools/biblioteca/importar.mjs --actualizar             → ensayo
+     node tools/biblioteca/importar.mjs --actualizar --confirmar → escribe
+
+   Actualizar casa por NOMBRE y hace PATCH: conserva el id de cada
+   ejercicio, y con él los bloques de sesión que ya lo referencian.
+   Borrar y reimportar sería más simple y rompería los planes hechos.
    ============================================================ */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -100,6 +108,88 @@ if (r.nErrores) {
   process.exit(1);
 }
 
+/* Campos que se escriben, en un solo sitio: los usan el alta y la
+   actualización, y si divergen la corrección deja fichas a medias. */
+const CAMPOS = [
+  'type', 'category', 'difficulty', 'intensidad', 'duration_min', 'duration_max',
+  'description', 'tags', 'animacion', 'tipo_pista', 'categoria_rama',
+  'categoria_nivel', 'objetivos', 'descripcion_texto', 'variantes', 'notas',
+  'requisitos', 'autor_nombre',
+];
+
+const contenidoDe = (f) => Object.fromEntries(CAMPOS.map((k) => [k, f[k]]));
+
+/* Comparación estable para saber qué ha cambiado de verdad.
+   PostgreSQL guarda `jsonb` con las claves REORDENADAS (las suyas, no
+   las nuestras), así que un JSON.stringify a pelo dice que las 97
+   fichas han cambiado siempre y la actualización deja de informar de
+   nada. Se ordenan las claves recursivamente antes de comparar; los
+   arrays conservan su orden, que en una animación sí significa algo. */
+function estable(v) {
+  if (Array.isArray(v)) return v.map(estable);
+  if (v && typeof v === 'object') {
+    return Object.fromEntries(Object.keys(v).sort().map((k) => [k, estable(v[k])]));
+  }
+  return v;
+}
+const igual = (a, b) => JSON.stringify(estable(a ?? null)) === JSON.stringify(estable(b ?? null));
+
+/* ---- 2 bis · actualizar fichas ya importadas ---------------------
+   Casa por NOMBRE y hace PATCH campo a campo. El id se conserva, y con
+   él los bloques de sesión que ya apuntan a ese ejercicio: borrar y
+   reimportar sería más corto y dejaría los planes hechos apuntando a
+   ejercicios que ya no existen.
+
+   No toca `favorito` ni `is_archived`: son decisiones del entrenador
+   sobre SU biblioteca, no contenido de la ficha. */
+
+if (process.argv.includes('--actualizar')) {
+  const escribir = process.argv.includes('--confirmar');
+  const enBase = await (await pedir(`exercises?select=id,name,${CAMPOS.join(',')}`)).json();
+  const porNombre = new Map(enBase.map((e) => [e.name, e]));
+
+  const cambian = [];
+  const nuevas = [];
+  for (const f of fichas) {
+    const fila = porNombre.get(f.name);
+    if (!fila) { nuevas.push(f.name); continue; }
+    const nuevo = contenidoDe(f);
+    const distintos = CAMPOS.filter((k) => !igual(nuevo[k], fila[k]));
+    if (distintos.length) cambian.push({ id: fila.id, nombre: f.name, distintos, nuevo });
+  }
+
+  console.log(`\n─── Actualización ────────────────────────────────────\n`);
+  console.log(`  ${enBase.length} en la base · ${cambian.length} con cambios · ${fichas.length - cambian.length - nuevas.length} idénticas`);
+  if (nuevas.length) {
+    console.log(`\n  ${nuevas.length} ficha(s) NO están en la base (usa --confirmar sin --actualizar para darlas de alta):`);
+    for (const n of nuevas.slice(0, 10)) console.log(`    · ${n}`);
+  }
+  if (cambian.length) {
+    console.log('\n  Cambian:');
+    for (const c of cambian) console.log(`    · ${c.nombre.padEnd(38)} ${c.distintos.join(', ')}`);
+  }
+
+  if (!escribir) {
+    console.log('\n  Ensayo: no se ha escrito nada. Para aplicarlo:\n');
+    console.log('      node tools/biblioteca/importar.mjs --actualizar --confirmar\n');
+    process.exit(0);
+  }
+  if (!cambian.length) { console.log('\n  Nada que actualizar.\n'); process.exit(0); }
+
+  let hechas = 0;
+  for (const c of cambian) {
+    await pedir(`exercises?id=eq.${c.id}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify(c.nuevo),
+    });
+    hechas++;
+    if (hechas % 10 === 0 || hechas === cambian.length) console.log(`  ${hechas}/${cambian.length}`);
+  }
+  console.log(`\n  ${hechas} ficha(s) actualizadas, con sus ids intactos.\n`);
+  process.exit(0);
+}
+
 /* ---- 2 · autor --------------------------------------------------
    `exercises.created_by` apunta a profiles(id). Con service_role no
    hay auth.uid(), así que hay que decir explícitamente de quién son.
@@ -144,25 +234,8 @@ if (repetidas.length) {
 
 const filas = fichas.map((f) => ({
   name: f.name,
-  type: f.type,
-  category: f.category,
-  difficulty: f.difficulty,
-  intensidad: f.intensidad,
-  duration_min: f.duration_min,
-  duration_max: f.duration_max,
-  description: f.description,
-  tags: f.tags,
+  ...contenidoDe(f),
   created_by: autor,
-  animacion: f.animacion,
-  tipo_pista: f.tipo_pista,
-  categoria_rama: f.categoria_rama,
-  categoria_nivel: f.categoria_nivel,
-  objetivos: f.objetivos,
-  descripcion_texto: f.descripcion_texto,
-  variantes: f.variantes,
-  notas: f.notas,
-  requisitos: f.requisitos,
-  autor_nombre: f.autor_nombre,
   favorito: false,
   is_archived: false,
 }));

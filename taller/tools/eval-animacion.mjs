@@ -39,6 +39,7 @@
 import { generarAnimacion, compilarIntentIA, recompilarConCanasta, filtrarPreguntasIA } from '../js/ia/client.js';
 import { compilarAnimacion } from '../js/ia/compilador.js';
 import { PISTAS } from '../js/canvas/court.js';
+import { metrosEntre } from '../js/canvas/escala.js';
 
 // ---- punto de extensión: generador bajo prueba --------------------
 // Los casos normales pasan por texto+regex (generarAnimacion). Los marcados
@@ -1985,8 +1986,16 @@ casos.push({
     const roll = (res.fases[1].movimientos || []).find((m) => m.elemento_id === 'A2');
     if (!roll) return ko('A2 no continúa en la fase 2');
     const finRoll = roll.path[roll.path.length - 1];
-    // ancla medida del aro en la media: (0.172, 0.5)
-    if (dxy(finRoll.x, finRoll.y, 0.172, 0.5) > 1e-9) return ko(`el roll debía terminar en el centro medido del aro (0.172, 0.5); termina en (${finRoll.x}, ${finRoll.y})`);
+    /* El roll termina PEGADO al aro, no encima. Este caso exigía antes el
+       centro medido exacto (0.172, 0.5) porque 'aro' se resolvía como
+       ancla con nombre; desde la auditoría de agosto de 2026 'aro' es una
+       INTENCIÓN de finalización y el compilador para al jugador a poco
+       más de un metro (canvas/escala.js#puntoADistanciaDe). Dos motivos:
+       clavar el centro dibuja la ficha encima de la canasta y la tapa, y
+       la misma palabra tiene que significar lo mismo en un roll que en
+       una entrada. Se comprueba la distancia real, no la coordenada. */
+    const mRoll = metrosEntre('media', finRoll, [0.172, 0.5]);
+    if (mRoll > 1.6) return ko(`el roll debía terminar pegado al aro (≤1,6 m); termina a ${mRoll.toFixed(2)} m`);
     // continuación completa: pase al que rueda y su tiro
     if (!todosPases(res).some((p) => p.de_id === 'A1' && p.a_id === 'A2')) return ko('falta el pase de A1 al que rueda');
     if (!todosTiros(res).some((t) => t.jugador_id === 'A2')) return ko('el que rueda no llega a tirar');

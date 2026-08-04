@@ -15,7 +15,8 @@
    tabla de ANCLAS medidas del Taller, que es un objeto de datos puro.
    ============================================================ */
 
-import { posicionesDe } from '../../../taller/js/canvas/anclas.js';
+import { posicionesDe, aroExacto } from '../../../taller/js/canvas/anclas.js';
+import { metrosEntre } from '../../../taller/js/canvas/escala.js';
 
 /* ── Nombres de zona ──────────────────────────────────────────
    Se escriben ENTEROS (con artículo y género ya resueltos) en vez de
@@ -124,8 +125,84 @@ function posesionPorFase(anim) {
     porFase.push({ ...owner });
     for (const p of f.pases || []) owner[p.balon_id] = p.a_id || null;
     for (const t of f.tiros || []) owner[t.balon_id] = null;
+    // el rebote devuelve la posesión: sin esto, quien coge su propio
+    // tiro y vuelve botando aparecería "cortando" en la fase siguiente.
+    for (const r of f.recogidas || []) owner[r.balon_id] = r.jugador_id || null;
   }
   return porFase;
+}
+
+/* ── Conos sorteados ──────────────────────────────────────────
+   El compilador teje los conos de "rodear" DENTRO del trazado, así que
+   en la animación no queda ninguna marca que diga "aquí hay un slalom":
+   solo un path con nodos de más. Sin esto, el ejercicio estrella del
+   bloque de bote se explicaba como "bota hacia la línea de tiros
+   libres" y el slalom no aparecía por ningún lado.
+
+   Se detecta al revés: un cono de rodear que cae pegado a alguno de los
+   nodos INTERMEDIOS del trazado es un cono que ese jugador sortea. */
+const RADIO_CONO = 0.075;
+
+/* Un movimiento que TERMINA en un sitio de la cola es la vuelta a la
+   fila. Se detecta igual que el slalom, porque en la animación tampoco
+   queda marca de que lo sea — y narrarlo como "bota" (que es verdad,
+   vuelve con el balón) no cuenta lo que de verdad pasa ahí.
+
+   No termina EN el cono, sino en un SITIO concreto de la cola, que
+   puede estar a media pista si son cuatro esperando. Se comprueba
+   contra los sitios uno a uno —cono + dirección × paso × k— y no
+   contra una banda alrededor del eje: con una banda, una entrada a
+   canasta que pasaba cerca del eje de una fila se narraba como "vuelve
+   al final de su fila", que es lo contrario de lo que hacía.
+
+   Dos filtros más, por el mismo motivo:
+     · un DEFENSOR ajustando el marcaje no vuelve a ninguna fila, por
+       muy cerca del cono que acabe;
+     · una vuelta a la cola es un viaje largo, no un ajuste de medio
+       metro. */
+const FILA_STEP = 0.06;
+const SITIOS_COLA = 6;          // hasta dónde puede llegar una cola razonable
+const VIAJE_MINIMO = 0.10;      // por debajo de esto es un ajuste, no una vuelta
+
+function vuelveAFila(path, conos, esDefensor) {
+  if (esDefensor) return false;
+  if (!path || path.length < 2) return false;
+  const ini = path[0], fin = path[path.length - 1];
+  if (Math.hypot(fin.x - ini.x, fin.y - ini.y) < VIAJE_MINIMO) return false;
+  for (const c of conos || []) {
+    if (c.funcion !== 'fila' || !c.posicion) continue;
+    const rad = (c.fila_config?.direccion_grados || 0) * Math.PI / 180;
+    for (let k = 0; k <= SITIOS_COLA; k++) {
+      const sx = c.posicion[0] + Math.cos(rad) * FILA_STEP * k;
+      const sy = c.posicion[1] + Math.sin(rad) * FILA_STEP * k;
+      if (Math.hypot(fin.x - sx, fin.y - sy) <= RADIO_CONO) return true;
+    }
+  }
+  return false;
+}
+
+/* Distancia, en metros de verdad, a la que se suelta un tiro. Por
+   debajo de esto es una finalización y se narra como tal: "tira desde
+   el aro" no lo dice ningún entrenador. */
+const METROS_ENTRADA = 1.6;
+
+function esFinalizacion(pista, canasta, punto) {
+  const aro = aroExacto(pista, canasta);
+  if (!aro || !punto) return false;
+  return metrosEntre(pista, punto, aro) <= METROS_ENTRADA;
+}
+
+function conosSorteados(path, conos) {
+  if (!path || path.length < 3) return 0;
+  const rodear = (conos || []).filter((c) => c.funcion === 'rodear' && c.posicion);
+  if (!rodear.length) return 0;
+  let n = 0;
+  for (const c of rodear) {
+    for (let i = 1; i < path.length - 1; i++) {
+      if (Math.hypot(path[i].x - c.posicion[0], path[i].y - c.posicion[1]) <= RADIO_CONO) { n++; break; }
+    }
+  }
+  return n;
 }
 
 /* ── Guion ───────────────────────────────────────────────────── */
@@ -183,18 +260,25 @@ export function guionDeAnimacion(anim) {
       lineas.push(`${txt(ref.get(b.bloqueador_id))} bloquea para ${txt(ref.get(b.bloqueado_id))}`);
     }
 
-    // 2) movimientos de jugador
+    // 2) movimientos de jugador. Quien va a por un balón suelto se narra
+    //    en el punto 5 (rebote), no aquí: "corta hacia el aro" y "coge el
+    //    rebote" serían dos frases para el mismo desplazamiento.
+    const recogen = new Set((f.recogidas || []).map((r) => r.jugador_id));
     for (const m of f.movimientos || []) {
       if (m.tipo_elemento === 'balon') continue;      // el balón se narra en pases/tiros
+      if (recogen.has(m.elemento_id)) continue;
       const r = ref.get(m.elemento_id);
+      const conBalon = m.tipo_movimiento === 'carrera_con_balon' || lleva.has(m.elemento_id);
+      if (vuelveAFila(m.path, conos, defensores.has(m.elemento_id))) {
+        lineas.push(`${txt(r)} vuelve al final de su fila${conBalon ? ' con el balón' : ''}`);
+        continue;
+      }
       const destino = zonaDe(pista, canastaGlobal, nodoFin(m.path));
       const hacia = destino ? ` hacia ${destino}` : '';
-      const verbo = defensores.has(m.elemento_id)
-        ? 'ajusta el marcaje'
-        : (m.tipo_movimiento === 'carrera_con_balon' || lleva.has(m.elemento_id))
-          ? 'bota'
-          : 'corta';
-      lineas.push(`${txt(r)} ${verbo}${hacia}`);
+      const nConos = conosSorteados(m.path, conos);
+      const sorteo = nConos > 1 ? ' sorteando los conos' : nConos === 1 ? ' rodeando el cono' : '';
+      const verbo = defensores.has(m.elemento_id) ? 'ajusta el marcaje' : conBalon ? 'bota' : 'corta';
+      lineas.push(`${txt(r)} ${verbo}${hacia}${sorteo}`);
     }
 
     // 3) pases
@@ -210,10 +294,30 @@ export function guionDeAnimacion(anim) {
     // 4) tiros
     for (const t of f.tiros || []) {
       const r = ref.get(t.jugador_id);
-      const desde = zonaDe(pista, t.canasta || canastaGlobal, nodoIni(t.path));
+      const canasta = t.canasta || canastaGlobal;
+      const salida = nodoIni(t.path);
+      // pegado al aro no es un tiro, es una entrada: "tira desde el aro"
+      // no lo dice ningún entrenador.
+      if (esFinalizacion(pista, canasta, salida)) {
+        lineas.push(r ? `${txt(r)} entra a canasta` : 'entrada a canasta');
+        continue;
+      }
+      const desde = zonaDe(pista, canasta, salida);
       lineas.push(r
         ? `${txt(r)} tira${desde ? ` desde ${desde}` : ' a canasta'}`
         : `tiro a canasta${desde ? ` desde ${desde}` : ''}`);
+    }
+
+    // 5) recogidas: el rebote. Va al final porque cierra la acción — y
+    //    porque de dónde sale el balón ya lo ha contado el tiro.
+    for (const rec of f.recogidas || []) {
+      const r = ref.get(rec.jugador_id);
+      if (!r) continue;
+      // si el balón venía de un tiro (de esta fase o de la anterior) es un
+      // rebote; si estaba parado en el suelo, es recogerlo y ya.
+      const veniaDeTiro = (fases[k - 1]?.tiros || []).some((t) => t.balon_id === rec.balon_id)
+        || (f.tiros || []).some((t) => t.balon_id === rec.balon_id);
+      lineas.push(`${txt(r)} ${veniaDeTiro ? 'coge el rebote' : 'recoge el balón'}`);
     }
 
     return {

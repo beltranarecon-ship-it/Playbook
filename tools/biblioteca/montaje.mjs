@@ -11,9 +11,17 @@
 import { compilarAnimacion } from '../../taller/js/ia/compilador.js';
 import { posicionesDe } from '../../taller/js/canvas/anclas.js';
 
-/* ---- tablero: mismas formas que usa el Taller ------------------ */
+/* ---- tablero: mismas formas que usa el Taller ------------------
+
+   El contador de ids se reinicia en CADA ficha (lo hace compilarFichas
+   antes de llamar a su tablero). Antes era global a toda la biblioteca,
+   y entonces añadir un balón en la ficha 8 renumeraba los conos de las
+   otras 89: el diff contra la base decía que habían cambiado todas y no
+   había forma de ver qué había cambiado de verdad. Con el contador por
+   ficha los ids son estables y deterministas. */
 
 let _n = 0;
+export const reiniciarIds = () => { _n = 0; };
 
 export const jug = (equipo, label, x, y, extra = {}) =>
   ({ id: `el_${++_n}`, kind: 'jugador', equipo, label: String(label), dorsal: null, nombre: null, x, y, ...extra });
@@ -68,6 +76,7 @@ export function soloMontaje(elementos, pista) {
 export function compilarFichas(fichas) {
   return fichas.map((f) => {
     const { tablero, intent, ...ficha } = f;
+    reiniciarIds();
     const elementos = tablero();
     ficha.animacion = intent
       ? compilarAnimacion(intent, elementos, ficha.tipo_pista)

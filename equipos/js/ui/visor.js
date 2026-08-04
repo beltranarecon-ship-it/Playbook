@@ -26,11 +26,10 @@ import { dificultadDe } from '../../../taller/js/config.js';
 import { guionDeAnimacion, resumenMaterial } from '../data/guion.js';
 import { getEjercicioCompleto } from '../data/ejercicios.js';
 import { INTENSIDAD_LABEL, INTENSIDAD_MAX } from '../data/carga.js';
-
-const PISTA_LABEL = {
-  entera: 'Pista entera', media: 'Media pista',
-  entera_fiba: 'Entera · triple FIBA', media_fiba: 'Media · triple FIBA',
-};
+import {
+  PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA,
+  textoDosis, textoJugadores, textoCanastas, textoDuracion, niveles,
+} from '../../../taller/js/ficha.js';
 
 const ICO = {
   proyector: 'M4 5h16v10H4zM8 19h8M12 15v4',
@@ -223,10 +222,21 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
     );
   }
 
+  /* La pestaña Ficha responde a "¿puedo montar esto hoy y cómo sé que
+     va bien?". El desarrollo y el paso a paso ya viven en la otra
+     pestaña, así que aquí no se repiten: van los números (gente, aros,
+     material, dosis), el criterio de éxito y los escalones de
+     exigencia — que es lo que se consulta con el grupo ya en la pista.
+
+     Antes esta vista buscaba requisitos.jugadores/.balones/.conos, tres
+     campos que ninguna ficha de la biblioteca tiene, y dejaba fuera los
+     trece que sí existen. */
   function vistaFicha() {
     if (!ficha) return null;
     const req = ficha.requisitos || {};
     const material = resumenMaterial(guion?.resumen);
+    const dosis = textoDosis(req.dosis);
+    const escalones = niveles(ficha.variantes);
     const fila = (lbl, val) => (val == null || val === '' || (Array.isArray(val) && !val.length)
       ? null
       : h('div', { class: 'eq-vfila' },
@@ -235,28 +245,40 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
 
     return h('div', { class: 'eq-vficha' },
       h('div', { class: 'eq-vfilas' },
-        fila('Tipo', ficha.type),
-        fila('Categoría', [ficha.categoria_rama, ...(ficha.categoria_nivel || [])].filter(Boolean)),
-        fila('Duración de referencia', ficha.duration_min
-          ? (ficha.duration_max && ficha.duration_max !== ficha.duration_min
-              ? `${ficha.duration_min}–${ficha.duration_max} min` : `${ficha.duration_min} min`)
-          : null),
-        fila('Pista', PISTA_LABEL[ficha.tipo_pista] || null),
+        fila('Jugadores', textoJugadores(req)),
+        fila('Estaciones', req.estaciones > 1 ? `${req.estaciones} a la vez` : null),
+        fila('Canastas', textoCanastas(req)),
         // Material: manda lo que hay DIBUJADO en la pizarra (es lo que se
         // va a ver); los requisitos escritos a mano son el respaldo.
-        fila('Material', material || [
-          req.jugadores ? `${req.jugadores} jugadores` : null,
-          req.balones ? `${req.balones} balones` : null,
-          req.conos ? `${req.conos} conos` : null,
-        ].filter(Boolean).join(' · ')),
+        fila('Material', material || (req.material || []).join(' · ')),
+        fila('Pista', PISTA_LABEL[ficha.tipo_pista] || null),
+        fila('Duración de referencia', textoDuracion(ficha)),
+        fila('Tipo', ficha.type),
+        fila('Contenido', ficha.category),
+        fila('Categoría', [ficha.categoria_rama, ...(ficha.categoria_nivel || [])].filter(Boolean)),
         fila('Autor', ficha.autor_nombre),
       ),
+      dosis
+        ? h('div', { class: 'eq-vdosis' }, h('span', { class: 'eq-vdosis-l' }, 'Dosis'), h('strong', null, dosis))
+        : null,
+      h('div', { class: 'eq-vejes' }, ...[
+        req.densidad ? h('span', { class: `eq-veje dens--${req.densidad}`, title: DENSIDAD_AYUDA[req.densidad] || '' }, `densidad ${req.densidad}`) : null,
+        req.oposicion ? h('span', { class: `eq-veje opo--${req.oposicion}`, title: OPOSICION_AYUDA[req.oposicion] || '' }, `oposición ${req.oposicion}`) : null,
+      ].filter(Boolean)),
+      seccionTexto('Está bien hecho cuando', req.criterio_exito),
+      seccionTexto('Antes hace falta saber', req.requisito_previo),
+      seccionTexto('Se aplica en', req.aplicacion),
+      seccionTexto('Objetivos', ficha.objetivos),
+      escalones
+        ? h('div', { class: 'eq-vsec' },
+            h('h4', { class: 'eq-vsec-t' }, 'Niveles de exigencia'),
+            h('div', { class: 'eq-vniveles' }, ...escalones.map((e) => h('div', { class: 'eq-vnivel' },
+              h('span', { class: 'eq-vnivel-l' }, e.nivel), h('p', null, e.texto)))))
+        : seccionTexto('Variantes', ficha.variantes),
+      seccionTexto('Puntos clave y errores frecuentes', ficha.notas),
       (ficha.tags || []).length
         ? h('div', { class: 'eq-vtags' }, ...ficha.tags.map((t) => h('span', { class: 'eq-vtag' }, t)))
         : null,
-      seccionTexto('Objetivos', ficha.objetivos),
-      seccionTexto('Variantes', ficha.variantes),
-      seccionTexto('Notas del autor', ficha.notas),
     );
   }
 

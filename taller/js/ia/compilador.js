@@ -16,12 +16,15 @@
                                         // eventos (regla ownerInicial).
      fases: [
        { eventos: [
-         { jugador, tipo: 'bote'|'corte'|'pase'|'tiro'|'bloqueo'|'defiende'|'rodea_cono'|'vuelve_a_fila',
-           hacia: 'canasta' | {x,y} | null,   // bote/corte: destino
+         { jugador, tipo: 'bote'|'corte'|'pase'|'tiro'|'bloqueo'|'defiende'|'rodea_cono'|'vuelve_a_fila'|'recoge',
+           hacia: 'canasta' | 'aro' | {x,y} | null,  // bote/corte: destino
+                                               //   'canasta' = AVANZA hacia el aro (parcial)
+                                               //   'aro'     = LLEGA al aro (finalización)
            a: string|null,                     // pase: receptor
            cono_id: string|null,                // rodea_cono: qué cono
            marca: string|null,                  // defiende: a quién marca (null = cuenta como defensor pero no se mueve)
            bloqueado_id: string|null,           // bloqueo: a quién bloquea
+           balon_id: string|null,               // recoge: qué balón (por defecto, el suelto más cercano)
          }, ... ]
        }, ...
      ]
@@ -36,6 +39,7 @@
 
 import { PISTAS, clamp01 } from '../canvas/court.js';
 import { aroExacto } from '../canvas/anclas.js';
+import { puntoADistanciaDe } from '../canvas/escala.js';
 import { resolverPosicion } from './posiciones.js';
 
 /* ---- geometría reutilizada (movida tal cual desde el mock viejo) --- */
@@ -137,8 +141,25 @@ export function balonesDelTablero(elementos = []) {
   return bs.map((b, i) => ({ id: b.id || `balon_${i + 1}`, x: b.x, y: b.y }));
 }
 
-/* ---- fracciones de avance hacia la canasta (constantes de siempre) -- */
+/* ---- fracciones de avance hacia la canasta (constantes de siempre) --
+   Ojo: son AVANCES PARCIALES, no llegadas. `hacia: 'canasta'` significa
+   "progresa hacia el aro", y el jugador se queda a mitad de camino a
+   propósito — es lo correcto para una penetración que aún no termina.
+   Para las acciones que SÍ terminan en el aro (entrada, bandeja, doble
+   ritmo) existe `hacia: 'aro'`, más abajo: si se usa 'canasta' para una
+   entrada, el jugador se planta a media distancia y el tiro sale de
+   ahí, que es exactamente cómo trece finalizaciones de la biblioteca
+   acabaron dibujadas como tiros de media distancia. */
 const FRACCION = { bote: 0.55, corte: 0.3, defiende: 0.25 };
+
+/* Dónde termina de verdad una finalización: a un metro largo del centro
+   del aro, que es donde se apoya y se sube en el segundo paso. Ni
+   encima del aro (la ficha taparía la canasta) ni a tres metros. */
+const METROS_FINALIZACION = 1.1;
+
+/* Y dónde se para quien va a por el balón: lo justo para que se lea que
+   lo coge sin que la ficha se plante encima. */
+const METROS_RECOGIDA = 0.9;
 
 /* ---- timings por tipo de fase (constantes de siempre) --------------- */
 const TIEMPOS = {
@@ -230,6 +251,15 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
   // terminó la fase anterior).
   const pos = new Map(J.map((j) => [j.id, { x: j.x, y: j.y }]));
 
+  // dónde está cada BALÓN, con la misma lógica: en manos de quien lo
+  // lleve, o suelto donde lo dejaron. Hace falta para 'recoge': después
+  // de un tiro el balón está en el aro, y quien va a por el rebote tiene
+  // que ir HASTA ahí, no a donde estaba el balón al empezar el ejercicio.
+  const posBalon = new Map(balones.map((b) => {
+    const oj = ownerDe.has(b.id) && byId.get(ownerDe.get(b.id));
+    return [b.id, oj ? { x: oj.x, y: oj.y } : (b.x != null ? { x: b.x, y: b.y } : { x: 0.5, y: 0.5 })];
+  }));
+
   const defTeamJugadores = new Set(); // cualquiera que defienda en ALGUNA fase -> tipo:'defensor' en la salida
   const fases = [];
 
@@ -251,6 +281,7 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
     const pases = [];
     const tiros = [];
     const bloqueos = [];
+    const recogidas = [];
     const defensoresFase = [];
 
     // 1) movimiento: bote/corte (+ rodea_cono tejido en el path) y defiende
@@ -267,13 +298,22 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
         // botar exige balón: si aún no tiene, toma el libre más cercano
         // (posesión inicial por cadena de eventos — ver arriba).
         if (ev.tipo === 'bote' && !balonDe.has(ev.jugador)) tomarBalonLibre(ev.jugador);
-        // destino: {x,y} explícito > posición con nombre (Tramo 2.2: custom
-        // de Supabase primero, luego ANCLAS) > avance hacia canasta. Un
-        // nombre irreconocible degrada a canasta — la PREGUNTA por nombres
-        // desconocidos es cosa del validador, antes de llegar aquí.
+        // destino: {x,y} explícito > 'aro' (finalización) > posición con
+        // nombre (Tramo 2.2: custom de Supabase primero, luego ANCLAS) >
+        // avance hacia canasta. Un nombre irreconocible degrada a canasta
+        // — la PREGUNTA por nombres desconocidos es cosa del validador,
+        // antes de llegar aquí.
         let destino;
         if (ev.hacia && typeof ev.hacia === 'object') {
           destino = ev.hacia;
+        } else if (ev.hacia === 'aro') {
+          // Finalización: se llega HASTA el aro y se para a la distancia
+          // de apoyo, venga el jugador de donde venga. No es 'aro' como
+          // ancla con nombre (eso pondría la ficha encima de la canasta,
+          // tapándola) ni 'canasta' (que es avance parcial y deja la
+          // entrada convertida en un tiro de media distancia).
+          const p = puntoADistanciaDe(pista, jp, aroTiro, METROS_FINALIZACION);
+          destino = { x: clamp01(p.x), y: clamp01(p.y) };
         } else if (typeof ev.hacia === 'string' && ev.hacia !== 'canasta') {
           const xy = resolverPosicion(pista, ev.hacia, canastaKey, opts.posiciones || null);
           destino = xy ? { x: clamp01(xy[0]), y: clamp01(xy[1]) } : haciaCanasta(jp, basket, FRACCION[ev.tipo]);
@@ -291,35 +331,71 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
         movimientos.push({ elemento_id: ev.jugador, tipo_elemento: 'jugador', tipo_movimiento: ev.tipo === 'bote' ? 'carrera_con_balon' : 'corte', path });
         pos.set(ev.jugador, { x: destino.x, y: destino.y });
       } else if (ev.tipo === 'defiende') {
-        // cuenta SIEMPRE para fase.defensores (rol), pero solo se mueve si
-        // trae `marca` (el extractor la deja a null cuando el atacante
-        // marcado no hace nada esta fase — así el defensor no se mueve).
+        // cuenta SIEMPRE para fase.defensores (rol). Para MOVERSE hacen
+        // falta dos vías, y hasta ahora solo funcionaba una:
+        //   · destino EXPLÍCITO en `hacia` — va derecho a ese punto. Es
+        //     como se escribe una ayuda ("sal a cortar la penetración"),
+        //     donde el defensor NO va contra su par sino a un hueco.
+        //   · `marca` sin destino — se recoloca entre su par y el aro.
+        // Antes el destino explícito vivía DENTRO del if de `marca`, así
+        // que una ayuda sin par al que marcar no movía a nadie: la fase
+        // salía vacía y el guion la narraba como "pausa, nadie se mueve".
+        // Sin `marca` NI `hacia` el defensor se queda quieto a propósito
+        // (su atacante no hace nada esa fase).
         defensoresFase.push(ev.jugador);
-        if (ev.marca) {
-          const marcaPos = pos.get(ev.marca);
-          if (marcaPos) {
-            let objetivo;
-            if (ev.hacia && typeof ev.hacia === 'object' && Number.isFinite(ev.hacia.x) && Number.isFinite(ev.hacia.y)) {
-              // Tramo 5: destino EXPLÍCITO calculado por la simulación
-              // (presión/negación de línea de pase/ayuda de lado débil,
-              // ia/simulador.js): el defensor va DIRECTO a ese punto — el
-              // 0.7 de abajo es parte de la fórmula legada, no se aplica
-              // dos veces. Sin `hacia` (todos los intents previos a este
-              // tramo) el comportamiento es EXACTAMENTE el de siempre.
-              objetivo = { x: clamp01(ev.hacia.x), y: clamp01(ev.hacia.y) };
-            } else {
-              const denegar = haciaCanasta(marcaPos, basket, FRACCION.defiende);
-              objetivo = { x: jp.x + (denegar.x - jp.x) * 0.7, y: jp.y + (denegar.y - jp.y) * 0.7 };
-            }
-            movimientos.push({ elemento_id: ev.jugador, tipo_elemento: 'jugador', tipo_movimiento: 'carrera_sin_balon', path: [{ x: jp.x, y: jp.y, tipo_nodo: 'lineal' }, { x: objetivo.x, y: objetivo.y, tipo_nodo: 'lineal' }] });
-            pos.set(ev.jugador, objetivo);
-          }
+        const destinoExplicito = (ev.hacia && typeof ev.hacia === 'object'
+          && Number.isFinite(ev.hacia.x) && Number.isFinite(ev.hacia.y))
+          ? { x: clamp01(ev.hacia.x), y: clamp01(ev.hacia.y) } : null;
+        const marcaPos = ev.marca ? pos.get(ev.marca) : null;
+        let objetivo = destinoExplicito;
+        if (!objetivo && marcaPos) {
+          const denegar = haciaCanasta(marcaPos, basket, FRACCION.defiende);
+          objetivo = { x: jp.x + (denegar.x - jp.x) * 0.7, y: jp.y + (denegar.y - jp.y) * 0.7 };
+        }
+        if (objetivo) {
+          movimientos.push({ elemento_id: ev.jugador, tipo_elemento: 'jugador', tipo_movimiento: 'carrera_sin_balon', path: [{ x: jp.x, y: jp.y, tipo_nodo: 'lineal' }, { x: objetivo.x, y: objetivo.y, tipo_nodo: 'lineal' }] });
+          pos.set(ev.jugador, objetivo);
         }
       } else if (ev.tipo === 'vuelve_a_fila') {
         const j = byId.get(ev.jugador);
         if (j && j._tail) {
           movimientos.push({ elemento_id: ev.jugador, tipo_elemento: 'jugador', tipo_movimiento: 'carrera_sin_balon', path: [{ x: jp.x, y: jp.y, tipo_nodo: 'lineal' }, { x: j._tail.x, y: j._tail.y, tipo_nodo: 'lineal' }] });
           pos.set(ev.jugador, j._tail);
+        }
+      } else if (ev.tipo === 'recoge') {
+        // El jugador va A POR el balón y se lo queda. Es lo que cierra un
+        // ejercicio de fila: sin esto, tras un tiro el balón se queda en
+        // el aro para siempre — `ownerDe` es la posesión INICIAL y no se
+        // libera nunca, así que la cadena de eventos no puede recuperarlo
+        // — y el ejercicio termina con el jugador plantado bajo la
+        // canasta mirando cómo se reinicia el bucle.
+        const sostenidos = new Set(balonDe.values());
+        let bId = (ev.balon_id && balones.some((b) => b.id === ev.balon_id)) ? ev.balon_id : null;
+        if (!bId) {
+          // por defecto, el balón SUELTO más cercano: en la práctica, el
+          // que ese mismo jugador acaba de tirar.
+          let mejorD = Infinity;
+          for (const b of balones) {
+            if (sostenidos.has(b.id)) continue;
+            const bp0 = posBalon.get(b.id); if (!bp0) continue;
+            const d = Math.hypot(bp0.x - jp.x, bp0.y - jp.y);
+            if (d < mejorD) { mejorD = d; bId = b.id; }
+          }
+        }
+        const bp = bId && posBalon.get(bId);
+        if (bp) {
+          // se para AL LADO del balón, no encima: bajo el aro la ficha
+          // taparía la canasta entera.
+          const p = puntoADistanciaDe(pista, jp, bp, METROS_RECOGIDA);
+          const destino = { x: clamp01(p.x), y: clamp01(p.y) };
+          movimientos.push({ elemento_id: ev.jugador, tipo_elemento: 'jugador', tipo_movimiento: 'carrera_sin_balon', path: [{ x: jp.x, y: jp.y, tipo_nodo: 'lineal' }, { x: destino.x, y: destino.y, tipo_nodo: 'lineal' }] });
+          // el balón hace el último tramo hasta sus manos; sin esto
+          // saltaría del aro al jugador de un fotograma al siguiente.
+          movimientos.push({ elemento_id: bId, tipo_elemento: 'balon', tipo_movimiento: 'recogida', path: [{ x: bp.x, y: bp.y, tipo_nodo: 'lineal' }, { x: destino.x, y: destino.y, tipo_nodo: 'lineal' }] });
+          recogidas.push({ jugador_id: ev.jugador, balon_id: bId });
+          pos.set(ev.jugador, destino);
+          posBalon.set(bId, destino);
+          balonDe.set(ev.jugador, bId);
         }
       }
     }
@@ -336,6 +412,7 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
       pases.push({ id: `pase_${i + 1}_${pases.length + 1}`, de_id: ev.jugador, balon_id: bId, a_id: ev.a, duracion_ms: 450, path: [{ x: de.x, y: de.y }, { x: a.x, y: a.y }] });
       if (balonDe.get(ev.jugador) === bId) balonDe.delete(ev.jugador);
       balonDe.set(ev.a, bId);
+      posBalon.set(bId, { x: a.x, y: a.y });
     }
 
     // 3) tiros. Path EXPLÍCITO (Tramo 2.1): desde la posición actual del
@@ -356,6 +433,7 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
         path: [{ x: desde.x, y: desde.y }, { x: aroTiro[0], y: aroTiro[1] }],
       });
       if (balonDe.get(ev.jugador) === bId) balonDe.delete(ev.jugador); // el balón vuela al aro: nadie lo lleva ya
+      posBalon.set(bId, { x: aroTiro[0], y: aroTiro[1] });             // y se queda ahí hasta que alguien lo recoja
     }
 
     // 4) bloqueos (el `jugador` del evento ES el bloqueador)
@@ -366,13 +444,22 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
 
     for (const id of defensoresFase) defTeamJugadores.add(id);
 
+    // el balón que alguien lleva y que no ha viajado esta fase va donde
+    // haya acabado su portador (misma regla que engine.js#_build).
+    for (const [jug, bId] of balonDe) {
+      const jpFin = pos.get(jug);
+      const viajo = pases.some((p) => p.balon_id === bId) || tiros.some((t2) => t2.balon_id === bId)
+        || movimientos.some((m) => m.tipo_elemento === 'balon' && m.elemento_id === bId);
+      if (jpFin && !viajo) posBalon.set(bId, { x: jpFin.x, y: jpFin.y });
+    }
+
     // timing por prioridad: tiro > pase > vuelve_a_fila > movimiento genérico
     const t = tiros.length ? TIEMPOS.tiro
       : pases.length ? TIEMPOS.pase
       : eventos.some((e) => e.tipo === 'vuelve_a_fila') ? TIEMPOS.vuelve
       : TIEMPOS.movimiento;
 
-    fases.push({ id: `fase_${i + 1}`, duracion_ms: t.duracion_ms, pausa_post_ms: t.pausa_post_ms, movimientos, pases, bloqueos, tiros, defensores: defensoresFase });
+    fases.push({ id: `fase_${i + 1}`, duracion_ms: t.duracion_ms, pausa_post_ms: t.pausa_post_ms, movimientos, pases, bloqueos, tiros, recogidas, defensores: defensoresFase });
   });
 
   // dueños iniciales ya resueltos (declaración + cadena): tiene_balon y

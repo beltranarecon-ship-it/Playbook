@@ -33,6 +33,22 @@ import {
 } from './vocabulario.mjs';
 import { huecos, revisarInvariantes, validarMapa, MAPA, OBJETIVO_TOTAL } from './mapa.mjs';
 import { aroExacto, ANCLAS } from '../../taller/js/canvas/anclas.js';
+import { metrosEntre } from '../../taller/js/canvas/escala.js';
+
+/* Una ficha que promete una FINALIZACIÓN: si el texto dice entrada,
+   doble ritmo o bandeja, el balón tiene que salir pegado al aro. */
+const ES_FINALIZACION = /\bentrada|entradas|doble ritmo|bandeja|finaliza|finalizaci|mano cambiada|termina en el aro|ataca el aro/i;
+
+/* Distancia máxima, en metros REALES, a la que puede soltarse el balón
+   en una finalización. Una entrada se termina entre 0,6 y 1,3 m del
+   aro; 1,6 deja margen para el paso de más sin dejar pasar un tiro. */
+const METROS_ENTRADA = 1.6;
+
+/* Y el techo de un tiro de minibasket. Generoso a propósito: la escala
+   se calibra junto al aro (ver canvas/escala.js) y hacia fuera el
+   dibujo se estira, así que un tiro real de 5 m puede medir aquí 6,5.
+   Es un aviso, no un error: caza disparates, no discute distancias. */
+const METROS_TIRO_MAX = 7.5;
 
 /* Dentro de la PISTA, no dentro del lienzo. Es una distinción que
    importa: en una entera las bandas están en x 0,057-0,942, así que
@@ -259,6 +275,80 @@ export function revisaGeometria(f) {
   if ((a.fases || []).length) {
     const movs = (a.fases || []).reduce((n, fa) => n + (fa.movimientos || []).length, 0);
     if (!movs) avisos.push('nadie se mueve en toda la animación: ¿falta alguna fase de desplazamiento?');
+  }
+
+  /* ── Reglas de finalización y de ciclo ─────────────────────────
+     Las cuatro salen de defectos que estaban DENTRO de la biblioteca y
+     que ninguna comprobación anterior veía, porque todas miraban el
+     final del tiro (el balón siempre acaba en el aro) y ninguna miraba
+     de DÓNDE sale ni qué pasa después. */
+
+  const pista = a.pista || f.tipo_pista;
+
+  /* 1 · Una entrada tiene que terminar como una entrada.
+     Trece fichas llamadas "entrada", "doble ritmo" o "finalización"
+     soltaban el balón a 2, 3 y hasta 9 metros del aro: el compilador
+     avanza solo una FRACCIÓN del camino con `hacia: 'canasta'`, y para
+     llegar de verdad hace falta `hacia: 'aro'`. */
+  if (aro && ES_FINALIZACION.test(`${f.name} ${f.description || ''} ${(f.tags || []).join(' ')}`)) {
+    for (const fase of a.fases || []) {
+      for (const t of fase.tiros || []) {
+        const ini = (t.path || [])[0];
+        if (!ini) continue;
+        const m = metrosEntre(pista, ini, aro);
+        if (m > METROS_ENTRADA) {
+          errores.push(`${fase.id}: la ficha promete una finalización y el tiro sale a ${m.toFixed(1)} m del aro (tope ${METROS_ENTRADA}); usa hacia: 'aro'`);
+        }
+      }
+    }
+  }
+
+  /* 2 · Tiros que ningún alevín puede meter. El tope es generoso a
+     propósito: la escala se calibra junto al aro y hacia fuera el
+     dibujo se estira, así que un tiro de verdad a 5 m puede medir 6,5
+     aquí. Lo que caza son los disparates — un calentamiento que
+     terminaba con un tiro a 9,3 m. */
+  if (aro) {
+    for (const fase of a.fases || []) {
+      for (const t of fase.tiros || []) {
+        const ini = (t.path || [])[0];
+        if (!ini) continue;
+        const m = metrosEntre(pista, ini, aro);
+        if (m > METROS_TIRO_MAX) avisos.push(`${fase.id}: tiro desde ${m.toFixed(1)} m — muy lejos para minibasket`);
+      }
+    }
+  }
+
+  /* 3 · Un ejercicio de fila que acaba tirando tiene que cerrar el
+     ciclo. Si nadie recoge, el balón se queda en el aro y el jugador
+     plantado debajo hasta que el bucle lo teletransporta a su sitio:
+     el entrenador ve un ejercicio que no se puede repetir. */
+  const hayFila = (a.conos || []).some((c) => c.funcion === 'fila');
+  const fases = a.fases || [];
+  if (hayFila && fases.length) {
+    const ultima = fases[fases.length - 1];
+    const hayRecogida = fases.some((fa) => (fa.recogidas || []).length);
+    if ((ultima.tiros || []).length && !hayRecogida) {
+      errores.push('acaba en tiro y nadie recoge el balón: falta el evento recoge (y normalmente el vuelve_a_fila)');
+    }
+  }
+
+  /* 4 · Fichas dibujadas que no participan en ninguna fase. Puede ser
+     legítimo —quien espera su turno en un tiro libre, el compañero que
+     solo levanta un brazo— así que avisa. Pero fue lo que destapó dos
+     ejercicios de rebote en los que los que NO se movían eran
+     justamente los que tenían que ir al rebote. */
+  if (fases.length) {
+    const actuan = new Set();
+    for (const fa of fases) {
+      for (const m of fa.movimientos || []) actuan.add(m.elemento_id);
+      for (const p of fa.pases || []) { actuan.add(p.de_id); actuan.add(p.a_id); }
+      for (const t of fa.tiros || []) actuan.add(t.jugador_id);
+      for (const b of fa.bloqueos || []) { actuan.add(b.bloqueador_id); actuan.add(b.bloqueado_id); }
+      for (const r of fa.recogidas || []) actuan.add(r.jugador_id);
+    }
+    const quietos = (a.jugadores || []).filter((j) => !actuan.has(j.id)).map((j) => j.id);
+    if (quietos.length) avisos.push(`sin participar en ninguna fase: ${quietos.join(', ')} — ¿es a propósito?`);
   }
 
   return { errores, avisos };

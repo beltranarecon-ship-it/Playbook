@@ -227,7 +227,7 @@
           "equipo": "A",
           "tipo": "atacante",
           "posicion_inicial": [
-            0.62,
+            0.58,
             0.5
           ],
           "tiene_balon": true,
@@ -237,9 +237,9 @@
       ],
       "balones": [
         {
-          "id": "el_balon_14",
+          "id": "el_balon_2",
           "posicion_inicial": [
-            0.62,
+            0.58,
             0.5
           ],
           "portador_id": "fila1"
@@ -247,14 +247,14 @@
       ],
       "conos": [
         {
-          "id": "el_cono_13",
+          "id": "el_cono_1",
           "posicion": [
-            0.62,
+            0.58,
             0.5
           ],
           "funcion": "fila",
           "fila_config": {
-            "n_jugadores": 4,
+            "n_jugadores": 3,
             "direccion_grados": 0,
             "equipo": "A"
           }
@@ -299,28 +299,28 @@
               "tipo_movimiento": "carrera_con_balon",
               "path": [
                 {
-                  "x": 0.62,
+                  "x": 0.58,
                   "y": 0.5,
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.5003459051085462,
-                  "y": 0.3450010877411573,
+                  "x": 0.5003775654738486,
+                  "y": 0.34500129597606,
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.3996540948914538,
-                  "y": 0.6549989122588427,
+                  "x": 0.3996224345261515,
+                  "y": 0.65499870402394,
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.3003459051085462,
-                  "y": 0.38500108774115727,
+                  "x": 0.30037756547384853,
+                  "y": 0.38500129597606,
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.35764999999999997,
-                  "y": 0.49835,
+                  "x": 0.21469822485207102,
+                  "y": 0.5,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -329,6 +329,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -341,12 +342,12 @@
           "tiros": [
             {
               "jugador_id": "fila1",
-              "balon_id": "el_balon_14",
+              "balon_id": "el_balon_2",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.35764999999999997,
-                  "y": 0.49835
+                  "x": 0.21469822485207102,
+                  "y": 0.5
                 },
                 {
                   "x": 0.172,
@@ -355,6 +356,87 @@
               ]
             }
           ],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.21469822485207102,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20693491124260355,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_2",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20693491124260355,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "fila1",
+              "balon_id": "el_balon_2"
+            }
+          ],
+          "defensores": []
+        },
+        {
+          "id": "fase_4",
+          "duracion_ms": 1200,
+          "pausa_post_ms": 200,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.20693491124260355,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.82,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -382,7 +464,7 @@
               {
                 "jugador": "fila1",
                 "tipo": "bote",
-                "hacia": "canasta"
+                "hacia": "aro"
               }
             ]
           },
@@ -390,8 +472,23 @@
             "eventos": [
               {
                 "jugador": "fila1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "recoge"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "vuelve_a_fila"
               }
             ]
           }
@@ -476,7 +573,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_21",
+          "id": "el_balon_7",
           "posicion_inicial": [
             0.62,
             0.5
@@ -486,7 +583,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_17",
+          "id": "el_cono_3",
           "posicion": [
             0.62,
             0.36
@@ -495,7 +592,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_18",
+          "id": "el_cono_4",
           "posicion": [
             0.62,
             0.64
@@ -504,7 +601,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_19",
+          "id": "el_cono_5",
           "posicion": [
             0.3,
             0.36
@@ -513,7 +610,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_20",
+          "id": "el_cono_6",
           "posicion": [
             0.3,
             0.64
@@ -566,6 +663,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -613,6 +711,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -627,7 +726,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_21",
+              "balon_id": "el_balon_7",
               "canasta": "norte",
               "path": [
                 {
@@ -641,6 +740,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -740,7 +840,19 @@
       "pista": "media",
       "jugadores": [
         {
-          "id": "A1",
+          "id": "B1",
+          "equipo": "B",
+          "tipo": "defensor",
+          "posicion_inicial": [
+            0.37,
+            0.496
+          ],
+          "tiene_balon": false,
+          "dorsal": null,
+          "nombre": null
+        },
+        {
+          "id": "fila1",
           "equipo": "A",
           "tipo": "atacante",
           "posicion_inicial": [
@@ -752,19 +864,7 @@
           "nombre": null
         },
         {
-          "id": "A2",
-          "equipo": "A",
-          "tipo": "atacante",
-          "posicion_inicial": [
-            0.386,
-            0.336
-          ],
-          "tiene_balon": false,
-          "dorsal": null,
-          "nombre": null
-        },
-        {
-          "id": "A3",
+          "id": "fila2",
           "equipo": "A",
           "tipo": "atacante",
           "posicion_inicial": [
@@ -776,12 +876,12 @@
           "nombre": null
         },
         {
-          "id": "B1",
-          "equipo": "B",
+          "id": "fila3",
+          "equipo": "A",
           "tipo": "atacante",
           "posicion_inicial": [
-            0.36,
-            0.5
+            0.386,
+            0.336
           ],
           "tiene_balon": false,
           "dorsal": null,
@@ -790,27 +890,85 @@
       ],
       "balones": [
         {
-          "id": "el_balon_26",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.386,
             0.656
           ],
-          "portador_id": "A1"
+          "portador_id": "fila1"
         }
       ],
-      "conos": [],
+      "conos": [
+        {
+          "id": "el_cono_1",
+          "posicion": [
+            0.386,
+            0.656
+          ],
+          "funcion": "fila",
+          "fila_config": {
+            "n_jugadores": 2,
+            "direccion_grados": 0,
+            "equipo": "A"
+          }
+        },
+        {
+          "id": "el_cono_2",
+          "posicion": [
+            0.406,
+            0.496
+          ],
+          "funcion": "fila",
+          "fila_config": {
+            "n_jugadores": 2,
+            "direccion_grados": 0,
+            "equipo": "A"
+          }
+        },
+        {
+          "id": "el_cono_3",
+          "posicion": [
+            0.386,
+            0.336
+          ],
+          "funcion": "fila",
+          "fila_config": {
+            "n_jugadores": 2,
+            "direccion_grados": 0,
+            "equipo": "A"
+          }
+        }
+      ],
       "fases": [
         {
           "id": "fase_1",
           "duracion_ms": 1100,
           "pausa_post_ms": 500,
-          "movimientos": [],
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.37,
+                  "y": 0.496,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.392,
+                  "y": 0.575,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
           "pases": [
             {
               "id": "pase_1_1",
-              "de_id": "A1",
-              "balon_id": "el_balon_26",
-              "a_id": "A3",
+              "de_id": "fila1",
+              "balon_id": "el_balon_5",
+              "a_id": "fila2",
               "duracion_ms": 450,
               "path": [
                 {
@@ -826,7 +984,10 @@
           ],
           "bloqueos": [],
           "tiros": [],
-          "defensores": []
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
         },
         {
           "id": "fase_2",
@@ -834,7 +995,7 @@
           "pausa_post_ms": 500,
           "movimientos": [
             {
-              "elemento_id": "A1",
+              "elemento_id": "fila1",
               "tipo_elemento": "jugador",
               "tipo_movimiento": "corte",
               "path": [
@@ -844,8 +1005,25 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.406,
+                  "x": 0.5860000000000001,
                   "y": 0.496,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.392,
+                  "y": 0.575,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.392,
+                  "y": 0.418,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -854,9 +1032,9 @@
           "pases": [
             {
               "id": "pase_2_1",
-              "de_id": "A3",
-              "balon_id": "el_balon_26",
-              "a_id": "A2",
+              "de_id": "fila2",
+              "balon_id": "el_balon_5",
+              "a_id": "fila3",
               "duracion_ms": 450,
               "path": [
                 {
@@ -872,15 +1050,18 @@
           ],
           "bloqueos": [],
           "tiros": [],
-          "defensores": []
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
         },
         {
           "id": "fase_3",
-          "duracion_ms": 1100,
-          "pausa_post_ms": 500,
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
           "movimientos": [
             {
-              "elemento_id": "A3",
+              "elemento_id": "fila2",
               "tipo_elemento": "jugador",
               "tipo_movimiento": "corte",
               "path": [
@@ -890,35 +1071,37 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.386,
+                  "x": 0.5660000000000001,
                   "y": 0.336,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.392,
+                  "y": 0.418,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.375,
+                  "y": 0.496,
                   "tipo_nodo": "lineal"
                 }
               ]
             }
           ],
-          "pases": [
-            {
-              "id": "pase_3_1",
-              "de_id": "A2",
-              "balon_id": "el_balon_26",
-              "a_id": "A1",
-              "duracion_ms": 450,
-              "path": [
-                {
-                  "x": 0.386,
-                  "y": 0.336
-                },
-                {
-                  "x": 0.406,
-                  "y": 0.496
-                }
-              ]
-            }
-          ],
+          "pases": [],
           "bloqueos": [],
           "tiros": [],
-          "defensores": []
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
         }
       ],
       "canasta": "norte",
@@ -928,37 +1111,62 @@
           {
             "eventos": [
               {
-                "jugador": "A1",
+                "jugador": "fila1",
                 "tipo": "pase",
-                "a": "A3"
+                "a": "fila2"
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.392,
+                  "y": 0.575
+                }
               }
             ]
           },
           {
             "eventos": [
               {
-                "jugador": "A1",
+                "jugador": "fila1",
                 "tipo": "corte",
-                "hacia": "base"
+                "hacia": {
+                  "x": 0.5860000000000001,
+                  "y": 0.496
+                }
               },
               {
-                "jugador": "A3",
+                "jugador": "fila2",
                 "tipo": "pase",
-                "a": "A2"
+                "a": "fila3"
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.392,
+                  "y": 0.418
+                }
               }
             ]
           },
           {
             "eventos": [
               {
-                "jugador": "A3",
+                "jugador": "fila2",
                 "tipo": "corte",
-                "hacia": "escolta_izq"
+                "hacia": {
+                  "x": 0.5660000000000001,
+                  "y": 0.336
+                }
               },
               {
-                "jugador": "A2",
-                "tipo": "pase",
-                "a": "A1"
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.375,
+                  "y": 0.496
+                }
               }
             ]
           }
@@ -1103,7 +1311,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_33",
+          "id": "el_cono_7",
           "posicion": [
             0.3,
             0.3
@@ -1112,7 +1320,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_34",
+          "id": "el_cono_8",
           "posicion": [
             0.3,
             0.7
@@ -1121,7 +1329,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_35",
+          "id": "el_cono_9",
           "posicion": [
             0.58,
             0.3
@@ -1130,7 +1338,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_36",
+          "id": "el_cono_10",
           "posicion": [
             0.58,
             0.7
@@ -1196,8 +1404,8 @@
           "equipo": "A",
           "tipo": "atacante",
           "posicion_inicial": [
-            0.222,
-            0.606
+            0.192,
+            0.545
           ],
           "tiene_balon": true,
           "dorsal": null,
@@ -1218,10 +1426,10 @@
       ],
       "balones": [
         {
-          "id": "el_balon_40",
+          "id": "el_balon_3",
           "posicion_inicial": [
-            0.222,
-            0.606
+            0.192,
+            0.545
           ],
           "portador_id": "A1"
         }
@@ -1232,36 +1440,18 @@
           "id": "fase_1",
           "duracion_ms": 1000,
           "pausa_post_ms": 600,
-          "movimientos": [
-            {
-              "elemento_id": "A2",
-              "tipo_elemento": "jugador",
-              "tipo_movimiento": "corte",
-              "path": [
-                {
-                  "x": 0.222,
-                  "y": 0.386,
-                  "tipo_nodo": "lineal"
-                },
-                {
-                  "x": 0.1983,
-                  "y": 0.4193,
-                  "tipo_nodo": "lineal"
-                }
-              ]
-            }
-          ],
+          "movimientos": [],
           "pases": [],
           "bloqueos": [],
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_40",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.222,
-                  "y": 0.606
+                  "x": 0.192,
+                  "y": 0.545
                 },
                 {
                   "x": 0.172,
@@ -1270,6 +1460,87 @@
               ]
             }
           ],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.222,
+                  "y": 0.386,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.18780533134778898,
+                  "y": 0.46396384452704115,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_3",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.18780533134778898,
+                  "y": 0.46396384452704115,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "A2",
+              "balon_id": "el_balon_3"
+            }
+          ],
+          "defensores": []
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [],
+          "pases": [
+            {
+              "id": "pase_3_1",
+              "de_id": "A2",
+              "balon_id": "el_balon_3",
+              "a_id": "A1",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.18780533134778898,
+                  "y": 0.46396384452704115
+                },
+                {
+                  "x": 0.192,
+                  "y": 0.545
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -1281,13 +1552,24 @@
             "eventos": [
               {
                 "jugador": "A1",
-                "tipo": "tiro",
-                "hacia": "canasta"
-              },
+                "tipo": "tiro"
+              }
+            ]
+          },
+          {
+            "eventos": [
               {
                 "jugador": "A2",
-                "tipo": "corte",
-                "hacia": "canasta"
+                "tipo": "recoge"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A2",
+                "tipo": "pase",
+                "a": "A1"
               }
             ]
           }
@@ -1384,7 +1666,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_44",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -1421,7 +1703,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_44",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -1438,6 +1720,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -1452,7 +1735,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_44",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -1466,6 +1749,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -1578,17 +1862,25 @@
       ],
       "balones": [
         {
-          "id": "el_balon_47",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.446,
             0.656
           ],
           "portador_id": "fila1"
+        },
+        {
+          "id": "el_balon_4",
+          "posicion_inicial": [
+            0.446,
+            0.336
+          ],
+          "portador_id": null
         }
       ],
       "conos": [
         {
-          "id": "el_cono_45",
+          "id": "el_cono_1",
           "posicion": [
             0.446,
             0.656
@@ -1601,7 +1893,7 @@
           }
         },
         {
-          "id": "el_cono_46",
+          "id": "el_cono_2",
           "posicion": [
             0.446,
             0.336
@@ -1624,7 +1916,7 @@
             {
               "id": "pase_1_1",
               "de_id": "fila1",
-              "balon_id": "el_balon_47",
+              "balon_id": "el_balon_3",
               "a_id": "fila2",
               "duracion_ms": 450,
               "path": [
@@ -1641,6 +1933,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -1659,8 +1952,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.27935,
-                  "y": 0.42455,
+                  "x": 0.20992180324412354,
+                  "y": 0.47730227835023264,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -1669,6 +1962,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -1681,12 +1975,12 @@
           "tiros": [
             {
               "jugador_id": "fila2",
-              "balon_id": "el_balon_47",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.27935,
-                  "y": 0.42455
+                  "x": 0.20992180324412354,
+                  "y": 0.47730227835023264
                 },
                 {
                   "x": 0.172,
@@ -1695,6 +1989,104 @@
               ]
             }
           ],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_4",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "fila2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.20992180324412354,
+                  "y": 0.47730227835023264,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20302692992701019,
+                  "y": 0.4814291368320085,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_3",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20302692992701019,
+                  "y": 0.4814291368320085,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "fila2",
+              "balon_id": "el_balon_3"
+            }
+          ],
+          "defensores": []
+        },
+        {
+          "id": "fase_5",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "fila2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.20302692992701019,
+                  "y": 0.4814291368320085,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20600000000000002,
+                  "y": 0.656,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.446,
+                  "y": 0.656,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20600000000000002,
+                  "y": 0.336,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -1716,7 +2108,7 @@
               {
                 "jugador": "fila2",
                 "tipo": "bote",
-                "hacia": "canasta"
+                "hacia": "aro"
               }
             ]
           },
@@ -1724,8 +2116,35 @@
             "eventos": [
               {
                 "jugador": "fila2",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila2",
+                "tipo": "recoge"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.20600000000000002,
+                  "y": 0.656
+                }
+              },
+              {
+                "jugador": "fila1",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.20600000000000002,
+                  "y": 0.336
+                }
               }
             ]
           }
@@ -1809,7 +2228,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_50",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.406,
             0.496
@@ -1835,8 +2254,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.26134999999999997,
-                  "y": 0.49655,
+                  "x": 0.21469356279026272,
+                  "y": 0.4992701955078588,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -1852,8 +2271,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.30203375,
-                  "y": 0.49646375,
+                  "x": 0.27753912046488793,
+                  "y": 0.49789185264162583,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -1862,6 +2281,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -1876,12 +2296,12 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_50",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.26134999999999997,
-                  "y": 0.49655
+                  "x": 0.21469356279026272,
+                  "y": 0.4992701955078588
                 },
                 {
                   "x": 0.172,
@@ -1890,6 +2310,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -1902,7 +2323,7 @@
               {
                 "jugador": "A1",
                 "tipo": "bote",
-                "hacia": "canasta"
+                "hacia": "aro"
               },
               {
                 "jugador": "B1",
@@ -1915,8 +2336,7 @@
             "eventos": [
               {
                 "jugador": "A1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
               }
             ]
           }
@@ -1991,7 +2411,7 @@
           "equipo": "A",
           "tipo": "atacante",
           "posicion_inicial": [
-            0.66,
+            0.58,
             0.5
           ],
           "tiene_balon": true,
@@ -2001,9 +2421,9 @@
       ],
       "balones": [
         {
-          "id": "el_balon_54",
+          "id": "el_balon_4",
           "posicion_inicial": [
-            0.66,
+            0.58,
             0.5
           ],
           "portador_id": "fila1"
@@ -2011,9 +2431,9 @@
       ],
       "conos": [
         {
-          "id": "el_cono_51",
+          "id": "el_cono_1",
           "posicion": [
-            0.66,
+            0.58,
             0.5
           ],
           "funcion": "fila",
@@ -2024,7 +2444,7 @@
           }
         },
         {
-          "id": "el_cono_53",
+          "id": "el_cono_3",
           "posicion": [
             0.336,
             0.496
@@ -2045,7 +2465,7 @@
               "tipo_movimiento": "carrera_con_balon",
               "path": [
                 {
-                  "x": 0.66,
+                  "x": 0.58,
                   "y": 0.5,
                   "tipo_nodo": "lineal"
                 },
@@ -2060,6 +2480,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -2078,8 +2499,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.192,
-                  "y": 0.606,
+                  "x": 0.2146887352417698,
+                  "y": 0.4989588113355666,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -2088,6 +2509,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -2100,12 +2522,12 @@
           "tiros": [
             {
               "jugador_id": "fila1",
-              "balon_id": "el_balon_54",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.192,
-                  "y": 0.606
+                  "x": 0.2146887352417698,
+                  "y": 0.4989588113355666
                 },
                 {
                   "x": 0.172,
@@ -2114,6 +2536,87 @@
               ]
             }
           ],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_4",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.2146887352417698,
+                  "y": 0.4989588113355666,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20692714701599346,
+                  "y": 0.4991481183654636,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_4",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20692714701599346,
+                  "y": 0.4991481183654636,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "fila1",
+              "balon_id": "el_balon_4"
+            }
+          ],
+          "defensores": []
+        },
+        {
+          "id": "fase_5",
+          "duracion_ms": 1200,
+          "pausa_post_ms": 200,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.20692714701599346,
+                  "y": 0.4991481183654636,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.82,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -2135,7 +2638,7 @@
               {
                 "jugador": "fila1",
                 "tipo": "bote",
-                "hacia": "poste_bajo_der"
+                "hacia": "aro"
               }
             ]
           },
@@ -2143,8 +2646,23 @@
             "eventos": [
               {
                 "jugador": "fila1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "recoge"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "vuelve_a_fila"
               }
             ]
           }
@@ -2229,7 +2747,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_57",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.386,
             0.656
@@ -2282,6 +2800,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -2296,7 +2815,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_57",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
@@ -2310,6 +2829,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -2433,7 +2953,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_61",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -2486,6 +3006,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -2533,6 +3054,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -2546,7 +3068,7 @@
             {
               "id": "pase_3_1",
               "de_id": "A1",
-              "balon_id": "el_balon_61",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -2563,6 +3085,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -2713,7 +3236,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_66",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.406,
             0.496
@@ -2767,7 +3290,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_66",
+              "balon_id": "el_balon_5",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -2784,6 +3307,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1",
             "B2"
@@ -2832,6 +3356,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -2845,7 +3370,7 @@
             {
               "id": "pase_3_1",
               "de_id": "A2",
-              "balon_id": "el_balon_66",
+              "balon_id": "el_balon_5",
               "a_id": "A1",
               "duracion_ms": 450,
               "path": [
@@ -2862,6 +3387,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -2874,7 +3400,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_66",
+              "balon_id": "el_balon_5",
               "canasta": "norte",
               "path": [
                 {
@@ -2888,6 +3414,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -3051,7 +3578,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_71",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.386,
             0.656
@@ -3121,6 +3648,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1",
             "B2"
@@ -3130,18 +3658,6 @@
           "id": "fase_2",
           "duracion_ms": 1500,
           "pausa_post_ms": 400,
-          "movimientos": [],
-          "pases": [],
-          "bloqueos": [],
-          "tiros": [],
-          "defensores": [
-            "B2"
-          ]
-        },
-        {
-          "id": "fase_3",
-          "duracion_ms": 1100,
-          "pausa_post_ms": 500,
           "movimientos": [
             {
               "elemento_id": "B2",
@@ -3154,8 +3670,56 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.1961675,
-                  "y": 0.1948175,
+                  "x": 0.232,
+                  "y": 0.386,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.206,
+                  "y": 0.1,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.17617781589517303,
+                  "y": 0.4508492247626701,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.232,
+                  "y": 0.386,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.18711835334496585,
+                  "y": 0.4394708430004018,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -3165,7 +3729,7 @@
             {
               "id": "pase_3_1",
               "de_id": "A1",
-              "balon_id": "el_balon_71",
+              "balon_id": "el_balon_5",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -3174,14 +3738,15 @@
                   "y": 0.56855
                 },
                 {
-                  "x": 0.206,
-                  "y": 0.1
+                  "x": 0.17617781589517303,
+                  "y": 0.4508492247626701
                 }
               ]
             }
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B2"
           ]
@@ -3196,12 +3761,12 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_71",
+              "balon_id": "el_balon_5",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.206,
-                  "y": 0.1
+                  "x": 0.17617781589517303,
+                  "y": 0.4508492247626701
                 },
                 {
                   "x": 0.172,
@@ -3210,6 +3775,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -3251,6 +3817,11 @@
           {
             "eventos": [
               {
+                "jugador": "A2",
+                "tipo": "corte",
+                "hacia": "aro"
+              },
+              {
                 "jugador": "A1",
                 "tipo": "pase",
                 "a": "A2"
@@ -3266,8 +3837,7 @@
             "eventos": [
               {
                 "jugador": "A2",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
               }
             ]
           }
@@ -3351,7 +3921,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_78",
+          "id": "el_balon_7",
           "posicion_inicial": [
             0.66,
             0.5
@@ -3361,7 +3931,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_74",
+          "id": "el_cono_3",
           "posicion": [
             0.66,
             0.36
@@ -3370,7 +3940,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_75",
+          "id": "el_cono_4",
           "posicion": [
             0.66,
             0.64
@@ -3379,7 +3949,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_76",
+          "id": "el_cono_5",
           "posicion": [
             0.28,
             0.36
@@ -3388,7 +3958,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_77",
+          "id": "el_cono_6",
           "posicion": [
             0.28,
             0.64
@@ -3441,6 +4011,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -3488,6 +4059,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -3618,7 +4190,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_82",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.339,
             0.72
@@ -3688,6 +4260,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -3701,7 +4274,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_82",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -3718,6 +4291,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -3730,7 +4304,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_82",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -3744,6 +4318,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -4231,7 +4806,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_104",
+          "id": "el_cono_5",
           "posicion": [
             0.44,
             0.5
@@ -4320,7 +4895,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_116",
+          "id": "el_balon_8",
           "posicion_inicial": [
             0.276,
             0.606
@@ -4330,7 +4905,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_111",
+          "id": "el_cono_3",
           "posicion": [
             0.222,
             0.606
@@ -4339,7 +4914,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_112",
+          "id": "el_cono_4",
           "posicion": [
             0.222,
             0.386
@@ -4348,7 +4923,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_113",
+          "id": "el_cono_5",
           "posicion": [
             0.276,
             0.606
@@ -4357,7 +4932,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_114",
+          "id": "el_cono_6",
           "posicion": [
             0.276,
             0.386
@@ -4366,7 +4941,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_115",
+          "id": "el_cono_7",
           "posicion": [
             0.276,
             0.496
@@ -4404,7 +4979,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_116",
+              "balon_id": "el_balon_8",
               "canasta": "norte",
               "path": [
                 {
@@ -4418,6 +4993,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -4429,7 +5005,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A2",
-              "balon_id": "el_balon_116",
+              "balon_id": "el_balon_8",
               "a_id": "A1",
               "duracion_ms": 450,
               "path": [
@@ -4446,6 +5022,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -4556,7 +5133,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_119",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.446,
             0.656
@@ -4566,7 +5143,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_117",
+          "id": "el_cono_1",
           "posicion": [
             0.446,
             0.656
@@ -4623,6 +5200,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -4637,7 +5215,7 @@
           "tiros": [
             {
               "jugador_id": "fila1",
-              "balon_id": "el_balon_119",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
@@ -4651,6 +5229,87 @@
               ]
             }
           ],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.336,
+                  "y": 0.606,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.2024965728996394,
+                  "y": 0.519711199557084,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_3",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.2024965728996394,
+                  "y": 0.519711199557084,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "fila1",
+              "balon_id": "el_balon_3"
+            }
+          ],
+          "defensores": []
+        },
+        {
+          "id": "fase_4",
+          "duracion_ms": 1200,
+          "pausa_post_ms": 200,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.2024965728996394,
+                  "y": 0.519711199557084,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20600000000000002,
+                  "y": 0.656,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -4676,8 +5335,23 @@
             "eventos": [
               {
                 "jugador": "fila1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "recoge"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "vuelve_a_fila"
               }
             ]
           }
@@ -4796,7 +5470,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_125",
+          "id": "el_balon_6",
           "posicion_inicial": [
             0.336,
             0.496
@@ -4816,7 +5490,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_125",
+              "balon_id": "el_balon_6",
               "canasta": "norte",
               "path": [
                 {
@@ -4830,6 +5504,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -4875,6 +5550,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -4984,7 +5660,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_128",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.659,
             0.8
@@ -5020,6 +5696,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -5031,7 +5708,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A2",
-              "balon_id": "el_balon_128",
+              "balon_id": "el_balon_3",
               "a_id": "A1",
               "duracion_ms": 450,
               "path": [
@@ -5048,6 +5725,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -5060,7 +5738,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_128",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
@@ -5074,6 +5752,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -5201,7 +5880,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_132",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -5238,7 +5917,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_132",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -5255,6 +5934,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -5302,6 +5982,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -5316,7 +5997,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_132",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -5330,6 +6011,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -5454,7 +6136,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_140",
+          "id": "el_balon_8",
           "posicion_inicial": [
             0.242,
             0.606
@@ -5464,7 +6146,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_135",
+          "id": "el_cono_3",
           "posicion": [
             0.242,
             0.606
@@ -5473,7 +6155,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_136",
+          "id": "el_cono_4",
           "posicion": [
             0.336,
             0.606
@@ -5482,7 +6164,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_137",
+          "id": "el_cono_5",
           "posicion": [
             0.336,
             0.496
@@ -5491,7 +6173,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_138",
+          "id": "el_cono_6",
           "posicion": [
             0.336,
             0.386
@@ -5500,7 +6182,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_139",
+          "id": "el_cono_7",
           "posicion": [
             0.242,
             0.386
@@ -5538,7 +6220,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_140",
+              "balon_id": "el_balon_8",
               "canasta": "norte",
               "path": [
                 {
@@ -5552,6 +6234,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -5563,7 +6246,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A2",
-              "balon_id": "el_balon_140",
+              "balon_id": "el_balon_8",
               "a_id": "A1",
               "duracion_ms": 450,
               "path": [
@@ -5580,6 +6263,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -5811,7 +6495,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_149",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.339,
             0.86
@@ -5819,7 +6503,7 @@
           "portador_id": "fila1"
         },
         {
-          "id": "el_balon_150",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.659,
             0.86
@@ -5829,7 +6513,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_147",
+          "id": "el_cono_1",
           "posicion": [
             0.339,
             0.86
@@ -5842,7 +6526,7 @@
           }
         },
         {
-          "id": "el_cono_148",
+          "id": "el_cono_2",
           "posicion": [
             0.659,
             0.86
@@ -5899,6 +6583,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -5944,6 +6629,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -6060,7 +6746,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_157",
+          "id": "el_balon_7",
           "posicion_inicial": [
             0.42,
             0.5
@@ -6070,7 +6756,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_153",
+          "id": "el_cono_3",
           "posicion": [
             0.34,
             0.5
@@ -6079,7 +6765,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_154",
+          "id": "el_cono_4",
           "posicion": [
             0.5,
             0.5
@@ -6088,7 +6774,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_155",
+          "id": "el_cono_5",
           "posicion": [
             0.42,
             0.4
@@ -6097,7 +6783,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_156",
+          "id": "el_cono_6",
           "posicion": [
             0.42,
             0.6
@@ -6150,6 +6836,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -6197,6 +6884,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -6244,6 +6932,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -6380,7 +7069,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_160",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.386,
             0.336
@@ -6433,6 +7122,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -6453,8 +7143,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.22985,
-                  "y": 0.44705,
+                  "x": 0.20859778283514835,
+                  "y": 0.4745600777853237,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -6470,8 +7160,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.23636375,
-                  "y": 0.43880375,
+                  "x": 0.22520633598845288,
+                  "y": 0.453246540837295,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -6480,6 +7170,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -6494,12 +7185,12 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_160",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.22985,
-                  "y": 0.44705
+                  "x": 0.20859778283514835,
+                  "y": 0.4745600777853237
                 },
                 {
                   "x": 0.172,
@@ -6508,6 +7199,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -6534,7 +7226,7 @@
               {
                 "jugador": "A1",
                 "tipo": "bote",
-                "hacia": "canasta"
+                "hacia": "aro"
               },
               {
                 "jugador": "B1",
@@ -6547,8 +7239,7 @@
             "eventos": [
               {
                 "jugador": "A1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
               }
             ]
           }
@@ -6687,7 +7378,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_166",
+          "id": "el_cono_6",
           "posicion": [
             0.58,
             0.1
@@ -6696,7 +7387,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_167",
+          "id": "el_cono_7",
           "posicion": [
             0.58,
             0.9
@@ -6705,7 +7396,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_168",
+          "id": "el_cono_8",
           "posicion": [
             0.44,
             0.1
@@ -6714,7 +7405,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_169",
+          "id": "el_cono_9",
           "posicion": [
             0.44,
             0.9
@@ -6723,7 +7414,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_170",
+          "id": "el_cono_10",
           "posicion": [
             0.3,
             0.1
@@ -6732,7 +7423,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_171",
+          "id": "el_cono_11",
           "posicion": [
             0.3,
             0.9
@@ -6832,7 +7523,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_177",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.486,
             0.336
@@ -6902,6 +7593,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -6915,7 +7607,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_177",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -6932,6 +7624,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -6944,7 +7637,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_177",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -6958,6 +7651,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -7243,7 +7937,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_189",
+          "id": "el_balon_6",
           "posicion_inicial": [
             0.376,
             0.496
@@ -7263,7 +7957,7 @@
           "tiros": [
             {
               "jugador_id": "A3",
-              "balon_id": "el_balon_189",
+              "balon_id": "el_balon_6",
               "canasta": "norte",
               "path": [
                 {
@@ -7277,6 +7971,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -7284,6 +7979,40 @@
           "duracion_ms": 1500,
           "pausa_post_ms": 400,
           "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.252,
+                  "y": 0.606,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.237,
+                  "y": 0.596,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.252,
+                  "y": 0.386,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.237,
+                  "y": 0.396,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
             {
               "elemento_id": "B1",
               "tipo_elemento": "jugador",
@@ -7322,10 +8051,62 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1",
             "B2"
           ]
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.222,
+                  "y": 0.606,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.1887320719834561,
+                  "y": 0.535471992604927,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_6",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.1887320719834561,
+                  "y": 0.535471992604927,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "B1",
+              "balon_id": "el_balon_6"
+            }
+          ],
+          "defensores": []
         }
       ],
       "canasta": "norte",
@@ -7344,6 +8125,22 @@
           {
             "eventos": [
               {
+                "jugador": "A1",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.237,
+                  "y": 0.596
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.237,
+                  "y": 0.396
+                }
+              },
+              {
                 "jugador": "B1",
                 "tipo": "defiende",
                 "marca": "A1",
@@ -7360,6 +8157,14 @@
                   "x": 0.222,
                   "y": 0.386
                 }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "recoge"
               }
             ]
           }
@@ -7456,7 +8261,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_193",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.386,
             0.656
@@ -7493,7 +8298,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_193",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -7510,6 +8315,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -7557,6 +8363,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -7571,7 +8378,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_193",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -7585,6 +8392,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -7710,7 +8518,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_200",
+          "id": "el_balon_7",
           "posicion_inicial": [
             0.52,
             0.5
@@ -7720,7 +8528,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_196",
+          "id": "el_cono_3",
           "posicion": [
             0.58,
             0.4
@@ -7729,7 +8537,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_197",
+          "id": "el_cono_4",
           "posicion": [
             0.58,
             0.6
@@ -7738,7 +8546,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_198",
+          "id": "el_cono_5",
           "posicion": [
             0.42,
             0.4
@@ -7747,7 +8555,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_199",
+          "id": "el_cono_6",
           "posicion": [
             0.42,
             0.6
@@ -7800,6 +8608,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -7847,6 +8656,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -7861,7 +8671,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_200",
+              "balon_id": "el_balon_7",
               "canasta": "norte",
               "path": [
                 {
@@ -7875,6 +8685,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -8002,7 +8813,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_203",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.386,
             0.336
@@ -8028,8 +8839,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.25234999999999996,
-                  "y": 0.42455,
+                  "x": 0.20759450661392487,
+                  "y": 0.4727219668940015,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -8045,8 +8856,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.26430875,
-                  "y": 0.39566375,
+                  "x": 0.24081211597231056,
+                  "y": 0.4209540326193508,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -8055,6 +8866,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -8069,12 +8881,12 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_203",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.25234999999999996,
-                  "y": 0.42455
+                  "x": 0.20759450661392487,
+                  "y": 0.4727219668940015
                 },
                 {
                   "x": 0.172,
@@ -8083,6 +8895,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -8095,7 +8908,7 @@
               {
                 "jugador": "A1",
                 "tipo": "bote",
-                "hacia": "canasta"
+                "hacia": "aro"
               },
               {
                 "jugador": "B1",
@@ -8108,8 +8921,7 @@
             "eventos": [
               {
                 "jugador": "A1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
               }
             ]
           }
@@ -8193,7 +9005,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_206",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.406,
             0.496
@@ -8246,6 +9058,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -8260,7 +9073,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_206",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
@@ -8274,6 +9087,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -8397,7 +9211,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_210",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -8450,6 +9264,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -8481,7 +9296,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_210",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -8498,6 +9313,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -8518,8 +9334,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.25234999999999996,
-                  "y": 0.56855,
+                  "x": 0.20812280431563251,
+                  "y": 0.5263325115571901,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -8535,8 +9351,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.25024399999999997,
-                  "y": 0.5770010000000001,
+                  "x": 0.22702472226570708,
+                  "y": 0.5548368185675248,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -8545,6 +9361,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -8559,12 +9376,12 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_210",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.25234999999999996,
-                  "y": 0.56855
+                  "x": 0.20812280431563251,
+                  "y": 0.5263325115571901
                 },
                 {
                   "x": 0.172,
@@ -8573,6 +9390,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -8613,7 +9431,7 @@
               {
                 "jugador": "A2",
                 "tipo": "bote",
-                "hacia": "canasta"
+                "hacia": "aro"
               },
               {
                 "jugador": "B1",
@@ -8626,8 +9444,7 @@
             "eventos": [
               {
                 "jugador": "A2",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
               }
             ]
           }
@@ -8836,7 +9653,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_219",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.406,
             0.496
@@ -8906,6 +9723,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B2",
             "B1"
@@ -8954,6 +9772,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B2"
           ]
@@ -9101,7 +9920,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_224",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.406,
             0.496
@@ -9155,7 +9974,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_224",
+              "balon_id": "el_balon_5",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -9172,6 +9991,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1",
             "B2"
@@ -9220,6 +10040,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -9354,7 +10175,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_228",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -9391,7 +10212,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A2",
-              "balon_id": "el_balon_228",
+              "balon_id": "el_balon_4",
               "a_id": "A1",
               "duracion_ms": 450,
               "path": [
@@ -9408,6 +10229,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -9455,6 +10277,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -9597,7 +10420,7 @@
         {
           "id": "B2",
           "equipo": "B",
-          "tipo": "atacante",
+          "tipo": "defensor",
           "posicion_inicial": [
             0.256,
             0.843
@@ -9621,7 +10444,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_235",
+          "id": "el_balon_7",
           "posicion_inicial": [
             0.406,
             0.496
@@ -9669,13 +10492,50 @@
                   "tipo_nodo": "lineal"
                 }
               ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.256,
+                  "y": 0.843,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.209975,
+                  "y": 0.8087,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.256,
+                  "y": 0.15000000000000002,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.209975,
+                  "y": 0.184475,
+                  "tipo_nodo": "lineal"
+                }
+              ]
             }
           ],
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
-            "B1"
+            "B1",
+            "B2",
+            "B3"
           ]
         },
         {
@@ -9689,8 +10549,8 @@
               "tipo_movimiento": "carrera_sin_balon",
               "path": [
                 {
-                  "x": 0.256,
-                  "y": 0.15000000000000002,
+                  "x": 0.209975,
+                  "y": 0.184475,
                   "tipo_nodo": "lineal"
                 },
                 {
@@ -9704,6 +10564,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B3"
           ]
@@ -9735,7 +10596,7 @@
             {
               "id": "pase_3_1",
               "de_id": "A1",
-              "balon_id": "el_balon_235",
+              "balon_id": "el_balon_7",
               "a_id": "A3",
               "duracion_ms": 450,
               "path": [
@@ -9752,12 +10613,96 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B3"
           ]
         },
         {
           "id": "fase_4",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.206,
+                  "y": 0.1,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.17617781589517303,
+                  "y": 0.4508492247626701,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.20277499999999998,
+                  "y": 0.25527500000000003,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.17835085334496584,
+                  "y": 0.4002533430004018,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.209975,
+                  "y": 0.8087,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.232,
+                  "y": 0.606,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.206,
+                  "y": 0.893,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.386,
+                  "y": 0.656,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B3",
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_5",
           "duracion_ms": 1000,
           "pausa_post_ms": 600,
           "movimientos": [],
@@ -9766,12 +10711,12 @@
           "tiros": [
             {
               "jugador_id": "A3",
-              "balon_id": "el_balon_235",
+              "balon_id": "el_balon_7",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.206,
-                  "y": 0.1
+                  "x": 0.17617781589517303,
+                  "y": 0.4508492247626701
                 },
                 {
                   "x": 0.172,
@@ -9780,6 +10725,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -9798,6 +10744,16 @@
                 "jugador": "B1",
                 "tipo": "defiende",
                 "marca": "A1"
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "marca": "A2"
+              },
+              {
+                "jugador": "B3",
+                "tipo": "defiende",
+                "marca": "A3"
               }
             ]
           },
@@ -9806,7 +10762,6 @@
               {
                 "jugador": "B3",
                 "tipo": "defiende",
-                "marca": "A1",
                 "hacia": {
                   "x": 0.232,
                   "y": 0.386
@@ -9832,8 +10787,34 @@
             "eventos": [
               {
                 "jugador": "A3",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "bote",
+                "hacia": "aro"
+              },
+              {
+                "jugador": "B3",
+                "tipo": "defiende",
+                "marca": "A3"
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.232,
+                  "y": 0.606
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "corte",
+                "hacia": "escolta_der"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A3",
+                "tipo": "tiro"
               }
             ]
           }
@@ -9927,7 +10908,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_238",
+          "id": "el_cono_3",
           "posicion": [
             0.336,
             0.606
@@ -9936,7 +10917,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_239",
+          "id": "el_cono_4",
           "posicion": [
             0.336,
             0.386
@@ -10437,7 +11418,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_264",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.386,
             0.656
@@ -10474,7 +11455,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_264",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -10491,6 +11472,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -10505,7 +11487,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_264",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -10519,6 +11501,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -10641,7 +11624,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_268",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.912,
             0.94
@@ -10694,6 +11677,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -10707,7 +11691,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_268",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -10724,6 +11708,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -10769,6 +11754,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -10783,7 +11769,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_268",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -10797,6 +11783,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -11105,7 +12092,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_281",
+          "id": "el_balon_6",
           "posicion_inicial": [
             0.406,
             0.496
@@ -11159,7 +12146,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_281",
+              "balon_id": "el_balon_6",
               "a_id": "A3",
               "duracion_ms": 450,
               "path": [
@@ -11176,6 +12163,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1",
             "B2"
@@ -11208,7 +12196,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A3",
-              "balon_id": "el_balon_281",
+              "balon_id": "el_balon_6",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -11225,6 +12213,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B2"
           ]
@@ -11239,7 +12228,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_281",
+              "balon_id": "el_balon_6",
               "canasta": "norte",
               "path": [
                 {
@@ -11253,6 +12242,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -11382,7 +12372,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_284",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.386,
             0.656
@@ -11408,8 +12398,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.25234999999999996,
-                  "y": 0.56855,
+                  "x": 0.20812280431563251,
+                  "y": 0.5263325115571901,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -11425,8 +12415,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.21510875,
-                  "y": 0.5672637500000001,
+                  "x": 0.19188947226570707,
+                  "y": 0.5450995685675248,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -11435,6 +12425,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -11449,12 +12440,12 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_284",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.25234999999999996,
-                  "y": 0.56855
+                  "x": 0.20812280431563251,
+                  "y": 0.5263325115571901
                 },
                 {
                   "x": 0.172,
@@ -11463,6 +12454,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -11475,7 +12467,7 @@
               {
                 "jugador": "A1",
                 "tipo": "bote",
-                "hacia": "canasta"
+                "hacia": "aro"
               },
               {
                 "jugador": "B1",
@@ -11488,8 +12480,7 @@
             "eventos": [
               {
                 "jugador": "A1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
               }
             ]
           }
@@ -11560,7 +12551,7 @@
         {
           "id": "B1",
           "equipo": "B",
-          "tipo": "atacante",
+          "tipo": "defensor",
           "posicion_inicial": [
             0.212,
             0.566
@@ -11572,7 +12563,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_287",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.386,
             0.656
@@ -11603,12 +12594,32 @@
                   "tipo_nodo": "lineal"
                 }
               ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.212,
+                  "y": 0.566,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.189425,
+                  "y": 0.574925,
+                  "tipo_nodo": "lineal"
+                }
+              ]
             }
           ],
           "pases": [],
           "bloqueos": [],
           "tiros": [],
-          "defensores": []
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
         },
         {
           "id": "fase_2",
@@ -11626,8 +12637,25 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.192,
-                  "y": 0.386,
+                  "x": 0.196,
+                  "y": 0.455,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.189425,
+                  "y": 0.574925,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.1847525,
+                  "y": 0.49832750000000003,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -11636,7 +12664,10 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
-          "defensores": []
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
         },
         {
           "id": "fase_3",
@@ -11648,12 +12679,12 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_287",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.192,
-                  "y": 0.386
+                  "x": 0.196,
+                  "y": 0.455
                 },
                 {
                   "x": 0.172,
@@ -11662,6 +12693,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -11675,6 +12707,11 @@
                 "jugador": "A1",
                 "tipo": "bote",
                 "hacia": "poste_bajo_der"
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "marca": "A1"
               }
             ]
           },
@@ -11683,7 +12720,15 @@
               {
                 "jugador": "A1",
                 "tipo": "corte",
-                "hacia": "poste_bajo_izq"
+                "hacia": {
+                  "x": 0.196,
+                  "y": 0.455
+                }
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "marca": "A1"
               }
             ]
           },
@@ -11691,8 +12736,7 @@
             "eventos": [
               {
                 "jugador": "A1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
               }
             ]
           }
@@ -11788,7 +12832,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_291",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -11825,7 +12869,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_291",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -11842,6 +12886,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -11862,8 +12907,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.192,
-                  "y": 0.606,
+                  "x": 0.186,
+                  "y": 0.66,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -11879,8 +12924,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.18071749999999998,
-                  "y": 0.648635,
+                  "x": 0.1775675,
+                  "y": 0.6769850000000001,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -11889,12 +12934,61 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
         },
         {
           "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.186,
+                  "y": 0.66,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.17629946456689594,
+                  "y": 0.5491367379073822,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.1775675,
+                  "y": 0.6769850000000001,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.17085246889762037,
+                  "y": 0.5783672874013757,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
+        },
+        {
+          "id": "fase_4",
           "duracion_ms": 1000,
           "pausa_post_ms": 600,
           "movimientos": [],
@@ -11903,12 +12997,12 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_291",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.192,
-                  "y": 0.606
+                  "x": 0.17629946456689594,
+                  "y": 0.5491367379073822
                 },
                 {
                   "x": 0.172,
@@ -11917,6 +13011,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -11943,7 +13038,10 @@
               {
                 "jugador": "A2",
                 "tipo": "bote",
-                "hacia": "poste_bajo_der"
+                "hacia": {
+                  "x": 0.186,
+                  "y": 0.66
+                }
               },
               {
                 "jugador": "B1",
@@ -11956,8 +13054,21 @@
             "eventos": [
               {
                 "jugador": "A2",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "bote",
+                "hacia": "aro"
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "marca": "A2"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A2",
+                "tipo": "tiro"
               }
             ]
           }
@@ -12054,7 +13165,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_295",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -12107,6 +13218,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -12120,7 +13232,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_295",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -12137,6 +13249,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -12149,7 +13262,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_295",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -12163,6 +13276,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -12307,7 +13421,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_300",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.386,
             0.656
@@ -12377,6 +13491,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B2",
             "B1"
@@ -12425,6 +13540,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -12439,7 +13555,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_300",
+              "balon_id": "el_balon_5",
               "canasta": "norte",
               "path": [
                 {
@@ -12453,6 +13569,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -12607,7 +13724,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_305",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.336,
             0.606
@@ -12677,6 +13794,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B2",
             "B1"
@@ -12691,7 +13809,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_305",
+              "balon_id": "el_balon_5",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -12708,6 +13826,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -12753,6 +13872,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B2"
           ]
@@ -12767,7 +13887,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_305",
+              "balon_id": "el_balon_5",
               "canasta": "norte",
               "path": [
                 {
@@ -12781,6 +13901,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -12932,7 +14053,7 @@
         {
           "id": "B2",
           "equipo": "B",
-          "tipo": "atacante",
+          "tipo": "defensor",
           "posicion_inicial": [
             0.28600000000000003,
             0.386
@@ -12956,7 +14077,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_311",
+          "id": "el_balon_6",
           "posicion_inicial": [
             0.406,
             0.496
@@ -12987,6 +14108,23 @@
                   "tipo_nodo": "lineal"
                 }
               ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.28600000000000003,
+                  "y": 0.386,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.287225,
+                  "y": 0.40542500000000004,
+                  "tipo_nodo": "lineal"
+                }
+              ]
             }
           ],
           "pases": [],
@@ -12997,8 +14135,10 @@
             }
           ],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
-            "B3"
+            "B3",
+            "B2"
           ]
         },
         {
@@ -13039,25 +14179,79 @@
                   "tipo_nodo": "lineal"
                 }
               ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.287225,
+                  "y": 0.40542500000000004,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.28759250000000003,
+                  "y": 0.4112525,
+                  "tipo_nodo": "lineal"
+                }
+              ]
             }
           ],
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
-            "B3"
+            "B3",
+            "B2"
           ]
         },
         {
           "id": "fase_3",
           "duracion_ms": 1100,
           "pausa_post_ms": 500,
-          "movimientos": [],
+          "movimientos": [
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.336,
+                  "y": 0.386,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.206,
+                  "y": 0.1,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.28759250000000003,
+                  "y": 0.4112525,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.21945275,
+                  "y": 0.26285075,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
           "pases": [
             {
               "id": "pase_3_1",
               "de_id": "A1",
-              "balon_id": "el_balon_311",
+              "balon_id": "el_balon_6",
               "a_id": "A3",
               "duracion_ms": 450,
               "path": [
@@ -13074,7 +14268,10 @@
           ],
           "bloqueos": [],
           "tiros": [],
-          "defensores": []
+          "recogidas": [],
+          "defensores": [
+            "B2"
+          ]
         },
         {
           "id": "fase_4",
@@ -13086,7 +14283,7 @@
           "tiros": [
             {
               "jugador_id": "A3",
-              "balon_id": "el_balon_311",
+              "balon_id": "el_balon_6",
               "canasta": "norte",
               "path": [
                 {
@@ -13100,6 +14297,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -13118,6 +14316,11 @@
                 "jugador": "B3",
                 "tipo": "defiende",
                 "marca": "A3"
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "marca": "A2"
               }
             ]
           },
@@ -13132,15 +14335,30 @@
                 "jugador": "B3",
                 "tipo": "defiende",
                 "marca": "A3"
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "marca": "A2"
               }
             ]
           },
           {
             "eventos": [
               {
+                "jugador": "A2",
+                "tipo": "corte",
+                "hacia": "esquina_izq"
+              },
+              {
                 "jugador": "A1",
                 "tipo": "pase",
                 "a": "A3"
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "marca": "A2"
               }
             ]
           },
@@ -13148,8 +14366,7 @@
             "eventos": [
               {
                 "jugador": "A3",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
               }
             ]
           }
@@ -13257,7 +14474,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_316",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.622,
             0.111
@@ -13276,7 +14493,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_316",
+              "balon_id": "el_balon_5",
               "a_id": "A3",
               "duracion_ms": 450,
               "path": [
@@ -13293,6 +14510,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -13355,6 +14573,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -13385,6 +14604,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -13397,7 +14617,7 @@
           "tiros": [
             {
               "jugador_id": "A3",
-              "balon_id": "el_balon_316",
+              "balon_id": "el_balon_5",
               "canasta": "sur",
               "path": [
                 {
@@ -13411,6 +14631,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -13569,7 +14790,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_321",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.659,
             0.286
@@ -13589,7 +14810,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_321",
+              "balon_id": "el_balon_5",
               "canasta": "norte",
               "path": [
                 {
@@ -13603,6 +14824,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -13665,6 +14887,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1",
             "B2"
@@ -13808,7 +15031,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_328",
+          "id": "el_balon_7",
           "posicion_inicial": [
             0.499,
             0.84
@@ -13818,7 +15041,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_326",
+          "id": "el_cono_5",
           "posicion": [
             0.107,
             0.5
@@ -13827,7 +15050,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_327",
+          "id": "el_cono_6",
           "posicion": [
             0.892,
             0.5
@@ -13897,6 +15120,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -13926,7 +15150,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A2",
-              "balon_id": "el_balon_328",
+              "balon_id": "el_balon_7",
               "a_id": "A3",
               "duracion_ms": 450,
               "path": [
@@ -13943,6 +15167,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -13973,6 +15198,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -13985,7 +15211,7 @@
           "tiros": [
             {
               "jugador_id": "A3",
-              "balon_id": "el_balon_328",
+              "balon_id": "el_balon_7",
               "canasta": "norte",
               "path": [
                 {
@@ -13999,6 +15225,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -14163,32 +15390,32 @@
         {
           "id": "balon_1",
           "posicion_inicial": [
-            0.34,
-            0.3
+            0.325,
+            0.285
           ],
           "portador_id": null
         },
         {
           "id": "balon_2",
           "posicion_inicial": [
-            0.34,
-            0.3
+            0.325,
+            0.315
           ],
           "portador_id": null
         },
         {
           "id": "balon_3",
           "posicion_inicial": [
-            0.34,
-            0.7
+            0.325,
+            0.685
           ],
           "portador_id": null
         },
         {
           "id": "balon_4",
           "posicion_inicial": [
-            0.34,
-            0.7
+            0.325,
+            0.715
           ],
           "portador_id": null
         }
@@ -14273,7 +15500,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_339",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.52,
             0.42
@@ -14326,6 +15553,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -14373,6 +15601,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -14387,7 +15616,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_339",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
@@ -14401,6 +15630,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -14608,7 +15838,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_345",
+          "id": "el_cono_6",
           "posicion": [
             0.28,
             0.24
@@ -14617,7 +15847,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_346",
+          "id": "el_cono_7",
           "posicion": [
             0.28,
             0.76
@@ -14626,7 +15856,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_347",
+          "id": "el_cono_8",
           "posicion": [
             0.58,
             0.24
@@ -14635,7 +15865,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_348",
+          "id": "el_cono_9",
           "posicion": [
             0.58,
             0.76
@@ -14734,7 +15964,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_357",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -14744,7 +15974,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_355",
+          "id": "el_cono_2",
           "posicion": [
             0.206,
             0.893
@@ -14784,6 +16014,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -14813,7 +16044,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_357",
+              "balon_id": "el_balon_4",
               "a_id": "fila1",
               "duracion_ms": 450,
               "path": [
@@ -14830,6 +16061,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -14844,7 +16076,7 @@
           "tiros": [
             {
               "jugador_id": "fila1",
-              "balon_id": "el_balon_357",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -14858,6 +16090,87 @@
               ]
             }
           ],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_4",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.386,
+                  "y": 0.656,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20155502171279024,
+                  "y": 0.5215447821831555,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_4",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20155502171279024,
+                  "y": 0.5215447821831555,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "fila1",
+              "balon_id": "el_balon_4"
+            }
+          ],
+          "defensores": []
+        },
+        {
+          "id": "fase_5",
+          "duracion_ms": 1200,
+          "pausa_post_ms": 200,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.20155502171279024,
+                  "y": 0.5215447821831555,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.44599999999999995,
+                  "y": 0.893,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -14892,8 +16205,23 @@
             "eventos": [
               {
                 "jugador": "fila1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "recoge"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "vuelve_a_fila"
               }
             ]
           }
@@ -14989,7 +16317,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_361",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -15042,6 +16370,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -15089,6 +16418,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -15102,7 +16432,7 @@
             {
               "id": "pase_3_1",
               "de_id": "A1",
-              "balon_id": "el_balon_361",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -15119,6 +16449,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -15356,7 +16687,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_369",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.386,
             0.656
@@ -15409,6 +16740,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -15423,7 +16755,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_369",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
@@ -15437,6 +16769,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -15546,7 +16879,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_372",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.336,
             0.606
@@ -15584,7 +16917,7 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_372",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
@@ -15598,6 +16931,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -15645,6 +16979,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -16049,7 +17384,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_394",
+          "id": "el_balon_7",
           "posicion_inicial": [
             0.54,
             0.3
@@ -16057,7 +17392,7 @@
           "portador_id": "fila1"
         },
         {
-          "id": "el_balon_395",
+          "id": "el_balon_8",
           "posicion_inicial": [
             0.54,
             0.5
@@ -16065,7 +17400,7 @@
           "portador_id": "fila2"
         },
         {
-          "id": "el_balon_396",
+          "id": "el_balon_9",
           "posicion_inicial": [
             0.54,
             0.7
@@ -16075,7 +17410,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_388",
+          "id": "el_cono_1",
           "posicion": [
             0.54,
             0.3
@@ -16088,7 +17423,7 @@
           }
         },
         {
-          "id": "el_cono_389",
+          "id": "el_cono_2",
           "posicion": [
             0.54,
             0.5
@@ -16101,7 +17436,7 @@
           }
         },
         {
-          "id": "el_cono_390",
+          "id": "el_cono_3",
           "posicion": [
             0.54,
             0.7
@@ -16114,7 +17449,7 @@
           }
         },
         {
-          "id": "el_cono_391",
+          "id": "el_cono_4",
           "posicion": [
             0.24,
             0.3
@@ -16123,7 +17458,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_392",
+          "id": "el_cono_5",
           "posicion": [
             0.24,
             0.5
@@ -16132,7 +17467,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_393",
+          "id": "el_cono_6",
           "posicion": [
             0.24,
             0.7
@@ -16202,6 +17537,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -16264,6 +17600,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -16458,7 +17795,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_401",
+          "id": "el_cono_5",
           "posicion": [
             0.28,
             0.2
@@ -16467,7 +17804,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_402",
+          "id": "el_cono_6",
           "posicion": [
             0.28,
             0.5
@@ -16476,7 +17813,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_403",
+          "id": "el_cono_7",
           "posicion": [
             0.28,
             0.8
@@ -16485,7 +17822,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_404",
+          "id": "el_cono_8",
           "posicion": [
             0.46,
             0.2
@@ -16494,7 +17831,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_405",
+          "id": "el_cono_9",
           "posicion": [
             0.46,
             0.5
@@ -16503,7 +17840,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_406",
+          "id": "el_cono_10",
           "posicion": [
             0.46,
             0.8
@@ -16512,7 +17849,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_407",
+          "id": "el_cono_11",
           "posicion": [
             0.64,
             0.2
@@ -16521,7 +17858,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_408",
+          "id": "el_cono_12",
           "posicion": [
             0.64,
             0.5
@@ -16530,7 +17867,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_409",
+          "id": "el_cono_13",
           "posicion": [
             0.64,
             0.8
@@ -17005,7 +18342,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_435",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.466,
             0.496
@@ -17015,7 +18352,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_434",
+          "id": "el_cono_2",
           "posicion": [
             0.466,
             0.496
@@ -17045,8 +18382,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.336,
-                  "y": 0.606,
+                  "x": 0.21469527132367544,
+                  "y": 0.49941911195477995,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -17062,8 +18399,8 @@
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.302225,
-                  "y": 0.601925,
+                  "x": 0.23854001744492961,
+                  "y": 0.5459700337762595,
                   "tipo_nodo": "lineal"
                 }
               ]
@@ -17072,6 +18409,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -17086,12 +18424,12 @@
           "tiros": [
             {
               "jugador_id": "fila1",
-              "balon_id": "el_balon_435",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.336,
-                  "y": 0.606
+                  "x": 0.21469527132367544,
+                  "y": 0.49941911195477995
                 },
                 {
                   "x": 0.172,
@@ -17100,6 +18438,87 @@
               ]
             }
           ],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.21469527132367544,
+                  "y": 0.49941911195477995,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20693249471937078,
+                  "y": 0.4995247279630018,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_3",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20693249471937078,
+                  "y": 0.4995247279630018,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "fila1",
+              "balon_id": "el_balon_3"
+            }
+          ],
+          "defensores": []
+        },
+        {
+          "id": "fase_4",
+          "duracion_ms": 1200,
+          "pausa_post_ms": 200,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.20693249471937078,
+                  "y": 0.4995247279630018,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.706,
+                  "y": 0.496,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -17112,7 +18531,7 @@
               {
                 "jugador": "fila1",
                 "tipo": "bote",
-                "hacia": "codo_der"
+                "hacia": "aro"
               },
               {
                 "jugador": "B1",
@@ -17125,8 +18544,23 @@
             "eventos": [
               {
                 "jugador": "fila1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "recoge"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "vuelve_a_fila"
               }
             ]
           }
@@ -17295,7 +18729,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_444",
+          "id": "el_cono_9",
           "posicion": [
             0.206,
             0.893
@@ -17304,7 +18738,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_445",
+          "id": "el_cono_10",
           "posicion": [
             0.206,
             0.1
@@ -17404,7 +18838,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_450",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -17457,6 +18891,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -17504,6 +18939,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -17517,7 +18953,7 @@
             {
               "id": "pase_3_1",
               "de_id": "A1",
-              "balon_id": "el_balon_450",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -17534,6 +18970,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -17546,7 +18983,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_450",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -17560,6 +18997,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -17824,7 +19262,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_460",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -17834,7 +19272,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_458",
+          "id": "el_cono_2",
           "posicion": [
             0.446,
             0.893
@@ -17891,6 +19329,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -17904,7 +19343,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_460",
+              "balon_id": "el_balon_4",
               "a_id": "fila1",
               "duracion_ms": 450,
               "path": [
@@ -17921,6 +19360,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -17933,7 +19373,7 @@
           "tiros": [
             {
               "jugador_id": "fila1",
-              "balon_id": "el_balon_460",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -17947,6 +19387,87 @@
               ]
             }
           ],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_4",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.336,
+                  "y": 0.606,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.2024965728996394,
+                  "y": 0.519711199557084,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_4",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.2024965728996394,
+                  "y": 0.519711199557084,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "fila1",
+              "balon_id": "el_balon_4"
+            }
+          ],
+          "defensores": []
+        },
+        {
+          "id": "fase_5",
+          "duracion_ms": 1200,
+          "pausa_post_ms": 200,
+          "movimientos": [
+            {
+              "elemento_id": "fila1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.2024965728996394,
+                  "y": 0.519711199557084,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20600000000000002,
+                  "y": 0.893,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -17981,8 +19502,23 @@
             "eventos": [
               {
                 "jugador": "fila1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "tiro"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "recoge"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "fila1",
+                "tipo": "vuelve_a_fila"
               }
             ]
           }
@@ -18092,7 +19628,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_465",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.206,
             0.893
@@ -18145,6 +19681,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1",
             "B2"
@@ -18159,7 +19696,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_465",
+              "balon_id": "el_balon_5",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -18176,6 +19713,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -18204,6 +19742,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -18216,7 +19755,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_465",
+              "balon_id": "el_balon_5",
               "canasta": "norte",
               "path": [
                 {
@@ -18230,6 +19769,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -18382,7 +19922,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_470",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.406,
             0.496
@@ -18435,20 +19975,67 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
         },
         {
           "id": "fase_2",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.386,
+                  "y": 0.336,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.366,
+                  "y": 0.1,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.386,
+                  "y": 0.656,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.206,
+                  "y": 0.893,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_3",
           "duracion_ms": 1100,
           "pausa_post_ms": 500,
           "movimientos": [],
           "pases": [
             {
-              "id": "pase_2_1",
+              "id": "pase_3_1",
               "de_id": "A1",
-              "balon_id": "el_balon_470",
+              "balon_id": "el_balon_5",
               "a_id": "A3",
               "duracion_ms": 450,
               "path": [
@@ -18457,40 +20044,15 @@
                   "y": 0.606
                 },
                 {
-                  "x": 0.386,
-                  "y": 0.336
+                  "x": 0.366,
+                  "y": 0.1
                 }
               ]
             }
           ],
           "bloqueos": [],
           "tiros": [],
-          "defensores": []
-        },
-        {
-          "id": "fase_3",
-          "duracion_ms": 1000,
-          "pausa_post_ms": 600,
-          "movimientos": [],
-          "pases": [],
-          "bloqueos": [],
-          "tiros": [
-            {
-              "jugador_id": "A3",
-              "balon_id": "el_balon_470",
-              "canasta": "norte",
-              "path": [
-                {
-                  "x": 0.386,
-                  "y": 0.336
-                },
-                {
-                  "x": 0.172,
-                  "y": 0.5
-                }
-              ]
-            }
-          ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -18515,18 +20077,23 @@
           {
             "eventos": [
               {
-                "jugador": "A1",
-                "tipo": "pase",
-                "a": "A3"
+                "jugador": "A3",
+                "tipo": "corte",
+                "hacia": "alero_izq"
+              },
+              {
+                "jugador": "A2",
+                "tipo": "corte",
+                "hacia": "esquina_der"
               }
             ]
           },
           {
             "eventos": [
               {
-                "jugador": "A3",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "jugador": "A1",
+                "tipo": "pase",
+                "a": "A3"
               }
             ]
           }
@@ -18623,7 +20190,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_474",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -18660,7 +20227,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_474",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -18677,6 +20244,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -18724,6 +20292,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -18738,7 +20307,7 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_474",
+              "balon_id": "el_balon_4",
               "canasta": "norte",
               "path": [
                 {
@@ -18752,6 +20321,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -18902,7 +20472,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_479",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.386,
             0.656
@@ -18972,6 +20542,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1",
             "B2"
@@ -19003,6 +20574,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B2"
           ]
@@ -19016,7 +20588,7 @@
             {
               "id": "pase_3_1",
               "de_id": "A1",
-              "balon_id": "el_balon_479",
+              "balon_id": "el_balon_5",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -19033,10 +20605,59 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
           "id": "fase_4",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.206,
+                  "y": 0.1,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.17617781589517303,
+                  "y": 0.4508492247626701,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.242,
+                  "y": 0.386,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.19011835334496582,
+                  "y": 0.4394708430004018,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_5",
           "duracion_ms": 1000,
           "pausa_post_ms": 600,
           "movimientos": [],
@@ -19045,12 +20666,12 @@
           "tiros": [
             {
               "jugador_id": "A2",
-              "balon_id": "el_balon_479",
+              "balon_id": "el_balon_5",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.206,
-                  "y": 0.1
+                  "x": 0.17617781589517303,
+                  "y": 0.4508492247626701
                 },
                 {
                   "x": 0.172,
@@ -19059,6 +20680,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -19090,7 +20712,6 @@
               {
                 "jugador": "B2",
                 "tipo": "defiende",
-                "marca": "A1",
                 "hacia": {
                   "x": 0.242,
                   "y": 0.386
@@ -19111,8 +20732,21 @@
             "eventos": [
               {
                 "jugador": "A2",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "bote",
+                "hacia": "aro"
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "marca": "A2"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A2",
+                "tipo": "tiro"
               }
             ]
           }
@@ -19196,7 +20830,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_482",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.386,
             0.656
@@ -19249,6 +20883,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -19296,6 +20931,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -19425,7 +21061,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_486",
+          "id": "el_balon_4",
           "posicion_inicial": [
             0.406,
             0.496
@@ -19462,7 +21098,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_486",
+              "balon_id": "el_balon_4",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -19479,6 +21115,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -19526,6 +21163,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
@@ -19683,7 +21321,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_490",
+          "id": "el_cono_4",
           "posicion": [
             0.3,
             0.5
@@ -19692,7 +21330,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_491",
+          "id": "el_cono_5",
           "posicion": [
             0.34,
             0.36
@@ -19701,7 +21339,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_492",
+          "id": "el_cono_6",
           "posicion": [
             0.42,
             0.28
@@ -19710,7 +21348,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_493",
+          "id": "el_cono_7",
           "posicion": [
             0.52,
             0.3
@@ -19719,7 +21357,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_494",
+          "id": "el_cono_8",
           "posicion": [
             0.58,
             0.42
@@ -19728,7 +21366,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_495",
+          "id": "el_cono_9",
           "posicion": [
             0.58,
             0.58
@@ -19737,7 +21375,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_496",
+          "id": "el_cono_10",
           "posicion": [
             0.52,
             0.7
@@ -19746,7 +21384,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_497",
+          "id": "el_cono_11",
           "posicion": [
             0.42,
             0.72
@@ -19755,7 +21393,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_498",
+          "id": "el_cono_12",
           "posicion": [
             0.34,
             0.64
@@ -20121,7 +21759,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_520",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.232,
             0.606
@@ -20157,6 +21795,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -20168,7 +21807,7 @@
             {
               "id": "pase_2_1",
               "de_id": "A1",
-              "balon_id": "el_balon_520",
+              "balon_id": "el_balon_3",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -20185,6 +21824,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -20315,7 +21955,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_525",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.406,
             0.496
@@ -20335,7 +21975,7 @@
           "tiros": [
             {
               "jugador_id": "A3",
-              "balon_id": "el_balon_525",
+              "balon_id": "el_balon_5",
               "canasta": "norte",
               "path": [
                 {
@@ -20349,6 +21989,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -20357,17 +21998,17 @@
           "pausa_post_ms": 400,
           "movimientos": [
             {
-              "elemento_id": "B1",
+              "elemento_id": "A1",
               "tipo_elemento": "jugador",
-              "tipo_movimiento": "carrera_sin_balon",
+              "tipo_movimiento": "corte",
               "path": [
                 {
-                  "x": 0.256,
-                  "y": 0.496,
+                  "x": 0.386,
+                  "y": 0.656,
                   "tipo_nodo": "lineal"
                 },
                 {
-                  "x": 0.222,
+                  "x": 0.242,
                   "y": 0.606,
                   "tipo_nodo": "lineal"
                 }
@@ -20389,14 +22030,83 @@
                   "tipo_nodo": "lineal"
                 }
               ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.256,
+                  "y": 0.496,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.222,
+                  "y": 0.606,
+                  "tipo_nodo": "lineal"
+                }
+              ]
             }
           ],
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": [
             "B1"
           ]
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.3131,
+                  "y": 0.38430000000000003,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20049986193191952,
+                  "y": 0.4766305171826854,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_5",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.20049986193191952,
+                  "y": 0.4766305171826854,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "A2",
+              "balon_id": "el_balon_5"
+            }
+          ],
+          "defensores": []
         }
       ],
       "canasta": "norte",
@@ -20415,11 +22125,10 @@
           {
             "eventos": [
               {
-                "jugador": "B1",
-                "tipo": "defiende",
-                "marca": "A1",
+                "jugador": "A1",
+                "tipo": "corte",
                 "hacia": {
-                  "x": 0.222,
+                  "x": 0.242,
                   "y": 0.606
                 }
               },
@@ -20427,6 +22136,23 @@
                 "jugador": "A2",
                 "tipo": "corte",
                 "hacia": "canasta"
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "marca": "A1",
+                "hacia": {
+                  "x": 0.222,
+                  "y": 0.606
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A2",
+                "tipo": "recoge"
               }
             ]
           }
@@ -20512,7 +22238,7 @@
       ],
       "balones": [
         {
-          "id": "el_balon_528",
+          "id": "el_balon_3",
           "posicion_inicial": [
             0.339,
             0.88
@@ -20531,7 +22257,7 @@
             {
               "id": "pase_1_1",
               "de_id": "A1",
-              "balon_id": "el_balon_528",
+              "balon_id": "el_balon_3",
               "a_id": "A2",
               "duracion_ms": 450,
               "path": [
@@ -20548,6 +22274,7 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -20593,6 +22320,7 @@
           "pases": [],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
@@ -20604,7 +22332,7 @@
             {
               "id": "pase_3_1",
               "de_id": "A2",
-              "balon_id": "el_balon_528",
+              "balon_id": "el_balon_3",
               "a_id": "A1",
               "duracion_ms": 450,
               "path": [
@@ -20621,10 +22349,40 @@
           ],
           "bloqueos": [],
           "tiros": [],
+          "recogidas": [],
           "defensores": []
         },
         {
           "id": "fase_4",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.107,
+                  "y": 0.266,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.452762030558541,
+                  "y": 0.11164195064350849,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_5",
           "duracion_ms": 1000,
           "pausa_post_ms": 600,
           "movimientos": [],
@@ -20633,12 +22391,12 @@
           "tiros": [
             {
               "jugador_id": "A1",
-              "balon_id": "el_balon_528",
+              "balon_id": "el_balon_3",
               "canasta": "norte",
               "path": [
                 {
-                  "x": 0.107,
-                  "y": 0.266
+                  "x": 0.452762030558541,
+                  "y": 0.11164195064350849
                 },
                 {
                   "x": 0.499,
@@ -20647,6 +22405,7 @@
               ]
             }
           ],
+          "recogidas": [],
           "defensores": []
         }
       ],
@@ -20690,8 +22449,16 @@
             "eventos": [
               {
                 "jugador": "A1",
-                "tipo": "tiro",
-                "hacia": "canasta"
+                "tipo": "bote",
+                "hacia": "aro"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "tiro"
               }
             ]
           }
@@ -20941,7 +22708,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_539",
+          "id": "el_cono_3",
           "posicion": [
             0.56,
             0.24
@@ -20950,7 +22717,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_540",
+          "id": "el_cono_4",
           "posicion": [
             0.52,
             0.24
@@ -20959,7 +22726,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_541",
+          "id": "el_cono_5",
           "posicion": [
             0.44,
             0.24
@@ -20968,7 +22735,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_542",
+          "id": "el_cono_6",
           "posicion": [
             0.38,
             0.24
@@ -20977,7 +22744,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_543",
+          "id": "el_cono_7",
           "posicion": [
             0.56,
             0.76
@@ -20986,7 +22753,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_544",
+          "id": "el_cono_8",
           "posicion": [
             0.52,
             0.76
@@ -20995,7 +22762,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_545",
+          "id": "el_cono_9",
           "posicion": [
             0.44,
             0.76
@@ -21004,7 +22771,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_546",
+          "id": "el_cono_10",
           "posicion": [
             0.38,
             0.76
@@ -21136,7 +22903,7 @@
       ],
       "conos": [
         {
-          "id": "el_cono_552",
+          "id": "el_cono_4",
           "posicion": [
             0.3,
             0.26
@@ -21145,7 +22912,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_553",
+          "id": "el_cono_5",
           "posicion": [
             0.3,
             0.74
@@ -21154,7 +22921,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_554",
+          "id": "el_cono_6",
           "posicion": [
             0.6,
             0.26
@@ -21163,7 +22930,7 @@
           "fila_config": null
         },
         {
-          "id": "el_cono_555",
+          "id": "el_cono_7",
           "posicion": [
             0.6,
             0.74

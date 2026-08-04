@@ -111,9 +111,11 @@ export const TANDA_03 = [
     ],
     intent: {
       canasta: 'norte',
+      // 'aro': con ventaja inicial se termina cerca. Frenar a 2,7 m es
+      // desaprovechar la ventaja que le da nombre al ejercicio.
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'aro' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
       ],
     },
   },
@@ -177,8 +179,9 @@ export const TANDA_03 = [
       fases: [
         { eventos: [{ jugador: 'A2', tipo: 'corte', hacia: 'escolta_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
-        { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
-        { eventos: [{ jugador: 'A2', tipo: 'tiro', hacia: 'canasta' }] },
+        // 'aro': se recibe en carrera para atacar, no para frenar a 2,6 m
+        { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: 'aro' }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
+        { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
     },
   },
@@ -330,10 +333,27 @@ export const TANDA_03 = [
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'codo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
-        { eventos: [{ jugador: 'B3', tipo: 'defiende', marca: 'A1', hacia: { x: M.poste_bajo_izq[0] + 0.04, y: M.poste_bajo_izq[1] } }] },
+        /* La ficha promete DOS penetraciones y dos ayudas, y antes la
+           pizarra solo enseñaba una: la segunda "penetración" era un tiro
+           desde la esquina a 6,6 m —imposible para un alevín— y el
+           segundo ayudante (B2) no se movía en toda la animación, igual
+           que su atacante (A2). Ahora se ve el ciclo entero. */
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'codo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }, { jugador: 'B2', tipo: 'defiende', marca: 'A2' }, { jugador: 'B3', tipo: 'defiende', marca: 'A3' }] },
+        // primera ayuda: B3 deja su esquina para cortar la penetración
+        { eventos: [{ jugador: 'B3', tipo: 'defiende', hacia: { x: M.poste_bajo_izq[0] + 0.04, y: M.poste_bajo_izq[1] } }] },
+        // el balón sale a esa esquina y B3 recupera
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A3' }, { jugador: 'B3', tipo: 'defiende', marca: 'A3' }] },
-        { eventos: [{ jugador: 'A3', tipo: 'tiro', hacia: 'canasta' }] },
+        // segunda penetración, y con ella la segunda ayuda: la de B2, que
+        // deja a A2 — y A2 se abre justo por eso.
+        {
+          eventos: [
+            { jugador: 'A3', tipo: 'bote', hacia: 'aro' },
+            { jugador: 'B3', tipo: 'defiende', marca: 'A3' },
+            { jugador: 'B2', tipo: 'defiende', hacia: { x: M.poste_bajo_der[0] + 0.04, y: M.poste_bajo_der[1] } },
+            { jugador: 'A2', tipo: 'corte', hacia: 'escolta_der' },
+          ],
+        },
+        { eventos: [{ jugador: 'A3', tipo: 'tiro' }] },
       ],
     },
   },

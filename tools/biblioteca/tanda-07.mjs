@@ -152,7 +152,19 @@ export const TANDA_07 = [
       canasta: 'norte',
       fases: [
         { eventos: [{ jugador: 'A3', tipo: 'tiro', hacia: 'canasta' }] },
-        { eventos: [{ jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: M.poste_bajo_der[0] + 0.03, y: M.poste_bajo_der[1] } }, { jugador: 'A2', tipo: 'corte', hacia: 'canasta' }] },
+        /* Los DOS atacantes van al rebote —esa es la elección que tiene
+           que hacer el defensor—; antes A1 se quedaba clavado y no se
+           entendía a qué elegía B1. Y el rebote lo coge A2, el que se
+           queda sin bloquear: es literalmente lo que dice la ficha ("si
+           el otro coge el rebote, no es un error"). */
+        {
+          eventos: [
+            { jugador: 'A1', tipo: 'corte', hacia: { x: M.poste_bajo_der[0] + 0.05, y: M.poste_bajo_der[1] } },
+            { jugador: 'A2', tipo: 'corte', hacia: 'canasta' },
+            { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: M.poste_bajo_der[0] + 0.03, y: M.poste_bajo_der[1] } },
+          ],
+        },
+        { eventos: [{ jugador: 'A2', tipo: 'recoge' }] },
       ],
     },
   },
@@ -187,7 +199,11 @@ export const TANDA_07 = [
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
         { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: 'centro' }, { jugador: 'A1', tipo: 'corte', hacia: 'alero_izq' }] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }] },
+        /* Un calentamiento de pases y carrera termina EN CANASTA, no con
+           un tiro desde el alero: así salía a 9,3 m del aro, el tiro más
+           largo de toda la biblioteca, y en el bloque de calentamiento. */
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'aro' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
       ],
     },
   },

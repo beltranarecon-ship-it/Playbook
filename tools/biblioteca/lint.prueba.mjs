@@ -67,11 +67,16 @@ export const FICHA_BUENA = {
         id: 'fase_2',
         duracion_ms: 1000,
         pausa_post_ms: 600,
-        movimientos: [{ elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: [{ x: 0.62, y: 0.72, tipo_nodo: 'lineal' }, { x: 0.28, y: 0.56, tipo_nodo: 'lineal' }] }],
+        // La carrera TERMINA pegada al aro (0.21, 0.52 ≈ 1,1 m del centro
+        // medido). Esta ficha de referencia acababa antes en (0.28, 0.56)
+        // —a 3,1 m— y el banco la daba por buena: un ejemplo canónico que
+        // dibujaba como tiro de media distancia el ejercicio que se llama
+        // "entradas". La regla de finalización lo destapó.
+        movimientos: [{ elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: [{ x: 0.62, y: 0.72, tipo_nodo: 'lineal' }, { x: 0.21, y: 0.52, tipo_nodo: 'lineal' }] }],
         pases: [],
         bloqueos: [],
         // el aro medido de 'media' está a la IZQUIERDA (0.172, 0.5), no arriba
-        tiros: [{ id: 'tiro_1', de_id: 'A2', balon_id: 'balon_1', path: [{ x: 0.28, y: 0.56 }, { x: 0.172, y: 0.5 }] }],
+        tiros: [{ id: 'tiro_1', de_id: 'A2', balon_id: 'balon_1', path: [{ x: 0.21, y: 0.52 }, { x: 0.172, y: 0.5 }] }],
         defensores: [],
       },
     ],
@@ -134,6 +139,73 @@ const CASOS = [
     espera: /el tiro acaba a .* del aro/,
   },
   { que: 'sin animación: aviso, no error', mut: (f) => { delete f.animacion; }, espera: null, esperaAviso: /sin animaci[óo]n/ },
+
+  // ---- finalización y cierre de ciclo (auditoría de agosto 2026) ----
+  // Las cuatro nacen de defectos que estaban DENTRO de la biblioteca y
+  // que ninguna regla veía: todas miraban dónde ACABA el balón (siempre
+  // en el aro) y ninguna de dónde SALE ni qué pasa después.
+  {
+    que: 'AUDITORÍA · una entrada que suelta el balón lejos del aro',
+    // 3,1 m: exactamente donde acababa esta misma ficha de referencia
+    // antes de la auditoría, y donde acababan otras doce.
+    mut: (f) => {
+      f.animacion.fases[1].movimientos[0].path[1] = { x: 0.28, y: 0.56, tipo_nodo: 'lineal' };
+      f.animacion.fases[1].tiros[0].path[0] = { x: 0.28, y: 0.56 };
+    },
+    espera: /promete una finalizaci[óo]n y el tiro sale a/,
+  },
+  {
+    que: 'AUDITORÍA · un tiro que no es una entrada NO dispara esa regla',
+    // la regla se activa por el TEXTO de la ficha, no por la distancia:
+    // un ejercicio de tiro puede y debe tirar de lejos.
+    mut: (f) => {
+      f.name = 'Tiro desde el 45';
+      f.description = 'Serie de tiro desde el 45 con recepción.';
+      f.tags = ['tiro', 'recepción'];
+      f.animacion.fases[1].movimientos[0].path[1] = { x: 0.36, y: 0.56, tipo_nodo: 'lineal' };
+      f.animacion.fases[1].tiros[0].path[0] = { x: 0.36, y: 0.56 };
+    },
+    espera: null,
+  },
+  {
+    que: 'AUDITORÍA · tiro imposible para un alevín: aviso',
+    mut: (f) => {
+      f.name = 'Serie de tiro';
+      f.description = 'Serie de tiro.';
+      f.tags = ['tiro'];
+      f.animacion.fases[1].movimientos[0].path[1] = { x: 0.62, y: 0.85, tipo_nodo: 'lineal' };
+      f.animacion.fases[1].tiros[0].path[0] = { x: 0.62, y: 0.85 };
+    },
+    espera: null,
+    esperaAviso: /muy lejos para minibasket/,
+  },
+  {
+    que: 'AUDITORÍA · ejercicio de fila que acaba en tiro y nadie recoge',
+    mut: (f) => {
+      f.animacion.conos.push({ id: 'f1', posicion: [0.62, 0.28], funcion: 'fila', fila_config: { n_jugadores: 3, direccion_grados: 0, equipo: 'A' } });
+    },
+    espera: /nadie recoge el bal[óo]n/,
+  },
+  {
+    que: 'AUDITORÍA · con recoge, el ejercicio de fila pasa',
+    mut: (f) => {
+      f.animacion.conos.push({ id: 'f1', posicion: [0.62, 0.28], funcion: 'fila', fila_config: { n_jugadores: 3, direccion_grados: 0, equipo: 'A' } });
+      f.animacion.fases.push({
+        id: 'fase_3', duracion_ms: 1200, pausa_post_ms: 200,
+        movimientos: [{ elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_sin_balon', path: [{ x: 0.21, y: 0.52 }, { x: 0.2, y: 0.5 }] }],
+        pases: [], bloqueos: [], tiros: [], recogidas: [{ jugador_id: 'A2', balon_id: 'balon_1' }], defensores: [],
+      });
+    },
+    espera: null,
+  },
+  {
+    que: 'AUDITORÍA · ficha dibujada que no participa en ninguna fase',
+    mut: (f) => {
+      f.animacion.jugadores.push({ id: 'A3', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.4, 0.2], tiene_balon: false });
+    },
+    espera: null,
+    esperaAviso: /sin participar en ninguna fase: A3/,
+  },
 
   // ---- lo que salió del piloto ----
   {

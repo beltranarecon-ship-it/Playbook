@@ -21,6 +21,9 @@ export function restPositions(anim) {
     for (const m of fase.movimientos || []) { const e = last(m.path); if (e) { if (m.tipo_elemento === 'balon') B[m.elemento_id] = e; else P[m.elemento_id] = e; } }
     for (const p of fase.pases || []) { owner[p.balon_id] = p.a_id; B[p.balon_id] = P[p.a_id] ? { ...P[p.a_id] } : (last(p.path) || B[p.balon_id]); }
     for (const t of fase.tiros || []) { owner[t.balon_id] = null; const e = last(t.path); if (e) B[t.balon_id] = e; } // el balón vuela al aro (último nodo del path del tiro): misma regla que engine.js#_build (si no, el editor lo pintaría en la mano del tirador en las fases posteriores al tiro)
+    // recogida del rebote: cambia de dueño DESPUÉS del tiro. El viaje del
+    // balón ya lo hizo el movimiento de tipo_elemento 'balon' de arriba.
+    for (const rec of fase.recogidas || []) { if (!rec?.balon_id) continue; owner[rec.balon_id] = rec.jugador_id || null; if (rec.jugador_id && P[rec.jugador_id]) B[rec.balon_id] = { ...P[rec.jugador_id] }; }
     for (const b of anim.balones || []) { const o = owner[b.id]; const moved = (fase.movimientos || []).some((m) => m.tipo_elemento === 'balon' && m.elemento_id === b.id) || (fase.pases || []).some((p) => p.balon_id === b.id) || (fase.tiros || []).some((t) => t.balon_id === b.id); if (o && !moved && P[o]) B[b.id] = { ...P[o] }; }
   }
   return starts;

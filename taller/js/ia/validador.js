@@ -11,7 +11,7 @@ import { PISTAS, clamp01 } from '../canvas/court.js';
 import { sintetizarJugadores, balonesDelTablero } from './compilador.js';
 import { resolverPosicionDetallada, slugPosicion } from './posiciones.js';
 
-const TIPOS = new Set(['bote', 'corte', 'pase', 'tiro', 'bloqueo', 'defiende', 'rodea_cono', 'vuelve_a_fila']);
+const TIPOS = new Set(['bote', 'corte', 'pase', 'tiro', 'bloqueo', 'defiende', 'rodea_cono', 'vuelve_a_fila', 'recoge']);
 
 /**
  * @param intent el objeto { canasta, fases } tal cual llegó de la IA
@@ -104,6 +104,7 @@ export function validarIntent(intent, elementos = [], pista = 'entera', opts = {
         jugador: raw.jugador, tipo: raw.tipo,
         hacia: raw.hacia ?? null, a: raw.a ?? null, cono_id: raw.cono_id ?? null,
         marca: raw.marca ?? null, bloqueado_id: raw.bloqueado_id ?? null,
+        balon_id: raw.balon_id ?? null,
       };
       if (!TIPOS.has(ev.tipo)) { drop(ev, 'acción desconocida'); continue; }
       if (!ids.has(ev.jugador)) { drop(ev, 'jugador inexistente en el tablero'); continue; }
@@ -120,7 +121,8 @@ export function validarIntent(intent, elementos = [], pista = 'entera', opts = {
       }
       // doble movimiento del mismo jugador en la misma fase: el motor indexa
       // por elemento y el segundo machacaría al primero → se queda el PRIMERO.
-      if (ev.tipo === 'bote' || ev.tipo === 'corte') {
+      // 'recoge' también desplaza (va a por el balón), así que cuenta.
+      if (ev.tipo === 'bote' || ev.tipo === 'corte' || ev.tipo === 'recoge') {
         if (movidos.has(ev.jugador)) { drop(ev, 'el jugador ya tiene un movimiento en esta fase'); continue; }
         movidos.add(ev.jugador);
       }
@@ -131,6 +133,13 @@ export function validarIntent(intent, elementos = [], pista = 'entera', opts = {
       if (ev.hacia && typeof ev.hacia === 'object') {
         const fx = Number(ev.hacia.x), fy = Number(ev.hacia.y);
         ev.hacia = (Number.isFinite(fx) && Number.isFinite(fy)) ? { x: clamp01(fx), y: clamp01(fy) } : 'canasta';
+      } else if (ev.hacia === 'aro') {
+        // 'aro' NO se resuelve aquí: es una intención ("termina la jugada
+        // en el aro"), no una coordenada. Si se resolviera contra las
+        // ANCLAS quedaría el centro exacto de la canasta y la ficha se
+        // dibujaría encima, tapándola. El compilador lo traduce al punto
+        // de apoyo, a poco más de un metro, y lo hace desde donde venga
+        // el jugador — que es información que aquí todavía no se tiene.
       } else if (typeof ev.hacia === 'string' && ev.hacia !== 'canasta') {
         // posición con nombre (Tramo 2.2): custom del entrenador primero,
         // luego las ANCLAS medidas. Un nombre lateral sin lado ("la

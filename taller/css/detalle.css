@@ -27,6 +27,67 @@
 .ficha-tags { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .ficha-sec { display: grid; gap: 2px; }
 .ficha-sec__t { color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .06em; font-size: var(--fs-300); }
+.ficha-sec p + p { margin-top: var(--sp-2); }
+
+/* La frase que resume el ejercicio: es lo primero que se lee, así que
+   pesa más que el cuerpo. La jerarquía la da el tamaño, no un adorno. */
+.ficha-idea {
+  font-size: var(--fs-500);
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* Dosis: el dato que se consulta con el silbato en la boca. Se saca de
+   la lista de filas para que se encuentre sin leer. */
+.ficha-dosis {
+  display: grid; gap: 2px;
+  padding: var(--sp-3);
+  background: var(--accent-tint);
+  border-radius: var(--r-sm);
+}
+.ficha-dosis small { color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .06em; font-size: var(--fs-300); }
+.ficha-dosis strong { font-size: var(--fs-500); font-variant-numeric: tabular-nums; }
+
+/* Densidad y oposición: los dos ejes de la doctrina. El color dice el
+   nivel de un vistazo; el title lo explica al pasar por encima. */
+.ficha-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ficha-chip {
+  padding: 3px 10px; border-radius: var(--r-pill);
+  font-size: var(--fs-300); font-weight: 600;
+  background: var(--surface-2); color: var(--color-text);
+  border: 1px solid var(--color-border);
+  cursor: help;
+}
+.ficha-chip.dens--alta   { background: #DCFCE7; border-color: #86EFAC; color: #14532D; }
+.ficha-chip.dens--media  { background: #FEF3C7; border-color: #FCD34D; color: #713F12; }
+.ficha-chip.dens--baja   { background: #FEE2E2; border-color: #FCA5A5; color: #7F1D1D; }
+.ficha-chip.opo--nula       { background: var(--surface-2); }
+.ficha-chip.opo--pasiva     { background: #E0F2FE; border-color: #7DD3FC; color: #075985; }
+.ficha-chip.opo--semiactiva { background: #DBEAFE; border-color: #93C5FD; color: #1E3A8A; }
+.ficha-chip.opo--real       { background: #E0E7FF; border-color: #A5B4FC; color: #312E81; }
+
+/* Los tres escalones de exigencia: el eje que ordena la biblioteca.
+   El escalón lo dice la etiqueta —que es lo que se lee— en vez de un
+   código de color al margen que hay que aprenderse. */
+.ficha-niveles { display: grid; gap: var(--sp-2); }
+.ficha-nivel {
+  display: grid; gap: var(--sp-1);
+  padding: var(--sp-3);
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+}
+.ficha-nivel small {
+  justify-self: start;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  text-transform: uppercase; letter-spacing: .06em;
+  font-size: var(--fs-300); font-weight: 700;
+  background: var(--color-surface); color: var(--color-text-muted);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+.ficha-nivel:nth-child(1) small { color: #075985; box-shadow: inset 0 0 0 1px #7DD3FC; }
+.ficha-nivel:nth-child(2) small { color: #713F12; box-shadow: inset 0 0 0 1px #FCD34D; }
+.ficha-nivel:nth-child(3) small { color: #7F1D1D; box-shadow: inset 0 0 0 1px #FCA5A5; }
 
 .detalle-loading { display: grid; place-content: center; min-height: 60vh; }
 .detalle-error { width: min(540px, 92%); margin: var(--sp-8) auto; text-align: center; display: grid; gap: var(--sp-3); place-items: center; }

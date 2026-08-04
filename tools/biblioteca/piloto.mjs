@@ -24,6 +24,19 @@ import { jug, balon, cono, fila, M, E, compilarFichas } from './montaje.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 
+/* Final de cada una de las dos colas de "Entradas por parejas": el cono
+   está en el 45 y la cola crece hacia el fondo (dirección 180), un paso
+   de 0,06 por jugador. Se calcula en vez de escribirse a mano para que
+   mover la fila no deje la vuelta apuntando al vacío. */
+const PASO_COLA = 0.06;
+const COLA_DER = { x: M.escolta_der[0] + 0.06 - PASO_COLA * 4, y: M.escolta_der[1] };
+const COLA_IZQ = { x: M.escolta_izq[0] + 0.06 - PASO_COLA * 4, y: M.escolta_izq[1] };
+
+/* Y el final de las colas del triángulo de pase, que crecen al revés
+   (dirección 0, hacia medio campo) y son de tres. */
+const COLA_PUNTA = { x: M.base[0] + PASO_COLA * 3, y: M.base[1] };
+const COLA_IZQ_TRI = { x: M.escolta_izq[0] + PASO_COLA * 3, y: M.escolta_izq[1] };
+
 /* ---- las fichas ------------------------------------------------- */
 
 export const PILOTO = [
@@ -76,25 +89,36 @@ export const PILOTO = [
       criterio_exito: 'cuatro de cada cinco recorridos sin perder el balón y terminando la entrada sin pasos',
       aplicacion: '1c1 en pasillo desde medio campo, donde el cambio de mano sirve para superar de verdad a alguien',
     },
+    /* Cola de 4 (D5) y arrancando en 0,58: con 4 esperando y paso de
+       0,06, el último cae en 0,82 — justo dentro del medio campo. A
+       0,62 la cola se salía del campo. */
     tablero: () => [
-      fila(0.62, 0.50, 5, 0),
+      fila(0.58, 0.50, 4, 0),
       cono(0.50, 0.40, 'rodear', null, 'slalom_1'),
       cono(0.40, 0.60, 'rodear', null, 'slalom_2'),
       cono(0.30, 0.44, 'rodear', null, 'slalom_3'),
-      balon(0.62, 0.50),
+      balon(0.58, 0.50),
     ],
     intent: {
       canasta: 'norte',
+      /* 'aro', no 'canasta': la ficha dice "ataca la canasta en doble
+         ritmo" y con 'canasta' el bote se paraba en la línea de tiros
+         libres y el tiro salía de ahí — el ejercicio se llamaba
+         "Slalom y entrada" y dibujaba un tiro de 4,8 m.
+         Y termina el ciclo (rebote + vuelta a la fila) porque la ficha
+         lo describe: "coge su rebote y vuelve al final de la fila". */
       fases: [
         {
           eventos: [
             { jugador: 'fila1', tipo: 'rodea_cono', cono_id: 'slalom_1' },
             { jugador: 'fila1', tipo: 'rodea_cono', cono_id: 'slalom_2' },
             { jugador: 'fila1', tipo: 'rodea_cono', cono_id: 'slalom_3' },
-            { jugador: 'fila1', tipo: 'bote', hacia: 'canasta' },
+            { jugador: 'fila1', tipo: 'bote', hacia: 'aro' },
           ],
         },
-        { eventos: [{ jugador: 'fila1', tipo: 'tiro', hacia: 'canasta' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },
   },
@@ -150,22 +174,49 @@ export const PILOTO = [
       dosis: { series: 3, cantidad: 20, unidad: 'repeticiones', descanso: 30 },
       criterio_exito: 'veinte pases seguidos del tipo correcto sin que el balón toque el suelo fuera del picado',
     },
+    /* TRES FILAS, como dice la ficha, no tres jugadores sueltos: el
+       tablero enseñaba tres fichas y el texto prometía "tres filas
+       cortas", así que el entrenador no veía dónde se pone el resto del
+       grupo — que es justo lo que hay que saber para montarlo. */
     tablero: () => [
-      jug('A', 1, M.escolta_der[0], M.escolta_der[1]),
-      jug('A', 2, M.escolta_izq[0], M.escolta_izq[1]),
-      jug('A', 3, M.base[0], M.base[1]),
-      jug('B', 1, 0.36, 0.50),
+      fila(M.escolta_der[0], M.escolta_der[1], 3, 0),
+      fila(M.base[0], M.base[1], 3, 0),
+      fila(M.escolta_izq[0], M.escolta_izq[1], 3, 0),
+      jug('B', 1, 0.37, 0.496),
       balon(M.escolta_der[0], M.escolta_der[1]),
     ],
     intent: {
       canasta: 'norte',
       /* El "y sigue" es la mitad del ejercicio: cada uno corre detrás
-         del pase que acaba de dar. Sin los cortes, la animación enseña
-         un triángulo de estatuas. */
+         de la fila A LA QUE HA PASADO (no a la suya), así que la vuelta
+         va a un punto explícito y no con 'vuelve_a_fila'.
+         La animación se para cuando el balón llega a la tercera fila:
+         cerrar el triángulo obligaría a sacar al siguiente de la primera
+         cola (fila1_2), que arranca EN el cono y se dibujaría encima del
+         que aún no se ha ido. Con las colas a la vista se entiende igual
+         que el ciclo sigue.
+         Y el defensor central estorba de verdad —se mete en cada línea
+         de pase—, que es lo que obliga a elegir entre picado y de pecho. */
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A3' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: 'base' }, { jugador: 'A3', tipo: 'pase', a: 'A2' }] },
-        { eventos: [{ jugador: 'A3', tipo: 'corte', hacia: 'escolta_izq' }, { jugador: 'A2', tipo: 'pase', a: 'A1' }] },
+        {
+          eventos: [
+            { jugador: 'fila1', tipo: 'pase', a: 'fila2' },
+            { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.392, y: 0.575 } },
+          ],
+        },
+        {
+          eventos: [
+            { jugador: 'fila1', tipo: 'corte', hacia: { x: COLA_PUNTA.x, y: COLA_PUNTA.y } },
+            { jugador: 'fila2', tipo: 'pase', a: 'fila3' },
+            { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.392, y: 0.418 } },
+          ],
+        },
+        {
+          eventos: [
+            { jugador: 'fila2', tipo: 'corte', hacia: { x: COLA_IZQ_TRI.x, y: COLA_IZQ_TRI.y } },
+            { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.375, y: 0.496 } },
+          ],
+        },
       ],
     },
   },
@@ -217,18 +268,26 @@ export const PILOTO = [
       criterio_exito: 'siete de cada diez entran, y el brazo se queda arriba en las diez',
       aplicacion: 'tiro tras recepción con cierre del defensor, donde el mismo gesto tiene que salir con prisa',
     },
+    /* El tirador, a UN METRO del aro: es lo que dice la ficha palabra
+       por palabra ("el tirador se coloca a un metro del aro"), y antes
+       la pizarra lo ponía a 2,7 m — la distancia a la que este ejercicio
+       deja de tener sentido, porque a esa distancia ya hay que empujar
+       el balón, que es justo lo que viene a corregir. */
     tablero: () => [
-      jug('A', 1, M.poste_bajo_der[0] + 0.03, M.poste_bajo_der[1]),
+      jug('A', 1, 0.192, 0.545),
       jug('A', 2, M.poste_bajo_izq[0] + 0.03, M.poste_bajo_izq[1]),
-      balon(M.poste_bajo_der[0] + 0.03, M.poste_bajo_der[1]),
+      balon(0.192, 0.545),
     ],
     intent: {
       canasta: 'norte',
-      /* El compañero va al rebote: lo dice la ficha, así que la
-         animación lo enseña. Si no, se ve un tiro suelto y no se
-         entiende que el ejercicio es por parejas y no para. */
+      /* Las tres fases son el ciclo de la pareja: tiro, el compañero
+         coge el rebote y devuelve. Antes había UNA fase con el tiro y un
+         corte, y se veía un tiro suelto: no se entendía que el ejercicio
+         es por parejas y que no para. */
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }, { jugador: 'A2', tipo: 'corte', hacia: 'canasta' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
+        { eventos: [{ jugador: 'A2', tipo: 'recoge' }] },
+        { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A1' }] },
       ],
     },
   },
@@ -285,17 +344,36 @@ export const PILOTO = [
       criterio_exito: 'ocho de cada diez entradas terminan con el balón tocando el tablero antes que el aro',
       aplicacion: '2c2 en media pista con entrada obligatoria tras el pase',
     },
+    /* Dos balones, como dice la ficha ("con dos balones el ejercicio no
+       para"): uno por fila. Antes el tablero solo tenía uno y el texto
+       prometía algo que la pizarra no enseñaba. */
     tablero: () => [
       fila(M.escolta_der[0] + 0.06, M.escolta_der[1], 4, 180),
       fila(M.escolta_izq[0] + 0.06, M.escolta_izq[1], 4, 180),
       balon(M.escolta_der[0] + 0.06, M.escolta_der[1]),
+      balon(M.escolta_izq[0] + 0.06, M.escolta_izq[1]),
     ],
     intent: {
       canasta: 'norte',
+      /* 'aro': es una ENTRADA. Con 'canasta' el receptor se paraba en el
+         codo y tiraba desde ahí — 3,2 m, un tiro de media distancia en
+         un ejercicio cuyo criterio de éxito habla del tablero.
+
+         La vuelta va a la fila CONTRARIA, que es la gracia del ejercicio
+         ("todos entran por los dos lados"), así que no vale
+         'vuelve_a_fila' —que devuelve a cada uno a SU cola— sino un
+         destino explícito al final de la otra. */
       fases: [
         { eventos: [{ jugador: 'fila1', tipo: 'pase', a: 'fila2' }] },
-        { eventos: [{ jugador: 'fila2', tipo: 'bote', hacia: 'canasta' }] },
-        { eventos: [{ jugador: 'fila2', tipo: 'tiro', hacia: 'canasta' }] },
+        { eventos: [{ jugador: 'fila2', tipo: 'bote', hacia: 'aro' }] },
+        { eventos: [{ jugador: 'fila2', tipo: 'tiro' }] },
+        { eventos: [{ jugador: 'fila2', tipo: 'recoge' }] },
+        {
+          eventos: [
+            { jugador: 'fila2', tipo: 'bote', hacia: { x: COLA_DER.x, y: COLA_DER.y } },
+            { jugador: 'fila1', tipo: 'corte', hacia: { x: COLA_IZQ.x, y: COLA_IZQ.y } },
+          ],
+        },
       ],
     },
   },
@@ -323,9 +401,12 @@ export const PILOTO = [
     ],
     intent: {
       canasta: 'norte',
+      /* 'aro': el perseguidor persigue hasta el final. Con 'canasta' el
+         atacante frenaba a 2,3 m y tiraba — y entonces el defensor de
+         atrás no molesta nada, que es todo el ejercicio. */
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'aro' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
       ],
     },
   },
@@ -349,18 +430,25 @@ export const PILOTO = [
       dosis: { series: 3, cantidad: 8, unidad: 'repeticiones', descanso: 40 },
       criterio_exito: 'ocho paradas seguidas sin arrastrar el pie de pivote, comprobadas por el compañero',
     },
+    /* La cola arranca en 0,58 y no en 0,66: con 4 esperando y paso de
+       0,06, el último caía en 0,90 y el medio campo acaba en 0,829 — el
+       que volvía a la fila se salía de la pista. */
     tablero: () => [
-      fila(0.66, 0.50, 4, 0),
+      fila(0.58, 0.50, 4, 0),
       jug('B', 1, M.tiro_libre[0] - 0.03, M.tiro_libre[1]),
       cono(M.tiro_libre[0], M.tiro_libre[1]),
-      balon(0.66, 0.50),
+      balon(0.58, 0.50),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'tiro_libre' }] },
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'poste_bajo_der' }] },
-        { eventos: [{ jugador: 'fila1', tipo: 'tiro', hacia: 'canasta' }] },
+        // "se sale botando por el lado contrario HACIA LA CANASTA": la
+        // salida termina en el aro, no en el ancla del poste bajo.
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'aro' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },
   },
@@ -495,8 +583,22 @@ export const PILOTO = [
       fases: [
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }, { jugador: 'B2', tipo: 'defiende', marca: 'A2' }] },
         { eventos: [{ jugador: 'B2', tipo: 'defiende', hacia: { x: M.poste_bajo_izq[0] + 0.04, y: M.poste_bajo_izq[1] } }] },
-        { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }, { jugador: 'B2', tipo: 'defiende', marca: 'A2' }] },
-        { eventos: [{ jugador: 'A2', tipo: 'tiro', hacia: 'canasta' }] },
+        /* De las dos salidas que permite la ficha —entrada o tiro del de
+           la esquina— se dibuja la ENTRADA: el de la esquina ataca el
+           hueco que acaba de dejar el ayudante. Antes se dibujaba el
+           tiro, y salía desde la esquina, a 6,6 m del aro: una distancia
+           a la que un alevín no llega, así que el ejercicio terminaba
+           enseñando algo que en el partido no va a pasar.
+           El corte va PRIMERO en la fase para que el pase y la
+           recuperación de B2 lean ya su posición de llegada. */
+        {
+          eventos: [
+            { jugador: 'A2', tipo: 'corte', hacia: 'aro' },
+            { jugador: 'A1', tipo: 'pase', a: 'A2' },
+            { jugador: 'B2', tipo: 'defiende', marca: 'A2' },
+          ],
+        },
+        { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
     },
   },

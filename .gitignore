@@ -11,6 +11,9 @@ dist/
 .env.*
 !.env.example
 
+# Caché de herramientas de revisión de diseño
+.impeccable/
+
 # Sistema operativo / editores
 Thumbs.db
 ehthumbs.db

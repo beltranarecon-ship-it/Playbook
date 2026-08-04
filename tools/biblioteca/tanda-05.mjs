@@ -43,7 +43,11 @@ export const TANDA_05 = [
     tablero: () => [
       jug('A', 1, 0.34, 0.30), jug('B', 1, 0.48, 0.30),
       jug('A', 2, 0.34, 0.70), jug('B', 2, 0.48, 0.70),
-      balon(0.34, 0.30), balon(0.34, 0.30), balon(0.34, 0.70), balon(0.34, 0.70),
+      // los dos balones de cada botador, separados: puestos en la MISMA
+      // coordenada se dibujaban uno encima del otro y parecía uno solo,
+      // en el ejercicio que se llama precisamente "dos balones"
+      balon(0.325, 0.285), balon(0.325, 0.315),
+      balon(0.325, 0.685), balon(0.325, 0.715),
     ],
     intent: null,
   },
@@ -135,7 +139,9 @@ export const TANDA_05 = [
       fases: [
         { eventos: [{ jugador: 'fila1', tipo: 'corte', hacia: 'escolta_der' }] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'fila1' }, { jugador: 'B1', tipo: 'defiende', marca: 'fila1' }] },
-        { eventos: [{ jugador: 'fila1', tipo: 'tiro', hacia: 'canasta' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },
   },

@@ -85,7 +85,11 @@ export const TANDA_02 = [
       canasta: 'norte',
       fases: [
         { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'codo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'fila1' }] },
-        { eventos: [{ jugador: 'fila1', tipo: 'tiro', hacia: 'canasta' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
+        // el ciclo lo cierra el propio tirador: "se rota atacante,
+        // defensor y final de la fila"
+        { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },
   },
@@ -349,8 +353,10 @@ export const TANDA_02 = [
       canasta: 'norte',
       fases: [
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'codo_izq' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }] },
+        // 'aro': la ficha dice "solo puede terminar por ese lado", y
+        // terminar es llegar. Con 'canasta' se quedaba a 1,9 m.
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'aro' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
       ],
     },
   },
@@ -475,10 +481,18 @@ export const TANDA_02 = [
              solo lo registra como defensor y se queda clavado. El `hacia`
              es el punto de bloqueo, entre su par y el aro. */
           eventos: [
+            /* Los atacantes ATACAN el rebote: la ficha les da punto si lo
+               cogen. Antes eran las dos únicas fichas quietas de toda la
+               animación, justo en el ejercicio que trata de impedirles
+               llegar — se veía a dos defensores bloqueando a nadie. */
+            { jugador: 'A1', tipo: 'corte', hacia: { x: M.poste_bajo_der[0] + 0.045, y: M.poste_bajo_der[1] - 0.01 } },
+            { jugador: 'A2', tipo: 'corte', hacia: { x: M.poste_bajo_izq[0] + 0.045, y: M.poste_bajo_izq[1] + 0.01 } },
             { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: M.poste_bajo_der[0] + 0.03, y: M.poste_bajo_der[1] } },
             { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: M.poste_bajo_izq[0] + 0.03, y: M.poste_bajo_izq[1] } },
           ],
         },
+        // y el bloqueo sirve para algo: el defensor coge el rebote
+        { eventos: [{ jugador: 'B1', tipo: 'recoge' }] },
       ],
     },
   },

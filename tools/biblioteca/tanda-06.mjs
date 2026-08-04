@@ -94,8 +94,14 @@ export const TANDA_06 = [
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'codo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'fila1' }] },
-        { eventos: [{ jugador: 'fila1', tipo: 'tiro', hacia: 'canasta' }] },
+        /* Se dibuja el duelo entero con una de las dos salidas que
+           permite la ficha —el retador falla y va al final de la fila—,
+           porque la otra (anota y se queda de rey) deja al balón parado
+           en el aro y no se entiende que el ejercicio no para. */
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'aro' }, { jugador: 'B1', tipo: 'defiende', marca: 'fila1' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },
   },
@@ -217,7 +223,9 @@ export const TANDA_06 = [
       fases: [
         { eventos: [{ jugador: 'fila1', tipo: 'corte', hacia: 'codo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'fila1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'fila1' }] },
-        { eventos: [{ jugador: 'fila1', tipo: 'tiro', hacia: 'canasta' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },
   },
@@ -285,9 +293,19 @@ export const TANDA_06 = [
     intent: {
       canasta: 'norte',
       fases: [
+        /* Los DOS compañeros se mueven "apareciendo y tapándose
+           alternativamente": esa alternancia es el ejercicio. Antes A2 no
+           se movía y no había nada que leer — el pase iba al único que
+           existía. Y no hay tiro: la ficha termina en el pase ("cinco
+           pases y rota"), no en canasta. */
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'codo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        {
+          eventos: [
+            { jugador: 'A3', tipo: 'corte', hacia: 'alero_izq' },
+            { jugador: 'A2', tipo: 'corte', hacia: 'esquina_der' },
+          ],
+        },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A3' }] },
-        { eventos: [{ jugador: 'A3', tipo: 'tiro', hacia: 'canasta' }] },
       ],
     },
   },
@@ -353,9 +371,14 @@ export const TANDA_06 = [
       canasta: 'norte',
       fases: [
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'codo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }, { jugador: 'B2', tipo: 'defiende', marca: 'A2' }] },
-        { eventos: [{ jugador: 'B2', tipo: 'defiende', marca: 'A1', hacia: { x: M.poste_bajo_izq[0] + 0.05, y: M.poste_bajo_izq[1] } }] },
+        { eventos: [{ jugador: 'B2', tipo: 'defiende', hacia: { x: M.poste_bajo_izq[0] + 0.05, y: M.poste_bajo_izq[1] } }] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
-        { eventos: [{ jugador: 'A2', tipo: 'tiro', hacia: 'canasta' }] },
+        /* "el de la esquina, que ahora está libre" recibe y ATACA: antes
+           tiraba desde la esquina, a 6,6 m del aro. Estar libre a esa
+           distancia no sirve de nada en minibasket; estar libre y poder
+           atacar el aro, sí. */
+        { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: 'aro' }, { jugador: 'B2', tipo: 'defiende', marca: 'A2' }] },
+        { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
     },
   },

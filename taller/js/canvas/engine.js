@@ -106,6 +106,17 @@ export class AnimationEngine {
         B[t.balon_id] = lastNode(effPath) || basket;
       }
 
+      // recogidas: alguien va a por un balón suelto y se lo queda. El
+      // VIAJE del balón ya viaja como movimiento de tipo_elemento
+      // 'balon' (lo emite el compilador); esto solo cambia de dueño, que
+      // es lo que hace que el balón le siga en las fases siguientes.
+      // Va DESPUÉS de los tiros: en la misma fase, primero se suelta.
+      for (const rec of (fase.recogidas || [])) {
+        if (!rec || !rec.balon_id) continue;
+        owner[rec.balon_id] = rec.jugador_id || null;
+        if (rec.jugador_id && P[rec.jugador_id]) B[rec.balon_id] = { ...P[rec.jugador_id] };
+      }
+
       // balones en posesión que no se mueven explícitamente: siguen al portador
       for (const b of this.balones) {
         if (m.ballMoves[b.id]) continue;
