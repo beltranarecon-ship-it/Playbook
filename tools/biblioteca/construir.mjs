@@ -29,6 +29,7 @@ import { TANDA_08 } from './tanda-08.mjs';
 import { TANDA_09 } from './tanda-09.mjs';
 import { TANDA_10 } from './tanda-10.mjs';
 import { TANDA_11 } from './tanda-11.mjs';
+import { TANDA_12 } from './tanda-12.mjs';
 import { MAPA, OBJETIVO_TOTAL } from './mapa.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -46,6 +47,7 @@ export const TANDAS = [
   { nombre: 'tanda-09 · tiro: la distancia que se gana y el tiro con oposición', fichas: TANDA_09 },
   { nombre: 'tanda-10 · 1c1: el defensivo, el que se juega sin balón y las restricciones', fichas: TANDA_10 },
   { nombre: 'tanda-11 · defensa: el cierre de rebote como hábito, la ayuda y la voz', fichas: TANDA_11 },
+  { nombre: 'tanda-12 · juego reducido: superioridades, inferioridades y reglas', fichas: TANDA_12 },
 ];
 
 export function biblioteca() {
