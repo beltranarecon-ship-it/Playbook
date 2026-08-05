@@ -386,10 +386,17 @@ exports.handler = async (event) => {
   if (!key) {
     return json(503, {
       sin_configurar: true,
-      error: 'El generador con IA no está configurado: falta la variable ANTHROPIC_API_KEY '
-        + 'en el entorno de la función (Netlify → Site configuration → Environment variables, '
-        + 'o el .env local si arrancas con `netlify dev`). Mientras tanto, la animación se '
-        + 'genera con el lector de texto local.',
+      // `error` es para el entrenador y por eso es corto: lo que le importa
+      // es que su animación va a salir igual, no cómo se configura Netlify.
+      error: 'El generador con IA no está configurado en el servidor.',
+      // `detalle` es para quien administra la web. Va a la consola del
+      // navegador, no a la pantalla: el entrenador no puede hacer nada con
+      // esto y ocuparle el aviso con instrucciones que no son suyas es
+      // ruido. Aquí, y en .env.example.
+      detalle: 'Falta ANTHROPIC_API_KEY en el entorno de la función. '
+        + 'Producción: Netlify → Site configuration → Environment variables, '
+        + 'y REDESPLEGAR (las funciones leen las variables al desplegarse). '
+        + 'Local: solo hace falta con `netlify dev`, en el .env de la raíz.',
     });
   }
 

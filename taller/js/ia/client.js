@@ -53,13 +53,22 @@ export async function generarAnimacion({ texto, elementos, pista, respuestas = n
     });
     const raw = await res.text();
     const data = JSON.parse(raw); // si vino HTML (dev) lanza y caemos al local
-    /* Servidor SIN configurar (falta ANTHROPIC_API_KEY): no es un error del
-       entrenador y no se arregla desde esta pantalla, así que no se le
-       planta un muro — se genera con el lector local y se le dice por qué,
-       como warning. En local, sin function ninguna, el paso 2 ya funcionaba
-       así; era absurdo que un despliegue a medias lo dejara peor. */
-    if (data && data.sin_configurar) {
-      return generarLocal(texto, elementos, pista, respuestas, [data.error], custom);
+    /* Servidor levantado pero SIN configurar (le falta ANTHROPIC_API_KEY): no
+       es un error del entrenador y no se arregla desde esta pantalla, así que
+       no se le planta un muro — se genera con el lector local, que es
+       exactamente lo que ya pasaba en desarrollo sin function ninguna.
+
+       Se mira el ESTADO (503) además de la bandera: así el cliente sigue
+       cayendo bien aunque el servidor sea de otra versión y no mande
+       `sin_configurar`, que es justo el desajuste que se ve cuando la
+       function ya está desplegada y el navegador aún tiene el js viejo. */
+    if (res.status === 503 || (data && data.sin_configurar)) {
+      // el cómo se arregla es cosa de quien administra la web, y su sitio es
+      // la consola; la pantalla del entrenador lleva solo el qué (sin_ia).
+      console.error('[Taller] Generador con IA no disponible.', (data && (data.detalle || data.error)) || `HTTP ${res.status}`);
+      const local = generarLocal(texto, elementos, pista, respuestas, [], custom);
+      if (local && Array.isArray(local.fases)) local.sin_ia = true;
+      return local;
     }
     if (data && data.error) return data;
     if (data && Array.isArray(data.preguntas)) {

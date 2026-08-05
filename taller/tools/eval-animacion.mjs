@@ -1803,9 +1803,50 @@ casos.push({
   check: ({ estado, cuerpo }) => {
     if (estado !== 503) return ko(`sin key el estado debería ser 503 (no disponible), y es ${estado}`);
     if (cuerpo.sin_configurar !== true) return ko('falta la bandera sin_configurar, que es la que dispara el lector local');
-    if (!/ANTHROPIC_API_KEY/.test(cuerpo.error || '')) return ko('el mensaje tiene que nombrar la variable que falta');
-    if (!/Netlify|netlify dev/.test(cuerpo.error || '')) return ko('el mensaje tiene que decir DÓNDE se pone, o no sirve de nada');
+    // El reparto importa: `error` es lo que se le enseña al entrenador y por
+    // eso NO lleva instrucciones de despliegue; `detalle` es para quien
+    // administra, y va a la consola.
+    if (!/ANTHROPIC_API_KEY/.test(cuerpo.detalle || '')) return ko('el detalle técnico tiene que nombrar la variable que falta');
+    if (!/Netlify|netlify dev/.test(cuerpo.detalle || '')) return ko('el detalle tiene que decir DÓNDE se pone, o no sirve de nada');
+    if (/ANTHROPIC_API_KEY|Netlify/.test(cuerpo.error || '')) return ko('el mensaje del entrenador no debe llevar instrucciones de servidor: no puede hacer nada con ellas');
     return { pass: true };
+  },
+});
+
+casos.push({
+  categoria: 'IA (camino de red)',
+  nombre: 'servidor_sin_configurar_genera_con_lector_local_y_avisa',
+  /* La otra mitad del arreglo, y la que de verdad falló en producción: el
+     503 lo tiene que atender el CLIENTE. Antes devolvía el { error } tal
+     cual y paso2.js pinta los error en rojo, así que el paso quedaba muerto
+     — con la function desplegada y sin key se estaba peor que en local sin
+     function ninguna, donde el lector de regex ya salvaba la papeleta.
+
+     Se comprueba por ESTADO y no solo por la bandera: es lo que hace que
+     el cliente siga cayendo bien aunque el servidor sea de otra versión. */
+  sinGenerica: true,
+  async run() {
+    const fetchPrevio = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      status: 503,
+      text: async () => JSON.stringify({ sin_configurar: true, error: 'El generador con IA no está configurado en el servidor.', detalle: 'Falta ANTHROPIC_API_KEY…' }),
+    });
+    try {
+      return await generarAnimacion({
+        texto: 'A1 bota hacia la canasta y tira.',
+        elementos: [jugador('A', 1, 0.6, 0.5), balon(0.61, 0.5)],
+        pista: 'media', respuestas: null,
+      });
+    } finally {
+      if (fetchPrevio) globalThis.fetch = fetchPrevio; else delete globalThis.fetch;
+    }
+  },
+  check(res) {
+    if (esError(res)) return ko(`un servidor sin configurar no puede dejar el paso 2 muerto; llegó { error: "${res.error}" }`);
+    if (!esExito(res)) return ko(`se esperaba una animación del lector local; llegó ${forma(res)}`);
+    if (res.sin_ia !== true) return ko('falta la marca sin_ia: sin ella el entrenador no sabe que la lectura es la basta');
+    if (res._mock !== true) return ko('la animación tendría que venir del lector local (_mock:true)');
+    return ok();
   },
 });
 

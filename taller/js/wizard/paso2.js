@@ -123,6 +123,7 @@ export function paso2(ctx) {
   function mostrarConfirmacion(data) {
     stage.showPreview(data);
     mount(statusHost,
+      data.sin_ia ? bannerSinIA() : null,
       (data.warnings && data.warnings.length) ? warningsBanner(data.warnings) : null,
       (data._descartadas && data._descartadas.length) ? bannerDescartadas(data._descartadas.length) : null,
       tarjetaPreview(data),
@@ -359,7 +360,10 @@ export function paso2(ctx) {
       h('div', { class: 'row' },
         h('button', { class: 'btn btn--primary', type: 'button', onClick: () => {
           stage.showAnimation(data);
-          mount(statusHost, (data.warnings && data.warnings.length) ? warningsBanner(data.warnings) : banner('ok', 'Animación generada. Se reproduce en la pista.'));
+          mount(statusHost,
+            data.sin_ia ? bannerSinIA() : null,
+            (data.warnings && data.warnings.length) ? warningsBanner(data.warnings)
+              : (data.sin_ia ? null : banner('ok', 'Animación generada. Se reproduce en la pista.')));
         } }, 'Animar'),
         h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => {
           // corregir: la pista vuelve al modo edición y el textarea queda
@@ -465,6 +469,20 @@ export function paso2(ctx) {
 
 function banner(type, text) {
   return h('div', { class: `ia-banner ia-banner--${type}` }, h('span', null, text));
+}
+
+/* Generado sin IA porque el servidor no tiene clave. NO es un error: la
+   animación está hecha y se puede seguir. Se le dice al entrenador lo único
+   que le sirve —que la lectura del texto es más basta y que avise a quien
+   lleva la web—; el cómo se configura vive en la consola y en .env.example,
+   que es donde lo va a buscar quien pueda arreglarlo. */
+function bannerSinIA() {
+  return h('div', { class: 'ia-banner ia-banner--warn' },
+    h('p', null, h('b', null, '⚠ Animación generada sin IA.')),
+    h('p', null, 'El generador con IA no está disponible ahora mismo, así que el texto se ha '
+      + 'leído aquí, en el navegador: entiende las acciones básicas pero se pierde los matices. '
+      + 'Revisa la pista antes de animar, y avisa a quien administre la web.'),
+  );
 }
 
 function warningsBanner(warnings) {
