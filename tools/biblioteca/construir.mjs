@@ -31,6 +31,8 @@ import { TANDA_10 } from './tanda-10.mjs';
 import { TANDA_11 } from './tanda-11.mjs';
 import { TANDA_12 } from './tanda-12.mjs';
 import { TANDA_13 } from './tanda-13.mjs';
+import { TANDA_14 } from './tanda-14.mjs';
+import { TANDA_15 } from './tanda-15.mjs';
 import { MAPA, OBJETIVO_TOTAL } from './mapa.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +52,8 @@ export const TANDAS = [
   { nombre: 'tanda-11 · defensa: el cierre de rebote como hábito, la ayuda y la voz', fichas: TANDA_11 },
   { nombre: 'tanda-12 · juego reducido: superioridades, inferioridades y reglas', fichas: TANDA_12 },
   { nombre: 'tanda-13 · pase: la decisión de pasar, no solo el gesto', fichas: TANDA_13 },
+  { nombre: 'tanda-14 · entrada: los dos lados, el contacto y la mano cambiada', fichas: TANDA_14 },
+  { nombre: 'tanda-15 · juego de dos: pasar y cortar, aclarado y los dos bloqueos', fichas: TANDA_15 },
 ];
 
 export function biblioteca() {
