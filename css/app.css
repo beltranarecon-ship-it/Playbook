@@ -242,7 +242,11 @@
 
 .exercise-card-thumb {
   position: relative;
-  aspect-ratio: 16 / 10;
+  /* La proporción de la pista (297:210), no un 16:10 genérico: la
+     miniatura se genera apaisada con esa misma proporción y así entra
+     entera. Con 16:10 y object-fit:cover se recortaban los laterales,
+     que es justo donde hay gente en medio ejercicio. */
+  aspect-ratio: 297 / 210;
   margin: -0.25rem -0.25rem 0.875rem;
   border-radius: 10px;
   overflow: hidden;

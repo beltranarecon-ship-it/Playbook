@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miniaturas de la biblioteca · Playbook CBP</title>
+  <link rel="stylesheet" href="/taller/css/tokens.css">
+  <link rel="stylesheet" href="/taller/css/base.css">
+  <link rel="stylesheet" href="/taller/css/canvas.css">
+  <style>
+    body { font-family: var(--font-body); padding: var(--sp-6); max-width: 900px; margin-inline: auto; }
+    h1 { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+    .barra { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; margin-block: var(--sp-5); }
+    .aviso { background: var(--warn-bg); padding: var(--sp-3) var(--sp-4); border-radius: var(--r-sm); }
+    #log { font-family: var(--font-mono); font-size: var(--fs-300); line-height: 1.6;
+           background: var(--surface-2); padding: var(--sp-4); border-radius: var(--r-sm);
+           max-height: 55vh; overflow: auto; white-space: pre-wrap; }
+    .muestras { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-block: var(--sp-4); }
+    .muestras figure { margin: 0; width: 200px; }
+    .muestras img { width: 100%; border-radius: var(--r-sm); display: block; }
+    .muestras figcaption { font-size: var(--fs-300); color: var(--color-text-muted); margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Miniaturas de la biblioteca</h1>
+
+  <p class="muted">
+    Genera el <strong>póster</strong> (imagen fija de la tarjeta) y el <strong>GIF</strong>
+    (el que se ve al pasar el ratón) de cada ejercicio, y los guarda en su ficha.
+    Hay que hacerlo desde el navegador porque el dibujo necesita un lienzo de verdad.
+  </p>
+
+  <p class="aviso">
+    Requiere sesión iniciada, y solo puede escribir en los ejercicios de los que eres autor.
+    Empieza por <strong>Medir</strong>: genera cinco sin guardar nada y dice cuánto ocupan.
+    Sin sesión, mide sobre la biblioteca compilada del repositorio.
+  </p>
+
+  <p class="muted">
+    El <strong>GIF viene desactivado</strong> a propósito. Medido sobre esta biblioteca:
+    el póster ocupa <strong>7 kB</strong> y el GIF más pequeño que todavía se entiende,
+    <strong>175 kB</strong> — unos 11 MB de biblioteca, y esos 175 kB se descargan cada vez
+    que el ratón cruza una tarjeta. GIF es de paleta y vuelve a dibujar el suelo de madera
+    entero en cada fotograma, así que no baja de ~30 kB por fotograma haga lo que haga.
+    Para lo que aporta —un clic más allá está la animación entera, grande y con controles—
+    no compensa. Se puede activar si lo quieres.
+  </p>
+
+  <div class="barra">
+    <button class="btn btn--secondary" id="btn-medir" type="button">Medir 5 (no guarda)</button>
+    <button class="btn btn--primary" id="btn-generar" type="button">Generar las que faltan</button>
+    <button class="btn btn--ghost" id="btn-todas" type="button">Regenerar TODAS</button>
+    <label><input type="checkbox" id="chk-gif"> con GIF (+175 kB por ejercicio)</label>
+  </div>
+
+  <div class="muestras" id="muestras"></div>
+  <div id="log">Listo.</div>
+
+  <script type="module">
+    /* ============================================================
+       Pasada de miniaturas (§19, Prioridad 6 del informe de calidad).
+
+       Las 97 fichas se importaron sin póster ni GIF, así que la
+       biblioteca eran 97 tarjetas de texto idénticas y el hover con GIF
+       —que ya estaba programado— no hacía nada. Elegir un ejercicio
+       leyendo 97 títulos es el peor caso posible: la miniatura no es
+       decoración, es el mecanismo de búsqueda visual.
+
+       Es una herramienta de una pasada, no parte de la aplicación: se
+       abre a mano, se mira lo que dice y se cierra.
+       ============================================================ */
+    import { supabase } from '/taller/js/supabase/client.js';
+    import { generarThumbnail } from '/taller/js/canvas/thumbnail.js';
+
+    const log = document.getElementById('log');
+    const muestras = document.getElementById('muestras');
+    const conGif = () => document.getElementById('chk-gif').checked;
+    let ocupado = false;
+
+    const kb = (dataUrl) => Math.round((dataUrl?.length || 0) * 0.75 / 1024);
+    const escribe = (t) => { log.textContent += '\n' + t; log.scrollTop = log.scrollHeight; };
+    const limpia = (t) => { log.textContent = t; muestras.replaceChildren(); };
+
+    async function fichas({ soloSinPoster }) {
+      let q = supabase.from('exercises')
+        .select('id, name, animacion, tipo_pista, poster')
+        .eq('is_archived', false)
+        .order('name');
+      if (soloSinPoster) q = q.is('poster', null);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []).filter((f) => f.animacion);
+    }
+
+    /* Medir no debería exigir sesión: lo que se quiere saber es cuánto va
+       a ocupar esto ANTES de escribir nada, y la biblioteca compilada
+       está en el repositorio. Así se puede decidir el tamaño y la calidad
+       sin tocar la base de datos ni entrar en la aplicación. */
+    async function fichasLocales() {
+      const r = await fetch('/tools/biblioteca/biblioteca.json');
+      if (!r.ok) throw new Error('no encuentro tools/biblioteca/biblioteca.json');
+      return (await r.json()).filter((f) => f.animacion)
+        .map((f) => ({ id: null, name: f.name, animacion: f.animacion, tipo_pista: f.tipo_pista }));
+    }
+
+    /** Una ficha: genera y (si toca) guarda. Devuelve los tamaños. */
+    async function unaFicha(f, { guardar }) {
+      const anim = { ...f.animacion, pista: f.animacion.pista || f.tipo_pista || 'entera' };
+      // 280 px de ancho: la tarjeta de la biblioteca mide unos 260 en
+      // escritorio, así que se ve nítida sin pagar el doble de peso.
+      const t = await generarThumbnail(anim, { width: 280, frames: 6, fps: 4, gifWidth: 180, gifQuality: 20, soloPoster: !conGif() });
+      if (guardar) {
+        const { error } = await supabase.from('exercises')
+          .update({ poster: t.poster, thumbnail: t.gif })
+          .eq('id', f.id);
+        if (error) throw error;
+      }
+      return { ...t, kbPoster: kb(t.poster), kbGif: kb(t.gif) };
+    }
+
+    async function correr({ soloSinPoster, guardar, tope }) {
+      if (ocupado) return;
+      ocupado = true;
+      try {
+        limpia('Pidiendo la biblioteca…');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user && guardar) { escribe('No hay sesión iniciada. Entra en la app y vuelve.'); return; }
+
+        let lista;
+        if (user) lista = await fichas({ soloSinPoster });
+        else { lista = await fichasLocales(); escribe('Sin sesión: midiendo sobre la biblioteca compilada del repositorio.'); }
+        if (tope) lista = lista.slice(0, tope);
+        escribe(`${lista.length} ejercicio(s) con pizarra.` + (guardar ? '' : '  (ensayo: no se guarda nada)'));
+
+        let totalP = 0, totalG = 0, fallos = 0;
+        for (const [i, f] of lista.entries()) {
+          try {
+            const r = await unaFicha(f, { guardar });
+            totalP += r.kbPoster; totalG += r.kbGif;
+            escribe(`${String(i + 1).padStart(3)}/${lista.length}  ${r.kbPoster.toString().padStart(3)} kB` +
+                    `${r.gif ? ` + ${String(r.kbGif).padStart(4)} kB gif` : '  (sin gif)'}   ${f.name}`);
+            if (!guardar && muestras.children.length < 5) {
+              const fig = document.createElement('figure');
+              const img = document.createElement('img');
+              img.src = r.gif || r.poster;
+              const cap = document.createElement('figcaption');
+              cap.textContent = `${f.name} · ${r.formato}`;
+              fig.append(img, cap); muestras.append(fig);
+            }
+          } catch (e) {
+            fallos++;
+            escribe(`     ERROR  ${f.name}: ${e.message}`);
+          }
+          // un respiro al hilo principal: si no, la pestaña se congela
+          await new Promise((r) => setTimeout(r, 0));
+        }
+
+        escribe('');
+        escribe(`Pósters: ${totalP} kB en total (${lista.length ? Math.round(totalP / lista.length) : 0} kB de media).`);
+        escribe(`GIFs:    ${totalG} kB en total.`);
+        if (fallos) escribe(`${fallos} fallo(s).`);
+        escribe(guardar ? 'Guardado.' : 'Ensayo terminado: no se ha escrito nada.');
+      } catch (e) {
+        escribe('ERROR: ' + e.message);
+      } finally { ocupado = false; }
+    }
+
+    document.getElementById('btn-medir').onclick = () => correr({ soloSinPoster: false, guardar: false, tope: 5 });
+    document.getElementById('btn-generar').onclick = () => correr({ soloSinPoster: true, guardar: true });
+    document.getElementById('btn-todas').onclick = () => correr({ soloSinPoster: false, guardar: true });
+  </script>
+</body>
+</html>
