@@ -371,8 +371,27 @@ function extractJson(text) {
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return json(405, { error: 'Método no permitido.' });
 
+  /* Sin key la función no puede hacer su trabajo, pero eso NO es un fallo
+     del entrenador ni algo que él pueda arreglar desde la pantalla. Se
+     responde 503 (servicio no disponible, no "error del servidor") y con
+     `sin_configurar: true`, que es la bandera que el cliente mira para
+     caer al lector local en vez de plantar un muro: ia/client.js.
+
+     Antes esto devolvía un 500 con `error`, y el cliente enseña los
+     `error` tal cual — así que en un despliegue sin key el paso 2 se
+     quedaba muerto, cuando en local, SIN function ninguna, el mismo paso
+     funcionaba con el extractor de regex. Estar desplegado a medias era
+     peor que no estarlo. */
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return json(500, { error: 'Falta ANTHROPIC_API_KEY en el servidor.' });
+  if (!key) {
+    return json(503, {
+      sin_configurar: true,
+      error: 'El generador con IA no está configurado: falta la variable ANTHROPIC_API_KEY '
+        + 'en el entorno de la función (Netlify → Site configuration → Environment variables, '
+        + 'o el .env local si arrancas con `netlify dev`). Mientras tanto, la animación se '
+        + 'genera con el lector de texto local.',
+    });
+  }
 
   let payload;
   try { payload = JSON.parse(event.body || '{}'); }

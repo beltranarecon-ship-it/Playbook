@@ -53,6 +53,14 @@ export async function generarAnimacion({ texto, elementos, pista, respuestas = n
     });
     const raw = await res.text();
     const data = JSON.parse(raw); // si vino HTML (dev) lanza y caemos al local
+    /* Servidor SIN configurar (falta ANTHROPIC_API_KEY): no es un error del
+       entrenador y no se arregla desde esta pantalla, así que no se le
+       planta un muro — se genera con el lector local y se le dice por qué,
+       como warning. En local, sin function ninguna, el paso 2 ya funcionaba
+       así; era absurdo que un despliegue a medias lo dejara peor. */
+    if (data && data.sin_configurar) {
+      return generarLocal(texto, elementos, pista, respuestas, [data.error], custom);
+    }
     if (data && data.error) return data;
     if (data && Array.isArray(data.preguntas)) {
       // §Tramo 1.3: al entrenador solo le llegan preguntas de la LISTA FIJA de

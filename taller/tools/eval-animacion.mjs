@@ -1778,6 +1778,39 @@ async function llamarFunction(payload, respuestaAnthropic) {
 
 casos.push({
   categoria: 'Tramo 3 (vista del modelo)',
+  nombre: 'sin_api_key_la_function_avisa_para_caer_al_lector_local',
+  // Un despliegue SIN ANTHROPIC_API_KEY no puede generar con IA, pero eso
+  // no es culpa del entrenador ni se arregla desde su pantalla. La
+  // function responde 503 con `sin_configurar: true`, que es la bandera
+  // que ia/client.js mira para caer al extractor local en vez de enseñar
+  // un error y dejar el paso 2 muerto. Antes era un 500 con `error`, y el
+  // cliente enseña los `error` tal cual: en producción sin key el paso se
+  // quedaba bloqueado, cuando en local —sin function ninguna— funcionaba.
+  sinGenerica: true,
+  async run() {
+    const mod = await import('../../netlify/functions/generar-animacion.js');
+    const handler = mod.handler || (mod.default && mod.default.handler);
+    const keyPrevia = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    let out;
+    try {
+      out = await handler({ httpMethod: 'POST', body: JSON.stringify({ texto: 'algo', posiciones: [], pista: 'media' }) });
+    } finally {
+      if (keyPrevia !== undefined) process.env.ANTHROPIC_API_KEY = keyPrevia;
+    }
+    return { estado: out.statusCode, cuerpo: JSON.parse(out.body) };
+  },
+  check: ({ estado, cuerpo }) => {
+    if (estado !== 503) return ko(`sin key el estado debería ser 503 (no disponible), y es ${estado}`);
+    if (cuerpo.sin_configurar !== true) return ko('falta la bandera sin_configurar, que es la que dispara el lector local');
+    if (!/ANTHROPIC_API_KEY/.test(cuerpo.error || '')) return ko('el mensaje tiene que nombrar la variable que falta');
+    if (!/Netlify|netlify dev/.test(cuerpo.error || '')) return ko('el mensaje tiene que decir DÓNDE se pone, o no sirve de nada');
+    return { pass: true };
+  },
+});
+
+casos.push({
+  categoria: 'Tramo 3 (vista del modelo)',
   nombre: 'balon_y_poseedor_se_envian_al_modelo',
   // El payload que construye la Function incluye los balones (posición +
   // en_manos_de por cercanía), el dorsal VISIBLE y el nombre de cada
