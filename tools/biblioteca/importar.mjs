@@ -17,6 +17,11 @@
      node tools/biblioteca/importar.mjs --confirmar → importa de verdad
      node tools/biblioteca/importar.mjs --revertir <manifiesto.json>
 
+   Y para AÑADIR una tanda nueva sin tocar lo que ya está (que es como
+   crece la biblioteca, de once en once):
+     node tools/biblioteca/importar.mjs --solo-nuevas             → ensayo
+     node tools/biblioteca/importar.mjs --solo-nuevas --confirmar → escribe
+
    Y para corregir fichas YA importadas (una animación mal, una errata):
      node tools/biblioteca/importar.mjs --actualizar             → ensayo
      node tools/biblioteca/importar.mjs --actualizar --confirmar → escribe
@@ -167,7 +172,7 @@ if (process.argv.includes('--actualizar')) {
   console.log(`\n─── Actualización ────────────────────────────────────\n`);
   console.log(`  ${enBase.length} en la base · ${cambian.length} con cambios · ${fichas.length - cambian.length - nuevas.length} idénticas`);
   if (nuevas.length) {
-    console.log(`\n  ${nuevas.length} ficha(s) NO están en la base (usa --confirmar sin --actualizar para darlas de alta):`);
+    console.log(`\n  ${nuevas.length} ficha(s) NO están en la base (usa --solo-nuevas --confirmar para darlas de alta):`);
     for (const n of nuevas.slice(0, 10)) console.log(`    · ${n}`);
   }
   if (cambian.length) {
@@ -223,7 +228,27 @@ const yaEstan = new Set(existentes.map((e) => e.name));
 const repetidas = fichas.filter((f) => yaEstan.has(f.name));
 
 console.log(`  En la base hay ya ${existentes.length} ejercicio(s)`);
-if (repetidas.length) {
+
+/* `--solo-nuevas`: da de alta las que faltan y no toca las que ya
+   están. Es el modo de seguir escribiendo tandas: la biblioteca crece
+   en tandas de diez u once fichas, y sin esto la única salida era
+   purgar las 97 y reimportarlo todo — perdiendo los ids y, con ellos,
+   los bloques de sesión que ya apuntan a esos ejercicios.
+
+   Sigue dejando manifiesto, así que una tanda recién dada de alta se
+   revierte igual con --revertir. Para CORREGIR fichas que ya están,
+   sigue siendo --actualizar. */
+const soloNuevas = process.argv.includes('--solo-nuevas');
+if (soloNuevas && repetidas.length) {
+  const antes = fichas.length;
+  const nuevas = fichas.filter((f) => !yaEstan.has(f.name));
+  fichas.length = 0;
+  fichas.push(...nuevas);
+  console.log(`  ${repetidas.length} ya estaban y no se tocan · ${fichas.length} de ${antes} son nuevas`);
+  if (!fichas.length) { console.log('\n  Nada nuevo que dar de alta.\n'); process.exit(0); }
+}
+
+if (!soloNuevas && repetidas.length) {
   console.error(`\n  ${repetidas.length} ficha(s) YA existen por nombre. Importar duplicaría la biblioteca.`);
   console.error('  Purga primero, o borra esas fichas a mano:\n');
   for (const f of repetidas.slice(0, 10)) console.error(`    · ${f.name}`);
@@ -250,7 +275,10 @@ if (!process.argv.includes('--confirmar')) {
   console.log('\n─── Ensayo: no se ha escrito nada ────────────────────\n');
   console.log(`  ${filas.length} fichas listas para importar.`);
   console.log('  Para importar de verdad:\n');
-  console.log('      node tools/biblioteca/importar.mjs --confirmar\n');
+  // el mismo comando que se acaba de lanzar, más --confirmar: sin el
+  // --solo-nuevas el alta abortaría por nombres repetidos, y copiar la
+  // línea de aquí es justo lo que se hace
+  console.log(`      node tools/biblioteca/importar.mjs${soloNuevas ? ' --solo-nuevas' : ''} --confirmar\n`);
   process.exit(0);
 }
 
