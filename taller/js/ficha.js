@@ -78,15 +78,39 @@ export function textoDuracion(ej) {
   return (b && b !== a) ? `${a}–${b} min` : `${a} min`;
 }
 
+/** Los tres escalones, en orden. Es el eje que ordena la biblioteca. */
+export const NIVELES = ['base', 'intermedio', 'avanzado'];
+
 /**
- * Los tres escalones de exigencia. Hoy viven dentro del campo de texto
- * `variantes` como prosa ("Base: … Intermedio: … Avanzado: …"), que es
- * como se escribieron las 97 fichas. Se parten aquí para poder
- * enseñarlos como tres opciones, que es como se usan en la pista.
+ * Los tres escalones de exigencia de una ficha, vengan de donde vengan.
  *
- * Devuelve null si el texto no sigue el patrón — y entonces quien
- * llama enseña `variantes` tal cual. Nunca se pierde contenido: peor
- * que no tener niveles es tragarse el texto por no reconocerlo.
+ * Primero mira el DATO (`requisitos.niveles`), que es como está la
+ * biblioteca desde que se estructuró. Si no lo hay —un ejercicio
+ * escrito a mano en el Taller, que tiene un hueco de texto libre— cae a
+ * partir la prosa de `variantes`. Y si tampoco casa, devuelve null y
+ * quien llama enseña `variantes` tal cual: nunca se pierde contenido.
+ *
+ * Que exista el respaldo no lo convierte en lo mismo: partir prosa es
+ * una regla de formato tácita, y una ficha que no la siga se enseñaba
+ * como un párrafo denso sin que nadie se enterara.
+ */
+export function nivelesDe(ficha) {
+  const n = ficha?.requisitos?.niveles;
+  if (n && typeof n === 'object') {
+    const escalones = NIVELES
+      .filter((k) => String(n[k] || '').trim())
+      .map((k) => ({ nivel: k[0].toUpperCase() + k.slice(1), clave: k, texto: String(n[k]).trim() }));
+    if (escalones.length) return escalones;
+  }
+  return niveles(ficha?.variantes);
+}
+
+/**
+ * Parte la prosa "Base: … Intermedio: … Avanzado: …" en tres escalones.
+ * Es el RESPALDO de nivelesDe() para fichas sin el dato estructurado;
+ * la biblioteca ya no pasa por aquí.
+ *
+ * Devuelve null si el texto no sigue el patrón.
  */
 export function niveles(texto) {
   const t = String(texto || '').trim();
@@ -101,6 +125,7 @@ export function niveles(texto) {
     const cuerpo = m[2].trim();
     escalones.push({
       nivel: m[1][0].toUpperCase() + m[1].slice(1).toLowerCase(),
+      clave: m[1].toLowerCase(),
       texto: /[.!?]$/.test(cuerpo) ? cuerpo : `${cuerpo}.`,
     });
   }

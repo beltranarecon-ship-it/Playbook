@@ -20,8 +20,8 @@ de las intenciones.
 
 | | |
 |---|---|
-| ✅ **Hecho** | Prioridades 1 a 6: la ficha enseña lo que tiene, la geometría de las finalizaciones y el cierre de ciclo (con reglas de linter y las 97 fichas actualizadas en Supabase), buscador y filtros, propagación en el editor, campo de organización para 12, y el generador de miniaturas. |
-| ⬜ **Pendiente** | Prioridad 7 (los tres niveles como dato estructurado), Prioridad 8 (limpieza de coherencia) y **pulsar el botón** de la pasada de miniaturas, que necesita sesión iniciada. |
+| ✅ **Hecho** | Prioridades 1 a 7: la ficha enseña lo que tiene, la geometría de las finalizaciones y el cierre de ciclo (con reglas de linter y las 97 fichas actualizadas en Supabase), buscador y filtros, propagación en el editor, campo de organización para 12, generador de miniaturas, y los tres niveles de exigencia como dato. |
+| ⬜ **Pendiente** | Prioridad 8 (limpieza de coherencia) y **pulsar el botón** de la pasada de miniaturas, que necesita sesión iniciada. |
 
 Lo verificado sobre la base de datos después de los arreglos:
 
@@ -39,7 +39,9 @@ Lo verificado sobre la base de datos después de los arreglos:
 | Desfase entre un jugador y el origen de su flecha tras editar | 2,1 m | **0** |
 | Fichas que dicen cómo montarse con 12 | 0 | **97** |
 | Peso de las miniaturas de toda la biblioteca | — | **522 kB** (5 kB de media) |
-| Casos en los dos bancos tocados (motor + linter) | 132 | **146**, todos en verde |
+| Niveles de exigencia que existen como dato | 0 | **97 × 3** |
+| Datos de la ficha que usa el proyector | 1 de 6 | dosis, criterio y nivel elegido |
+| Casos en los dos bancos tocados (motor + linter) | 132 | **149**, todos en verde |
 
 ---
 

@@ -21,7 +21,6 @@ export const TANDA_07 = [
     objetivos: 'Cambiar de dirección constantemente mientras se procesa una orden, sin que el balón mande.',
     descripcion_texto: 'Doce conos en círculo, numerados del uno al doce. Todos botan dentro del círculo. El entrenador dice una hora —"las cuatro"— y hay que ir al cono correspondiente rodeándolo por fuera y volver al centro. Si dice "y media", hay que ir al cono de enfrente. Nadie puede chocar.',
     notas: 'Puntos clave: el cambio de dirección se hace con el pie de fuera y bajando el bote; la orden obliga a levantar la vista antes de arrancar. Error frecuente: salir corriendo antes de saber adónde. Este ejercicio funciona porque hay que pensar Y botar: quitarle la parte de pensar lo convierte en el ejercicio de circo del que avisa D20.',
-    variantes: 'Base: seis conos y solo el número. Intermedio: doce conos con horas. Avanzado: horas con "y media", y hay que ir con la mano no dominante.',
     tags: ['bote', 'cambio de dirección', 'cabeza levantada', 'coordinación', 'toma de decisiones'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
@@ -29,6 +28,11 @@ export const TANDA_07 = [
       requisito_previo: 'botar en movimiento cambiando de dirección sin perder el balón',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 45 },
       organizacion: 'Con 12: cuatro grupos de tres a la vez, repartidos por la pista. No usa canastas.',
+      niveles: {
+        base: 'seis conos y solo el número.',
+        intermedio: 'doce conos con horas.',
+        avanzado: 'horas con "y media", y hay que ir con la mano no dominante.',
+      },
       criterio_exito: 'acertar el cono en nueve de cada diez órdenes sin perder el balón',
     },
     tablero: () => [
@@ -49,7 +53,6 @@ export const TANDA_07 = [
     objetivos: 'Manipular y recibir a alta frecuencia sin que la vista se quede pegada al balón.',
     descripcion_texto: 'Cada jugador frente a una pared a dos metros, pasando y recibiendo sin parar. Un compañero al lado va levantando dedos y hay que decir el número en voz alta. Se alterna: pase de pecho, picado contra la pared y pase con una mano. Treinta segundos por tipo.',
     notas: 'Puntos clave: se recibe con las manos preparadas por delante, no pegadas al cuerpo; el pase sale y vuelve sin que los pies se muevan del sitio. Error frecuente: acercarse a la pared cuando aumenta el ritmo, con lo que deja de ser un pase. Marca la distancia con un cono. Si no hay pared disponible, se hace por parejas y funciona igual de bien.',
-    variantes: 'Base: solo pase de pecho, sin números, quince segundos. Intermedio: tres tipos de pase con números. Avanzado: dos balones alternos contra la pared.',
     tags: ['pase', 'recepción', 'coordinación', 'cabeza levantada', 'analítico'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
@@ -57,6 +60,11 @@ export const TANDA_07 = [
       requisito_previo: 'pasar de pecho y recibir con las dos manos sin que se caiga',
       dosis: { series: 3, cantidad: 30, unidad: 'segundos', descanso: 30 },
       organizacion: 'Con 12: los doce a la vez contra la pared o la valla, separados metro y medio para no invadirse.',
+      niveles: {
+        base: 'solo pase de pecho, sin números, quince segundos.',
+        intermedio: 'tres tipos de pase con números.',
+        avanzado: 'dos balones alternos contra la pared.',
+      },
       criterio_exito: 'treinta segundos sin que el balón toque el suelo y acertando todos los números',
       aplicacion: 'el rondo 4c2, donde esa misma velocidad de manos se usa con gente encima',
     },
@@ -76,7 +84,6 @@ export const TANDA_07 = [
     objetivos: 'Aislar el gesto de la muñeca y las yemas, que es lo que de verdad controla el balón.',
     descripcion_texto: 'Cada uno con su balón. Se bota sentado en el suelo con las piernas estiradas, luego de rodillas, luego tumbado boca arriba pasando el balón por encima. Veinte segundos en cada posición, alternando manos. Al terminar, treinta segundos de pie para notar la diferencia.',
     notas: 'Puntos clave: sin poder usar las piernas, el bote sale de la muñeca y de las yemas, nunca de la palma; ahí se ve quién golpea el balón y quién lo acompaña. Este es un caso donde el aislamiento SÍ se justifica: el objetivo es sentir el gesto, y por eso dura cuatro minutos y no veinte. Que quede claro en el orden de la sesión: esto abre, no ocupa.',
-    variantes: 'Base: sentado y de rodillas, mano dominante. Intermedio: las tres posiciones alternando manos. Avanzado: sentado con dos balones a la vez.',
     tags: ['bote', 'coordinación', 'mano no dominante', 'analítico', 'calentamiento'],
     requisitos: {
       jugadores_min: 1, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
@@ -84,6 +91,11 @@ export const TANDA_07 = [
       requisito_previo: 'botar el balón en el sitio con cualquiera de las dos manos',
       dosis: { series: 3, cantidad: 60, unidad: 'segundos', descanso: 20 },
       organizacion: 'Con 12: los doce a la vez, un balón cada uno, en dos filas a lo ancho para que el entrenador los vea a todos de frente.',
+      niveles: {
+        base: 'sentado y de rodillas, mano dominante.',
+        intermedio: 'las tres posiciones alternando manos.',
+        avanzado: 'sentado con dos balones a la vez.',
+      },
       criterio_exito: 'mantener el bote los sesenta segundos en todas las posiciones sin perder el balón',
       aplicacion: 'el bote de protección, donde ese mismo control bajo con la muñeca es lo único que salva el balón',
     },
@@ -105,7 +117,6 @@ export const TANDA_07 = [
     objetivos: 'Asegurar el rebote, que es lo que más se pierde: la mitad de los rebotes cogidos se pierden en el segundo siguiente.',
     descripcion_texto: 'El entrenador o un compañero lanza el balón al tablero. El jugador salta, lo coge con las DOS manos en el punto más alto, cae con las piernas abiertas y los codos firmes, y solo entonces busca el pase a un compañero en la banda. Ocho repeticiones y se cambia.',
     notas: 'Puntos clave: se coge en el aire y no se espera a que bote; al caer, el balón queda a la altura de la barbilla con los codos abiertos; nada de bajarlo a la cintura, que es donde llegan las manos rivales. Error frecuentísimo: coger con una mano y perderlo. Segundo: caer con los pies juntos y perder el equilibrio con cualquier contacto.',
-    variantes: 'Base: el balón se lanza suave y sin oposición. Intermedio: lanzamiento al tablero y salida con pase. Avanzado: un compañero intenta quitárselo al caer, sin saltar.',
     tags: ['rebote defensivo', 'pase', 'equilibrio'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 12, canastas: 1, estaciones: 2,
@@ -113,6 +124,11 @@ export const TANDA_07 = [
       requisito_previo: 'saltar y coger un balón en el aire con las dos manos',
       dosis: { series: 3, cantidad: 8, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: seis parejas, tres en cada canasta, turnándose para tirar y coger.',
+      niveles: {
+        base: 'el balón se lanza suave y sin oposición.',
+        intermedio: 'lanzamiento al tablero y salida con pase.',
+        avanzado: 'un compañero intenta quitárselo al caer, sin saltar.',
+      },
       criterio_exito: 'ocho de ocho cogidos con dos manos y protegidos a la altura de la barbilla al caer',
     },
     tablero: () => [
@@ -137,7 +153,6 @@ export const TANDA_07 = [
     objetivos: 'Decidir a quién bloquear cuando no se puede bloquear a todos, que es lo que pasa siempre en el rebote real.',
     descripcion_texto: 'Un defensor bajo el aro y dos atacantes en el perímetro. El entrenador tira. El defensor tiene que elegir a cuál bloquear —el que esté en mejor posición para el rebote— y hacerlo de verdad. Si el otro coge el rebote, no es un error si la elección fue correcta. Cinco tiros y rotan.',
     notas: 'Puntos clave: se bloquea al que está más cerca del lado donde va a caer el balón, que casi siempre es el lado contrario al tiro; el defensor tiene que cantar en voz alta a quién bloquea. Error del entrenador: culpar al defensor porque el otro cogió el rebote. Lo que se evalúa es la ELECCIÓN, no el resultado, y conviene decírselo a ellos.',
-    variantes: 'Base: los dos atacantes están fijos y el tiro sale siempre del mismo sitio. Intermedio: atacantes móviles y tiro variable. Avanzado: dos defensores contra tres atacantes.',
     tags: ['rebote defensivo', 'bloqueo de rebote', 'lectura', 'toma de decisiones', 'inferioridad'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
@@ -145,6 +160,11 @@ export const TANDA_07 = [
       requisito_previo: 'hacer contacto de bloqueo con el cuerpo antes de ir al balón',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta: un defensor, dos atacantes y tres esperando que rotan cada cinco tiros.',
+      niveles: {
+        base: 'los dos atacantes están fijos y el tiro sale siempre del mismo sitio.',
+        intermedio: 'atacantes móviles y tiro variable.',
+        avanzado: 'dos defensores contra tres atacantes.',
+      },
       criterio_exito: 'la elección de a quién bloquear es la correcta en cuatro de cada cinco tiros',
     },
     tablero: () => [
@@ -184,7 +204,6 @@ export const TANDA_07 = [
     objetivos: 'Activar corriendo y pasando a la vez, que sube pulsaciones y entrena el pase en carrera de paso.',
     descripcion_texto: 'Por parejas, de fondo a fondo. Se corre en paralelo separados unos cinco metros pasándose el balón sin que bote. Al llegar, entrada a canasta y se vuelve por el lado contrario. Tres idas y vueltas, cambiando quién termina.',
     notas: 'Puntos clave: el pase va DELANTE del compañero, a la altura del pecho, y sale sin frenar; la separación se mantiene, que es lo primero que se pierde. Error frecuente: acercarse el uno al otro hasta acabar corriendo juntos, con lo que el pase deja de tener valor. Marca los carriles con conos las primeras veces.',
-    variantes: 'Base: media pista, pases de pecho, sin terminar en canasta. Intermedio: pista entera con entrada final. Avanzado: pista entera con tres jugadores y el balón cruzando en zigzag.',
     tags: ['calentamiento', 'activación', 'pase', 'recepción', 'carriles', 'entrada'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 16, canastas: 2, estaciones: 2,
@@ -192,6 +211,11 @@ export const TANDA_07 = [
       requisito_previo: 'pasar y recibir en carrera sin frenar',
       dosis: { series: 2, cantidad: 3, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: seis parejas recorriendo la pista a lo largo, saliendo escalonadas cada cinco segundos y terminando en las dos canastas.',
+      niveles: {
+        base: 'media pista, pases de pecho, sin terminar en canasta.',
+        intermedio: 'pista entera con entrada final.',
+        avanzado: 'pista entera con tres jugadores y el balón cruzando en zigzag.',
+      },
       criterio_exito: 'completar la pista entera sin que el balón toque el suelo ni una vez',
       aplicacion: 'el contraataque de tres carriles, que es lo mismo con defensa delante',
     },
@@ -222,7 +246,6 @@ export const TANDA_07 = [
     objetivos: 'Activar mirando y hablando, que además arranca la sesión con el grupo comunicándose.',
     descripcion_texto: 'Todos moviéndose por el espacio. Se establece un orden fijo de pase —cada uno pasa siempre al mismo compañero— y hay que decir su nombre al pasarle. Nadie puede parar de moverse. Cuando la cadena funciona, se mete un segundo balón, y luego un tercero.',
     notas: 'Puntos clave: como todos se mueven, hay que buscar al de tu cadena con la vista mientras te desplazas; decir el nombre no es un adorno, es lo que avisa al que va a recibir. Error frecuente: pararse a pasar. El segundo balón es donde empieza el ejercicio de verdad. Es también un buen momento para que los nuevos aprendan los nombres del grupo.',
-    variantes: 'Base: en círculo y sin moverse, con un balón. Intermedio: moviéndose, con dos balones. Avanzado: tres balones y dos cadenas distintas a la vez.',
     tags: ['calentamiento', 'activación', 'pase', 'recepción', 'coordinación'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
@@ -230,6 +253,11 @@ export const TANDA_07 = [
       requisito_previo: 'pasar y recibir en movimiento',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 30 },
       organizacion: 'Con 12: los doce en un solo círculo. Con más de dieciséis se parte en dos, porque la espera se hace larga.',
+      niveles: {
+        base: 'en círculo y sin moverse, con un balón.',
+        intermedio: 'moviéndose, con dos balones.',
+        avanzado: 'tres balones y dos cadenas distintas a la vez.',
+      },
       criterio_exito: 'sostener dos balones en la cadena durante noventa segundos sin pérdidas',
     },
     tablero: () => [
@@ -250,7 +278,6 @@ export const TANDA_07 = [
     objetivos: 'Trabajar el salto, la caída y el equilibrio con el balón, que es la base de todo lo que vendrá después.',
     descripcion_texto: 'Cuatro "ríos" marcados con dos líneas de conos cada uno, de anchura creciente. Se recorren saltando: el primero a pies juntos, el segundo con un pie, el tercero cayendo a pies juntos desde un pie, el cuarto lo más ancho posible. Siempre con el balón sujeto con las dos manos y aguantando la caída tres segundos.',
     notas: 'Puntos clave: la caída es lo que se entrena, no el salto — rodillas flexionadas y quieto tres segundos; el balón no se usa para equilibrarse moviendo los brazos. Error frecuente: caer y dar un pasito, que en baloncesto son pasos. En Escuela hay que aceptar que muchos no caerán equilibrados: por eso está aquí. Cuida el suelo y la separación entre niños.',
-    variantes: 'Base: dos ríos estrechos, salto a pies juntos, sin balón. Intermedio: los cuatro ríos con balón. Avanzado: los cuatro ríos con giro de 180 grados en el aire en el último.',
     tags: ['equilibrio', 'coordinación', 'ritmo', 'lateralidad'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 2,
@@ -258,6 +285,11 @@ export const TANDA_07 = [
       requisito_previo: 'saltar y caer con los dos pies sin apoyar las manos',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 40 },
       organizacion: 'Con 12: dos recorridos en paralelo de seis, para que nadie espere su turno más de dos saltos.',
+      niveles: {
+        base: 'dos ríos estrechos, salto a pies juntos, sin balón.',
+        intermedio: 'los cuatro ríos con balón.',
+        avanzado: 'los cuatro ríos con giro de 180 grados en el aire en el último.',
+      },
       criterio_exito: 'aguantar tres segundos quieto en las cuatro caídas, sin dar pasitos',
       aplicacion: 'la entrada a canasta, donde el doble ritmo es exactamente un salto y una caída controlada',
     },
@@ -278,7 +310,6 @@ export const TANDA_07 = [
     objetivos: 'Asociar una orden a un patrón motor distinto y cambiarlo sobre la marcha, con el balón siempre en las manos.',
     descripcion_texto: 'Cuatro rincones marcados: en el primero se llega corriendo de frente, en el segundo de espaldas, en el tercero de lado deslizándose y en el cuarto a la pata coja. El entrenador dice el número y todos van con el desplazamiento que le toca a ese rincón, botando o llevando el balón según se diga.',
     notas: 'Puntos clave: cada desplazamiento tiene su forma correcta y hay que exigirla —el lateral sin cruzar los pies, el de espaldas mirando por encima del hombro—; lo que se entrena es asociar orden y patrón. Error frecuente: ir a todos los rincones corriendo de frente porque es más fácil. Si pasa, quita un rincón y quédate con tres bien hechos.',
-    variantes: 'Base: tres rincones y sin balón. Intermedio: cuatro rincones llevando el balón. Avanzado: cuatro rincones botando, y el entrenador puede decir dos seguidos que hay que recordar.',
     tags: ['lateralidad', 'coordinación', 'ritmo', 'equilibrio', 'desplazamiento defensivo'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
@@ -286,6 +317,11 @@ export const TANDA_07 = [
       requisito_previo: 'correr y desplazarse lateralmente sin caerse',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 45 },
       organizacion: 'Con 12: los doce a la vez, tres en cada rincón.',
+      niveles: {
+        base: 'tres rincones y sin balón.',
+        intermedio: 'cuatro rincones llevando el balón.',
+        avanzado: 'cuatro rincones botando, y el entrenador puede decir dos seguidos que hay que recordar.',
+      },
       criterio_exito: 'usar el desplazamiento correcto en nueve de cada diez órdenes',
       aplicacion: 'el espejo defensivo, que es el mismo desplazamiento lateral pero ya con un rival delante',
     },
@@ -305,7 +341,6 @@ export const TANDA_07 = [
     objetivos: 'Conciencia corporal y equilibrio con un objeto, que es lo que sostiene después todo el manejo.',
     descripcion_texto: 'Se camina por el espacio llevando el balón como diga el entrenador: entre las rodillas, sobre la cabeza sin manos, en la espalda con las manos por detrás, sujeto con el codo y el costado. Si se cae, se recoge y se sigue. Sin prisa y sin competir.',
     notas: 'Puntos clave: no hay velocidad, hay control; el niño tiene que notar dónde está el balón sin mirarlo. Es de los pocos ejercicios donde el balón no se bota, y tiene sentido justo en Escuela: primero saber que existe el balón y dónde está el propio cuerpo. Error del entrenador: convertirlo en carrera. Si se convierte en carrera, deja de servir.',
-    variantes: 'Base: dos formas de llevarlo, andando despacio. Intermedio: cuatro formas. Avanzado: cuatro formas con recorrido entre conos y cambio a la orden.',
     tags: ['equilibrio', 'coordinación', 'lateralidad'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
@@ -313,6 +348,11 @@ export const TANDA_07 = [
       requisito_previo: 'caminar sosteniendo un balón con las dos manos',
       dosis: { series: 3, cantidad: 60, unidad: 'segundos', descanso: 20 },
       organizacion: 'Con 12: los doce a la vez, un balón cada uno, repartidos por una media pista.',
+      niveles: {
+        base: 'dos formas de llevarlo, andando despacio.',
+        intermedio: 'cuatro formas.',
+        avanzado: 'cuatro formas con recorrido entre conos y cambio a la orden.',
+      },
       criterio_exito: 'completar cada forma sin que el balón se caiga más de dos veces',
       aplicacion: 'todo el bloque de manejo: es el paso previo a controlar el balón botando',
     },

@@ -115,12 +115,47 @@
   width: min(560px, 80vw); transition: opacity var(--dur-3) var(--ease);
 }
 .proyector.is-idle .proyector__controls { opacity: 0; pointer-events: none; }
-/* Nombre (arriba-izq) y atajos (arriba-der): superpuestos, se desvanecen. */
-.proyector__title {
+/* Nombre y ficha (arriba-izq) y atajos (arriba-der): superpuestos, se
+   desvanecen con los controles. */
+.proyector__cab {
   position: absolute; top: var(--sp-5); left: var(--sp-6);
-  font-family: var(--font-display); text-transform: uppercase; font-size: var(--fs-700);
-  line-height: 1; letter-spacing: .02em; max-width: 60vw; pointer-events: none;
+  max-width: min(34vw, 460px);
+  display: grid; gap: var(--sp-3);
   transition: opacity var(--dur-3) var(--ease);
+}
+.proyector.is-idle .proyector__cab { opacity: 0; }
+.proyector__title {
+  font-family: var(--font-display); text-transform: uppercase; font-size: var(--fs-700);
+  line-height: 1; letter-spacing: .02em; pointer-events: none;
+}
+
+/* Lo que se consulta con el balón en la mano: cuánto, cuándo está bien
+   hecho y qué escalón se está corriendo. */
+.proy-ficha { display: grid; gap: var(--sp-3); }
+.proy-dato { display: grid; gap: 1px; }
+.proy-dato small {
+  color: #94A3B8; text-transform: uppercase; letter-spacing: .06em; font-size: var(--fs-300);
+}
+.proy-dato span { font-size: var(--fs-500); line-height: 1.35; }
+.proy-nivel { display: grid; gap: var(--sp-2); }
+.proy-chips { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.proy-chip {
+  padding: 3px 12px; border-radius: var(--r-pill);
+  font-size: var(--fs-300); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: #94A3B8; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.2);
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.proy-chip:hover { color: #fff; }
+.proy-chip.is-on { background: var(--color-ball); border-color: var(--color-ball); color: #fff; }
+.proy-nivel-txt { font-size: var(--fs-500); line-height: 1.4; }
+
+/* En pantalla estrecha la pista ocupa de banda a banda y el panel se le
+   echaría encima: queda el nombre, que es lo imprescindible. */
+@media (max-width: 900px) {
+  .proyector__cab { max-width: 60vw; }
+  .proy-ficha { display: none; }
 }
 .proyector__hint {
   position: absolute; top: var(--sp-5); right: var(--sp-6); max-width: 32vw; text-align: right;
@@ -143,7 +178,7 @@
 }
 .proyector__cerrar:hover { background: rgba(255,255,255,.22); }
 .proyector.is-idle .proyector__cerrar { opacity: 0; pointer-events: none; }
-.proyector.is-idle .proyector__title, .proyector.is-idle .proyector__hint { opacity: 0; }
+.proyector.is-idle .proyector__hint { opacity: 0; }
 /* Con el botón arriba a la derecha, los atajos se apartan. */
 .proyector__hint { right: calc(var(--sp-6) + 3.5rem); }
 

@@ -119,10 +119,23 @@ export function revisaFicha(f) {
     E(`tag "${tag}" fuera del vocabulario${sugerencia ? ` — ¿querías "${sugerencia}"?` : ''}`);
   }
 
-  /* Los tres niveles de exigencia (D8): es lo que sustituye a la edad. */
-  const v = f.variantes || '';
-  const faltan = NIVELES_EXIGENCIA.filter((n) => !new RegExp(n, 'i').test(v));
-  if (faltan.length) E(`faltan niveles de exigencia en \`variantes\`: ${faltan.join(', ')} (D8)`);
+  /* Los tres niveles de exigencia (D8): es lo que sustituye a la edad, y
+     por eso es un DATO y no un párrafo. Antes se comprobaba que las tres
+     palabras aparecieran en el texto de `variantes`, que pasaba con
+     escribir "base" en cualquier sitio; ahora cada escalón tiene que
+     existir y decir algo. */
+  const niv = f.requisitos?.niveles;
+  if (!niv || typeof niv !== 'object') {
+    E('faltan los tres niveles de exigencia en `requisitos.niveles` (D8)');
+  } else {
+    const vacios = NIVELES_EXIGENCIA.filter((n) => !String(niv[n] || '').trim());
+    if (vacios.length) E(`niveles de exigencia vacíos: ${vacios.join(', ')} (D8)`);
+    /* Tres escalones que dicen lo mismo no son tres escalones. */
+    const textos = NIVELES_EXIGENCIA.map((n) => String(niv[n] || '').trim().toLowerCase()).filter(Boolean);
+    if (new Set(textos).size < textos.length) E('hay dos niveles de exigencia con el mismo texto (D8)');
+    const sobran = Object.keys(niv).filter((k) => !NIVELES_EXIGENCIA.includes(k));
+    if (sobran.length) E(`niveles desconocidos: ${sobran.join(', ')} — solo ${NIVELES_EXIGENCIA.join('/')}`);
+  }
 
   /* Requisitos. */
   const r = f.requisitos;

@@ -30,7 +30,6 @@ export const TANDA_03 = [
     objetivos: 'Jugar de espaldas al aro: sentir dónde está el defensor sin mirarle y girar hacia el lado libre.',
     descripcion_texto: 'Pasador en el 45 y atacante en el poste bajo, de espaldas, con el defensor detrás. El atacante pide el balón con la mano de fuera y, al recibir, tiene que notar con el cuerpo por dónde le defienden y girar hacia el lado contrario. Máximo un bote. Tres posesiones cada uno y rotan.',
     notas: 'Puntos clave: se pide con la mano lejos del defensor y se sostiene la posición con el antebrazo y el trasero, no empujando con la mano; el giro va hacia donde NO está el defensor, y eso se sabe por contacto, no mirando. Error frecuente: girar siempre hacia el mismo lado, que es el que tienen ensayado. Otro: recibir y quedarse de espaldas botando sin decidir. Con un bote de máximo eso se acaba solo.',
-    variantes: 'Base: el defensor se coloca fijo a un lado y avisa en voz alta de cuál; el atacante solo practica girar al contrario. Intermedio: el defensor elige y el atacante lee, con un bote. Avanzado: el defensor puede cambiar de lado mientras llega el pase.',
     tags: ['1c1', 'pivote', 'recepción', 'lectura', 'finalización', 'ventaja'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
@@ -38,6 +37,11 @@ export const TANDA_03 = [
       requisito_previo: 'pivotar sobre los dos pies sin levantar el de apoyo',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante de espaldas y defensor. Rotan cada ataque.',
+      niveles: {
+        base: 'el defensor se coloca fijo a un lado y avisa en voz alta de cuál; el atacante solo practica girar al contrario.',
+        intermedio: 'el defensor elige y el atacante lee, con un bote.',
+        avanzado: 'el defensor puede cambiar de lado mientras llega el pase.',
+      },
       criterio_exito: 'gira hacia el lado libre en dos de cada tres posesiones, entre o no entre',
     },
     tablero: () => [
@@ -64,7 +68,6 @@ export const TANDA_03 = [
     objetivos: 'Resolver en espacio muy reducido, donde no vale la velocidad y sí el cambio de ritmo y la protección.',
     descripcion_texto: 'Cuadrado de cuatro metros marcado con conos, con el aro fuera. El atacante tiene que salir del cuadrado botando por cualquiera de los dos lados marcados; el defensor lo impide. Si sale, ataca la canasta libre. Si le roban o pisa fuera por otro lado, cambio. Veinte segundos como máximo por intento.',
     notas: 'Puntos clave: en poco espacio manda el primer paso, no la velocidad punta; el bote baja y el cuerpo se interpone siempre. Error frecuente: intentar irse de velocidad y estrellarse contra el cono. Es el ejercicio donde mejor se ve quién sabe usar el cambio de ritmo: los que solo tienen cambio de mano aquí no pasan.',
-    variantes: 'Base: cuadrado de seis metros y una sola salida obligatoria. Intermedio: cuatro metros y dos salidas. Avanzado: cuatro metros, dos salidas y máximo tres botes.',
     tags: ['1c1', 'bote de protección', 'cambio de ritmo', 'bote', 'competición'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 14, canastas: 1, estaciones: 2,
@@ -72,6 +75,11 @@ export const TANDA_03 = [
       requisito_previo: 'botar protegiendo con el cuerpo sin perder el balón',
       dosis: { series: 4, cantidad: 20, unidad: 'segundos', descanso: 45 },
       organizacion: 'Con 12: dos cuadrados de conos, uno en cada media pista, seis en cada uno. Tres parejas que se turnan.',
+      niveles: {
+        base: 'cuadrado de seis metros y una sola salida obligatoria.',
+        intermedio: 'cuatro metros y dos salidas.',
+        avanzado: 'cuatro metros, dos salidas y máximo tres botes.',
+      },
       criterio_exito: 'salir del cuadrado en tres de cada cuatro intentos',
     },
     tablero: () => [
@@ -97,7 +105,6 @@ export const TANDA_03 = [
     objetivos: 'Aprender que una ventaja dura poco y que se aprovecha yendo hacia el aro, no administrándola.',
     descripcion_texto: 'Atacante en el 45 con balón y defensor un paso por detrás y a un lado. A la señal, el atacante ataca. La ventaja es real pero pequeña: si duda un segundo, desaparece. Se cuenta cuántas veces termina en canasta o en tiro cómodo. Tres cada uno y rotan.',
     notas: 'Puntos clave: la ventaja se conserva yendo en línea recta hacia el aro, no hacia fuera; el primer bote es largo. Error frecuentísimo: recibir la ventaja y botar de lado, con lo que el defensor recupera la posición y ya no hay nada. Es el ejercicio que mejor enseña por qué el pase del compañero vale tanto: la ventaja te la dan y hay que no perderla.',
-    variantes: 'Base: la ventaja es de dos pasos y el defensor no puede saltar. Intermedio: un paso y defensa completa. Avanzado: el atacante recibe un pase y la ventaja depende de si el defensor sale bien; puede no haberla.',
     tags: ['1c1', 'ventaja', 'bote', 'entrada', 'toma de decisiones'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 14, canastas: 1, estaciones: 2,
@@ -105,6 +112,11 @@ export const TANDA_03 = [
       requisito_previo: 'salir en bote con un primer paso largo hacia el aro',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos canastas, seis por canasta, tres parejas turnándose. Se cambia atacante y defensor cada ataque.',
+      niveles: {
+        base: 'la ventaja es de dos pasos y el defensor no puede saltar.',
+        intermedio: 'un paso y defensa completa.',
+        avanzado: 'el atacante recibe un pase y la ventaja depende de si el defensor sale bien; puede no haberla.',
+      },
       criterio_exito: 'la ventaja acaba en canasta o en tiro cómodo en dos de cada tres ataques',
     },
     tablero: () => [
@@ -131,7 +143,6 @@ export const TANDA_03 = [
     objetivos: 'Concentrar toda la resolución en el primer movimiento, que es donde se gana el uno contra uno de verdad.',
     descripcion_texto: 'Atacante en la punta con balón, defensor delante. Solo se permite UN bote. Se puede fintar todo lo que se quiera antes, pero en cuanto se bota hay que terminar. Tres posesiones cada uno; el defensor suma punto si obliga a fallar o a no poder terminar.',
     notas: 'Puntos clave: la finta es con el balón y los ojos, no solo con los pies; el primer paso va pegado al defensor, no rodeándole. Error frecuente: fintar sin intención, moviendo el balón sin que el defensor se lo crea. Como entrenador, mira si el defensor reacciona: si no se mueve, la finta no existía. Este ejercicio quita de un plumazo el bote de tanteo.',
-    variantes: 'Base: dos botes y defensor pasivo que solo acompaña. Intermedio: un bote y defensa completa. Avanzado: un bote y el atacante empieza con el balón en el suelo, teniendo que recogerlo con el defensor encima.',
     tags: ['1c1', 'finta', 'salida en bote', 'toma de decisiones', 'competición'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 14, canastas: 1, estaciones: 2,
@@ -139,6 +150,11 @@ export const TANDA_03 = [
       requisito_previo: 'salir en bote sin dar pasos y parar en dos tiempos',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos canastas, seis por canasta, tres parejas turnándose. Se cambia de rol cada ataque.',
+      niveles: {
+        base: 'dos botes y defensor pasivo que solo acompaña.',
+        intermedio: 'un bote y defensa completa.',
+        avanzado: 'un bote y el atacante empieza con el balón en el suelo, teniendo que recogerlo con el defensor encima.',
+      },
       criterio_exito: 'terminar dentro del bote permitido en tres de cada tres, y que el defensor se mueva con la finta al menos la mitad de las veces',
     },
     tablero: () => [
@@ -163,7 +179,6 @@ export const TANDA_03 = [
     objetivos: 'Encadenar recepción en movimiento y uno contra uno sin ese medio segundo de parón que lo estropea todo.',
     descripcion_texto: 'El atacante arranca desde la esquina hacia el 45 y recibe en carrera del pasador de la punta. Su defensor le persigue desde el fondo. Al recibir tiene que atacar directamente: parar y tirar, o seguir hacia el aro. No se puede botar de lado para recolocarse. Tres cada uno.',
     notas: 'Puntos clave: se recibe con los pies orientados al aro, lo que exige preparar el último apoyo antes del balón; la decisión ya viene tomada de camino. Error frecuente: recibir, parar, mirar y entonces decidir — para cuando decide, el defensor ya llegó. Consejo: que diga en voz alta "tiro" o "entro" ANTES de recibir; se equivocará, y esa es la lección.',
-    variantes: 'Base: sin defensor, solo recibir en carrera y terminar. Intermedio: con defensor que persigue desde el fondo. Avanzado: el defensor sale a la vez que el atacante y puede llegar antes al 45.',
     tags: ['1c1', 'recepción', 'lectura', 'toma de decisiones', 'finalización', 'desmarque'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
@@ -171,6 +186,11 @@ export const TANDA_03 = [
       requisito_previo: 'recibir en carrera sin que se le escape el balón',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante y defensor. Rotan cada ataque.',
+      niveles: {
+        base: 'sin defensor, solo recibir en carrera y terminar.',
+        intermedio: 'con defensor que persigue desde el fondo.',
+        avanzado: 'el defensor sale a la vez que el atacante y puede llegar antes al 45.',
+      },
       criterio_exito: 'atacar sin parón en dos de cada tres recepciones',
     },
     tablero: () => [
@@ -201,7 +221,6 @@ export const TANDA_03 = [
     objetivos: 'Instalar la postura y el desplazamiento defensivo con alguien real delante marcando el ritmo.',
     descripcion_texto: 'Por parejas, enfrentados a dos metros. Uno se desplaza lateralmente, adelante y atrás dentro de un espacio marcado; el otro le copia como un espejo manteniendo siempre la misma distancia. Treinta segundos y se cambia. Sin balón: aquí solo se entrenan los pies.',
     notas: 'Puntos clave: pies más anchos que los hombros, peso en las plantas, y NUNCA juntar los pies al desplazarse. Error frecuente: cruzar los pies, que es justo el instante en que un atacante pasaría. Segundo error: subir el cuerpo cuando llega el cansancio, que es cuando hay que insistir. Esto es de las pocas cosas que sí tiene sentido entrenar sin balón, porque el gesto es puramente de pies.',
-    variantes: 'Base: solo desplazamiento lateral, quince segundos. Intermedio: lateral, adelante y atrás, treinta segundos. Avanzado: el que dirige puede arrancar a correr y el otro tiene que girar y perseguir sin cruzar los pies en el giro.',
     tags: ['postura defensiva', 'desplazamiento defensivo', 'defensa individual', 'coordinación'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
@@ -209,6 +228,11 @@ export const TANDA_03 = [
       requisito_previo: 'mantenerse agachado con los pies separados sin apoyar las manos',
       dosis: { series: 4, cantidad: 30, unidad: 'segundos', descanso: 30 },
       organizacion: 'Con 12: seis parejas a la vez, repartidas a lo ancho de la pista y mirándose. Treinta segundos y cambio. No usa canastas.',
+      niveles: {
+        base: 'solo desplazamiento lateral, quince segundos.',
+        intermedio: 'lateral, adelante y atrás, treinta segundos.',
+        avanzado: 'el que dirige puede arrancar a correr y el otro tiene que girar y perseguir sin cruzar los pies en el giro.',
+      },
       criterio_exito: 'treinta segundos sin cruzar los pies ni una vez, comprobado por la pareja',
     },
     tablero: () => [
@@ -226,7 +250,6 @@ export const TANDA_03 = [
     objetivos: 'Aprender la posición de defensa sin balón: abierto, viendo al par y al balón a la vez.',
     descripcion_texto: 'Dos atacantes —uno con balón en la punta y otro moviéndose por el lado— y dos defensores. El del balón defiende normal. El otro tiene que colocarse de manera que pueda señalar con una mano a su par y con la otra al balón sin girar la cabeza. El entrenador grita "¡mira!" en cualquier momento y todos se congelan: quien no pueda señalar a los dos, punto en contra.',
     notas: 'Puntos clave: el cuerpo se abre hacia el balón y se retrasa un paso hacia el aro; se ve con la vista periférica, no girando la cabeza. IMPORTANTE: aquí NO se niega la línea de pase. A estas edades negar, ayudar y recuperar son tres tareas a la vez y no salen; se quita la negación para que las otras dos se aprendan de verdad, y la negación llega en Infantil.',
-    variantes: 'Base: el atacante sin balón se mueve despacio y el balón no se mueve. Intermedio: los dos se mueven. Avanzado: tres atacantes y tres defensores, con el balón circulando.',
     tags: ['defensa individual', 'defensa sin balón', 'postura defensiva', 'lectura'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2,
@@ -234,6 +257,11 @@ export const TANDA_03 = [
       requisito_previo: 'mantener la postura defensiva desplazándose',
       dosis: { series: 3, cantidad: 6, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: tres grupos de cuatro repartidos por la pista, dos atacantes y dos defensores en cada uno. El entrenador grita para los tres a la vez.',
+      niveles: {
+        base: 'el atacante sin balón se mueve despacio y el balón no se mueve.',
+        intermedio: 'los dos se mueven.',
+        avanzado: 'tres atacantes y tres defensores, con el balón circulando.',
+      },
       criterio_exito: 'poder señalar a par y balón en cinco de cada seis congelaciones',
     },
     tablero: () => [
@@ -258,7 +286,6 @@ export const TANDA_03 = [
     objetivos: 'Defender el pasar y cortar, que es la forma más simple de generar ventaja y la que más veces vamos a sufrir.',
     descripcion_texto: 'Dos atacantes —punta y 45— y sus defensores. El de la punta pasa y corta a canasta. Su defensor tiene que dar un paso hacia el balón al salir el pase y acompañar el corte por delante, sin quedarse detrás. Si el cortador recibe libre, punto para el ataque. Tres posesiones y rotan.',
     notas: 'Puntos clave: el paso al balón se da EN EL PASE, no cuando el atacante ya arrancó; se acompaña el corte con el brazo y la vista, sin agarrar. Error frecuente: mirar el balón y perder al cortador, que es exactamente lo que busca el ataque. Es el reverso del ejercicio de pasar y cortar del piloto y conviene ponerlos seguidos: los mismos niños ven las dos caras.',
-    variantes: 'Base: el corte es siempre por el mismo lado y el defensor lo sabe. Intermedio: el cortador elige lado. Avanzado: el cortador puede cortar o quedarse y volver a pedir arriba.',
     tags: ['defensa individual', 'defensa sin balón', 'corte', 'pasar y cortar', 'recuperación'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2,
@@ -266,6 +293,11 @@ export const TANDA_03 = [
       requisito_previo: 'defender al jugador con balón manteniendo la postura',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan; se rota cada tres cortes.',
+      niveles: {
+        base: 'el corte es siempre por el mismo lado y el defensor lo sabe.',
+        intermedio: 'el cortador elige lado.',
+        avanzado: 'el cortador puede cortar o quedarse y volver a pedir arriba.',
+      },
       criterio_exito: 'el cortador no recibe libre en dos de cada tres posesiones',
     },
     tablero: () => [
@@ -290,7 +322,6 @@ export const TANDA_03 = [
     objetivos: 'Aprender a cerrar sin pasarse: llegar a molestar el tiro y seguir en pie para el bote siguiente.',
     descripcion_texto: 'El defensor empieza tocando el aro. El entrenador pasa a un atacante situado en el 45 y el defensor sale a cerrar. El atacante decide: si el cierre llega volando y descontrolado, bota y entra; si llega frenado, tira. Se puntúa al defensor, no al atacante: punto si molesta el tiro sin que le superen.',
     notas: 'Puntos clave: se sale a toda velocidad y se frena con pasos cortos en los últimos dos metros, con la mano alta del lado del balón; se llega con el peso atrás, no encima del atacante. Error frecuente: saltar hacia el tirador y quedar vendido. Regla que ayuda: "corre largo y frena corto". Segundo error: cerrar de frente en lugar de sesgado hacia el lado fuerte.',
-    variantes: 'Base: el atacante solo tira, nunca bota; el defensor practica llegar y frenar. Intermedio: el atacante decide. Avanzado: el defensor sale desde más lejos y el atacante puede pasar a un tercero en la esquina.',
     tags: ['defensa individual', 'recuperación', 'desplazamiento defensivo', 'defensa del bote', 'lectura'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
@@ -298,6 +329,11 @@ export const TANDA_03 = [
       requisito_previo: 'desplazarse en postura defensiva sin cruzar los pies',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante y defensor. Rotan cada tres cierres.',
+      niveles: {
+        base: 'el atacante solo tira, nunca bota; el defensor practica llegar y frenar.',
+        intermedio: 'el atacante decide.',
+        avanzado: 'el defensor sale desde más lejos y el atacante puede pasar a un tercero en la esquina.',
+      },
       criterio_exito: 'molestar el tiro sin ser superado en tres de cada cuatro cierres',
     },
     tablero: () => [
@@ -323,7 +359,6 @@ export const TANDA_03 = [
     objetivos: 'Sostener el ciclo de ayuda y recuperación más de una vez seguida, que es donde se cae la defensa de verdad.',
     descripcion_texto: 'Tres atacantes repartidos —punta y las dos esquinas— y tres defensores. El de la punta penetra por un lado, el defensor del lado contrario ayuda y recupera; el balón sale a esa esquina y el nuevo poseedor penetra otra vez, obligando a una segunda ayuda. Solo dos penetraciones y luego se termina la jugada.',
     notas: 'Puntos clave: la ayuda es corta y la recuperación es inmediata; nadie se queda dentro (D11 — y además está sancionado por reglamento estar tres segundos en la zona sin defender). Error frecuente: la primera ayuda sale bien y la segunda llega tarde porque el defensor no volvió a su sitio después de la primera. La recuperación es la mitad que se olvida.',
-    variantes: 'Base: una sola penetración y una sola ayuda. Intermedio: dos penetraciones encadenadas. Avanzado: tres penetraciones y el ataque puede tirar en cualquier momento.',
     tags: ['ayuda', 'recuperación', 'defensa individual', 'desplazamiento defensivo', 'lectura'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 12, canastas: 1, estaciones: 2,
@@ -331,6 +366,11 @@ export const TANDA_03 = [
       requisito_previo: 'ayudar y recuperar una vez sin quedarse dentro de la zona',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 75 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta. Los seis juegan a la vez, tres atacando y tres defendiendo, y se cambia de rol cada dos jugadas.',
+      niveles: {
+        base: 'una sola penetración y una sola ayuda.',
+        intermedio: 'dos penetraciones encadenadas.',
+        avanzado: 'tres penetraciones y el ataque puede tirar en cualquier momento.',
+      },
       criterio_exito: 'las dos ayudas llegan a tiempo y los dos ayudantes recuperan a su par en tres de cada cuatro jugadas',
     },
     tablero: () => [
@@ -378,7 +418,6 @@ export const TANDA_03 = [
     objetivos: 'Dirigir la conducta con la puntuación en lugar de con instrucciones: si entrar vale más, entrarán.',
     descripcion_texto: 'Uno contra uno desde la punta. La canasta anotada desde dentro de la zona vale 3; desde fuera, 1. Se juega a 7. Como entrar vale el triple, el atacante busca el aro y el defensor tiene que aprender a protegerlo. Cambiando la puntuación se cambia lo que se entrena sin decir una palabra.',
     notas: 'Puntos clave: no hay que explicar nada, la puntuación explica sola. Si quieres que trabajen el tiro exterior, inviértela. Error del entrenador, no del jugador: cambiar la puntuación a media serie; hay que dejar que descubran la lógica. Este es el ejemplo más claro de enseñar cambiando las reglas del juego en vez de con series analíticas.',
-    variantes: 'Base: dentro de la zona 3, fuera 1, sin límite de botes. Intermedio: lo mismo con máximo tres botes. Avanzado: se invierte —fuera 3 y dentro 1— y hay que rehacer todo el plan de ataque.',
     tags: ['juego reducido', '1c1', 'competición', 'toma de decisiones', 'oposición'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 14, canastas: 1, estaciones: 2,
@@ -386,6 +425,11 @@ export const TANDA_03 = [
       requisito_previo: 'resolver el uno contra uno con bote y con tiro',
       dosis: { series: 3, cantidad: 7, unidad: 'repeticiones', descanso: 75 },
       organizacion: 'Con 12: dos canastas, seis por canasta, tres parejas que se turnan. Cada duelo, una posesión.',
+      niveles: {
+        base: 'dentro de la zona 3, fuera 1, sin límite de botes.',
+        intermedio: 'lo mismo con máximo tres botes.',
+        avanzado: 'se invierte —fuera 3 y dentro 1— y hay que rehacer todo el plan de ataque.',
+      },
       criterio_exito: 'la mayoría de los ataques van a la zona de más valor sin que nadie lo haya dicho',
     },
     tablero: () => [
@@ -404,7 +448,6 @@ export const TANDA_03 = [
     objetivos: 'Acelerar la toma de decisiones obligando a decidir antes de recibir.',
     descripcion_texto: 'Dos contra dos en media pista. Al recibir solo se puede hacer una acción: tirar, dar un bote y terminar, o pasar. No se puede recibir, botar, parar y pensar. Se juega a cuatro canastas. Tras rebote o robo hay que sacar el balón por encima del tiro libre.',
     notas: 'Puntos clave: la decisión se toma ANTES de recibir, mirando dónde está la defensa mientras llega el balón; el receptor pide con las manos y con los pies ya orientados. Error frecuente al empezar: recibir y quedarse bloqueado, porque hasta ahora pensaban con el balón cogido. Dales dos posesiones de margen para que se acostumbren; a partir de la tercera empiezan a mirar antes.',
-    variantes: 'Base: 2c2 normal, sin restricción. Intermedio: una sola acción al recibir. Avanzado: una sola acción y máximo tres segundos por posesión de equipo.',
     tags: ['juego reducido', 'toma de decisiones', 'lectura', 'pase', 'espaciado', 'competición'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2,
@@ -412,6 +455,11 @@ export const TANDA_03 = [
       requisito_previo: 'recibir orientado al aro y pasar en movimiento',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 75 },
       organizacion: 'Con 12: dos partidos de 2c2, uno por canasta, con dos esperando en cada uno que entran cada dos ataques.',
+      niveles: {
+        base: '2c2 normal, sin restricción.',
+        intermedio: 'una sola acción al recibir.',
+        avanzado: 'una sola acción y máximo tres segundos por posesión de equipo.',
+      },
       criterio_exito: 'ninguna posesión se queda parada con el balón en las manos más de dos segundos',
     },
     tablero: () => [
@@ -430,7 +478,6 @@ export const TANDA_03 = [
     objetivos: 'Obligar al juego sin balón, que es lo que desaparece en cuanto se permite botar.',
     descripcion_texto: 'Cuatro contra cuatro en media pista sin bote. Quien recibe puede pivotar, pasar o tirar, pero no botar. La consecuencia es inmediata: si nadie se mueve, no hay a quién pasar. Se juega a cuatro canastas. Tras rebote defensivo, saque desde fuera.',
     notas: 'Puntos clave: después de pasar hay que hacer algo —cortar o separarse—; los cuatro no pueden estar en el mismo lado. Error frecuente y muy visible: los primeros dos minutos se quedan todos quietos pasándose el balón por el perímetro. No lo corrijas hablando: espera. El propio juego les obliga a moverse porque si no, no hay salida.',
-    variantes: 'Base: 3c3 sin bote, que es más fácil de leer. Intermedio: 4c4 sin bote. Avanzado: 4c4 sin bote y con tres segundos por posesión individual.',
     tags: ['juego reducido', 'espaciado', 'pasar y cortar', 'desmarque', 'pase', 'toma de decisiones'],
     requisitos: {
       jugadores_min: 8, jugadores_max: 16, canastas: 1, estaciones: 2,
@@ -438,6 +485,11 @@ export const TANDA_03 = [
       requisito_previo: 'pasar y recibir en movimiento con un defensor cerca',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 90 },
       organizacion: 'Con 12: dos grupos, uno de ocho jugando 4c4 en una canasta y otro de cuatro jugando 2c2 en la otra. Se cambian a la mitad del tiempo.',
+      niveles: {
+        base: '3c3 sin bote, que es más fácil de leer.',
+        intermedio: '4c4 sin bote.',
+        avanzado: '4c4 sin bote y con tres segundos por posesión individual.',
+      },
       criterio_exito: 'ninguna posesión termina por no encontrar a quién pasar',
     },
     tablero: () => [
@@ -458,7 +510,6 @@ export const TANDA_03 = [
     objetivos: 'Defender en inferioridad, que es la situación que nadie entrena y todos sufren.',
     descripcion_texto: 'Tres atacan contra dos hacia una canasta. Al terminar, dos de los tres atacantes vuelven atacando y los dos defensores más uno que entra desde el fondo defienden — es decir, ahora la inferioridad la sufre el otro lado. Los defensores en inferioridad tienen que proteger el aro primero y presionar el balón después.',
     notas: 'Puntos clave defendiendo en inferioridad: el de atrás protege el aro y el de delante frena el balón; nunca los dos al mismo hombre. Se defiende el PASE, no al jugador. Error frecuente: los dos defensores van al balón y dejan una entrada libre. Regla que ayuda: "uno arriba, uno abajo, y el de abajo no sube hasta que el balón se suelte". Ojo con el cansancio: este ejercicio agota, y es donde peor se defiende.',
-    variantes: 'Base: 2c1 de ida y 1c1 de vuelta. Intermedio: 3c2 de ida y 2c2 de vuelta. Avanzado: 4c3 de ida y 3c3 de vuelta, sin parar durante cuatro minutos.',
     tags: ['juego reducido', 'inferioridad', 'superioridad', 'transición', 'balance defensivo', 'defensa individual'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 15, canastas: 2, estaciones: 1,
@@ -466,6 +517,11 @@ export const TANDA_03 = [
       requisito_previo: 'defender individualmente a un par y correr el contraataque por carriles',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 120 },
       organizacion: 'Con 12: un solo grupo en pista entera. Salen de cinco en cinco y el resto espera al fondo por orden.',
+      niveles: {
+        base: '2c1 de ida y 1c1 de vuelta.',
+        intermedio: '3c2 de ida y 2c2 de vuelta.',
+        avanzado: '4c3 de ida y 3c3 de vuelta, sin parar durante cuatro minutos.',
+      },
       criterio_exito: 'la defensa en inferioridad evita la canasta fácil en la mitad de las jugadas',
     },
     tablero: () => [

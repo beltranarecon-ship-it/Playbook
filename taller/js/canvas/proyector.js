@@ -8,6 +8,58 @@ import { h } from '../ui/dom.js';
 import { CourtView } from './court.js';
 import { AnimationEngine } from './engine.js';
 import { controls } from './controls.js';
+import { textoDosis, nivelesDe } from '../ficha.js';
+
+/* ── Lo que hace falta saber con el balón en la mano ─────────
+   El proyector recibía seis datos de la ficha y usaba uno: el nombre.
+   Todo lo demás —la dosis, el criterio de éxito, cómo se reparte el
+   grupo, los tres niveles de exigencia— se le pasaba y se tiraba, en
+   la única pantalla que se mira DENTRO de la pista.
+
+   Aquí va lo justo: cuánto, cuándo está bien hecho, y el escalón de
+   exigencia que se está corriendo. Se desvanece con los controles, así
+   que no ensucia la proyección; vuelve al mover el ratón o tocar. */
+function panelFicha(meta, alCambiarNivel) {
+  const r = meta.requisitos || {};
+  const dosis = textoDosis(r.dosis);
+  const escalones = nivelesDe({ requisitos: r, variantes: meta.variantes });
+  if (!dosis && !r.criterio_exito && !escalones) return null;
+
+  const dato = (etq, txt) => (txt ? h('div', { class: 'proy-dato' },
+    h('small', null, etq), h('span', null, txt)) : null);
+
+  const cuerpoNivel = h('p', { class: 'proy-nivel-txt' });
+  let elegido = 0;
+
+  const chips = (escalones || []).map((n, i) => {
+    const b = h('button', { class: 'proy-chip', type: 'button', onClick: () => elegir(i) }, n.nivel);
+    return b;
+  });
+
+  /* `avisar` distingue pintar de elegir. El primer nivel se pinta al
+     construir el panel, y entonces avisar despertaría a unos controles
+     que todavía no existen (`showControls` se define más abajo, y una
+     const no se puede leer antes de su línea). */
+  function elegir(i, avisar = true) {
+    if (!escalones || !escalones.length) return;
+    elegido = ((i % escalones.length) + escalones.length) % escalones.length;
+    chips.forEach((b, k) => b.classList.toggle('is-on', k === elegido));
+    cuerpoNivel.textContent = escalones[elegido].texto;
+    if (avisar) alCambiarNivel?.();
+  }
+
+  const panel = h('div', { class: 'proy-ficha' },
+    dato('Dosis', dosis),
+    dato('Bien hecho cuando', r.criterio_exito),
+    escalones ? h('div', { class: 'proy-nivel' },
+      h('div', { class: 'proy-chips' }, ...chips), cuerpoNivel) : null,
+  );
+
+  // arranca en el escalón de en medio: es el que se corre por defecto
+  if (escalones) elegir(Math.min(1, escalones.length - 1), false);
+
+  return { el: panel, siguienteNivel: () => elegir(elegido + 1), hayNiveles: !!escalones };
+}
 
 export function abrirProyector(animacion, meta = {}) {
   // Modo proyector: la pista ocupa toda la pantalla en paisaje (§14). Sin barra
@@ -30,11 +82,18 @@ export function abrirProyector(animacion, meta = {}) {
   }, '×');
   btnCerrar.addEventListener('click', () => cerrar());
 
+  const ficha = panelFicha(meta, () => showControls());
+
   const root = h('div', { class: 'proyector proyector--full' },
-    h('div', { class: 'proyector__title' }, meta.nombre || 'Ejercicio'),
+    h('div', { class: 'proyector__cab' },
+      h('div', { class: 'proyector__title' }, meta.nombre || 'Ejercicio'),
+      ficha ? ficha.el : null,
+    ),
     btnCerrar,
     h('div', { class: 'proyector__stage' }, view.root, h('div', { class: 'proyector__controls' }, ctrl.el)),
-    h('p', { class: 'proyector__hint mono' }, 'Espacio play · ← → fases · R reinicio · L bucle · 1/2/3 velocidad · Esc salir'),
+    h('p', { class: 'proyector__hint mono' },
+      'Espacio play · ← → fases · R reinicio · L bucle · 1/2/3 velocidad'
+      + (ficha?.hayNiveles ? ' · N nivel' : '') + ' · Esc salir'),
   );
   document.body.append(root);
   if (root.requestFullscreen) root.requestFullscreen().catch(() => {});
@@ -59,6 +118,7 @@ export function abrirProyector(animacion, meta = {}) {
       case '1': engine.setSpeed(0.5); break;
       case '2': engine.setSpeed(1); break;
       case '3': engine.setSpeed(2); break;
+      case 'n': case 'N': ficha?.siguienteNivel(); break;
       case 'Escape': cerrar(); break;
       default: return;
     }

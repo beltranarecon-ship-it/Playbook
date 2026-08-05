@@ -30,7 +30,6 @@ export const FICHA_BUENA = {
   objetivos: 'Automatizar el doble ritmo por ambos lados partiendo de una recepción en movimiento.',
   descripcion_texto: 'Dos filas en los 45. El primero de la fila del lado derecho pasa al del lado izquierdo, que recibe en carrera y entra a canasta en doble ritmo. Cada uno va a la fila contraria.',
   notas: 'Puntos clave: paso largo de entrada y paso corto de impulso; extensión con la pierna contraria al brazo de tiro. Error frecuente: llegar frenando y saltar hacia delante en vez de hacia arriba.',
-  variantes: 'Base: sin pase, saliendo ya con el balón botado. Intermedio: con pase previo y cambiando el lado de entrada cada repetición. Avanzado: con un defensor que llega desde el fondo y obliga a decidir entrada o parada.',
   tags: ['entrada', 'doble ritmo', 'recepción', 'finalización'],
   requisitos: {
     jugadores_min: 4,
@@ -43,6 +42,11 @@ export const FICHA_BUENA = {
     requisito_previo: 'coordinar dos apoyos con el balón en las manos sin dar pasos',
     dosis: { series: 3, cantidad: 6, unidad: 'repeticiones', descanso: 30 },
     organizacion: 'Con 12: dos estaciones, una por canasta, seis por estación en dos filas de tres. Dos balones por estación para que no pare.',
+    niveles: {
+      base: 'sin pase, saliendo ya con el balón botado.',
+      intermedio: 'con pase previo y cambiando el lado de entrada cada repetición.',
+      avanzado: 'con un defensor que llega desde el fondo y obliga a decidir entrada o parada.',
+    },
     criterio_exito: 'ocho de cada diez entradas terminan con el balón tocando tablero antes que el aro',
     aplicacion: '2c2 en media pista con entrada obligatoria tras pase',
   },
@@ -108,7 +112,8 @@ const CASOS = [
   { que: 'nivel que no pertenece a la rama', mut: (f) => { f.categoria_nivel = ['Cadete']; }, espera: /no pertenece a la rama/ },
   { que: 'intensidad fuera de rango', mut: (f) => { f.intensidad = 7; }, espera: /intensidad 7/ },
   { que: 'duración máxima menor que la mínima', mut: (f) => { f.duration_max = 3; }, espera: /menor que la m[íi]nima/ },
-  { que: 'falta un nivel de exigencia', mut: (f) => { f.variantes = 'Base: sin pase. Intermedio: con pase.'; }, espera: /faltan niveles.*avanzado/i },
+  // (el caso de los niveles de exigencia vive más abajo, con los suyos:
+  // dejó de mirar el párrafo de `variantes` y mira el dato)
   { que: 'requisito obligatorio vacío', mut: (f) => { delete f.requisitos.criterio_exito; }, espera: /criterio_exito vac/ },
   { que: 'densidad desconocida', mut: (f) => { f.requisitos.densidad = 'regular'; }, espera: /densidad "regular"/ },
   { que: 'oposición fuera de la escala D19', mut: (f) => { f.requisitos.oposicion = 'media'; }, espera: /fuera de la escala/ },
@@ -121,6 +126,20 @@ const CASOS = [
   { que: 'D1 · analítico sin aplicación declarada', mut: (f) => { f.tags.push('analítico'); delete f.requisitos.aplicacion; }, espera: /aplicacion es obligatorio/ },
   { que: 'D4 · densidad baja sin justificar', mut: (f) => { f.requisitos.densidad = 'baja'; }, espera: /justificacion_densidad/ },
   { que: 'D4 · densidad baja justificada pasa', mut: (f) => { f.requisitos.densidad = 'baja'; f.requisitos.justificacion_densidad = 'el tiro libre exige esperar el turno'; }, espera: null },
+
+  // ---- los tres niveles de exigencia como DATO (Prioridad 7) ----
+  // Antes se comprobaba que las palabras "base/intermedio/avanzado"
+  // aparecieran en el párrafo de `variantes`, y eso lo pasaba cualquier
+  // texto que las mencionara de pasada.
+  { que: 'NIVELES · sin el campo estructurado', mut: (f) => { delete f.requisitos.niveles; }, espera: /faltan los tres niveles/ },
+  { que: 'NIVELES · un escalón vacío', mut: (f) => { f.requisitos.niveles.intermedio = '   '; }, espera: /niveles de exigencia vac[íi]os: intermedio/ },
+  {
+    que: 'NIVELES · dos escalones que dicen lo mismo',
+    // tres peldaños iguales no son una escalera
+    mut: (f) => { f.requisitos.niveles.avanzado = f.requisitos.niveles.base; },
+    espera: /dos niveles de exigencia con el mismo texto/,
+  },
+  { que: 'NIVELES · un escalón inventado', mut: (f) => { f.requisitos.niveles.experto = 'con los ojos cerrados'; }, espera: /niveles desconocidos: experto/ },
 
   // ---- organización con el grupo entero (Prioridad 5 del informe) ----
   { que: 'ORGANIZACIÓN · falta el campo', mut: (f) => { delete f.requisitos.organizacion; }, espera: /requisitos\.organizacion vac[íi]o/ },

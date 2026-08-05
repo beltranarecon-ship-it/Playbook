@@ -14,7 +14,6 @@
     "objetivos": "Botar sin mirar el balón manteniendo el control en espacio compartido, con una decisión externa que obligue a levantar la cabeza.",
     "descripcion_texto": "Se divide la media pista en cuatro cuadrantes con conos. Todos botan a la vez, cada uno con su balón, dentro del cuadrante que el entrenador indica levantando dedos. Al cambiar de cuadrante hay que cruzar por el centro y cambiar de mano al hacerlo. Nadie puede chocar con nadie: si hay contacto, los dos implicados hacen tres cambios de mano en el sitio antes de seguir.",
     "notas": "Puntos clave: balón por debajo de la cintura y a un lado del cuerpo, no delante; la mano que no bota protege. Lo que hay que mirar como entrenador es la CABEZA, no la mano: si el niño acierta el cuadrante es que está mirando. Error frecuente en los pequeños: golpear el balón en vez de acompañarlo con la muñeca.",
-    "variantes": "Base: cuadrantes fijos y cambio de mano libre, sin límite de tiempo. Intermedio: el entrenador cambia el cuadrante cada 5 segundos y obliga a cruzar por el centro. Avanzado: dos jugadores sin balón hacen de perseguidores e intentan tocar balones ajenos; quien pierde el suyo pasa a perseguir.",
     "tags": [
       "bote",
       "cabeza levantada",
@@ -42,6 +41,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: los doce a la vez, un balón cada uno, tres por cuadrante. No usa canastas, así que puede ir en paralelo con algo de tiro en los aros.",
+      "niveles": {
+        "base": "cuadrantes fijos y cambio de mano libre, sin límite de tiempo.",
+        "intermedio": "el entrenador cambia el cuadrante cada 5 segundos y obliga a cruzar por el centro.",
+        "avanzado": "dos jugadores sin balón hacen de perseguidores e intentan tocar balones ajenos; quien pierde el suyo pasa a perseguir."
+      },
       "criterio_exito": "completar 60 segundos sin perder el balón ni chocar, acertando siempre el cuadrante indicado"
     },
     "animacion": {
@@ -190,7 +194,6 @@
     "objetivos": "Encadenar cambios de mano en carrera y terminar en canasta sin perder velocidad, automatizando el gesto antes de meterle un defensor.",
     "descripcion_texto": "Fila en el medio campo con tres conos separados dos metros en diagonal hacia la canasta. El primero sale botando y sortea los conos cambiando de mano en cada uno, siempre pasando el balón por delante del cuerpo y por fuera del cono. Al salir del último ataca la canasta en doble ritmo. Coge su rebote y vuelve al final de la fila por fuera.",
     "notas": "Puntos clave: el cambio de mano se hace ANTES de llegar al cono, no encima; el cuerpo se mete entre el cono y el balón. Errores frecuentes: pasar el balón por detrás del cono (no protege nada), frenar para cambiar de mano, y llegar a la canasta con dos botes de más. Si el niño mira el balón al cambiar, acorta la distancia entre conos antes que corregirle verbalmente.",
-    "variantes": "Base: dos conos separados y sin entrada, terminando con parada bajo el aro. Intermedio: tres conos y entrada en doble ritmo. Avanzado: los conos se sustituyen por tres compañeros con las manos activas, que pueden tocar el balón si pasa a su alcance.",
     "tags": [
       "bote",
       "cambio de mano",
@@ -218,6 +221,11 @@
         "descanso": 40
       },
       "organizacion": "Con 12: dos estaciones, una en cada canasta, seis por estación en dos filas de tres. Cada fila con su juego de conos; el que termina vuelve a la suya.",
+      "niveles": {
+        "base": "dos conos separados y sin entrada, terminando con parada bajo el aro.",
+        "intermedio": "tres conos y entrada en doble ritmo.",
+        "avanzado": "los conos se sustituyen por tres compañeros con las manos activas, que pueden tocar el balón si pasa a su alcance."
+      },
       "criterio_exito": "cuatro de cada cinco recorridos sin perder el balón y terminando la entrada sin pasos",
       "aplicacion": "1c1 en pasillo desde medio campo, donde el cambio de mano sirve para superar de verdad a alguien"
     },
@@ -517,7 +525,6 @@
     "objetivos": "Usar el cambio de mano y el cambio de ritmo para superar a un defensor real, no a un cono.",
     "descripcion_texto": "Se marca con conos un pasillo de unos tres metros de ancho desde medio campo hasta la canasta. Atacante con balón en un extremo, defensor delante. El atacante tiene que llegar a canasta sin salirse del pasillo; el defensor defiende de verdad pero no puede robar de espaldas. Si el atacante pisa fuera, cambio de rol. Se juega a punto: canasta vale 1, robo o salida vale 1 para el defensor.",
     "notas": "Puntos clave: el primer bote decide; si sale botando de frente y despacio, ya ha perdido. Se busca cambio de ritmo, no solo cambio de mano — un cambio de mano lento no supera a nadie. Error frecuente: botar hacia el defensor en vez de hacia el espacio que deja. Como entrenador, mira los PIES del defensor: si no ha tenido que girar la cadera, el atacante no le ha atacado de verdad.",
-    "variantes": "Base: pasillo ancho de cinco metros y defensor que solo puede desplazarse lateralmente. Intermedio: pasillo de tres metros y defensa completa. Avanzado: el atacante empieza de espaldas a la canasta y tiene que girarse antes de atacar, con dos botes como máximo.",
     "tags": [
       "bote",
       "cambio de ritmo",
@@ -544,6 +551,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos pasillos de conos, uno hacia cada canasta, seis en cada uno. Tres parejas por pasillo que se turnan; los que esperan, detrás del cono de salida.",
+      "niveles": {
+        "base": "pasillo ancho de cinco metros y defensor que solo puede desplazarse lateralmente.",
+        "intermedio": "pasillo de tres metros y defensa completa.",
+        "avanzado": "el atacante empieza de espaldas a la canasta y tiene que girarse antes de atacar, con dos botes como máximo."
+      },
       "criterio_exito": "el atacante gana más puntos que el defensor en la serie; se cambia de pareja cada serie"
     },
     "animacion": {
@@ -811,7 +823,6 @@
     "objetivos": "Automatizar el pase de pecho y el picado eligiendo cuál según dónde estén las manos del defensor.",
     "descripcion_texto": "Tres filas cortas en el 45 derecho, el 45 izquierdo y la punta. Se pasa y se corre detrás de la fila a la que se ha pasado. En el centro del triángulo hay un jugador con las manos arriba que no roba, solo estorba: si tiene las manos altas hay que pasar picado, si las tiene bajas hay que pasar de pecho. El pasador dice en voz alta qué pase va a hacer antes de hacerlo.",
     "notas": "Puntos clave: paso adelante con la pierna contraria y extensión de brazos hasta dejar los pulgares hacia abajo; el picado bota a dos tercios de la distancia, no a la mitad. Errores frecuentes: pasar con las dos manos desde el pecho sin dar el paso, y pasar a donde está el compañero en vez de a donde va. Es el ejercicio donde más rápido se instala la pereza: si el pase no llega tenso, córtalo y repite.",
-    "variantes": "Base: sin defensor central, alternando un tipo de pase por vuelta. Intermedio: con defensor pasivo que decide el tipo de pase. Avanzado: dos balones a la vez en el triángulo, obligando a recibir y pasar sin mirar dónde está el segundo balón.",
     "tags": [
       "pase",
       "pase de pecho",
@@ -838,6 +849,11 @@
         "descanso": 30
       },
       "organizacion": "Con 12: dos triángulos en paralelo, uno en cada media pista, seis en cada uno (tres filas de dos). No usa canastas.",
+      "niveles": {
+        "base": "sin defensor central, alternando un tipo de pase por vuelta.",
+        "intermedio": "con defensor pasivo que decide el tipo de pase.",
+        "avanzado": "dos balones a la vez en el triángulo, obligando a recibir y pasar sin mirar dónde está el segundo balón."
+      },
       "criterio_exito": "veinte pases seguidos del tipo correcto sin que el balón toque el suelo fuera del picado"
     },
     "animacion": {
@@ -1197,7 +1213,6 @@
     "objetivos": "Entrenar la decisión de pasar —cuándo, a quién y de qué forma— con presión real y sin bote.",
     "descripcion_texto": "Cuadrado de unos seis metros marcado con conos. Cuatro atacantes en las esquinas, dos defensores dentro. No se puede botar y no se puede devolver el balón a quien te lo ha pasado. Los atacantes pueden desplazarse por su lado del cuadrado pero no cruzarlo. Diez pases seguidos es un punto; robo o balón fuera y entra a defender quien lo perdió.",
     "notas": "Puntos clave: pedir el balón con la mano lejos del defensor, y recibir con los pies ya orientados al siguiente pase. Lo que hay que corregir no es el pase malo, es la recepción parada: casi siempre el problema estaba un segundo antes. Error frecuente: pasar en cuanto reciben, sin mirar; obliga a que digan el número del compañero al que pasan.",
-    "variantes": "Base: un solo defensor y sí se puede devolver el pase. Intermedio: dos defensores y prohibido devolver. Avanzado: dos defensores y máximo dos segundos con el balón en las manos.",
     "tags": [
       "pase",
       "recepción",
@@ -1226,6 +1241,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos cuadrados, uno en cada media pista, seis por cuadrado: cuatro en las esquinas y dos de intrusos. Los intrusos cambian cada minuto.",
+      "niveles": {
+        "base": "un solo defensor y sí se puede devolver el pase.",
+        "intermedio": "dos defensores y prohibido devolver.",
+        "avanzado": "dos defensores y máximo dos segundos con el balón en las manos."
+      },
       "criterio_exito": "llegar a diez pases seguidos al menos dos veces por serie"
     },
     "animacion": {
@@ -1374,7 +1394,6 @@
     "objetivos": "Instalar la mecánica de tiro sin que la distancia obligue a compensar con el cuerpo.",
     "descripcion_texto": "Por parejas, uno tira y el otro coge el rebote y devuelve. El tirador se coloca a un metro del aro, en el lado del poste bajo. Diez tiros y se cambia. La distancia no aumenta hasta que el gesto se mantiene: pies orientados, balón que baja y sube por delante del cuerpo, mano de tiro debajo y mano guía al lado, extensión completa y muñeca que acaba colgando.",
     "notas": "PUNTO CLAVE del bloque: a esta edad se PERMITE el codo más bajo y pegado al cuerpo. Forzar la mecánica del adulto a un niño sin fuerza produce el empujón desde el pecho, que es el hábito que después cuesta años quitar. Errores frecuentes: la mano guía empuja y desvía el balón; los pies acaban cruzados; el niño mira el balón en lugar del aro. Corrección que más rinde: que se quede quieto con el brazo arriba hasta que el balón toque el aro.",
-    "variantes": "Base: a un metro del aro y sin saltar, sentado o de rodillas si hace falta para quitar las piernas de la ecuación. Intermedio: de pie, a dos metros, alternando los dos lados del poste bajo. Avanzado: desde el codo, y cada dos tiros uno tras recepción del compañero.",
     "tags": [
       "tiro",
       "mecánica de tiro",
@@ -1399,6 +1418,11 @@
         "descanso": 30
       },
       "organizacion": "Con 12: seis parejas, tres en cada canasta, repartidas a un metro del aro por los dos lados y el frontal. Diez tiros y cambio dentro de la pareja.",
+      "niveles": {
+        "base": "a un metro del aro y sin saltar, sentado o de rodillas si hace falta para quitar las piernas de la ecuación.",
+        "intermedio": "de pie, a dos metros, alternando los dos lados del poste bajo.",
+        "avanzado": "desde el codo, y cada dos tiros uno tras recepción del compañero."
+      },
       "criterio_exito": "siete de cada diez entran, y el brazo se queda arriba en las diez",
       "aplicacion": "tiro tras recepción con cierre del defensor, donde el mismo gesto tiene que salir con prisa"
     },
@@ -1602,7 +1626,6 @@
     "objetivos": "Que el mismo gesto de tiro salga con prisa, y que el jugador decida entre tirar y penetrar leyendo al defensor.",
     "descripcion_texto": "Un pasador en la punta, un tirador en el codo y un defensor que parte desde debajo del aro. Al pase, el defensor sale a cerrar. El tirador tiene que decidir: si el defensor llega con las manos bajas o tarde, tira; si llega a tiempo y frenando, finta y entra con un bote. Se rotan las tres posiciones cada cinco repeticiones.",
     "notas": "Puntos clave: los pies se orientan al aro ANTES de que llegue el balón, no después; la lectura se hace sobre las manos y la velocidad del defensor, no sobre la distancia. Error frecuente: decidir antes de recibir — se nota porque tiran igual aunque el defensor les haya llegado encima. Regla útil para ellos: \"si le ves las manos, entra; si le ves el pecho, tira\".",
-    "variantes": "Base: sin decisión, el defensor sale siempre tarde y el tirador siempre tira. Intermedio: el defensor elige y el tirador lee. Avanzado: el defensor puede salir a cerrar o quedarse; si se queda, el tirador tiene dos segundos para decidir.",
     "tags": [
       "tiro",
       "tiro tras recepción",
@@ -1629,6 +1652,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos que rotan tirador, pasador y defensor.",
+      "niveles": {
+        "base": "sin decisión, el defensor sale siempre tarde y el tirador siempre tira.",
+        "intermedio": "el defensor elige y el tirador lee.",
+        "avanzado": "el defensor puede salir a cerrar o quedarse; si se queda, el tirador tiene dos segundos para decidir."
+      },
       "criterio_exito": "acierta la decisión (tirar o entrar) en cuatro de cada cinco, aunque falle el tiro"
     },
     "animacion": {
@@ -1810,7 +1838,6 @@
     "objetivos": "Automatizar el doble ritmo por ambos lados partiendo de una recepción en movimiento.",
     "descripcion_texto": "Dos filas en los 45. El primero de la fila derecha pasa al primero de la izquierda, que recibe en carrera y entra a canasta en doble ritmo. Cada uno va a la fila contraria a la suya, de modo que todos entran por los dos lados. Con dos balones el ejercicio no para.",
     "notas": "Puntos clave: paso largo de entrada y paso corto de impulso; la extensión sube con la pierna contraria al brazo de tiro. Errores frecuentes: llegar frenando y saltar hacia delante en vez de hacia arriba; coger el balón con las dos manos demasiado tarde. Corrección que más rinde: marcar en el suelo con dos conos dónde caen los dos apoyos.",
-    "variantes": "Base: sin pase, saliendo ya botando desde tres metros. Intermedio: con pase previo y cambiando el lado de entrada cada repetición. Avanzado: con un defensor que persigue desde atrás y obliga a decidir entrada o parada y tiro.",
     "tags": [
       "entrada",
       "doble ritmo",
@@ -1837,6 +1864,11 @@
         "descanso": 30
       },
       "organizacion": "Con 12: dos estaciones, una por canasta, seis por estación en dos filas de tres (una en cada 45). Dos balones por estación para que no pare.",
+      "niveles": {
+        "base": "sin pase, saliendo ya botando desde tres metros.",
+        "intermedio": "con pase previo y cambiando el lado de entrada cada repetición.",
+        "avanzado": "con un defensor que persigue desde atrás y obliga a decidir entrada o parada y tiro."
+      },
       "criterio_exito": "ocho de cada diez entradas terminan con el balón tocando el tablero antes que el aro",
       "aplicacion": "2c2 en media pista con entrada obligatoria tras el pase"
     },
@@ -2179,7 +2211,6 @@
     "objetivos": "Finalizar bajo presión, decidiendo entre entrar directo, cambiar de mano o parar y tirar.",
     "descripcion_texto": "Atacante en la punta con balón; defensor un paso por detrás. A la señal el atacante ataca la canasta y el defensor le persigue. El defensor no puede tocar el brazo de tiro pero sí acompañar y molestar. Se rotan los papeles en cada repetición y se cuenta cuántas canastas mete cada uno como atacante.",
     "notas": "Puntos clave: proteger el balón con el cuerpo entre el defensor y el balón durante todo el trayecto; la última mano es la de fuera. Error frecuente: mirar al defensor por encima del hombro, que frena la carrera. Si el atacante llega siempre y el defensor nunca, adelanta la salida del defensor medio segundo hasta que sea de verdad una carrera.",
-    "variantes": "Base: el defensor sale dos segundos después y solo persigue, sin saltar. Intermedio: un segundo de ventaja y defensa completa. Avanzado: salen a la vez y el atacante empieza de espaldas.",
     "tags": [
       "entrada",
       "finalización",
@@ -2205,6 +2236,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos estaciones, una por canasta, seis por estación. Tres parejas que se turnan; se cambia atacante y perseguidor cada tres entradas.",
+      "niveles": {
+        "base": "el defensor sale dos segundos después y solo persigue, sin saltar.",
+        "intermedio": "un segundo de ventaja y defensa completa.",
+        "avanzado": "salen a la vez y el atacante empieza de espaldas."
+      },
       "criterio_exito": "anotar más de la mitad de las entradas como atacante contra un defensor que sale un segundo después"
     },
     "animacion": {
@@ -2372,7 +2408,6 @@
     "objetivos": "Parar equilibrado con el balón en las manos y salir sin pasos, que es lo que permite jugar después de haber botado.",
     "descripcion_texto": "Fila con balón en medio campo y un cono a la altura del tiro libre. Se llega botando, se para en dos tiempos justo antes del cono, se pivota sobre el pie de atrás y se sale botando por el lado contrario hacia la canasta. Un compañero al lado del cono levanta un brazo u otro para indicar hacia qué lado hay que salir.",
     "notas": "Puntos clave: la parada baja el centro de gravedad, con los pies a la anchura de los hombros; el pie de pivote no se levanta hasta que el balón sale de las manos. Error frecuente y muy caro: arrastrar el pie de pivote al salir, que es pasos y no lo ven. Como entrenador, mírale el PIE, no el balón. Segundo error: parar de pie, alto y rígido, con lo que la salida es lentísima.",
-    "variantes": "Base: sin bote, llegando andando y practicando solo la parada y el pivote. Intermedio: llegando botando y saliendo hacia el lado que indica el compañero. Avanzado: el compañero pasa a defender pasivamente después de indicar, y hay que salir de verdad.",
     "tags": [
       "parada",
       "pivote",
@@ -2399,6 +2434,11 @@
         "descanso": 40
       },
       "organizacion": "Con 12: dos estaciones, una por canasta, seis por estación: fila de cinco y el compañero que señala el lado. El que señala cambia cada vuelta.",
+      "niveles": {
+        "base": "sin bote, llegando andando y practicando solo la parada y el pivote.",
+        "intermedio": "llegando botando y saliendo hacia el lado que indica el compañero.",
+        "avanzado": "el compañero pasa a defender pasivamente después de indicar, y hay que salir de verdad."
+      },
       "criterio_exito": "ocho paradas seguidas sin arrastrar el pie de pivote, comprobadas por el compañero"
     },
     "animacion": {
@@ -2699,7 +2739,6 @@
     "objetivos": "Resolver el uno contra uno con una intención clara desde el primer apoyo, sin gastar botes en tantear.",
     "descripcion_texto": "Atacante en el 45 con balón, defensor delante. Máximo dos botes para terminar. Se puede tirar, entrar o parar y tirar, pero no se puede volver atrás. El defensor defiende completo. Cinco ataques cada uno y se cambia de pareja. La restricción de dos botes es el corazón del ejercicio: sin ella se convierte en un concurso de botes.",
     "notas": "Puntos clave: el primer apoyo ya va hacia el aro; el balón se protege bajo y lejos del defensor. Lo que hay que corregir no es la finta, es la SALIDA: casi todos fintan bien y luego salen despacio y de frente. Error frecuente: botar antes de decidir. Regla que ayuda: \"mira el aro antes del primer bote\".",
-    "variantes": "Base: tres botes y defensor que no puede robar. Intermedio: dos botes y defensa completa. Avanzado: un solo bote, y si el defensor gana la posición hay que buscar el pase a un compañero en la esquina.",
     "tags": [
       "1c1",
       "bote",
@@ -2726,6 +2765,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos canastas, seis por canasta. Tres parejas que se turnan; las que esperan, en el 45 contrario y listas para entrar sin pausa.",
+      "niveles": {
+        "base": "tres botes y defensor que no puede robar.",
+        "intermedio": "dos botes y defensa completa.",
+        "avanzado": "un solo bote, y si el defensor gana la posición hay que buscar el pase a un compañero en la esquina."
+      },
       "criterio_exito": "terminar la jugada dentro de los dos botes en cinco de cada cinco, aunque no se anote"
     },
     "animacion": {
@@ -2894,7 +2938,6 @@
     "objetivos": "Aprender a aparecer donde el pase es posible, cambiando de ritmo y de dirección para separarse del defensor.",
     "descripcion_texto": "Pasador en la punta con balón. Atacante en el 45 y defensor pegado. El atacante tiene cinco segundos para recibir; puede usar cualquier recurso —cambio de ritmo, corte a canasta y vuelta, ir al fondo— pero no salirse de su mitad de la pista. Si recibe, ataca inmediatamente el 1c1. Se rota pasador, atacante y defensor.",
     "notas": "Puntos clave: el desmarque empieza yendo hacia el defensor y no huyendo de él; se pide el balón con la mano de fuera y con las palmas, no con el dedo. Error frecuente: ir siempre al mismo sitio a la misma velocidad, con lo que el defensor lo aprende en dos repeticiones. Si el atacante nunca recibe, deja que el pasador se mueva un paso: casi siempre el problema es el ángulo, no el desmarque.",
-    "variantes": "Base: el defensor solo puede seguir, sin anticipar, y el atacante tiene ocho segundos. Intermedio: cinco segundos y defensa completa. Avanzado: dos atacantes y dos defensores en el mismo lado, con lo que aparece el espacio del compañero.",
     "tags": [
       "desmarque",
       "recepción",
@@ -2921,6 +2964,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante y defensor. Rotan las tres posiciones.",
+      "niveles": {
+        "base": "el defensor solo puede seguir, sin anticipar, y el atacante tiene ocho segundos.",
+        "intermedio": "cinco segundos y defensa completa.",
+        "avanzado": "dos atacantes y dos defensores en el mismo lado, con lo que aparece el espacio del compañero."
+      },
       "criterio_exito": "recibir dentro de los cinco segundos en cuatro de cada cinco intentos"
     },
     "animacion": {
@@ -3165,7 +3213,6 @@
     "objetivos": "Entender que después de pasar hay que moverse, y que el corte al aro es la forma más simple de generar ventaja entre dos.",
     "descripcion_texto": "Dos atacantes —punta y 45— contra dos defensores. Quien pasa está obligado a cortar hacia canasta, y el receptor tiene que mirarle: si el corte queda libre, pase y canasta. Si no, el cortador sale al lado contrario y se vuelve a empezar. Máximo tres pases antes de terminar la jugada. Se juega a tres canastas y rotan.",
     "notas": "Puntos clave: el corte pasa POR DELANTE del defensor si este mira el balón, y por detrás si le está mirando a él; el receptor bota una vez hacia el centro para abrir el ángulo de pase. Error frecuente: cortar despacio y con la mano baja, con lo que el pase nunca llega. Otro error, del receptor: mirar al aro en lugar de mirar el corte. En minibasket este ejercicio da más rendimiento que cualquier bloqueo (D23).",
-    "variantes": "Base: los defensores solo pueden defender al de balón, y el corte va siempre libre. Intermedio: defensa completa y máximo tres pases. Avanzado: si el corte no recibe, el cortador tiene que salir a la esquina contraria y el ataque continúa con dos pases más.",
     "tags": [
       "pasar y cortar",
       "corte",
@@ -3193,6 +3240,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan fuera; entran cada dos ataques.",
+      "niveles": {
+        "base": "los defensores solo pueden defender al de balón, y el corte va siempre libre.",
+        "intermedio": "defensa completa y máximo tres pases.",
+        "avanzado": "si el corte no recibe, el cortador tiene que salir a la esquina contraria y el ataque continúa con dos pases más."
+      },
       "criterio_exito": "al menos una canasta de cada tres nace del corte y no del uno contra uno"
     },
     "animacion": {
@@ -3509,7 +3561,6 @@
     "objetivos": "Que la ayuda se entienda como una ida y una vuelta, no como un sitio donde quedarse.",
     "descripcion_texto": "Dos atacantes, uno en el 45 con balón y otro en la esquina contraria; sus dos defensores. El atacante con balón penetra obligatoriamente. El defensor del atacante sin balón tiene que salir a cortar la penetración y volver corriendo a su par, que buscará el hueco. El ataque solo puede terminar con entrada o con tiro del que estaba en la esquina.",
     "notas": "PUNTO CLAVE del bloque, y además es reglamento: la ayuda SIEMPRE lleva su recuperación. Quedarse dentro de la zona sin defender a nadie más de tres segundos está sancionado (D11). Puntos clave: se ayuda con el pecho y los pies, no con las manos; se sale a ayudar antes de que el atacante llegue, no cuando ya está. Error frecuente: ayudar y quedarse mirando. En este ejercicio NO se entrena negar la línea de pase: a esta edad son tres tareas a la vez y no salen (D22).",
-    "variantes": "Base: el atacante de la esquina no se mueve y solo hay que ayudar y volver. Intermedio: el de la esquina se desplaza para buscar el hueco. Avanzado: los dos atacantes pueden intercambiar posiciones antes de empezar, y el ataque tiene libertad total.",
     "tags": [
       "ayuda",
       "recuperación",
@@ -3536,6 +3587,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan; se cambia ataque y defensa cada cuatro posesiones.",
+      "niveles": {
+        "base": "el atacante de la esquina no se mueve y solo hay que ayudar y volver.",
+        "intermedio": "el de la esquina se desplaza para buscar el hueco.",
+        "avanzado": "los dos atacantes pueden intercambiar posiciones antes de empezar, y el ataque tiene libertad total."
+      },
       "criterio_exito": "la defensa evita la canasta en tres de cada cuatro, y el ayudante llega siempre a recuperar a su par"
     },
     "animacion": {
@@ -3878,7 +3934,6 @@
     "objetivos": "Sostener la postura y el desplazamiento defensivo contra un atacante que avanza de verdad.",
     "descripcion_texto": "Pasillo de tres metros con conos. El atacante avanza botando hacia la canasta a ritmo constante, sin fintas, y el defensor tiene que mantenerse delante todo el recorrido sin tocarle. Ida defendiendo, vuelta atacando. Se cuenta cuántas veces el defensor llega a la canasta habiendo estado siempre por delante.",
     "notas": "Puntos clave: pies más anchos que los hombros, peso en la planta, y desplazamiento sin juntar nunca los pies. Error frecuente: cruzar los pies al girar, que es exactamente cuando el atacante pasa; y mirar el balón en vez del pecho del atacante. Corrección útil: que el defensor lleve las manos a la espalda las dos primeras series, para que defienda con los pies y no con los brazos.",
-    "variantes": "Base: el atacante avanza andando y en línea recta. Intermedio: el atacante corre y puede hacer un cambio de mano. Avanzado: el atacante ataca libre y el defensor puede robar.",
     "tags": [
       "postura defensiva",
       "desplazamiento defensivo",
@@ -3904,6 +3959,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos pasillos de conos, uno hacia cada canasta, seis en cada uno. Tres parejas que se turnan atacante y defensor.",
+      "niveles": {
+        "base": "el atacante avanza andando y en línea recta.",
+        "intermedio": "el atacante corre y puede hacer un cambio de mano.",
+        "avanzado": "el atacante ataca libre y el defensor puede robar."
+      },
       "criterio_exito": "llegar a la canasta por delante del atacante en tres de cada cuatro recorridos, sin tocar"
     },
     "animacion": {
@@ -4135,7 +4195,6 @@
     "objetivos": "Resolver la superioridad numérica sin precipitarse: correr los carriles, atacar al defensor y decidir tarde.",
     "descripcion_texto": "Dos atacantes salen desde el fondo hacia la canasta contraria con un defensor esperando. Al terminar la jugada, el que ha tirado se queda de defensor y los otros dos vuelven atacando hacia la otra canasta con el que estaba defendiendo. Así el ejercicio no se detiene y todos pasan por los tres papeles.",
     "notas": "Puntos clave: los dos atacantes corren por carriles separados, no juntos; el que lleva el balón ataca al defensor y NO pasa hasta que el defensor se compromete. Error frecuentísimo: pasar demasiado pronto, con lo que el defensor recupera y la superioridad se evapora. Regla que ayuda: \"no pases hasta que le veas los pies quietos\". Segundo error: llegar los dos por el centro.",
-    "variantes": "Base: dos contra uno con el defensor obligado a quedarse debajo del aro. Intermedio: defensor libre. Avanzado: tres contra dos, que obliga a leer a dos defensores en lugar de a uno.",
     "tags": [
       "contraataque",
       "transición",
@@ -4162,6 +4221,11 @@
         "descanso": 90
       },
       "organizacion": "Con 12: un solo grupo en pista entera con las dos canastas. Salen de tres en tres sin parar; los otros nueve esperan por orden en la línea de fondo.",
+      "niveles": {
+        "base": "dos contra uno con el defensor obligado a quedarse debajo del aro.",
+        "intermedio": "defensor libre.",
+        "avanzado": "tres contra dos, que obliga a leer a dos defensores en lugar de a uno."
+      },
       "criterio_exito": "anotar en tres de cada cuatro superioridades, y que la mitad de las canastas nazcan de pase y no de entrada directa"
     },
     "animacion": {
@@ -4402,7 +4466,6 @@
     "objetivos": "Jugar con ventaja colectiva en lugar de resolver todo con el bote, en el formato que más contactos con balón da por jugador.",
     "descripcion_texto": "Tres contra tres en media pista. Cada jugador puede dar como máximo dos botes cada vez que recibe. Tras rebote defensivo o robo hay que sacar el balón por encima de la línea de tiros libres antes de atacar. Se juega a cinco canastas o a cuatro minutos. Los equipos rotan para que todos jueguen contra todos.",
     "notas": "Puntos clave: los tres no pueden estar en el mismo lado; después de pasar, o cortas o te separas. La restricción de dos botes no es un capricho: es lo que convierte el ejercicio en un ejercicio de decisiones. Error frecuente al empezar: quedarse quietos mirando al que tiene el balón. Si pasa eso, prohíbe también el bote durante dos posesiones y verás cómo empiezan a moverse.\n\nEste ejercicio lleva solo el montaje, sin animación: un 3c3 abierto puede terminar de mil maneras y dibujar una sola sería enseñar una jugada cerrada donde debe haber lectura.",
-    "variantes": "Base: 3c3 sin límite de botes, solo con la regla de sacar el balón fuera tras rebote. Intermedio: máximo dos botes. Avanzado: máximo un bote y la canasta vale doble si llega tras un corte.",
     "tags": [
       "juego reducido",
       "espaciado",
@@ -4430,6 +4493,11 @@
         "descanso": 90
       },
       "organizacion": "Con 12: dos partidos de 3c3 a la vez, uno en cada canasta. Nadie fuera.",
+      "niveles": {
+        "base": "3c3 sin límite de botes, solo con la regla de sacar el balón fuera tras rebote.",
+        "intermedio": "máximo dos botes.",
+        "avanzado": "máximo un bote y la canasta vale doble si llega tras un corte."
+      },
       "criterio_exito": "más de la mitad de las canastas del equipo nacen después de un pase, no de un uno contra uno"
     },
     "animacion": {
@@ -4541,7 +4609,6 @@
     "objetivos": "Activar con el balón en las manos desde el primer minuto, botando bajo presión real y con la cabeza levantada.",
     "descripcion_texto": "Todos con balón dentro de la media pista. Dos la ligan, también con balón, e intentan tocar a los demás. Quien es tocado o pierde el balón o se sale de la pista pasa a ligarla. Nadie puede dejar de botar en ningún momento, incluidos los que persiguen.",
     "notas": "Puntos clave: se bota bajo y protegido cuando alguien se acerca, y alto y largo cuando hay espacio. Es el mejor momento de la sesión para observar sin corregir: aquí se ve de verdad quién bota con la cabeza levantada. Si el espacio se queda pequeño, quita jugadores en lugar de agrandarlo: la presión es el objetivo.",
-    "variantes": "Base: los que la ligan van sin balón y solo hay que huir. Intermedio: todos con balón. Avanzado: quien es tocado no sale, sino que se une a los que la ligan, con lo que la presión crece hasta el final.",
     "tags": [
       "calentamiento",
       "activación",
@@ -4568,6 +4635,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: los doce a la vez en una media pista, con dos que la ligan. Si se hace fácil, se estrecha el espacio en vez de añadir gente que liga.",
+      "niveles": {
+        "base": "los que la ligan van sin balón y solo hay que huir.",
+        "intermedio": "todos con balón.",
+        "avanzado": "quien es tocado no sale, sino que se une a los que la ligan, con lo que la presión crece hasta el final."
+      },
       "criterio_exito": "aguantar noventa segundos sin ser tocado ni perder el balón"
     },
     "animacion": {
@@ -4705,7 +4777,6 @@
     "objetivos": "Trabajar lateralidad, equilibrio y respuesta a un estímulo externo con el balón siempre en las manos.",
     "descripcion_texto": "Todos con balón repartidos por la media pista. El entrenador levanta un cono de color o dice un número. Verde: botar avanzando. Amarillo: botar en el sitio y bajo. Rojo: parar en dos tiempos y quedarse quietos con el balón cogido. Un número: botar esa cantidad de veces con la mano izquierda y luego seguir. Quien se equivoca da una vuelta al cono central sin dejar de botar.",
     "notas": "Puntos clave: en rojo se para de verdad, con los dos pies y equilibrado, no frenando poco a poco. En estas edades el balón es casi una excusa: lo que se entrena es la lateralidad y la respuesta a un estímulo. No corrijas la técnica del bote aquí; corrígela en su ejercicio. Lo que sí se vigila es que la mano izquierda se use tanto como la derecha.",
-    "variantes": "Base: solo tres colores y sin números. Intermedio: colores y números, con la mano no dominante. Avanzado: los colores significan lo contrario de lo que dicen (verde es parar, rojo es avanzar), que es donde de verdad aparece la inhibición.",
     "tags": [
       "lateralidad",
       "ritmo",
@@ -4734,6 +4805,11 @@
         "descanso": 40
       },
       "organizacion": "Con 12: los doce a la vez en una media pista, un balón cada uno. Sin canastas.",
+      "niveles": {
+        "base": "solo tres colores y sin números.",
+        "intermedio": "colores y números, con la mano no dominante.",
+        "avanzado": "los colores significan lo contrario de lo que dicen (verde es parar, rojo es avanzar), que es donde de verdad aparece la inhibición."
+      },
       "criterio_exito": "responder correctamente a nueve de cada diez señales sin perder el balón",
       "aplicacion": "los cuatro cuadrantes, donde la misma respuesta al estímulo ya se hace en espacio compartido"
     },
@@ -4856,7 +4932,6 @@
     "objetivos": "Repetir la mecánica desde ángulos distintos sin alejarse tanto como para tener que empujar el balón.",
     "descripcion_texto": "Cinco puntos marcados con conos a dos metros del aro: los dos postes bajos, los dos codos y el frontal. Por parejas: uno tira desde una posición, el compañero coge el rebote y se lo devuelve en el siguiente punto. Cinco tiros por posición y se cambia de papel. La vuelta completa son veinticinco tiros por jugador.",
     "notas": "Puntos clave: los pies se recolocan hacia el aro en CADA posición, que es lo que cambia de un punto a otro; desde los codos el ángulo con el tablero desaparece y hay que tirar limpio. Error frecuente: llegar corriendo y tirar en desequilibrio por no querer perder ritmo. Vale más ir despacio y llegar equilibrado. Segundo error: usar tablero desde el frontal, donde no existe.",
-    "variantes": "Base: tres posiciones (los dos postes bajos y el frontal), a metro y medio. Intermedio: las cinco posiciones a dos metros. Avanzado: las cinco posiciones desde la distancia del codo, y hay que anotar tres seguidas para pasar a la siguiente.",
     "tags": [
       "tiro",
       "mecánica de tiro",
@@ -4882,6 +4957,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en parejas (uno tira y el otro devuelve). Cada pareja empieza en una posición distinta para no cruzarse.",
+      "niveles": {
+        "base": "tres posiciones (los dos postes bajos y el frontal), a metro y medio.",
+        "intermedio": "las cinco posiciones a dos metros.",
+        "avanzado": "las cinco posiciones desde la distancia del codo, y hay que anotar tres seguidas para pasar a la siguiente."
+      },
       "criterio_exito": "quince de veinticinco dentro, y ninguna posición por debajo de dos de cinco",
       "aplicacion": "tiro tras recepción con cierre, donde el mismo gesto sale con un defensor encima"
     },
@@ -5096,7 +5176,6 @@
     "objetivos": "Encadenar bote, parada y tiro sin perder el equilibrio, que es donde se cae casi todo el tiro tras bote.",
     "descripcion_texto": "Fila en el 45 con balón. Se sale botando hacia el centro, se dan dos botes, se para en dos tiempos y se tira. Un defensor parte del poste bajo y sale a cerrar cuando el atacante recoge el balón. Se rota atacante, defensor y final de la fila.",
     "notas": "Puntos clave: el último bote es más fuerte y más bajo, para que el balón llegue a las manos a la altura de tirar; los pies se orientan al aro DURANTE la parada, no después. Error frecuente: parar y luego reajustar los pies, lo que da tiempo al defensor. Otro clásico: tirar cayendo hacia atrás por haber frenado mal.",
-    "variantes": "Base: sin defensor, dos botes y tiro. Intermedio: defensor que sale a cerrar. Avanzado: el defensor sale antes y el atacante decide entre tirar o meter un bote más y entrar.",
     "tags": [
       "tiro",
       "tiro tras bote",
@@ -5122,6 +5201,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos estaciones, una por canasta, seis por estación: fila de cinco y un defensor que sale a cerrar. Se rota atacante, defensor y final de la fila.",
+      "niveles": {
+        "base": "sin defensor, dos botes y tiro.",
+        "intermedio": "defensor que sale a cerrar.",
+        "avanzado": "el defensor sale antes y el atacante decide entre tirar o meter un bote más y entrar."
+      },
       "criterio_exito": "seis paradas de seis equilibradas, con los pies orientados al aro antes de subir el balón"
     },
     "animacion": {
@@ -5399,7 +5483,6 @@
     "objetivos": "Instalar una rutina de tiro libre estable y sostenerla cuando el tiro importa.",
     "descripcion_texto": "Dos equipos. Por turnos, un jugador tira dos tiros libres. Cada tiro fallado son cinco segundos de plancha para su equipo al terminar la ronda; cada dos tiros anotados, se restan cinco. Todos tiran una vez antes de repetir. Antes de cada tiro el jugador hace su rutina completa: mismos apoyos, mismos botes, misma respiración.",
     "notas": "Puntos clave: la rutina es SIEMPRE la misma, y eso es lo que se corrige aquí, no el porcentaje. Si un niño bota tres veces, que boten tres siempre. Error frecuente: acelerar cuando hay presión, que es justo cuando la rutina sirve para algo. La densidad de este ejercicio es baja por naturaleza y está bien que lo sea: el tiro libre se entrena esperando, igual que en el partido.",
-    "variantes": "Base: sin consecuencia de equipo, solo la rutina y contar aciertos. Intermedio: con consecuencia para el equipo. Avanzado: el resto del equipo puede hacer ruido, y el que falla dos tira otra vez al final con todo el mundo mirando.",
     "tags": [
       "tiro",
       "tiro libre",
@@ -5423,6 +5506,11 @@
         "descanso": 20
       },
       "organizacion": "Con 12: dos equipos de seis, uno en cada canasta, y al terminar se comparan los fallos. Todos tiran una vez antes de que nadie repita.",
+      "niveles": {
+        "base": "sin consecuencia de equipo, solo la rutina y contar aciertos.",
+        "intermedio": "con consecuencia para el equipo.",
+        "avanzado": "el resto del equipo puede hacer ruido, y el que falla dos tira otra vez al final con todo el mundo mirando."
+      },
       "criterio_exito": "la rutina es idéntica en los dos tiros, la meta o la falle",
       "justificacion_densidad": "el tiro libre se entrena esperando el turno con el equipo mirando, que es exactamente la situación del partido; quitarle la espera le quita el sentido"
     },
@@ -5626,7 +5714,6 @@
     "objetivos": "Sostener la mecánica con el pulso alto, que es la condición en la que se tira de verdad en un partido.",
     "descripcion_texto": "El jugador sale desde el fondo botando hasta la canasta contraria, entra a canasta, coge su rebote y vuelve botando. Al llegar recibe un pase de un compañero situado en el codo y tira. Cuatro idas y vueltas seguidas, contando cuántos tiros mete al final de cada una. El compañero que pasa sale a cerrar el tiro sin saltar.",
     "notas": "Puntos clave: cuando llega el cansancio lo primero que se cae son las piernas, y el tiro se queda corto; hay que insistir en flexionar aunque cueste. Error frecuente: compensar la falta de piernas empujando con el brazo, que es exactamente el hábito que no queremos. Si ves que el tiro se convierte en empujón, baja a tres idas y vueltas: el objetivo es tirar cansado, no tirar mal.",
-    "variantes": "Base: dos idas y vueltas y tiro desde el poste bajo. Intermedio: cuatro idas y vueltas y tiro desde el codo. Avanzado: seis idas y vueltas, y hay que meter dos seguidas para terminar.",
     "tags": [
       "tiro",
       "tiro tras recepción",
@@ -5651,6 +5738,11 @@
         "descanso": 90
       },
       "organizacion": "Con 12: seis parejas repartidas entre las dos canastas. Salen escalonadas cada quince segundos para no chocarse en el medio campo.",
+      "niveles": {
+        "base": "dos idas y vueltas y tiro desde el poste bajo.",
+        "intermedio": "cuatro idas y vueltas y tiro desde el codo.",
+        "avanzado": "seis idas y vueltas, y hay que meter dos seguidas para terminar."
+      },
       "criterio_exito": "el porcentaje de la cuarta ida y vuelta no baja más de un tiro respecto a la primera"
     },
     "animacion": {
@@ -5833,7 +5925,6 @@
     "objetivos": "Decidir bajo presión real entre tirar y atacar, con el defensor llegando a tiempo de castigar la decisión mala.",
     "descripcion_texto": "Pasador en la punta, tirador en el 45 y defensor tocando el aro con la mano. Al pase, el defensor sale a defender de verdad y el tirador tiene una posesión libre: tirar, entrar o parar y tirar. Punto para el atacante si anota, punto para el defensor si le obliga a fallar o le roba. Tres posesiones cada uno.",
     "notas": "Puntos clave: se ataca el pie adelantado del defensor, no su centro; si llega con las manos abajo, hay tiro. Error frecuente: tirar encima del cierre por haberlo decidido antes de recibir. Como entrenador, no mires si entra: mira si la decisión era la buena. Un tiro fallado con hueco es mejor ejecución que una canasta metida encima de una mano.",
-    "variantes": "Base: el defensor sale desde más lejos y no puede saltar. Intermedio: sale desde el aro, defensa completa, una posesión. Avanzado: el defensor elige salir a cerrar o quedarse esperando, y el atacante tiene que leerlo en el aire del pase.",
     "tags": [
       "tiro",
       "tiro tras recepción",
@@ -5860,6 +5951,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos que rotan pasador, tirador y defensor.",
+      "niveles": {
+        "base": "el defensor sale desde más lejos y no puede saltar.",
+        "intermedio": "sale desde el aro, defensa completa, una posesión.",
+        "avanzado": "el defensor elige salir a cerrar o quedarse esperando, y el atacante tiene que leerlo en el aire del pase."
+      },
       "criterio_exito": "la decisión es la correcta en dos de cada tres posesiones, entre o no entre el tiro"
     },
     "animacion": {
@@ -6103,7 +6199,6 @@
     "objetivos": "Meter el tiro en un contexto de competición y prisa, que es cuando se ve si la mecánica está instalada de verdad.",
     "descripcion_texto": "Cinco conos a distinta distancia del aro. Por parejas: uno tira y otro rebotea y pasa, y hay que anotar en una estación para pasar a la siguiente. Gana la pareja que complete antes las cinco. El reboteador puede levantar las manos delante del tirador, pero sin saltar ni tocar. A la vuelta se cambian los papeles.",
     "notas": "Puntos clave: la prisa se gestiona con los pies, no con el brazo; el que rebotea marca el ritmo, así que si pasa mal el tirador tira mal. Error frecuente: encadenar tiros sin recolocar los apoyos. Si ves que todo el mundo tira peor que en la serie analítica, no es mala señal: significa que la competición está haciendo su trabajo y que aún falta automatismo.",
-    "variantes": "Base: tres estaciones, todas cerca del aro, sin manos delante. Intermedio: cinco estaciones y manos arriba del compañero. Avanzado: cinco estaciones y hay que meter dos seguidas en cada una.",
     "tags": [
       "tiro",
       "competición",
@@ -6129,6 +6224,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en parejas. Cada pareja recorre las cinco estaciones y apunta su total.",
+      "niveles": {
+        "base": "tres estaciones, todas cerca del aro, sin manos delante.",
+        "intermedio": "cinco estaciones y manos arriba del compañero.",
+        "avanzado": "cinco estaciones y hay que meter dos seguidas en cada una."
+      },
       "criterio_exito": "completar las cinco estaciones sin que el gesto se convierta en empujón"
     },
     "animacion": {
@@ -6342,7 +6442,6 @@
     "objetivos": "Despegar la mirada del balón teniendo algo real que mirar, no una orden de mirar arriba.",
     "descripcion_texto": "Por parejas, uno enfrente del otro a cinco metros. Uno bota y el otro levanta dedos de una mano; el que bota tiene que decir el número en voz alta. Cada quince segundos se cambia de mano; cada treinta, se cambia de papel. La mano libre siempre protege el balón por delante.",
     "notas": "Puntos clave: bote por debajo de la cintura y a un lado, con la yema de los dedos y no con la palma. Este ejercicio existe para tener DÓNDE mirar: sin los dedos del compañero, \"mira arriba\" no se sostiene ni diez segundos (D20). Error frecuente en los pequeños: golpear el balón en vez de acompañarlo con la muñeca. Si el niño acierta los números pero bota altísimo, baja la altura antes que la velocidad.",
-    "variantes": "Base: quince segundos por mano, mano dominante primero. Intermedio: alternando manos y con el compañero moviéndose. Avanzado: dos números a la vez, uno con cada mano del compañero, y hay que sumarlos.",
     "tags": [
       "bote",
       "cabeza levantada",
@@ -6368,6 +6467,11 @@
         "descanso": 20
       },
       "organizacion": "Con 12: los doce a la vez en una media pista, un balón cada uno. El entrenador canta los números desde fuera para verlos a todos.",
+      "niveles": {
+        "base": "quince segundos por mano, mano dominante primero.",
+        "intermedio": "alternando manos y con el compañero moviéndose.",
+        "avanzado": "dos números a la vez, uno con cada mano del compañero, y hay que sumarlos."
+      },
       "criterio_exito": "acertar nueve de cada diez números sin mirar el balón ni una vez",
       "aplicacion": "el túnel, donde la cabeza levantada sirve para ver por dónde no viene nadie"
     },
@@ -6464,7 +6568,6 @@
     "objetivos": "Botar a la máxima velocidad a la que se puede mantener el control, que no es la máxima velocidad de correr.",
     "descripcion_texto": "Dos filas en el fondo. A la señal, los primeros de cada fila salen botando hasta el fondo contrario y vuelven. Ida con la mano derecha, vuelta con la izquierda. Quien pierde el balón vuelve al punto donde lo perdió antes de seguir. Gana la fila que antes complete el relevo entero.",
     "notas": "Puntos clave: el bote de avance va delante del cuerpo y alto, para poder correr; nada que ver con el bote de control. Error frecuente y muy revelador: correr tan rápido que el balón se queda atrás; ahí es donde hay que bajar una marcha. La penalización de volver al punto donde se pierde el balón hace el trabajo solo: en dos rondas todos encuentran su velocidad.",
-    "variantes": "Base: media pista, ida y vuelta, con la mano que quieran. Intermedio: pista entera, ida con una mano y vuelta con la otra. Avanzado: pista entera con dos balones a la vez.",
     "tags": [
       "bote",
       "cambio de ritmo",
@@ -6489,6 +6592,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: cuatro filas de tres en la línea de fondo, compitiendo entre ellas a lo largo de toda la pista. No usa canastas.",
+      "niveles": {
+        "base": "media pista, ida y vuelta, con la mano que quieran.",
+        "intermedio": "pista entera, ida con una mano y vuelta con la otra.",
+        "avanzado": "pista entera con dos balones a la vez."
+      },
       "criterio_exito": "completar la ida y la vuelta sin perder el balón ni una vez",
       "aplicacion": "dos contra uno continuo, donde ese bote de avance es el que sube el balón al contraataque"
     },
@@ -6715,7 +6823,6 @@
     "objetivos": "Proteger el balón con el cuerpo y el bote bajo cuando ya no se puede avanzar.",
     "descripcion_texto": "Un círculo de conos de cuatro metros. Atacante dentro botando y defensor dentro intentando robar. El atacante no puede salir del círculo durante veinte segundos, así que no le queda avanzar: solo proteger, girar y cambiar de mano. Si le roban o pierde el balón fuera, cambio. Al final de los veinte segundos sale del círculo y ataca la canasta.",
     "notas": "Puntos clave: el cuerpo se mete entre el balón y el defensor, y el brazo libre se usa como barrera con el codo alto pero sin empujar; el bote baja hasta la rodilla. Error frecuente: girar dando la espalda y quedarse quieto, con lo que el defensor rodea y roba por el otro lado. Hay que girar Y salir. Segundo error: mirar el balón, que es cuando entra la mano por detrás.",
-    "variantes": "Base: círculo grande y defensor que solo puede tocar el balón con una mano. Intermedio: círculo de cuatro metros y defensa completa. Avanzado: dos defensores durante quince segundos.",
     "tags": [
       "bote",
       "bote de protección",
@@ -6742,6 +6849,11 @@
         "descanso": 40
       },
       "organizacion": "Con 12: seis parejas repartidas por la pista, sin invadirse. Treinta segundos y cambio de rol.",
+      "niveles": {
+        "base": "círculo grande y defensor que solo puede tocar el balón con una mano.",
+        "intermedio": "círculo de cuatro metros y defensa completa.",
+        "avanzado": "dos defensores durante quince segundos."
+      },
       "criterio_exito": "conservar el balón los veinte segundos completos en tres de cada cuatro intentos"
     },
     "animacion": {
@@ -7041,7 +7153,6 @@
     "objetivos": "Hacer utilizable la mano mala, que a estas edades se gana o no se gana nunca.",
     "descripcion_texto": "Se juega un 1c1 desde el 45 en el que el atacante solo puede botar con la mano no dominante y solo puede terminar por ese lado. El defensor lo sabe y defiende ese lado, de modo que no hay atajo posible. Cinco ataques y se cambia. Con zurdos, al revés.",
     "notas": "Puntos clave: la mano mala no se entrena repitiendo despacio en el vacío, se entrena teniendo que usarla con alguien delante. Error frecuente: cambiar a la mano buena en el último bote, justo antes de terminar, casi sin darse cuenta; el defensor es el mejor detector de eso. Espera que el porcentaje baje mucho: es correcto, el objetivo aquí no es anotar.",
-    "variantes": "Base: sin defensor, recorrido libre con la mano mala. Intermedio: 1c1 con la restricción y defensor que defiende ese lado. Avanzado: la restricción vale también para el defensor, que solo puede robar con su mano mala.",
     "tags": [
       "bote",
       "mano no dominante",
@@ -7066,6 +7177,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos canastas, seis por canasta, tres parejas que se turnan. Cinco ataques y se cambia atacante y defensor.",
+      "niveles": {
+        "base": "sin defensor, recorrido libre con la mano mala.",
+        "intermedio": "1c1 con la restricción y defensor que defiende ese lado.",
+        "avanzado": "la restricción vale también para el defensor, que solo puede robar con su mano mala."
+      },
       "criterio_exito": "terminar los cinco ataques sin cambiar de mano ni una sola vez, entre o no entre"
     },
     "animacion": {
@@ -7295,7 +7411,6 @@
     "objetivos": "Elegir por dónde pasar leyendo dónde no hay nadie, que es para lo que sirve botar con la cabeza levantada.",
     "descripcion_texto": "Tres defensores se colocan en tres franjas transversales de la media pista y no pueden salir de la suya. Los atacantes cruzan de un fondo al otro botando; si les tocan el balón, vuelven a empezar. Salen de dos en dos para que haya que elegir hueco y no seguir al de delante.",
     "notas": "Puntos clave: se decide el hueco ANTES de entrar en la franja, no dentro; el cambio de ritmo vale más que el cambio de mano. Error frecuente: ir siempre por el mismo sitio y a la misma velocidad. Si dos atacantes salen a la vez y van juntos, hazlos salir por lados opuestos: aprenden a leer antes.",
-    "variantes": "Base: dos defensores y franjas anchas. Intermedio: tres defensores. Avanzado: tres defensores que además pueden dar un paso fuera de su franja, y los atacantes cruzan de uno en uno con todos mirando.",
     "tags": [
       "bote",
       "cabeza levantada",
@@ -7322,6 +7437,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: los doce a la vez en dos túneles paralelos de seis. Se cruza y se vuelve al final del propio túnel, sin parar.",
+      "niveles": {
+        "base": "dos defensores y franjas anchas.",
+        "intermedio": "tres defensores.",
+        "avanzado": "tres defensores que además pueden dar un paso fuera de su franja, y los atacantes cruzan de uno en uno con todos mirando."
+      },
       "criterio_exito": "cruzar tres de cada cuatro veces sin que le toquen el balón"
     },
     "animacion": {
@@ -7484,7 +7604,6 @@
     "objetivos": "Pasar con un defensor de por medio, eligiendo el tipo de pase y el momento según cómo se coloque.",
     "descripcion_texto": "Dos atacantes desde el medio campo contra un defensor. La canasta solo cuenta si llega después de un pase, así que el que lleva el balón tiene que atraer al defensor y soltarla. Máximo tres pases. Se rota: el que anota o pierde el balón pasa a defender.",
     "notas": "Puntos clave: se ataca al defensor antes de pasar; un pase con el defensor lejos no es un pase, es un traslado. El tipo de pase lo decide dónde tenga las manos: arriba, picado; abajo, de pecho. Error frecuente: pasar por delante del defensor cuando el picado es lo que corresponde, y perder el balón. Otro: el receptor se queda parado esperando en vez de ir hacia el hueco.",
-    "variantes": "Base: el defensor solo puede defender al del balón, y no puede interceptar. Intermedio: defensa completa y máximo tres pases. Avanzado: máximo dos pases y el defensor arranca desde delante, no desde el aro.",
     "tags": [
       "pase",
       "superioridad",
@@ -7510,6 +7629,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, trabajando en tríos. Rotan las tres posiciones cada ataque.",
+      "niveles": {
+        "base": "el defensor solo puede defender al del balón, y no puede interceptar.",
+        "intermedio": "defensa completa y máximo tres pases.",
+        "avanzado": "máximo dos pases y el defensor arranca desde delante, no desde el aro."
+      },
       "criterio_exito": "anotar tras pase en tres de cada cuatro superioridades"
     },
     "animacion": {
@@ -7750,7 +7874,6 @@
     "objetivos": "Leer una defensa en inferioridad y castigarla rápido, sin dejar que se recompongan.",
     "descripcion_texto": "Tres atacantes salen contra dos defensores. Al terminar la jugada, dos de los atacantes se quedan a defender y los dos defensores más uno que entra desde el fondo atacan hacia la otra canasta. El ejercicio no para nunca. Máximo tres pases y hay que terminar en menos de seis segundos.",
     "notas": "Puntos clave: los tres corren por carriles distintos, y el del balón ataca al primer defensor; nunca se pasa por encima de un defensor que ya está comprometido. Error frecuente: precipitarse y pasar antes de que el defensor decida. Otro: los tres convergen al centro y la superioridad desaparece sola. Es el ejercicio que más rápido enseña espaciado, porque el castigo es inmediato.",
-    "variantes": "Base: 3c2 en media pista, sin límite de tiempo. Intermedio: pista entera, tres pases, seis segundos. Avanzado: 4c3, que obliga a leer a tres defensores y a ocupar cuatro espacios.",
     "tags": [
       "juego reducido",
       "superioridad",
@@ -7778,6 +7901,11 @@
         "descanso": 90
       },
       "organizacion": "Con 12: un solo grupo en pista entera. Salen de cinco en cinco y el resto espera al fondo; se entra en cuanto la jugada anterior cruza el medio.",
+      "niveles": {
+        "base": "3c2 en media pista, sin límite de tiempo.",
+        "intermedio": "pista entera, tres pases, seis segundos.",
+        "avanzado": "4c3, que obliga a leer a tres defensores y a ocupar cuatro espacios."
+      },
       "criterio_exito": "anotar en tres de cada cuatro superioridades dentro de los seis segundos"
     },
     "animacion": {
@@ -7877,7 +8005,6 @@
     "objetivos": "Automatizar el gesto de ir a por el atacante antes que a por el balón, que es lo contrario de lo que sale solo.",
     "descripcion_texto": "Parejas repartidas alrededor de la zona, atacante y defensor. El entrenador tira y falla. Cada defensor tiene que girar, encontrar a su par, hacer contacto con el cuerpo y solo entonces ir al rebote. Si el atacante coge el rebote, punto para el ataque. Se juega a cinco.",
     "notas": "Puntos clave: primero se busca al ATACANTE y después el balón, que es exactamente al revés de lo que hace un niño por instinto; el contacto es con el trasero y los codos altos, no empujando con las manos. Error frecuente: mirar el balón y salir corriendo hacia él, dejando la espalda del atacante libre. Consejo: los dos primeros minutos, prohíbe coger el rebote — solo bloquear. Cuando eso sale, ya se coge.",
-    "variantes": "Base: el atacante no se mueve y solo hay que hacer el contacto. Intermedio: el atacante busca el rebote de verdad. Avanzado: dos contra dos, con el atacante pudiendo cambiar de lado antes del tiro.",
     "tags": [
       "rebote defensivo",
       "bloqueo de rebote",
@@ -7902,6 +8029,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta. En cada uno, dos parejas alrededor de la zona y dos que se turnan para tirar y fallar.",
+      "niveles": {
+        "base": "el atacante no se mueve y solo hay que hacer el contacto.",
+        "intermedio": "el atacante busca el rebote de verdad.",
+        "avanzado": "dos contra dos, con el atacante pudiendo cambiar de lado antes del tiro."
+      },
       "criterio_exito": "el defensor hace contacto antes de ir al balón en cuatro de cada cinco tiros"
     },
     "animacion": {
@@ -8224,7 +8356,6 @@
     "objetivos": "Jugar de espaldas al aro: sentir dónde está el defensor sin mirarle y girar hacia el lado libre.",
     "descripcion_texto": "Pasador en el 45 y atacante en el poste bajo, de espaldas, con el defensor detrás. El atacante pide el balón con la mano de fuera y, al recibir, tiene que notar con el cuerpo por dónde le defienden y girar hacia el lado contrario. Máximo un bote. Tres posesiones cada uno y rotan.",
     "notas": "Puntos clave: se pide con la mano lejos del defensor y se sostiene la posición con el antebrazo y el trasero, no empujando con la mano; el giro va hacia donde NO está el defensor, y eso se sabe por contacto, no mirando. Error frecuente: girar siempre hacia el mismo lado, que es el que tienen ensayado. Otro: recibir y quedarse de espaldas botando sin decidir. Con un bote de máximo eso se acaba solo.",
-    "variantes": "Base: el defensor se coloca fijo a un lado y avisa en voz alta de cuál; el atacante solo practica girar al contrario. Intermedio: el defensor elige y el atacante lee, con un bote. Avanzado: el defensor puede cambiar de lado mientras llega el pase.",
     "tags": [
       "1c1",
       "pivote",
@@ -8251,6 +8382,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante de espaldas y defensor. Rotan cada ataque.",
+      "niveles": {
+        "base": "el defensor se coloca fijo a un lado y avisa en voz alta de cuál; el atacante solo practica girar al contrario.",
+        "intermedio": "el defensor elige y el atacante lee, con un bote.",
+        "avanzado": "el defensor puede cambiar de lado mientras llega el pase."
+      },
       "criterio_exito": "gira hacia el lado libre en dos de cada tres posesiones, entre o no entre"
     },
     "animacion": {
@@ -8494,7 +8630,6 @@
     "objetivos": "Resolver en espacio muy reducido, donde no vale la velocidad y sí el cambio de ritmo y la protección.",
     "descripcion_texto": "Cuadrado de cuatro metros marcado con conos, con el aro fuera. El atacante tiene que salir del cuadrado botando por cualquiera de los dos lados marcados; el defensor lo impide. Si sale, ataca la canasta libre. Si le roban o pisa fuera por otro lado, cambio. Veinte segundos como máximo por intento.",
     "notas": "Puntos clave: en poco espacio manda el primer paso, no la velocidad punta; el bote baja y el cuerpo se interpone siempre. Error frecuente: intentar irse de velocidad y estrellarse contra el cono. Es el ejercicio donde mejor se ve quién sabe usar el cambio de ritmo: los que solo tienen cambio de mano aquí no pasan.",
-    "variantes": "Base: cuadrado de seis metros y una sola salida obligatoria. Intermedio: cuatro metros y dos salidas. Avanzado: cuatro metros, dos salidas y máximo tres botes.",
     "tags": [
       "1c1",
       "bote de protección",
@@ -8521,6 +8656,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos cuadrados de conos, uno en cada media pista, seis en cada uno. Tres parejas que se turnan.",
+      "niveles": {
+        "base": "cuadrado de seis metros y una sola salida obligatoria.",
+        "intermedio": "cuatro metros y dos salidas.",
+        "avanzado": "cuatro metros, dos salidas y máximo tres botes."
+      },
       "criterio_exito": "salir del cuadrado en tres de cada cuatro intentos"
     },
     "animacion": {
@@ -8791,7 +8931,6 @@
     "objetivos": "Aprender que una ventaja dura poco y que se aprovecha yendo hacia el aro, no administrándola.",
     "descripcion_texto": "Atacante en el 45 con balón y defensor un paso por detrás y a un lado. A la señal, el atacante ataca. La ventaja es real pero pequeña: si duda un segundo, desaparece. Se cuenta cuántas veces termina en canasta o en tiro cómodo. Tres cada uno y rotan.",
     "notas": "Puntos clave: la ventaja se conserva yendo en línea recta hacia el aro, no hacia fuera; el primer bote es largo. Error frecuentísimo: recibir la ventaja y botar de lado, con lo que el defensor recupera la posición y ya no hay nada. Es el ejercicio que mejor enseña por qué el pase del compañero vale tanto: la ventaja te la dan y hay que no perderla.",
-    "variantes": "Base: la ventaja es de dos pasos y el defensor no puede saltar. Intermedio: un paso y defensa completa. Avanzado: el atacante recibe un pase y la ventaja depende de si el defensor sale bien; puede no haberla.",
     "tags": [
       "1c1",
       "ventaja",
@@ -8817,6 +8956,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos canastas, seis por canasta, tres parejas turnándose. Se cambia atacante y defensor cada ataque.",
+      "niveles": {
+        "base": "la ventaja es de dos pasos y el defensor no puede saltar.",
+        "intermedio": "un paso y defensa completa.",
+        "avanzado": "el atacante recibe un pase y la ventaja depende de si el defensor sale bien; puede no haberla."
+      },
       "criterio_exito": "la ventaja acaba en canasta o en tiro cómodo en dos de cada tres ataques"
     },
     "animacion": {
@@ -8984,7 +9128,6 @@
     "objetivos": "Concentrar toda la resolución en el primer movimiento, que es donde se gana el uno contra uno de verdad.",
     "descripcion_texto": "Atacante en la punta con balón, defensor delante. Solo se permite UN bote. Se puede fintar todo lo que se quiera antes, pero en cuanto se bota hay que terminar. Tres posesiones cada uno; el defensor suma punto si obliga a fallar o a no poder terminar.",
     "notas": "Puntos clave: la finta es con el balón y los ojos, no solo con los pies; el primer paso va pegado al defensor, no rodeándole. Error frecuente: fintar sin intención, moviendo el balón sin que el defensor se lo crea. Como entrenador, mira si el defensor reacciona: si no se mueve, la finta no existía. Este ejercicio quita de un plumazo el bote de tanteo.",
-    "variantes": "Base: dos botes y defensor pasivo que solo acompaña. Intermedio: un bote y defensa completa. Avanzado: un bote y el atacante empieza con el balón en el suelo, teniendo que recogerlo con el defensor encima.",
     "tags": [
       "1c1",
       "finta",
@@ -9010,6 +9153,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos canastas, seis por canasta, tres parejas turnándose. Se cambia de rol cada ataque.",
+      "niveles": {
+        "base": "dos botes y defensor pasivo que solo acompaña.",
+        "intermedio": "un bote y defensa completa.",
+        "avanzado": "un bote y el atacante empieza con el balón en el suelo, teniendo que recogerlo con el defensor encima."
+      },
       "criterio_exito": "terminar dentro del bote permitido en tres de cada tres, y que el defensor se mueva con la finta al menos la mitad de las veces"
     },
     "animacion": {
@@ -9178,7 +9326,6 @@
     "objetivos": "Encadenar recepción en movimiento y uno contra uno sin ese medio segundo de parón que lo estropea todo.",
     "descripcion_texto": "El atacante arranca desde la esquina hacia el 45 y recibe en carrera del pasador de la punta. Su defensor le persigue desde el fondo. Al recibir tiene que atacar directamente: parar y tirar, o seguir hacia el aro. No se puede botar de lado para recolocarse. Tres cada uno.",
     "notas": "Puntos clave: se recibe con los pies orientados al aro, lo que exige preparar el último apoyo antes del balón; la decisión ya viene tomada de camino. Error frecuente: recibir, parar, mirar y entonces decidir — para cuando decide, el defensor ya llegó. Consejo: que diga en voz alta \"tiro\" o \"entro\" ANTES de recibir; se equivocará, y esa es la lección.",
-    "variantes": "Base: sin defensor, solo recibir en carrera y terminar. Intermedio: con defensor que persigue desde el fondo. Avanzado: el defensor sale a la vez que el atacante y puede llegar antes al 45.",
     "tags": [
       "1c1",
       "recepción",
@@ -9205,6 +9352,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante y defensor. Rotan cada ataque.",
+      "niveles": {
+        "base": "sin defensor, solo recibir en carrera y terminar.",
+        "intermedio": "con defensor que persigue desde el fondo.",
+        "avanzado": "el defensor sale a la vez que el atacante y puede llegar antes al 45."
+      },
       "criterio_exito": "atacar sin parón en dos de cada tres recepciones"
     },
     "animacion": {
@@ -9509,7 +9661,6 @@
     "objetivos": "Instalar la postura y el desplazamiento defensivo con alguien real delante marcando el ritmo.",
     "descripcion_texto": "Por parejas, enfrentados a dos metros. Uno se desplaza lateralmente, adelante y atrás dentro de un espacio marcado; el otro le copia como un espejo manteniendo siempre la misma distancia. Treinta segundos y se cambia. Sin balón: aquí solo se entrenan los pies.",
     "notas": "Puntos clave: pies más anchos que los hombros, peso en las plantas, y NUNCA juntar los pies al desplazarse. Error frecuente: cruzar los pies, que es justo el instante en que un atacante pasaría. Segundo error: subir el cuerpo cuando llega el cansancio, que es cuando hay que insistir. Esto es de las pocas cosas que sí tiene sentido entrenar sin balón, porque el gesto es puramente de pies.",
-    "variantes": "Base: solo desplazamiento lateral, quince segundos. Intermedio: lateral, adelante y atrás, treinta segundos. Avanzado: el que dirige puede arrancar a correr y el otro tiene que girar y perseguir sin cruzar los pies en el giro.",
     "tags": [
       "postura defensiva",
       "desplazamiento defensivo",
@@ -9533,6 +9684,11 @@
         "descanso": 30
       },
       "organizacion": "Con 12: seis parejas a la vez, repartidas a lo ancho de la pista y mirándose. Treinta segundos y cambio. No usa canastas.",
+      "niveles": {
+        "base": "solo desplazamiento lateral, quince segundos.",
+        "intermedio": "lateral, adelante y atrás, treinta segundos.",
+        "avanzado": "el que dirige puede arrancar a correr y el otro tiene que girar y perseguir sin cruzar los pies en el giro."
+      },
       "criterio_exito": "treinta segundos sin cruzar los pies ni una vez, comprobado por la pareja"
     },
     "animacion": {
@@ -9611,7 +9767,6 @@
     "objetivos": "Aprender la posición de defensa sin balón: abierto, viendo al par y al balón a la vez.",
     "descripcion_texto": "Dos atacantes —uno con balón en la punta y otro moviéndose por el lado— y dos defensores. El del balón defiende normal. El otro tiene que colocarse de manera que pueda señalar con una mano a su par y con la otra al balón sin girar la cabeza. El entrenador grita \"¡mira!\" en cualquier momento y todos se congelan: quien no pueda señalar a los dos, punto en contra.",
     "notas": "Puntos clave: el cuerpo se abre hacia el balón y se retrasa un paso hacia el aro; se ve con la vista periférica, no girando la cabeza. IMPORTANTE: aquí NO se niega la línea de pase. A estas edades negar, ayudar y recuperar son tres tareas a la vez y no salen; se quita la negación para que las otras dos se aprendan de verdad, y la negación llega en Infantil.",
-    "variantes": "Base: el atacante sin balón se mueve despacio y el balón no se mueve. Intermedio: los dos se mueven. Avanzado: tres atacantes y tres defensores, con el balón circulando.",
     "tags": [
       "defensa individual",
       "defensa sin balón",
@@ -9637,6 +9792,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: tres grupos de cuatro repartidos por la pista, dos atacantes y dos defensores en cada uno. El entrenador grita para los tres a la vez.",
+      "niveles": {
+        "base": "el atacante sin balón se mueve despacio y el balón no se mueve.",
+        "intermedio": "los dos se mueven.",
+        "avanzado": "tres atacantes y tres defensores, con el balón circulando."
+      },
       "criterio_exito": "poder señalar a par y balón en cinco de cada seis congelaciones"
     },
     "animacion": {
@@ -9878,7 +10038,6 @@
     "objetivos": "Defender el pasar y cortar, que es la forma más simple de generar ventaja y la que más veces vamos a sufrir.",
     "descripcion_texto": "Dos atacantes —punta y 45— y sus defensores. El de la punta pasa y corta a canasta. Su defensor tiene que dar un paso hacia el balón al salir el pase y acompañar el corte por delante, sin quedarse detrás. Si el cortador recibe libre, punto para el ataque. Tres posesiones y rotan.",
     "notas": "Puntos clave: el paso al balón se da EN EL PASE, no cuando el atacante ya arrancó; se acompaña el corte con el brazo y la vista, sin agarrar. Error frecuente: mirar el balón y perder al cortador, que es exactamente lo que busca el ataque. Es el reverso del ejercicio de pasar y cortar del piloto y conviene ponerlos seguidos: los mismos niños ven las dos caras.",
-    "variantes": "Base: el corte es siempre por el mismo lado y el defensor lo sabe. Intermedio: el cortador elige lado. Avanzado: el cortador puede cortar o quedarse y volver a pedir arriba.",
     "tags": [
       "defensa individual",
       "defensa sin balón",
@@ -9905,6 +10064,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan; se rota cada tres cortes.",
+      "niveles": {
+        "base": "el corte es siempre por el mismo lado y el defensor lo sabe.",
+        "intermedio": "el cortador elige lado.",
+        "avanzado": "el cortador puede cortar o quedarse y volver a pedir arriba."
+      },
       "criterio_exito": "el cortador no recibe libre en dos de cada tres posesiones"
     },
     "animacion": {
@@ -10147,7 +10311,6 @@
     "objetivos": "Aprender a cerrar sin pasarse: llegar a molestar el tiro y seguir en pie para el bote siguiente.",
     "descripcion_texto": "El defensor empieza tocando el aro. El entrenador pasa a un atacante situado en el 45 y el defensor sale a cerrar. El atacante decide: si el cierre llega volando y descontrolado, bota y entra; si llega frenado, tira. Se puntúa al defensor, no al atacante: punto si molesta el tiro sin que le superen.",
     "notas": "Puntos clave: se sale a toda velocidad y se frena con pasos cortos en los últimos dos metros, con la mano alta del lado del balón; se llega con el peso atrás, no encima del atacante. Error frecuente: saltar hacia el tirador y quedar vendido. Regla que ayuda: \"corre largo y frena corto\". Segundo error: cerrar de frente en lugar de sesgado hacia el lado fuerte.",
-    "variantes": "Base: el atacante solo tira, nunca bota; el defensor practica llegar y frenar. Intermedio: el atacante decide. Avanzado: el defensor sale desde más lejos y el atacante puede pasar a un tercero en la esquina.",
     "tags": [
       "defensa individual",
       "recuperación",
@@ -10173,6 +10336,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante y defensor. Rotan cada tres cierres.",
+      "niveles": {
+        "base": "el atacante solo tira, nunca bota; el defensor practica llegar y frenar.",
+        "intermedio": "el atacante decide.",
+        "avanzado": "el defensor sale desde más lejos y el atacante puede pasar a un tercero en la esquina."
+      },
       "criterio_exito": "molestar el tiro sin ser superado en tres de cada cuatro cierres"
     },
     "animacion": {
@@ -10380,7 +10548,6 @@
     "objetivos": "Sostener el ciclo de ayuda y recuperación más de una vez seguida, que es donde se cae la defensa de verdad.",
     "descripcion_texto": "Tres atacantes repartidos —punta y las dos esquinas— y tres defensores. El de la punta penetra por un lado, el defensor del lado contrario ayuda y recupera; el balón sale a esa esquina y el nuevo poseedor penetra otra vez, obligando a una segunda ayuda. Solo dos penetraciones y luego se termina la jugada.",
     "notas": "Puntos clave: la ayuda es corta y la recuperación es inmediata; nadie se queda dentro (D11 — y además está sancionado por reglamento estar tres segundos en la zona sin defender). Error frecuente: la primera ayuda sale bien y la segunda llega tarde porque el defensor no volvió a su sitio después de la primera. La recuperación es la mitad que se olvida.",
-    "variantes": "Base: una sola penetración y una sola ayuda. Intermedio: dos penetraciones encadenadas. Avanzado: tres penetraciones y el ataque puede tirar en cualquier momento.",
     "tags": [
       "ayuda",
       "recuperación",
@@ -10407,6 +10574,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta. Los seis juegan a la vez, tres atacando y tres defendiendo, y se cambia de rol cada dos jugadas.",
+      "niveles": {
+        "base": "una sola penetración y una sola ayuda.",
+        "intermedio": "dos penetraciones encadenadas.",
+        "avanzado": "tres penetraciones y el ataque puede tirar en cualquier momento."
+      },
       "criterio_exito": "las dos ayudas llegan a tiempo y los dos ayudantes recuperan a su par en tres de cada cuatro jugadas"
     },
     "animacion": {
@@ -10884,7 +11056,6 @@
     "objetivos": "Dirigir la conducta con la puntuación en lugar de con instrucciones: si entrar vale más, entrarán.",
     "descripcion_texto": "Uno contra uno desde la punta. La canasta anotada desde dentro de la zona vale 3; desde fuera, 1. Se juega a 7. Como entrar vale el triple, el atacante busca el aro y el defensor tiene que aprender a protegerlo. Cambiando la puntuación se cambia lo que se entrena sin decir una palabra.",
     "notas": "Puntos clave: no hay que explicar nada, la puntuación explica sola. Si quieres que trabajen el tiro exterior, inviértela. Error del entrenador, no del jugador: cambiar la puntuación a media serie; hay que dejar que descubran la lógica. Este es el ejemplo más claro de enseñar cambiando las reglas del juego en vez de con series analíticas.",
-    "variantes": "Base: dentro de la zona 3, fuera 1, sin límite de botes. Intermedio: lo mismo con máximo tres botes. Avanzado: se invierte —fuera 3 y dentro 1— y hay que rehacer todo el plan de ataque.",
     "tags": [
       "juego reducido",
       "1c1",
@@ -10910,6 +11081,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos canastas, seis por canasta, tres parejas que se turnan. Cada duelo, una posesión.",
+      "niveles": {
+        "base": "dentro de la zona 3, fuera 1, sin límite de botes.",
+        "intermedio": "lo mismo con máximo tres botes.",
+        "avanzado": "se invierte —fuera 3 y dentro 1— y hay que rehacer todo el plan de ataque."
+      },
       "criterio_exito": "la mayoría de los ataques van a la zona de más valor sin que nadie lo haya dicho"
     },
     "animacion": {
@@ -10992,7 +11168,6 @@
     "objetivos": "Acelerar la toma de decisiones obligando a decidir antes de recibir.",
     "descripcion_texto": "Dos contra dos en media pista. Al recibir solo se puede hacer una acción: tirar, dar un bote y terminar, o pasar. No se puede recibir, botar, parar y pensar. Se juega a cuatro canastas. Tras rebote o robo hay que sacar el balón por encima del tiro libre.",
     "notas": "Puntos clave: la decisión se toma ANTES de recibir, mirando dónde está la defensa mientras llega el balón; el receptor pide con las manos y con los pies ya orientados. Error frecuente al empezar: recibir y quedarse bloqueado, porque hasta ahora pensaban con el balón cogido. Dales dos posesiones de margen para que se acostumbren; a partir de la tercera empiezan a mirar antes.",
-    "variantes": "Base: 2c2 normal, sin restricción. Intermedio: una sola acción al recibir. Avanzado: una sola acción y máximo tres segundos por posesión de equipo.",
     "tags": [
       "juego reducido",
       "toma de decisiones",
@@ -11020,6 +11195,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos partidos de 2c2, uno por canasta, con dos esperando en cada uno que entran cada dos ataques.",
+      "niveles": {
+        "base": "2c2 normal, sin restricción.",
+        "intermedio": "una sola acción al recibir.",
+        "avanzado": "una sola acción y máximo tres segundos por posesión de equipo."
+      },
       "criterio_exito": "ninguna posesión se queda parada con el balón en las manos más de dos segundos"
     },
     "animacion": {
@@ -11107,7 +11287,6 @@
     "objetivos": "Obligar al juego sin balón, que es lo que desaparece en cuanto se permite botar.",
     "descripcion_texto": "Cuatro contra cuatro en media pista sin bote. Quien recibe puede pivotar, pasar o tirar, pero no botar. La consecuencia es inmediata: si nadie se mueve, no hay a quién pasar. Se juega a cuatro canastas. Tras rebote defensivo, saque desde fuera.",
     "notas": "Puntos clave: después de pasar hay que hacer algo —cortar o separarse—; los cuatro no pueden estar en el mismo lado. Error frecuente y muy visible: los primeros dos minutos se quedan todos quietos pasándose el balón por el perímetro. No lo corrijas hablando: espera. El propio juego les obliga a moverse porque si no, no hay salida.",
-    "variantes": "Base: 3c3 sin bote, que es más fácil de leer. Intermedio: 4c4 sin bote. Avanzado: 4c4 sin bote y con tres segundos por posesión individual.",
     "tags": [
       "juego reducido",
       "espaciado",
@@ -11135,6 +11314,11 @@
         "descanso": 90
       },
       "organizacion": "Con 12: dos grupos, uno de ocho jugando 4c4 en una canasta y otro de cuatro jugando 2c2 en la otra. Se cambian a la mitad del tiempo.",
+      "niveles": {
+        "base": "3c3 sin bote, que es más fácil de leer.",
+        "intermedio": "4c4 sin bote.",
+        "avanzado": "4c4 sin bote y con tres segundos por posesión individual."
+      },
       "criterio_exito": "ninguna posesión termina por no encontrar a quién pasar"
     },
     "animacion": {
@@ -11270,7 +11454,6 @@
     "objetivos": "Defender en inferioridad, que es la situación que nadie entrena y todos sufren.",
     "descripcion_texto": "Tres atacan contra dos hacia una canasta. Al terminar, dos de los tres atacantes vuelven atacando y los dos defensores más uno que entra desde el fondo defienden — es decir, ahora la inferioridad la sufre el otro lado. Los defensores en inferioridad tienen que proteger el aro primero y presionar el balón después.",
     "notas": "Puntos clave defendiendo en inferioridad: el de atrás protege el aro y el de delante frena el balón; nunca los dos al mismo hombre. Se defiende el PASE, no al jugador. Error frecuente: los dos defensores van al balón y dejan una entrada libre. Regla que ayuda: \"uno arriba, uno abajo, y el de abajo no sube hasta que el balón se suelte\". Ojo con el cansancio: este ejercicio agota, y es donde peor se defiende.",
-    "variantes": "Base: 2c1 de ida y 1c1 de vuelta. Intermedio: 3c2 de ida y 2c2 de vuelta. Avanzado: 4c3 de ida y 3c3 de vuelta, sin parar durante cuatro minutos.",
     "tags": [
       "juego reducido",
       "inferioridad",
@@ -11298,6 +11481,11 @@
         "descanso": 120
       },
       "organizacion": "Con 12: un solo grupo en pista entera. Salen de cinco en cinco y el resto espera al fondo por orden.",
+      "niveles": {
+        "base": "2c1 de ida y 1c1 de vuelta.",
+        "intermedio": "3c2 de ida y 2c2 de vuelta.",
+        "avanzado": "4c3 de ida y 3c3 de vuelta, sin parar durante cuatro minutos."
+      },
       "criterio_exito": "la defensa en inferioridad evita la canasta fácil en la mitad de las jugadas"
     },
     "animacion": {
@@ -11397,7 +11585,6 @@
     "objetivos": "Elegir el pase que pasa por encima cuando el de pecho no cabe, y hacerlo sin que se convierta en un globo.",
     "descripcion_texto": "Pasador en el 45, receptor en el poste bajo y un defensor delante del receptor, entre él y el balón. El pasador tiene que meterle el balón por encima. El receptor pide con las dos manos altas y sostiene la posición. Cinco pases y rotan las tres posiciones.",
     "notas": "Puntos clave: el pase sale desde encima de la cabeza y va tenso y descendente, no en parábola; el pasador da un paso lateral primero para cambiar el ángulo. Error frecuente: lanzar un globo alto, que da tiempo a que llegue una ayuda y se convierte en pérdida. Segundo error, del receptor: pedir con una mano y perder la posición. Si el pase no entra nunca, mueve al pasador un metro: casi siempre es cuestión de ángulo, no de fuerza.",
-    "variantes": "Base: sin defensor, practicando la trayectoria tensa por encima. Intermedio: con defensor por delante que no puede saltar. Avanzado: defensor completo más un segundo defensor que puede ayudar desde el lado contrario.",
     "tags": [
       "pase",
       "recepción",
@@ -11422,6 +11609,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, poste y defensor. Se rota al terminar cada serie.",
+      "niveles": {
+        "base": "sin defensor, practicando la trayectoria tensa por encima.",
+        "intermedio": "con defensor por delante que no puede saltar.",
+        "avanzado": "defensor completo más un segundo defensor que puede ayudar desde el lado contrario."
+      },
       "criterio_exito": "el balón entra al poste en tres de cada cinco intentos sin que lo toque el defensor"
     },
     "animacion": {
@@ -11603,7 +11795,6 @@
     "objetivos": "Dominar el pase largo con una mano, que es el que abre el contraataque cuando nadie ha vuelto todavía.",
     "descripcion_texto": "Un jugador saca de fondo tras canasta y otro arranca desde su lado hacia la canasta contraria. El saque tiene que ser un pase de béisbol que le llegue en carrera, sin que tenga que frenar. Un tercero persigue al receptor desde media pista. Se rota: el que anota saca, el que sacó corre.",
     "notas": "Puntos clave: el pase sale desde detrás de la oreja con una mano, con el pie contrario adelantado, y se dirige DELANTE del receptor, no a él. Error frecuentísimo: pasar a donde está el compañero, con lo que tiene que frenar y se pierde toda la ventaja. Otro: pasar con las dos manos desde el pecho, que no llega. Enséñales a mirar el campo antes de coger el balón del suelo.",
-    "variantes": "Base: media pista y sin perseguidor. Intermedio: pista entera con perseguidor desde el medio. Avanzado: dos receptores por lados distintos y el pasador elige, con dos perseguidores.",
     "tags": [
       "pase",
       "pase de béisbol",
@@ -11629,6 +11820,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: pista entera y las dos canastas, cuatro tríos que salen escalonados desde el fondo cada diez segundos.",
+      "niveles": {
+        "base": "media pista y sin perseguidor.",
+        "intermedio": "pista entera con perseguidor desde el medio.",
+        "avanzado": "dos receptores por lados distintos y el pasador elige, con dos perseguidores."
+      },
       "criterio_exito": "el receptor no tiene que frenar en cuatro de cada cinco pases"
     },
     "animacion": {
@@ -11909,7 +12105,6 @@
     "objetivos": "Pasar y recibir bajo presión continua, decidiendo el tipo de pase en función de dónde estén los dos de dentro.",
     "descripcion_texto": "Cuatro atacantes forman un cuadrado grande y dos defensores están dentro. No se puede botar. Los de fuera pueden desplazarse por su lado. Quien pierde el balón entra a defender. Se cuenta el récord de pases seguidos del grupo y se intenta batir cada ronda.",
     "notas": "Puntos clave: el pase al de enfrente casi nunca está; el bueno es el del lado, y por eso hay que mover los pies para abrir ángulo. Se decide ANTES de recibir. Error frecuente: mirar solo al que va a recibir, que se lo dice a los defensores. Enséñales a mirar a uno y pasar a otro solo cuando ya dominen lo básico; antes de eso, mirar al receptor está bien.",
-    "variantes": "Base: 5c1 en un espacio grande, y se puede devolver el pase. Intermedio: 4c2 sin devolver. Avanzado: 4c2 con máximo dos segundos con el balón y sin poder repetir receptor dos veces seguidas.",
     "tags": [
       "pase",
       "recepción",
@@ -11937,6 +12132,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos rondos de seis a la vez, uno en cada media pista. No usa canastas.",
+      "niveles": {
+        "base": "5c1 en un espacio grande, y se puede devolver el pase.",
+        "intermedio": "4c2 sin devolver.",
+        "avanzado": "4c2 con máximo dos segundos con el balón y sin poder repetir receptor dos veces seguidas."
+      },
       "criterio_exito": "batir el récord de pases seguidos del grupo al menos una vez por sesión"
     },
     "animacion": {
@@ -12048,7 +12248,6 @@
     "objetivos": "Adelantar la lectura al momento anterior a la recepción, que es lo que separa a quien pasa bien de quien pasa tarde.",
     "descripcion_texto": "Tres atacantes en la punta y los dos 45, dos defensores. Antes de que el balón le llegue, el que va a recibir tiene que decir en voz alta el nombre del compañero al que va a pasar. Si al recibir la situación ha cambiado, puede cambiar de idea, pero tiene que decirlo también. Se juega a ocho pases sin pérdida.",
     "notas": "Puntos clave: para poder decirlo, hay que mirar mientras el balón viaja, y eso es todo el ejercicio. Espera muchos errores al principio y no los corrijas: equivocarse en voz alta es exactamente el aprendizaje. Error del entrenador: exigir que acierten. Lo que hay que exigir es que HABLEN antes de recibir; el acierto llega solo.",
-    "variantes": "Base: dos atacantes y un defensor, diciendo el nombre. Intermedio: tres contra dos. Avanzado: tres contra dos y quien recibe tiene que pasar obligatoriamente a quien dijo, con lo que la lectura tiene que ser buena de verdad.",
     "tags": [
       "pase",
       "lectura",
@@ -12075,6 +12274,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta. Juegan cinco y el que sobra cuenta los pases buenos; se cambia cada minuto.",
+      "niveles": {
+        "base": "dos atacantes y un defensor, diciendo el nombre.",
+        "intermedio": "tres contra dos.",
+        "avanzado": "tres contra dos y quien recibe tiene que pasar obligatoriamente a quien dijo, con lo que la lectura tiene que ser buena de verdad."
+      },
       "criterio_exito": "todos dicen el nombre antes de recibir en ocho pases seguidos, acierten o no"
     },
     "animacion": {
@@ -12366,7 +12570,6 @@
     "objetivos": "Aprender a finalizar con contacto sin perder el equilibrio ni la trayectoria del balón.",
     "descripcion_texto": "El atacante entra desde el 45 y el defensor, que espera bajo el aro, le hace un contacto controlado en el cuerpo —nunca en el brazo de tiro— cuando salta. El atacante tiene que terminar igualmente. Cinco entradas y se cambia. El defensor lleva un peto enrollado o una colchoneta pequeña si se quiere suavizar.",
     "notas": "Puntos clave: se protege el balón con el cuerpo y se sube con el brazo lejos del defensor; el salto va hacia ARRIBA, no hacia el contacto. Error frecuente: encoger los brazos al notar el choque, con lo que el tiro se queda corto. Segundo error, del defensor: buscar el brazo. Esto hay que vigilarlo de cerca; si no puedes supervisarlo, no lo pongas.",
-    "variantes": "Base: el defensor solo pone las manos arriba sin contacto. Intermedio: contacto controlado en el cuerpo al saltar. Avanzado: contacto y además el atacante llega con menos velocidad, teniendo que resolver con el pie de dentro.",
     "tags": [
       "entrada",
       "finalización",
@@ -12392,6 +12595,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: seis parejas, tres en cada canasta, entrando por turnos. Cinco entradas y se cambia quien hace el contacto.",
+      "niveles": {
+        "base": "el defensor solo pone las manos arriba sin contacto.",
+        "intermedio": "contacto controlado en el cuerpo al saltar.",
+        "avanzado": "contacto y además el atacante llega con menos velocidad, teniendo que resolver con el pie de dentro."
+      },
       "criterio_exito": "anotar tres de cada cinco con contacto, sin encoger los brazos"
     },
     "animacion": {
@@ -12559,7 +12767,6 @@
     "objetivos": "Ampliar el repertorio de finalización para cuando el camino directo está tapado.",
     "descripcion_texto": "Por parejas. El atacante entra desde el 45 derecho y tiene que terminar con la mano izquierda al otro lado del aro, pasando por debajo. Un compañero con los brazos en alto ocupa el camino directo, sin saltar. Cinco entradas y se cambia de lado y de papel.",
     "notas": "Puntos clave: el balón cruza por debajo del aro protegido con las dos manos hasta el último momento; el apoyo de salto es el pie de fuera. Error frecuente: cambiar de mano demasiado pronto y quedar vendido delante del defensor. Otro: mirar el aro desde el principio; hay que mirar el punto del tablero del otro lado. Es difícil y da igual que fallen mucho al empezar.",
-    "variantes": "Base: sin nadie debajo, solo el recorrido y el cambio de mano. Intermedio: con un compañero con los brazos arriba. Avanzado: el que espera puede moverse un paso, y el atacante decide entre terminar directo o cambiar de mano.",
     "tags": [
       "entrada",
       "finalización",
@@ -12584,6 +12791,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: seis parejas, tres en cada canasta, entrando por turnos desde el 45. Cinco cada uno y se cambia.",
+      "niveles": {
+        "base": "sin nadie debajo, solo el recorrido y el cambio de mano.",
+        "intermedio": "con un compañero con los brazos arriba.",
+        "avanzado": "el que espera puede moverse un paso, y el atacante decide entre terminar directo o cambiar de mano."
+      },
       "criterio_exito": "dos de cada cinco dentro terminando de verdad con la mano cambiada"
     },
     "animacion": {
@@ -12816,7 +13028,6 @@
     "objetivos": "Finalizar desde el ángulo más incómodo de la pista, que además es por donde más se ataca en minibasket.",
     "descripcion_texto": "Pasador en la punta y atacante en la esquina, con su defensor. El atacante recibe y ataca obligatoriamente por línea de fondo. El defensor le acompaña. Como el espacio es estrecho, hay que ir pegado al fondo y decidir pronto. Tres cada uno.",
     "notas": "Puntos clave: se ataca pegado a la línea, y el tablero desde ahí no sirve casi, así que hay que tirar limpio o cruzar bajo el aro; el paso de salida es largo y bajo. Error frecuente: abrirse hacia el centro para tener más sitio, que es justo lo que quiere el defensor. Ojo con pisar la línea: cuenta como pérdida y conviene que lo sepan desde el principio.",
-    "variantes": "Base: sin defensor, solo el recorrido por fondo y la finalización. Intermedio: con defensor que acompaña. Avanzado: con un segundo defensor que puede ayudar desde el poste bajo.",
     "tags": [
       "entrada",
       "finalización",
@@ -12842,6 +13053,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante y defensor. Tres cada uno y rotan.",
+      "niveles": {
+        "base": "sin defensor, solo el recorrido por fondo y la finalización.",
+        "intermedio": "con defensor que acompaña.",
+        "avanzado": "con un segundo defensor que puede ayudar desde el poste bajo."
+      },
       "criterio_exito": "terminar sin pisar la línea de fondo en tres de cada tres ataques"
     },
     "animacion": {
@@ -13149,7 +13365,6 @@
     "objetivos": "Castigar al defensor que se pasa de agresivo, que es el único caso en que la puerta atrás existe.",
     "descripcion_texto": "Pasador en la punta, atacante en el 45 y defensor. El defensor tiene instrucciones de adelantarse a interceptar el pase. El atacante finge pedirlo, ve el brazo adelantado y corta por detrás hacia canasta. El pasador tiene que verlo y meter el balón. Tres cada uno.",
     "notas": "Puntos clave: la puerta atrás se hace contra un defensor ADELANTADO, y no de otra forma; el corte cambia de ritmo de golpe y va con la mano de dentro pidiendo. En el núcleo mini nosotros no enseñamos a negar la línea de pase (D22), pero eso no impide que el rival lo haga, o que un compañero se entusiasme: por eso conviene tener la respuesta. Error frecuente: cortar cuando el defensor no está adelantado, con lo que solo se pierde la posición.",
-    "variantes": "Base: el defensor se adelanta siempre y el corte va libre. Intermedio: el defensor elige adelantarse o no, y el atacante lee. Avanzado: el pasador también decide, y si no ve la puerta atrás pierde la posesión.",
     "tags": [
       "puerta atrás",
       "corte",
@@ -13176,6 +13391,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos. Rotan pasador, receptor y defensor.",
+      "niveles": {
+        "base": "el defensor se adelanta siempre y el corte va libre.",
+        "intermedio": "el defensor elige adelantarse o no, y el atacante lee.",
+        "avanzado": "el pasador también decide, y si no ve la puerta atrás pierde la posesión."
+      },
       "criterio_exito": "el corte sale solo cuando el defensor está adelantado, en tres de cada tres lecturas"
     },
     "animacion": {
@@ -13394,7 +13614,6 @@
     "objetivos": "Entender que ayudar a un compañero muchas veces consiste en irse, no en acercarse.",
     "descripcion_texto": "Dos atacantes y dos defensores. El que no tiene balón se marcha al lado contrario llevándose a su defensor, dejando todo un lado libre. El del balón ataca ese espacio en uno contra uno. Si le ayudan, pasa al compañero, que ahora está solo. Se juega a tres canastas.",
     "notas": "Puntos clave: el aclarado tiene que ser LEJOS —hasta la esquina contraria—, si no el defensor sigue ayudando; el que ataca espera a que el compañero haya llegado. Error frecuente: aclarar dos metros, que no aclara nada. Otro, muy común: el que aclara se queda mirando en vez de prepararse para recibir. Es la herramienta de juego de dos que mejor funciona en minibasket, mejor que cualquier bloqueo (D23).",
-    "variantes": "Base: el aclarado ya está hecho al empezar y solo se juega el 1c1 con espacio. Intermedio: hay que aclarar y luego atacar. Avanzado: tres atacantes, con dos aclarando y una esquina que puede recibir.",
     "tags": [
       "aclarado",
       "espaciado",
@@ -13421,6 +13640,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan; entran cada dos ataques.",
+      "niveles": {
+        "base": "el aclarado ya está hecho al empezar y solo se juega el 1c1 con espacio.",
+        "intermedio": "hay que aclarar y luego atacar.",
+        "avanzado": "tres atacantes, con dos aclarando y una esquina que puede recibir."
+      },
       "criterio_exito": "el aclarado llega hasta la esquina contraria en tres de cada tres jugadas"
     },
     "animacion": {
@@ -13698,7 +13922,6 @@
     "objetivos": "Generar ventaja entre dos sin contacto ni bloqueo, solo con la entrega y el momento.",
     "descripcion_texto": "Un atacante espera con balón en el codo. El otro llega corriendo desde la esquina, recoge el balón en mano y ataca la canasta. Los dos defensores tienen que resolver el cruce. El que entrega puede quedarse o irse al lado contrario. Tres jugadas por pareja.",
     "notas": "Puntos clave: el que entrega sostiene el balón con las dos manos y NO lo suelta hasta que el otro lo tiene agarrado; el que recibe llega a velocidad y sale ya botando. Error frecuente: soltarlo antes de tiempo y convertirlo en un pase malo. Segundo: llegar despacio, con lo que no hay ventaja ninguna. Es la puerta de entrada al bloqueo directo, pero sin contacto, así que encaja en el núcleo mucho antes (D23).",
-    "variantes": "Base: sin defensores, solo la mecánica de la entrega y la salida. Intermedio: con los dos defensores. Avanzado: el que entrega puede quedarse el balón y atacar él si ve que el defensor se anticipa al cruce.",
     "tags": [
       "continuación",
       "ventaja",
@@ -13725,6 +13948,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan; se rota cada dos jugadas.",
+      "niveles": {
+        "base": "sin defensores, solo la mecánica de la entrega y la salida.",
+        "intermedio": "con los dos defensores.",
+        "avanzado": "el que entrega puede quedarse el balón y atacar él si ve que el defensor se anticipa al cruce."
+      },
       "criterio_exito": "la entrega sale limpia y el receptor arranca ya botando en tres de cada tres"
     },
     "animacion": {
@@ -14040,7 +14268,6 @@
     "objetivos": "Usar y poner un bloqueo lejos del balón, que es más simple de leer que el directo y no exige tener el balón.",
     "descripcion_texto": "Pasador en la punta con balón. Dos atacantes en el lado: uno pone el bloqueo y otro lo usa para salir a recibir al 45. Sus dos defensores intentan impedirlo. El que sale recibe y tira. El bloqueador, después de bloquear, se abre a la esquina. Tres jugadas y rotan.",
     "notas": "Puntos clave: el bloqueador llega quieto y con los pies anchos ANTES de que pase el compañero — si se mueve, es falta; el que lo usa pasa rozando el hombro, no a un metro. Error frecuentísimo: separarse del bloqueo, con lo que el defensor pasa por en medio y no ha servido de nada. REQUISITO: esto se introduce cuando el 1c1 ya está resuelto (D23); antes solo se copia el gesto sin entenderlo.",
-    "variantes": "Base: sin defensores, solo la mecánica de bloquear quieto y salir rozando. Intermedio: con los dos defensores. Avanzado: el que usa el bloqueo puede salir por los dos lados según cómo le defiendan, y el bloqueador puede abrirse o ir al aro.",
     "tags": [
       "bloqueo indirecto",
       "continuación",
@@ -14067,6 +14294,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta: cinco jugando y uno que entra en la jugada siguiente. Tres jugadas y rotan.",
+      "niveles": {
+        "base": "sin defensores, solo la mecánica de bloquear quieto y salir rozando.",
+        "intermedio": "con los dos defensores.",
+        "avanzado": "el que usa el bloqueo puede salir por los dos lados según cómo le defiendan, y el bloqueador puede abrirse o ir al aro."
+      },
       "criterio_exito": "el bloqueador llega parado y el usuario pasa rozando en tres de cada tres"
     },
     "animacion": {
@@ -14451,7 +14683,6 @@
     "objetivos": "Convertir el rebote en contraataque, que es donde se pierden casi todas las oportunidades fáciles.",
     "descripcion_texto": "El entrenador tira y falla. Tres defensores cogen el rebote y tienen que sacar el balón por el lado con un pase y salir corriendo los tres por carriles distintos hasta la canasta contraria, donde esperan dos defensores. El que coge el rebote no bota: pasa.",
     "notas": "Puntos clave: el que coge el rebote busca el pase de salida ANTES de caer al suelo, y el receptor aparece por el lado, no por delante; los otros dos ya están corriendo. Error frecuentísimo: coger el rebote y botar hacia el centro, que es lo más lento y lo más peligroso. Regla que ayuda: \"el rebote no bota\". Segundo error: los tres corren por el mismo carril.",
-    "variantes": "Base: rebote y pase de salida, sin correr la pista. Intermedio: rebote, salida y contraataque 3c2. Avanzado: rebote, salida y contraataque con los dos defensores saliendo desde media pista, lo que quita casi toda la ventaja.",
     "tags": [
       "rebote defensivo",
       "contraataque",
@@ -14477,6 +14708,11 @@
         "descanso": 90
       },
       "organizacion": "Con 12: pista entera, tres grupos de cuatro que salen por turnos desde la línea de fondo. Se entra en cuanto el grupo anterior cruza el medio.",
+      "niveles": {
+        "base": "rebote y pase de salida, sin correr la pista.",
+        "intermedio": "rebote, salida y contraataque 3c2.",
+        "avanzado": "rebote, salida y contraataque con los dos defensores saliendo desde media pista, lo que quita casi toda la ventaja."
+      },
       "criterio_exito": "el balón sale al lado con un solo pase en tres de cada cuatro rebotes"
     },
     "animacion": {
@@ -14767,7 +15003,6 @@
     "objetivos": "Automatizar el reflejo de volver, que no es natural: después de tirar, todo el mundo mira el balón.",
     "descripcion_texto": "Tres atacantes terminan una jugada con tiro. En cuanto sale el balón, dos de ellos tienen que salir corriendo hacia su canasta mientras los otros cogen el rebote y contraatacan. Los que balancean llegan en inferioridad y tienen que frenar el balón y proteger el aro. Se rota constantemente.",
     "notas": "Puntos clave: se balancea EN EL TIRO, no cuando se ve que el rebote es del rival; el primero que llega frena el balón y el segundo protege el aro. Error frecuente y universal: quedarse mirando el propio tiro. Este es de los pocos ejercicios donde el objetivo es instalar un reflejo, así que la repetición seguida vale más que la explicación. Si se olvidan, no lo expliques otra vez: haz que corran la vuelta.",
-    "variantes": "Base: dos atacantes tiran y uno balancea contra un contraataque de uno. Intermedio: dos balancean contra tres. Avanzado: dos balancean contra tres y el tirador también tiene que volver, con lo que llegan escalonados y hay que comunicarse.",
     "tags": [
       "balance defensivo",
       "transición",
@@ -14794,6 +15029,11 @@
         "descanso": 90
       },
       "organizacion": "Con 12: pista entera, tres grupos de cuatro que salen por turnos. El grupo que termina se queda al fondo esperando su vuelta.",
+      "niveles": {
+        "base": "dos atacantes tiran y uno balancea contra un contraataque de uno.",
+        "intermedio": "dos balancean contra tres.",
+        "avanzado": "dos balancean contra tres y el tirador también tiene que volver, con lo que llegan escalonados y hay que comunicarse."
+      },
       "criterio_exito": "los dos que balancean salen antes de que el balón toque el aro en tres de cada cuatro jugadas"
     },
     "animacion": {
@@ -15009,7 +15249,6 @@
     "objetivos": "Instalar la forma del contraataque: tres carriles, balón al centro y anchura hasta el final.",
     "descripcion_texto": "Tres jugadores salen del fondo, uno por cada carril: banda izquierda, centro y banda derecha. El balón sube por el centro y se pasa a una banda antes de la línea de tiros libres. Nadie puede invadir el carril de otro hasta pasar el medio campo. Un defensor espera para dar algo de decisión.",
     "notas": "Puntos clave: la anchura se mantiene hasta el último momento; el del centro mira a los dos lados antes de decidir. Error frecuentísimo: los tres convergen hacia el balón y llegan en fila, que es como perder la superioridad sin que nadie te la quite. Marca los carriles con conos las primeras veces: se entiende mucho antes viéndolo que oyéndolo.",
-    "variantes": "Base: tres carriles sin defensor, solo la forma. Intermedio: con un defensor esperando. Avanzado: con dos defensores y sin poder pasar por el centro después del medio campo.",
     "tags": [
       "contraataque",
       "carriles",
@@ -15036,6 +15275,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: pista entera, cuatro tríos que salen escalonados. El trío que llega al otro lado espera allí su turno para volver.",
+      "niveles": {
+        "base": "tres carriles sin defensor, solo la forma.",
+        "intermedio": "con un defensor esperando.",
+        "avanzado": "con dos defensores y sin poder pasar por el centro después del medio campo."
+      },
       "criterio_exito": "los tres llegan separados por más de tres metros en cuatro de cada cuatro subidas"
     },
     "animacion": {
@@ -15368,7 +15612,6 @@
     "objetivos": "Ganar control de las dos manos a la vez sin caer en el manejo descontextualizado: siempre hay que estar mirando algo.",
     "descripcion_texto": "Por parejas enfrentadas a cuatro metros. Uno bota dos balones —alternos, simultáneos o uno alto y otro bajo— y el otro va cambiando de posición: si se agacha, hay que botar bajo; si levanta los brazos, alto; si se desplaza a un lado, hay que seguirle sin dejar de botar. Treinta segundos y cambio.",
     "notas": "Puntos clave: cada mano trabaja por su cuenta, y eso es lo que cuesta; el bote alterno es más difícil que el simultáneo y por ahí hay que empezar al revés de lo que parece. IMPORTANTE (D20): dos balones sin nada que mirar es un ejercicio de circo que no transfiere. El compañero no es un adorno: es lo que hace que esto sea baloncesto. Si lo quitas, quítalo del entrenamiento entero.",
-    "variantes": "Base: dos balones simultáneos en el sitio, sin compañero, quince segundos. Intermedio: alternos, con compañero marcando altura. Avanzado: alternos, con compañero que se desplaza y hay que seguirle, más un cambio de mano cruzando los dos balones.",
     "tags": [
       "bote",
       "coordinación",
@@ -15394,6 +15637,11 @@
         "descanso": 30
       },
       "organizacion": "Con 12: seis parejas a la vez, repartidas a lo ancho de la pista y separadas cuatro metros. Treinta segundos y se cambia quien bota.",
+      "niveles": {
+        "base": "dos balones simultáneos en el sitio, sin compañero, quince segundos.",
+        "intermedio": "alternos, con compañero marcando altura.",
+        "avanzado": "alternos, con compañero que se desplaza y hay que seguirle, más un cambio de mano cruzando los dos balones."
+      },
       "criterio_exito": "treinta segundos sin perder ninguno de los dos balones y respondiendo a todas las señales"
     },
     "animacion": {
@@ -15505,7 +15753,6 @@
     "objetivos": "Ganar la posesión de un balón suelto y protegerlo inmediatamente, que es una situación de partido y casi nadie entrena.",
     "descripcion_texto": "Dos jugadores enfrentados a tres metros de un balón en el suelo. A la señal van los dos. Quien lo coge tiene que protegerlo tres segundos sin que el otro se lo quite: puede pivotar, agacharse y usar el cuerpo, pero no salir corriendo. Al tercer segundo, sale botando y ataca la canasta.",
     "notas": "Puntos clave: se coge con las dos manos y se lleva inmediatamente al pecho o a la cadera lejos del rival, nunca por encima de la cabeza; se abren los codos —firme, sin golpear— y se baja el centro de gravedad. Error frecuente: coger el balón y quedarse de pie erguido, que es regalarlo. Vigila los codos: firmes sí, girando como aspas no.",
-    "variantes": "Base: el balón se le entrega a uno y el otro llega un segundo después. Intermedio: los dos salen a la vez. Avanzado: tres jugadores a por el mismo balón.",
     "tags": [
       "bote de protección",
       "pivote",
@@ -15531,6 +15778,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: seis parejas repartidas por la pista, sin canastas. Se cambia de rol cada treinta segundos.",
+      "niveles": {
+        "base": "el balón se le entrega a uno y el otro llega un segundo después.",
+        "intermedio": "los dos salen a la vez.",
+        "avanzado": "tres jugadores a por el mismo balón."
+      },
       "criterio_exito": "quien coge el balón lo conserva los tres segundos en tres de cada cuatro duelos"
     },
     "animacion": {
@@ -15764,7 +16016,6 @@
     "objetivos": "Controlar el balón mientras el espacio se llena de gente, que es la única forma realista de entrenar el manejo.",
     "descripcion_texto": "Todos con balón dentro de un espacio marcado con conos. Cada treinta segundos se reduce el espacio moviendo los conos hacia dentro. Nadie puede chocar ni perder el balón. Al final quedan todos apretados en un cuadrado pequeño y el bote tiene que ser bajo y protegido por fuerza.",
     "notas": "Puntos clave: cuando el espacio se reduce, el bote baja solo — y esa es la lección, que no hace falta explicarla; la cabeza tiene que estar arriba para no chocar. Error frecuente: mirar el suelo cuando aumenta la presión, que es justo cuando hay que mirar más. Este ejercicio es el ejemplo de manejo bien planteado: no hay que decir \"mira arriba\", el espacio lo obliga.",
-    "variantes": "Base: espacio amplio y fijo. Intermedio: el espacio se reduce cada treinta segundos. Avanzado: además hay dos jugadores sin balón que intentan tocar balones ajenos.",
     "tags": [
       "bote",
       "cabeza levantada",
@@ -15792,6 +16043,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: los doce a la vez dentro de una media pista, un balón cada uno. Si sobra espacio, se estrecha con conos.",
+      "niveles": {
+        "base": "espacio amplio y fijo.",
+        "intermedio": "el espacio se reduce cada treinta segundos.",
+        "avanzado": "además hay dos jugadores sin balón que intentan tocar balones ajenos."
+      },
       "criterio_exito": "llegar al espacio más pequeño sin haber chocado ni perdido el balón"
     },
     "animacion": {
@@ -15960,7 +16216,6 @@
     "objetivos": "Dominar la parada simultánea, que deja los dos pies disponibles y por eso da más opciones que la de dos tiempos.",
     "descripcion_texto": "Fila en la esquina, pasador en la punta. Se corre hacia el 45 recibiendo en carrera y se para con los DOS pies a la vez, quedando de cara al aro. Después se pivota una vez con cada pie para comprobar que ninguno está bloqueado, y se tira. Un compañero con las manos arriba obliga a hacerlo con algo de prisa.",
     "notas": "Puntos clave: los dos pies tocan el suelo a la vez y con las rodillas flexionadas, si no es parada en dos tiempos aunque lo parezca; el balón se recoge antes del último salto. Error frecuente: caer con un pie ligerísimamente antes, que ya bloquea el pivote — se ve mirando desde el lado, no de frente. Enseña las dos paradas, pero no las mezcles en el mismo ejercicio hasta que cada una salga sola.",
-    "variantes": "Base: andando, sin pase, solo la parada y los dos pivotes. Intermedio: en carrera con pase y compañero con manos arriba. Avanzado: la parada llega tras un cambio de dirección, que es cuando de verdad cuesta caer a la vez.",
     "tags": [
       "parada",
       "pivote",
@@ -15985,6 +16240,11 @@
         "descanso": 40
       },
       "organizacion": "Con 12: dos estaciones, una por canasta, seis por estación: fila de cuatro, un pasador y el que molesta con las manos arriba. Rotan los tres papeles.",
+      "niveles": {
+        "base": "andando, sin pase, solo la parada y los dos pivotes.",
+        "intermedio": "en carrera con pase y compañero con manos arriba.",
+        "avanzado": "la parada llega tras un cambio de dirección, que es cuando de verdad cuesta caer a la vez."
+      },
       "criterio_exito": "ocho paradas de ocho con los dos pies a la vez, comprobado pivotando con ambos"
     },
     "animacion": {
@@ -16313,7 +16573,6 @@
     "objetivos": "Aprender que el desmarque se gana con una finta de pies, no corriendo más rápido.",
     "descripcion_texto": "Pasador en la punta. Atacante en el 45 con defensor pegado. El atacante tiene que hacer una finta clara —tres pasos hacia canasta y salida rápida al 45, o al revés— antes de pedir. Solo cuenta el balón recibido después de una finta; si recibe sin fintar, no vale. Cinco intentos y se rota.",
     "notas": "Puntos clave: la finta tiene que ser larga y creíble —tres pasos, no uno—, con cambio de ritmo al salir; se pide con la mano de fuera. Error frecuente: fintar con la cabeza o con medio paso, que no se lo cree nadie. Como entrenador, mira al DEFENSOR: si no ha movido los pies, la finta no existió. Es el ejercicio hermano del desmarque, pero centrado en los apoyos.",
-    "variantes": "Base: el defensor sigue sin anticipar y la finta se hace despacio y marcada. Intermedio: defensa normal y finta a velocidad. Avanzado: el defensor puede adelantarse, con lo que a veces la respuesta correcta es la puerta atrás y no la finta de salida.",
     "tags": [
       "finta",
       "desmarque",
@@ -16339,6 +16598,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, receptor y defensor. Rotan cada tres recepciones.",
+      "niveles": {
+        "base": "el defensor sigue sin anticipar y la finta se hace despacio y marcada.",
+        "intermedio": "defensa normal y finta a velocidad.",
+        "avanzado": "el defensor puede adelantarse, con lo que a veces la respuesta correcta es la puerta atrás y no la finta de salida."
+      },
       "criterio_exito": "el defensor mueve los pies con la finta en cuatro de cada cinco intentos"
     },
     "animacion": {
@@ -16583,7 +16847,6 @@
     "objetivos": "Usar el pivote para cambiar el ángulo de pase, que es para lo que sirve de verdad y no para ganar tiempo.",
     "descripcion_texto": "Tres atacantes formando un triángulo amplio y un defensor que presiona siempre al que tiene el balón. No se puede botar. Quien recibe tiene que pivotar para abrir línea de pase y soltarla en menos de tres segundos. Diez pases seguidos es un punto. El defensor cambia cada dos puntos.",
     "notas": "Puntos clave: se pivota HACIA ATRÁS para alejar el balón del defensor y luego se abre; el balón viaja pegado al cuerpo durante el giro, nunca por delante. Error frecuente: pivotar hacia delante metiendo el balón en las manos del defensor. Otro: pivotar mucho y no pasar nunca — el pivote es para encontrar el pase, no para esconderse.",
-    "variantes": "Base: defensor pasivo que solo levanta los brazos. Intermedio: presión real y tres segundos. Avanzado: dos defensores y máximo dos segundos.",
     "tags": [
       "pivote",
       "pase",
@@ -16610,6 +16873,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: seis parejas repartidas por la pista, sin canastas. Se cambia de rol cada treinta segundos.",
+      "niveles": {
+        "base": "defensor pasivo que solo levanta los brazos.",
+        "intermedio": "presión real y tres segundos.",
+        "avanzado": "dos defensores y máximo dos segundos."
+      },
       "criterio_exito": "llegar a diez pases seguidos sin pérdida al menos dos veces por serie"
     },
     "animacion": {
@@ -16697,7 +16965,6 @@
     "objetivos": "Tener dos salidas distintas y saber cuál toca, en vez de una sola que el defensor ya conoce.",
     "descripcion_texto": "Atacante en el 45 con balón parado y defensor delante ligeramente ladeado. Si el defensor tapa el lado derecho, salida cruzada por la izquierda; si tapa la izquierda, salida directa por la derecha. El defensor elige lado antes de cada repetición y lo mantiene. Cinco salidas y se cambia.",
     "notas": "Puntos clave: en la salida directa el primer paso va con el pie del mismo lado y el balón sale antes que el pie; en la cruzada, el pie de fuera cruza por delante del defensor pegado a él, no dando un rodeo. Error frecuente en la cruzada: separarse al cruzar, con lo que el defensor la ve venir y la corta. Y ojo con los pasos: el balón bota ANTES de levantar el pie de pivote.",
-    "variantes": "Base: solo salida directa, defensor estático que tapa siempre el mismo lado. Intermedio: las dos salidas, el defensor elige y lo mantiene. Avanzado: el defensor puede cambiar de lado mientras el atacante finta.",
     "tags": [
       "salida en bote",
       "pivote",
@@ -16723,6 +16990,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: seis parejas, tres en cada canasta, cada una en un punto distinto del perímetro.",
+      "niveles": {
+        "base": "solo salida directa, defensor estático que tapa siempre el mismo lado.",
+        "intermedio": "las dos salidas, el defensor elige y lo mantiene.",
+        "avanzado": "el defensor puede cambiar de lado mientras el atacante finta."
+      },
       "criterio_exito": "elegir la salida correcta en cinco de cada cinco, y ningún paso"
     },
     "animacion": {
@@ -16891,7 +17163,6 @@
     "objetivos": "Instalar el reflejo de seguir el tiro, y aprender a escapar de un bloqueo de rebote.",
     "descripcion_texto": "El atacante tira desde el codo y su defensor intenta bloquearle el rebote. El atacante tiene que reaccionar antes que el defensor y rodearle por el lado contrario al que se gira. Si coge el rebote, tiene un tiro extra que vale doble. Cinco tiros cada uno.",
     "notas": "Puntos clave: se sale a por el rebote EN el tiro, no cuando el balón toca el aro; se rodea al bloqueador por el lado contrario al que gira, con un paso corto y el contacto ganado. Error frecuente: quedarse mirando el propio tiro, que es lo que hace todo el mundo. Segundo: empujar por la espalda en vez de rodear, que es falta. El tiro extra que vale doble hace el trabajo de motivación solo.",
-    "variantes": "Base: el defensor no bloquea, solo va al rebote; el atacante practica salir en el tiro. Intermedio: el defensor bloquea de verdad. Avanzado: dos contra dos al rebote tras tiro del entrenador.",
     "tags": [
       "rebote ofensivo",
       "bloqueo de rebote",
@@ -16916,6 +17187,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: seis parejas, tres en cada canasta, cada una en un lado distinto de la zona.",
+      "niveles": {
+        "base": "el defensor no bloquea, solo va al rebote; el atacante practica salir en el tiro.",
+        "intermedio": "el defensor bloquea de verdad.",
+        "avanzado": "dos contra dos al rebote tras tiro del entrenador."
+      },
       "criterio_exito": "salir a por el rebote antes de que el balón toque el aro en cuatro de cada cinco tiros"
     },
     "animacion": {
@@ -17109,7 +17385,6 @@
     "objetivos": "Trasladar el bloqueo de rebote a una situación de verdad, con tres parejas a la vez y el balón cayendo donde caiga.",
     "descripcion_texto": "Tres atacantes repartidos por el perímetro con sus tres defensores. El entrenador tira. Cada defensor busca a su par y bloquea; después se va el balón. El equipo que coge el rebote suma punto; si lo coge el ataque, tiene un tiro extra libre. Se juega a cinco.",
     "notas": "Puntos clave: primero se encuentra al par y después el balón, incluso si el balón viene hacia ti — es contraintuitivo y hay que insistir; el contacto se mantiene un segundo y luego se va al balón. Error frecuente: los tres defensores van al balón y el ataque coge rebotes fáciles. Truco: los dos primeros minutos, prohíbe coger el rebote. Solo bloquear. Cuando eso salga, se levanta la prohibición.",
-    "variantes": "Base: dos contra dos y el entrenador avisa desde dónde tira. Intermedio: tres contra tres. Avanzado: tres contra tres y el ataque puede moverse antes del tiro, con lo que hay que encontrar al par en movimiento.",
     "tags": [
       "rebote defensivo",
       "bloqueo de rebote",
@@ -17136,6 +17411,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, jugando 3c3 al rebote. Nadie fuera.",
+      "niveles": {
+        "base": "dos contra dos y el entrenador avisa desde dónde tira.",
+        "intermedio": "tres contra tres.",
+        "avanzado": "tres contra tres y el ataque puede moverse antes del tiro, con lo que hay que encontrar al par en movimiento."
+      },
       "criterio_exito": "la defensa coge cuatro de cada cinco rebotes cuando los tres bloquean"
     },
     "animacion": {
@@ -17247,7 +17527,6 @@
     "objetivos": "Preparar el cuerpo sin separar al niño del balón, que es tiempo de contacto que no se recupera después.",
     "descripcion_texto": "Andando de un fondo al otro, cada tramo con un gesto: rodillas al pecho pasando el balón por debajo de la pierna que sube; talones al glúteo con el balón alrededor de la cintura; zancada con el balón por encima de la cabeza; y desplazamiento lateral con el balón rodeando las rodillas. Ida y vuelta dos veces.",
     "notas": "Puntos clave: el gesto de movilidad manda y el balón acompaña, no al revés; si por hacer el balón se hace mal la zancada, se quita el balón en esa. Es calentamiento, así que el ritmo es tranquilo. Lo único que hay que vigilar es que no se convierta en una carrera. En minibasket el calentamiento sin balón es tiempo perdido: siempre hay una forma de meterlo.",
-    "variantes": "Base: solo dos gestos, con el balón sostenido sin manipular. Intermedio: los cuatro gestos con manipulación. Avanzado: los cuatro gestos botando con la otra mano al mismo tiempo.",
     "tags": [
       "calentamiento",
       "activación",
@@ -17273,6 +17552,11 @@
         "descanso": 30
       },
       "organizacion": "Con 12: los doce a la vez recorriendo la pista a lo largo, en dos filas de seis para que no se pisen.",
+      "niveles": {
+        "base": "solo dos gestos, con el balón sostenido sin manipular.",
+        "intermedio": "los cuatro gestos con manipulación.",
+        "avanzado": "los cuatro gestos botando con la otra mano al mismo tiempo."
+      },
       "criterio_exito": "completar los cuatro tramos sin que se caiga el balón y sin perder la calidad del gesto",
       "aplicacion": "todo el bloque de manejo: es el mismo control de balón, aquí sin exigencia"
     },
@@ -17385,7 +17669,6 @@
     "objetivos": "Subir pulsaciones compitiendo, que es la forma en que un niño calienta de verdad sin darse cuenta.",
     "descripcion_texto": "Dos o tres equipos en filas. El primero sale botando hasta el cono, hace la tarea que toque —cinco cambios de mano, dos vueltas al cono botando bajo, o cinco pases contra la pared— y vuelve para entregar el balón en mano al siguiente. Gana el equipo que termine antes. Tres rondas con tarea distinta.",
     "notas": "Puntos clave: la entrega es en mano, no un pase lanzado, para que no se pierda tiempo persiguiendo balones; la tarea se hace completa aunque se vaya perdiendo. Error habitual y divertido: hacen cuatro cambios en vez de cinco cuando van perdiendo. Ponles un juez de cada equipo en el cono contrario y se acaba. Filas de cuatro como mucho (D5).",
-    "variantes": "Base: relevo simple de ida y vuelta botando. Intermedio: con tarea en el cono. Avanzado: con tarea en el cono y con la mano no dominante todo el recorrido.",
     "tags": [
       "calentamiento",
       "activación",
@@ -17412,6 +17695,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: cuatro equipos de tres en la línea de fondo, compitiendo a la vez a lo largo de la pista.",
+      "niveles": {
+        "base": "relevo simple de ida y vuelta botando.",
+        "intermedio": "con tarea en el cono.",
+        "avanzado": "con tarea en el cono y con la mano no dominante todo el recorrido."
+      },
       "criterio_exito": "todos completan su tarea entera, gane quien gane"
     },
     "animacion": {
@@ -17749,7 +18037,6 @@
     "objetivos": "Percepción espacial y lateralidad con una tarea que además exige no perder el balón.",
     "descripcion_texto": "Ocho o diez aros de colores repartidos por la media pista. Todos botan por el espacio. El entrenador dice un color y un pie: \"azul, pie derecho\". Hay que llegar al aro de ese color y meter dentro ese pie, sin dejar de botar. Si el aro ya está ocupado, hay que buscar otro del mismo color.",
     "notas": "Puntos clave: lo que se entrena es la decisión espacial y la lateralidad, no el bote; el bote es la carga añadida. No corrijas técnica de bote aquí. Sí hay que vigilar que no siempre usen el mismo pie por comodidad — di el pie no dominante más veces de las que parece justo. En Escuela, que sepan cuál es su izquierda ya es contenido.",
-    "variantes": "Base: solo el color, sin especificar pie y sin botar. Intermedio: color y pie, botando. Avanzado: dos consignas encadenadas (\"azul con el derecho, luego rojo con el izquierdo\") y hay que recordar las dos.",
     "tags": [
       "lateralidad",
       "equilibrio",
@@ -17777,6 +18064,11 @@
         "descanso": 40
       },
       "organizacion": "Con 12: los doce a la vez, con los aros repartidos por una media pista.",
+      "niveles": {
+        "base": "solo el color, sin especificar pie y sin botar.",
+        "intermedio": "color y pie, botando.",
+        "avanzado": "dos consignas encadenadas (\"azul con el derecho, luego rojo con el izquierdo\") y hay que recordar las dos."
+      },
       "criterio_exito": "acertar color y pie en ocho de cada diez consignas",
       "aplicacion": "los cuatro cuadrantes, que es la misma respuesta a un estímulo pero ya con espacio compartido"
     },
@@ -17974,7 +18266,6 @@
     "objetivos": "Trabajar la imitación cruzada y el esquema corporal, que es lo que sostiene todo lo demás a estas edades.",
     "descripcion_texto": "Por parejas enfrentadas. Uno hace gestos con el balón: levantarlo con la mano derecha, pasarlo alrededor de la cintura hacia un lado, apoyarlo en un pie, botarlo dos veces a un lado. El otro copia como un espejo, es decir, con el lado contrario. Treinta segundos y cambio.",
     "notas": "Puntos clave: como espejo, la derecha del uno es la izquierda del otro, y ese cruce es exactamente el contenido; no corrijas si se confunden, ese es el trabajo. En Escuela habrá muchos que no distingan lados, y está bien: por eso se hace. Empieza despacio y con gestos grandes. Si van muy sobrados, que el que dirige se mueva mientras hace los gestos.",
-    "variantes": "Base: gestos estáticos y lentos, sin cruce (copia igual, no espejo). Intermedio: espejo con gestos estáticos. Avanzado: espejo con desplazamiento y dos gestos a la vez.",
     "tags": [
       "lateralidad",
       "coordinación",
@@ -18000,6 +18291,11 @@
         "descanso": 30
       },
       "organizacion": "Con 12: seis parejas a la vez, repartidas a lo ancho y mirándose.",
+      "niveles": {
+        "base": "gestos estáticos y lentos, sin cruce (copia igual, no espejo).",
+        "intermedio": "espejo con gestos estáticos.",
+        "avanzado": "espejo con desplazamiento y dos gestos a la vez."
+      },
       "criterio_exito": "copiar en espejo la mayoría de los gestos sin que haya que recordárselo"
     },
     "animacion": {
@@ -18095,7 +18391,6 @@
     "objetivos": "Jugar siempre con ventaja para que aparezcan el pase extra y la ocupación de espacios, en lugar del uno contra uno constante.",
     "descripcion_texto": "Dos contra dos en media pista más un comodín que juega con el equipo que tenga el balón, pero que no puede tirar. Cuando cambia la posesión, el comodín cambia de bando. Se juega a cinco canastas. El comodín rota cada dos canastas para que todos pasen por ese papel.",
     "notas": "Puntos clave: el comodín tiene que ocupar el espacio que dejan los otros dos, no acercarse al balón; como no puede tirar, se convierte en el que da el pase bueno. Error frecuente: los dos atacantes le usan de pared y siguen jugando 1c1 igual. Si pasa, prohíbe devolver el balón a quien te lo dio. Este es el ejercicio que más rápido enseña qué es una ventaja de tres contra dos.",
-    "variantes": "Base: el comodín se coloca fijo en la punta y solo recibe y devuelve. Intermedio: comodín móvil que no puede tirar. Avanzado: el comodín puede tirar solo desde fuera de la zona, con lo que la defensa ya no puede ignorarle.",
     "tags": [
       "juego reducido",
       "superioridad",
@@ -18123,6 +18418,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta: 2c2 más comodín y uno que espera para entrar de comodín en la siguiente.",
+      "niveles": {
+        "base": "el comodín se coloca fijo en la punta y solo recibe y devuelve.",
+        "intermedio": "comodín móvil que no puede tirar.",
+        "avanzado": "el comodín puede tirar solo desde fuera de la zona, con lo que la defensa ya no puede ignorarle."
+      },
       "criterio_exito": "al menos la mitad de las canastas llegan tras pase del comodín o del compañero, no de un uno contra uno"
     },
     "animacion": {
@@ -18222,7 +18522,6 @@
     "objetivos": "Encadenar ataque, defensa y transición sin la pausa que da la media pista, que es como se juega de verdad.",
     "descripcion_texto": "Tres contra tres en pista entera. No hay saques: tras canasta o rebote, el equipo que tiene el balón ataca la canasta contraria directamente. Se juega cuatro minutos seguidos, y hay dos tríos esperando que entran cada dos minutos. La transición es la mitad del ejercicio.",
     "notas": "Puntos clave: en cuanto cambia la posesión, el primero que reaccione manda; el balance defensivo empieza al tirar, no al fallar. Error frecuente: celebrar la canasta y quedarse parado, con lo que el rival ya está corriendo. Ojo con la carga: cuatro minutos de esto son muy exigentes y la calidad cae en el último. Mejor tres minutos bien que cinco arrastrándose.",
-    "variantes": "Base: 3c3 en media pista con saque tras canasta. Intermedio: pista entera sin saques, cuatro minutos. Avanzado: pista entera y la canasta en transición vale doble.",
     "tags": [
       "juego reducido",
       "transición",
@@ -18250,6 +18549,11 @@
         "descanso": 120
       },
       "organizacion": "Con 12: cuatro equipos de tres en pista entera. Juegan dos y los otros dos esperan al fondo; entran en cuanto hay canasta.",
+      "niveles": {
+        "base": "3c3 en media pista con saque tras canasta.",
+        "intermedio": "pista entera sin saques, cuatro minutos.",
+        "avanzado": "pista entera y la canasta en transición vale doble."
+      },
       "criterio_exito": "nadie se queda parado tras una canasta en ninguna de las transiciones"
     },
     "animacion": {
@@ -18361,7 +18665,6 @@
     "objetivos": "Competir en uno contra uno con fatiga acumulada, que es cuando se ve quién resuelve de verdad.",
     "descripcion_texto": "Una fila de retadores. El rey defiende la canasta; el retador ataca. Si el retador anota, se convierte en rey y el anterior va al final de la fila. Si falla o le roban, el rey sigue. Una sola posesión por duelo. El rey no descansa nunca, y ahí está la gracia.",
     "notas": "Puntos clave: como rey, con cansancio hay que defender con los pies y no con las manos, que es cuando llegan las faltas; como retador, el rey está cansado y hay que atacarle rápido y no dejarle respirar. Error del entrenador: dejar que un rey se eternice. Si alguien lleva cinco seguidas, mételo a la fila y que empiece otro. Filas de cuatro o cinco como mucho (D5).",
-    "variantes": "Base: dos posesiones por duelo y el rey descansa cada tres. Intermedio: una posesión, el rey no descansa. Avanzado: el retador entra corriendo desde medio campo con el balón, sin pausa entre duelos.",
     "tags": [
       "1c1",
       "juego reducido",
@@ -18387,6 +18690,11 @@
         "descanso": 90
       },
       "organizacion": "Con 12: dos reinos, uno en cada canasta, seis en cada uno: el rey y cinco retadores en fila. Así nadie espera más de cuatro duelos seguidos.",
+      "niveles": {
+        "base": "dos posesiones por duelo y el rey descansa cada tres.",
+        "intermedio": "una posesión, el rey no descansa.",
+        "avanzado": "el retador entra corriendo desde medio campo con el balón, sin pausa entre duelos."
+      },
       "criterio_exito": "nadie defiende con las manos por cansancio: si llegan las faltas, se para y se descansa"
     },
     "animacion": {
@@ -18664,7 +18972,6 @@
     "objetivos": "Dirigir dónde se ataca sin decirlo, obligando a mover el balón hasta encontrar las zonas buenas.",
     "descripcion_texto": "Cuatro contra cuatro en media pista con dos zonas marcadas con conos: las dos esquinas. La canasta anotada desde una esquina vale 3; desde cualquier otro sitio, 1. Como las esquinas están lejos del balón inicial, hay que mover el balón de lado a lado. Se juega a siete.",
     "notas": "Puntos clave: para que el balón llegue a la esquina hay que invertir el lado, y eso obliga a que alguien ocupe la esquina antes; el que ataca la zona tiene que llegar antes que el balón. Error frecuente: todos se van a las esquinas y se vacía el centro, con lo que la defensa se junta. Es el ejemplo de cómo la puntuación enseña más rápido que la explicación.",
-    "variantes": "Base: 3c3 y una sola zona de puntuación. Intermedio: 4c4 y las dos esquinas. Avanzado: 4c4, dos esquinas y la canasta desde esquina solo cuenta si llega tras dos pases o más.",
     "tags": [
       "juego reducido",
       "espaciado",
@@ -18693,6 +19000,11 @@
         "descanso": 90
       },
       "organizacion": "Con 12: dos grupos, uno de ocho jugando 4c4 en una canasta y otro de cuatro jugando 2c2 en la otra. Se cambian a la mitad del tiempo.",
+      "niveles": {
+        "base": "3c3 y una sola zona de puntuación.",
+        "intermedio": "4c4 y las dos esquinas.",
+        "avanzado": "4c4, dos esquinas y la canasta desde esquina solo cuenta si llega tras dos pases o más."
+      },
       "criterio_exito": "la mayoría de los puntos llegan desde las zonas marcadas y tras haber invertido el lado"
     },
     "animacion": {
@@ -18847,7 +19159,6 @@
     "objetivos": "Tirar con las piernas cansadas de haberse movido, que es como llega la mayoría de los tiros en un partido.",
     "descripcion_texto": "Pasador en la punta. El tirador corta desde el 45 hacia el aro, no recibe, sigue hasta el lado contrario y allí recibe y tira. Un defensor le acompaña sin llegar a impedir el tiro. Cinco por lado y se rota.",
     "notas": "Puntos clave: se llega al punto de tiro con los pies ya listos, lo que exige frenar un paso antes; el balón se pide con las dos manos al llegar. Error frecuente: llegar y tirar en carrera, sin equilibrio, porque no se ha preparado la parada. Otro: cortar sin intención, paseando — si el corte no amenaza, el tiro tampoco existiría en un partido.",
-    "variantes": "Base: sin defensor y sin corte, solo desplazarse y tirar. Intermedio: con corte completo y defensor que acompaña. Avanzado: el defensor puede impedir el tiro, y entonces hay que botar y buscar otra cosa.",
     "tags": [
       "tiro",
       "tiro tras recepción",
@@ -18873,6 +19184,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, cortador y defensor. Cinco por lado y se rota.",
+      "niveles": {
+        "base": "sin defensor y sin corte, solo desplazarse y tirar.",
+        "intermedio": "con corte completo y defensor que acompaña.",
+        "avanzado": "el defensor puede impedir el tiro, y entonces hay que botar y buscar otra cosa."
+      },
       "criterio_exito": "llegar equilibrado y con los pies listos en cuatro de cada cinco tiros"
     },
     "animacion": {
@@ -19153,7 +19469,6 @@
     "objetivos": "Sostener la mecánica con prisa y con el ruido de la competición alrededor.",
     "descripcion_texto": "Dos equipos, cada uno con su balón y su reboteador, tirando desde el mismo punto por turnos. El primer equipo que llegue a diez canastas gana la ronda. Tres rondas desde tres puntos distintos. Quien tira coge su rebote y pasa al siguiente de su equipo.",
     "notas": "Puntos clave: la prisa se gestiona teniendo la rutina automatizada; el que rebotea marca el ritmo de su equipo, y si pasa mal hunde a los suyos. Error frecuente: tirar antes de estar equilibrado por ir ganando o perdiendo. Si ves que la técnica se rompe en las rondas de competición, vuelve un día a las series analíticas: significa que el gesto aún no está instalado.",
-    "variantes": "Base: sin reloj ni equipo contrario, solo contar aciertos por equipo. Intermedio: duelo a diez canastas. Avanzado: duelo a diez pero cada fallo resta uno, con lo que la prisa se paga.",
     "tags": [
       "tiro",
       "competición",
@@ -19178,6 +19493,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos equipos de seis, uno en cada canasta, y se comparan los aciertos al terminar.",
+      "niveles": {
+        "base": "sin reloj ni equipo contrario, solo contar aciertos por equipo.",
+        "intermedio": "duelo a diez canastas.",
+        "avanzado": "duelo a diez pero cada fallo resta uno, con lo que la prisa se paga."
+      },
       "criterio_exito": "llegar a diez canastas sin que el gesto se convierta en empujón"
     },
     "animacion": {
@@ -19273,7 +19593,6 @@
     "objetivos": "Tirar desde el ángulo lateral, que se practica poco y aparece constantemente en el juego, y hacerlo con alguien llegando.",
     "descripcion_texto": "Fila en la banda a la altura del tiro libre. Se corre hacia el aro recibiendo del pasador de la punta, se para en dos tiempos a la altura del poste alto y se tira desde ahí. Un defensor persigue desde atrás y llega a molestar sin saltar. Cinco por lado. El pasador cambia cada cinco.",
     "notas": "Puntos clave: desde el lateral el tablero ya casi no ayuda, así que hay que tirar limpio y con más arco; los hombros se abren al aro durante la parada. Error frecuente: buscar tablero desde un ángulo donde no existe, que hace que el balón salga disparado. Segundo: parar de lado y tirar girando el tronco. Este tiro es de los que más se falla y de los que menos se entrena.",
-    "variantes": "Base: sin perseguidor ni pase, tirando desde parado en ese punto. Intermedio: recepción en carrera, parada y perseguidor que llega. Avanzado: el perseguidor puede impedir el tiro, y entonces hay que meter un bote hacia el centro antes de tirar.",
     "tags": [
       "tiro",
       "tiro tras recepción",
@@ -19299,6 +19618,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: dos estaciones, una por canasta: fila de cuatro en la banda, un pasador y un defensor. El pasador cambia cada cinco tiros.",
+      "niveles": {
+        "base": "sin perseguidor ni pase, tirando desde parado en ese punto.",
+        "intermedio": "recepción en carrera, parada y perseguidor que llega.",
+        "avanzado": "el perseguidor puede impedir el tiro, y entonces hay que meter un bote hacia el centro antes de tirar."
+      },
       "criterio_exito": "tres de cada cinco dentro, y ninguna tocando el tablero de lado"
     },
     "animacion": {
@@ -19626,7 +19950,6 @@
     "objetivos": "Resolver la trampa sin perder el balón, que es la situación en que más balones se pierden en minibasket.",
     "descripcion_texto": "El atacante bota hacia una esquina y dos defensores le atrapan. Tiene cinco segundos para salir botando por el hueco o pasar a un compañero situado en el centro. No vale quedarse parado botando. Tres intentos y rotan los cuatro papeles.",
     "notas": "Puntos clave: se sale por donde los dos defensores no se han juntado del todo, casi siempre por abajo; si no hay hueco, el pase sale por encima y al centro, nunca por la banda. Error frecuentísimo: recoger el balón al ver llegar a los dos, con lo que ya no puede botar y la trampa funciona. Regla: \"el balón no se coge dentro de la trampa\".",
-    "variantes": "Base: un solo defensor y el compañero muy cerca. Intermedio: dos defensores y compañero en el centro. Avanzado: dos defensores y el compañero también defendido.",
     "tags": [
       "bote de protección",
       "bote",
@@ -19654,6 +19977,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: tres grupos de cuatro repartidos por la pista, sin canastas. Dentro de cada grupo se rota atacante cada dos salidas.",
+      "niveles": {
+        "base": "un solo defensor y el compañero muy cerca.",
+        "intermedio": "dos defensores y compañero en el centro.",
+        "avanzado": "dos defensores y el compañero también defendido."
+      },
       "criterio_exito": "salir de la trampa sin perder el balón en dos de cada tres intentos"
     },
     "animacion": {
@@ -19923,7 +20251,6 @@
     "objetivos": "Mantener el bote vivo mientras se lee el campo, en vez de botar mirando al suelo y luego levantar la cabeza.",
     "descripcion_texto": "El atacante bota en el perímetro con un defensor encima. Dos compañeros se mueven por detrás de la línea, apareciendo y tapándose alternativamente. Cuando uno levanta la mano, hay que pasarle sin haber parado de botar. Cinco pases y rota.",
     "notas": "Puntos clave: el bote se mantiene bajo y protegido mientras la vista está arriba; el pase sale desde el bote, sin recoger el balón primero. Error frecuente: recoger el balón para pasar, que en un partido significa quedarse sin bote y perderlo. Otro: mirar al compañero fijamente antes de pasar, que se lo dice al defensor.",
-    "variantes": "Base: sin defensor, con un solo compañero apareciendo. Intermedio: con defensor y dos compañeros. Avanzado: con defensor y hay que pasar al compañero que NO levanta la mano, para obligar a mirar a los dos.",
     "tags": [
       "bote",
       "cabeza levantada",
@@ -19949,6 +20276,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: tres grupos de cuatro repartidos por la pista. Cinco pases y rota el que bota.",
+      "niveles": {
+        "base": "sin defensor, con un solo compañero apareciendo.",
+        "intermedio": "con defensor y dos compañeros.",
+        "avanzado": "con defensor y hay que pasar al compañero que NO levanta la mano, para obligar a mirar a los dos."
+      },
       "criterio_exito": "los cinco pases salen desde el bote, sin recoger el balón antes"
     },
     "animacion": {
@@ -20203,7 +20535,6 @@
     "objetivos": "Atacar de frente desde el poste alto, que es la posición con más opciones y la que menos se practica.",
     "descripcion_texto": "Pasador en la punta, atacante en el poste alto de cara al aro y defensor detrás. Al recibir, el atacante puede tirar, entrar por cualquiera de los dos lados o fintar y salir. Máximo dos botes. Tres posesiones y rotan.",
     "notas": "Puntos clave: se recibe de CARA, no de espaldas, lo que exige girar antes de que llegue el balón; desde ahí el aro está a la misma distancia por los dos lados y por eso el defensor lo tiene difícil. Error frecuente: recibir de espaldas por costumbre y perder todas las opciones de golpe. Es la posición desde la que más fácil es enseñar que fintar sirve para algo.",
-    "variantes": "Base: recibir de cara y solo tirar. Intermedio: tirar, entrar o fintar, con dos botes. Avanzado: además hay un segundo defensor que puede ayudar desde el poste bajo, con lo que aparece el pase.",
     "tags": [
       "1c1",
       "recepción",
@@ -20230,6 +20561,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos que rotan pasador, atacante y defensor.",
+      "niveles": {
+        "base": "recibir de cara y solo tirar.",
+        "intermedio": "tirar, entrar o fintar, con dos botes.",
+        "avanzado": "además hay un segundo defensor que puede ayudar desde el poste bajo, con lo que aparece el pase."
+      },
       "criterio_exito": "recibir siempre de cara, en tres de cada tres posesiones"
     },
     "animacion": {
@@ -20473,7 +20809,6 @@
     "objetivos": "Aprender que ganar el uno contra uno no es el final: lo que viene después es la decisión importante.",
     "descripcion_texto": "Atacante y defensor en el 45, más un compañero en la esquina contraria con su propio defensor esperando en el poste bajo. Cuando el atacante supera a su par, el defensor del poste sale a ayudar. El atacante decide: terminar o pasar al de la esquina, que ahora está libre. Tres cada uno.",
     "notas": "Puntos clave: se mira la ayuda mientras se bota, no después de saltar; el pase sale bajo y rápido, casi siempre picado. Error frecuentísimo: seguir hacia el aro sin mirar y estrellarse contra la ayuda. Otro, del compañero: no moverse a la línea de pase mientras su defensor está ayudando. Es el ejercicio que conecta el 1c1 con el juego colectivo, y por eso es el más difícil de la tanda.",
-    "variantes": "Base: la ayuda llega siempre y el pase está siempre libre. Intermedio: la ayuda decide si sale o no. Avanzado: dos ayudas posibles, con lo que hay que leer cuál sale.",
     "tags": [
       "1c1",
       "ayuda",
@@ -20501,6 +20836,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan; entran cada tres ataques.",
+      "niveles": {
+        "base": "la ayuda llega siempre y el pase está siempre libre.",
+        "intermedio": "la ayuda decide si sale o no.",
+        "avanzado": "dos ayudas posibles, con lo que hay que leer cuál sale."
+      },
       "criterio_exito": "acertar la decisión —seguir o pasar— en dos de cada tres penetraciones"
     },
     "animacion": {
@@ -20858,7 +21198,6 @@
     "objetivos": "Quitar la muleta de las manos para que la defensa se sostenga sobre la posición y el desplazamiento.",
     "descripcion_texto": "Uno contra uno desde el 45. El defensor lleva las manos a la espalda durante todo el ejercicio y no puede tocar el balón. Su única forma de defender es llegar antes con los pies. Punto para el defensor si el atacante no consigue tirar cómodo. Tres cada uno.",
     "notas": "Puntos clave: sin manos, la única defensa es la posición, así que hay que anticipar y no reaccionar; los pies se mueven antes de que el atacante bote. Error que este ejercicio hace desaparecer: defender manoteando, que es lo que hacen todos y lo que trae las faltas. Cuando vuelvan a defender con manos, la diferencia se nota mucho. No lo alargues: es agotador.",
-    "variantes": "Base: manos a la espalda y el atacante avanza a ritmo constante sin fintas. Intermedio: manos a la espalda y atacante libre. Avanzado: manos a la espalda y dos atacantes que se pasan el balón, teniendo que defender al de balón siempre.",
     "tags": [
       "defensa individual",
       "postura defensiva",
@@ -20884,6 +21223,11 @@
         "descanso": 75
       },
       "organizacion": "Con 12: seis parejas, tres en cada canasta, separadas para no estorbarse. Treinta segundos y cambio.",
+      "niveles": {
+        "base": "manos a la espalda y el atacante avanza a ritmo constante sin fintas.",
+        "intermedio": "manos a la espalda y atacante libre.",
+        "avanzado": "manos a la espalda y dos atacantes que se pasan el balón, teniendo que defender al de balón siempre."
+      },
       "criterio_exito": "el atacante no consigue tiro cómodo en dos de cada tres ataques, sin una sola falta"
     },
     "animacion": {
@@ -21078,7 +21422,6 @@
     "objetivos": "Aprovechar las líneas del campo: en la esquina, el atacante tiene la mitad de las salidas que en cualquier otro sitio.",
     "descripcion_texto": "Pasador en la punta, atacante en la esquina y defensor. Al llegar el pase, el defensor cierra sesgado obligando al atacante hacia la línea de fondo, donde tiene menos sitio. Punto para la defensa si consigue que termine por fondo sin tiro cómodo. Tres cada uno.",
     "notas": "Puntos clave: se cierra por el lado del centro para empujar al fondo, no de frente; en la esquina, la banda y el fondo defienden gratis y hay que usarlas. Error frecuente: cerrar de frente y dejar los dos lados abiertos, que en la esquina es regalar la mejor posición del campo. Es un concepto que se entiende de golpe cuando se dice: \"la línea es un compañero\".",
-    "variantes": "Base: el atacante ataca siempre por fondo y el defensor practica el cierre sesgado. Intermedio: el atacante elige lado. Avanzado: con un compañero en el 45 al que se puede pasar, y el defensor tiene que cerrar sin abrir esa línea.",
     "tags": [
       "defensa individual",
       "recuperación",
@@ -21104,6 +21447,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante en la esquina y defensor. Rotan.",
+      "niveles": {
+        "base": "el atacante ataca siempre por fondo y el defensor practica el cierre sesgado.",
+        "intermedio": "el atacante elige lado.",
+        "avanzado": "con un compañero en el 45 al que se puede pasar, y el defensor tiene que cerrar sin abrir esa línea."
+      },
       "criterio_exito": "el atacante termina por fondo y sin tiro cómodo en dos de cada tres"
     },
     "animacion": {
@@ -21311,7 +21659,6 @@
     "objetivos": "Cambiar de dirección constantemente mientras se procesa una orden, sin que el balón mande.",
     "descripcion_texto": "Doce conos en círculo, numerados del uno al doce. Todos botan dentro del círculo. El entrenador dice una hora —\"las cuatro\"— y hay que ir al cono correspondiente rodeándolo por fuera y volver al centro. Si dice \"y media\", hay que ir al cono de enfrente. Nadie puede chocar.",
     "notas": "Puntos clave: el cambio de dirección se hace con el pie de fuera y bajando el bote; la orden obliga a levantar la vista antes de arrancar. Error frecuente: salir corriendo antes de saber adónde. Este ejercicio funciona porque hay que pensar Y botar: quitarle la parte de pensar lo convierte en el ejercicio de circo del que avisa D20.",
-    "variantes": "Base: seis conos y solo el número. Intermedio: doce conos con horas. Avanzado: horas con \"y media\", y hay que ir con la mano no dominante.",
     "tags": [
       "bote",
       "cambio de dirección",
@@ -21339,6 +21686,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: cuatro grupos de tres a la vez, repartidos por la pista. No usa canastas.",
+      "niveles": {
+        "base": "seis conos y solo el número.",
+        "intermedio": "doce conos con horas.",
+        "avanzado": "horas con \"y media\", y hay que ir con la mano no dominante."
+      },
       "criterio_exito": "acertar el cono en nueve de cada diez órdenes sin perder el balón"
     },
     "animacion": {
@@ -21512,7 +21864,6 @@
     "objetivos": "Manipular y recibir a alta frecuencia sin que la vista se quede pegada al balón.",
     "descripcion_texto": "Cada jugador frente a una pared a dos metros, pasando y recibiendo sin parar. Un compañero al lado va levantando dedos y hay que decir el número en voz alta. Se alterna: pase de pecho, picado contra la pared y pase con una mano. Treinta segundos por tipo.",
     "notas": "Puntos clave: se recibe con las manos preparadas por delante, no pegadas al cuerpo; el pase sale y vuelve sin que los pies se muevan del sitio. Error frecuente: acercarse a la pared cuando aumenta el ritmo, con lo que deja de ser un pase. Marca la distancia con un cono. Si no hay pared disponible, se hace por parejas y funciona igual de bien.",
-    "variantes": "Base: solo pase de pecho, sin números, quince segundos. Intermedio: tres tipos de pase con números. Avanzado: dos balones alternos contra la pared.",
     "tags": [
       "pase",
       "recepción",
@@ -21539,6 +21890,11 @@
         "descanso": 30
       },
       "organizacion": "Con 12: los doce a la vez contra la pared o la valla, separados metro y medio para no invadirse.",
+      "niveles": {
+        "base": "solo pase de pecho, sin números, quince segundos.",
+        "intermedio": "tres tipos de pase con números.",
+        "avanzado": "dos balones alternos contra la pared."
+      },
       "criterio_exito": "treinta segundos sin que el balón toque el suelo y acertando todos los números",
       "aplicacion": "el rondo 4c2, donde esa misma velocidad de manos se usa con gente encima"
     },
@@ -21635,7 +21991,6 @@
     "objetivos": "Aislar el gesto de la muñeca y las yemas, que es lo que de verdad controla el balón.",
     "descripcion_texto": "Cada uno con su balón. Se bota sentado en el suelo con las piernas estiradas, luego de rodillas, luego tumbado boca arriba pasando el balón por encima. Veinte segundos en cada posición, alternando manos. Al terminar, treinta segundos de pie para notar la diferencia.",
     "notas": "Puntos clave: sin poder usar las piernas, el bote sale de la muñeca y de las yemas, nunca de la palma; ahí se ve quién golpea el balón y quién lo acompaña. Este es un caso donde el aislamiento SÍ se justifica: el objetivo es sentir el gesto, y por eso dura cuatro minutos y no veinte. Que quede claro en el orden de la sesión: esto abre, no ocupa.",
-    "variantes": "Base: sentado y de rodillas, mano dominante. Intermedio: las tres posiciones alternando manos. Avanzado: sentado con dos balones a la vez.",
     "tags": [
       "bote",
       "coordinación",
@@ -21662,6 +22017,11 @@
         "descanso": 20
       },
       "organizacion": "Con 12: los doce a la vez, un balón cada uno, en dos filas a lo ancho para que el entrenador los vea a todos de frente.",
+      "niveles": {
+        "base": "sentado y de rodillas, mano dominante.",
+        "intermedio": "las tres posiciones alternando manos.",
+        "avanzado": "sentado con dos balones a la vez."
+      },
       "criterio_exito": "mantener el bote los sesenta segundos en todas las posiciones sin perder el balón",
       "aplicacion": "el bote de protección, donde ese mismo control bajo con la muñeca es lo único que salva el balón"
     },
@@ -21794,7 +22154,6 @@
     "objetivos": "Asegurar el rebote, que es lo que más se pierde: la mitad de los rebotes cogidos se pierden en el segundo siguiente.",
     "descripcion_texto": "El entrenador o un compañero lanza el balón al tablero. El jugador salta, lo coge con las DOS manos en el punto más alto, cae con las piernas abiertas y los codos firmes, y solo entonces busca el pase a un compañero en la banda. Ocho repeticiones y se cambia.",
     "notas": "Puntos clave: se coge en el aire y no se espera a que bote; al caer, el balón queda a la altura de la barbilla con los codos abiertos; nada de bajarlo a la cintura, que es donde llegan las manos rivales. Error frecuentísimo: coger con una mano y perderlo. Segundo: caer con los pies juntos y perder el equilibrio con cualquier contacto.",
-    "variantes": "Base: el balón se lanza suave y sin oposición. Intermedio: lanzamiento al tablero y salida con pase. Avanzado: un compañero intenta quitárselo al caer, sin saltar.",
     "tags": [
       "rebote defensivo",
       "pase",
@@ -21818,6 +22177,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: seis parejas, tres en cada canasta, turnándose para tirar y coger.",
+      "niveles": {
+        "base": "el balón se lanza suave y sin oposición.",
+        "intermedio": "lanzamiento al tablero y salida con pase.",
+        "avanzado": "un compañero intenta quitárselo al caer, sin saltar."
+      },
       "criterio_exito": "ocho de ocho cogidos con dos manos y protegidos a la altura de la barbilla al caer"
     },
     "animacion": {
@@ -21964,7 +22328,6 @@
     "objetivos": "Decidir a quién bloquear cuando no se puede bloquear a todos, que es lo que pasa siempre en el rebote real.",
     "descripcion_texto": "Un defensor bajo el aro y dos atacantes en el perímetro. El entrenador tira. El defensor tiene que elegir a cuál bloquear —el que esté en mejor posición para el rebote— y hacerlo de verdad. Si el otro coge el rebote, no es un error si la elección fue correcta. Cinco tiros y rotan.",
     "notas": "Puntos clave: se bloquea al que está más cerca del lado donde va a caer el balón, que casi siempre es el lado contrario al tiro; el defensor tiene que cantar en voz alta a quién bloquea. Error del entrenador: culpar al defensor porque el otro cogió el rebote. Lo que se evalúa es la ELECCIÓN, no el resultado, y conviene decírselo a ellos.",
-    "variantes": "Base: los dos atacantes están fijos y el tiro sale siempre del mismo sitio. Intermedio: atacantes móviles y tiro variable. Avanzado: dos defensores contra tres atacantes.",
     "tags": [
       "rebote defensivo",
       "bloqueo de rebote",
@@ -21991,6 +22354,11 @@
         "descanso": 60
       },
       "organizacion": "Con 12: dos grupos de seis, uno por canasta: un defensor, dos atacantes y tres esperando que rotan cada cinco tiros.",
+      "niveles": {
+        "base": "los dos atacantes están fijos y el tiro sale siempre del mismo sitio.",
+        "intermedio": "atacantes móviles y tiro variable.",
+        "avanzado": "dos defensores contra tres atacantes."
+      },
       "criterio_exito": "la elección de a quién bloquear es la correcta en cuatro de cada cinco tiros"
     },
     "animacion": {
@@ -22271,7 +22639,6 @@
     "objetivos": "Activar corriendo y pasando a la vez, que sube pulsaciones y entrena el pase en carrera de paso.",
     "descripcion_texto": "Por parejas, de fondo a fondo. Se corre en paralelo separados unos cinco metros pasándose el balón sin que bote. Al llegar, entrada a canasta y se vuelve por el lado contrario. Tres idas y vueltas, cambiando quién termina.",
     "notas": "Puntos clave: el pase va DELANTE del compañero, a la altura del pecho, y sale sin frenar; la separación se mantiene, que es lo primero que se pierde. Error frecuente: acercarse el uno al otro hasta acabar corriendo juntos, con lo que el pase deja de tener valor. Marca los carriles con conos las primeras veces.",
-    "variantes": "Base: media pista, pases de pecho, sin terminar en canasta. Intermedio: pista entera con entrada final. Avanzado: pista entera con tres jugadores y el balón cruzando en zigzag.",
     "tags": [
       "calentamiento",
       "activación",
@@ -22298,6 +22665,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: seis parejas recorriendo la pista a lo largo, saliendo escalonadas cada cinco segundos y terminando en las dos canastas.",
+      "niveles": {
+        "base": "media pista, pases de pecho, sin terminar en canasta.",
+        "intermedio": "pista entera con entrada final.",
+        "avanzado": "pista entera con tres jugadores y el balón cruzando en zigzag."
+      },
       "criterio_exito": "completar la pista entera sin que el balón toque el suelo ni una vez",
       "aplicacion": "el contraataque de tres carriles, que es lo mismo con defensa delante"
     },
@@ -22578,7 +22950,6 @@
     "objetivos": "Activar mirando y hablando, que además arranca la sesión con el grupo comunicándose.",
     "descripcion_texto": "Todos moviéndose por el espacio. Se establece un orden fijo de pase —cada uno pasa siempre al mismo compañero— y hay que decir su nombre al pasarle. Nadie puede parar de moverse. Cuando la cadena funciona, se mete un segundo balón, y luego un tercero.",
     "notas": "Puntos clave: como todos se mueven, hay que buscar al de tu cadena con la vista mientras te desplazas; decir el nombre no es un adorno, es lo que avisa al que va a recibir. Error frecuente: pararse a pasar. El segundo balón es donde empieza el ejercicio de verdad. Es también un buen momento para que los nuevos aprendan los nombres del grupo.",
-    "variantes": "Base: en círculo y sin moverse, con un balón. Intermedio: moviéndose, con dos balones. Avanzado: tres balones y dos cadenas distintas a la vez.",
     "tags": [
       "calentamiento",
       "activación",
@@ -22605,6 +22976,11 @@
         "descanso": 30
       },
       "organizacion": "Con 12: los doce en un solo círculo. Con más de dieciséis se parte en dos, porque la espera se hace larga.",
+      "niveles": {
+        "base": "en círculo y sin moverse, con un balón.",
+        "intermedio": "moviéndose, con dos balones.",
+        "avanzado": "tres balones y dos cadenas distintas a la vez."
+      },
       "criterio_exito": "sostener dos balones en la cadena durante noventa segundos sin pérdidas"
     },
     "animacion": {
@@ -22726,7 +23102,6 @@
     "objetivos": "Trabajar el salto, la caída y el equilibrio con el balón, que es la base de todo lo que vendrá después.",
     "descripcion_texto": "Cuatro \"ríos\" marcados con dos líneas de conos cada uno, de anchura creciente. Se recorren saltando: el primero a pies juntos, el segundo con un pie, el tercero cayendo a pies juntos desde un pie, el cuarto lo más ancho posible. Siempre con el balón sujeto con las dos manos y aguantando la caída tres segundos.",
     "notas": "Puntos clave: la caída es lo que se entrena, no el salto — rodillas flexionadas y quieto tres segundos; el balón no se usa para equilibrarse moviendo los brazos. Error frecuente: caer y dar un pasito, que en baloncesto son pasos. En Escuela hay que aceptar que muchos no caerán equilibrados: por eso está aquí. Cuida el suelo y la separación entre niños.",
-    "variantes": "Base: dos ríos estrechos, salto a pies juntos, sin balón. Intermedio: los cuatro ríos con balón. Avanzado: los cuatro ríos con giro de 180 grados en el aire en el último.",
     "tags": [
       "equilibrio",
       "coordinación",
@@ -22752,6 +23127,11 @@
         "descanso": 40
       },
       "organizacion": "Con 12: dos recorridos en paralelo de seis, para que nadie espere su turno más de dos saltos.",
+      "niveles": {
+        "base": "dos ríos estrechos, salto a pies juntos, sin balón.",
+        "intermedio": "los cuatro ríos con balón.",
+        "avanzado": "los cuatro ríos con giro de 180 grados en el aire en el último."
+      },
       "criterio_exito": "aguantar tres segundos quieto en las cuatro caídas, sin dar pasitos",
       "aplicacion": "la entrada a canasta, donde el doble ritmo es exactamente un salto y una caída controlada"
     },
@@ -22900,7 +23280,6 @@
     "objetivos": "Asociar una orden a un patrón motor distinto y cambiarlo sobre la marcha, con el balón siempre en las manos.",
     "descripcion_texto": "Cuatro rincones marcados: en el primero se llega corriendo de frente, en el segundo de espaldas, en el tercero de lado deslizándose y en el cuarto a la pata coja. El entrenador dice el número y todos van con el desplazamiento que le toca a ese rincón, botando o llevando el balón según se diga.",
     "notas": "Puntos clave: cada desplazamiento tiene su forma correcta y hay que exigirla —el lateral sin cruzar los pies, el de espaldas mirando por encima del hombro—; lo que se entrena es asociar orden y patrón. Error frecuente: ir a todos los rincones corriendo de frente porque es más fácil. Si pasa, quita un rincón y quédate con tres bien hechos.",
-    "variantes": "Base: tres rincones y sin balón. Intermedio: cuatro rincones llevando el balón. Avanzado: cuatro rincones botando, y el entrenador puede decir dos seguidos que hay que recordar.",
     "tags": [
       "lateralidad",
       "coordinación",
@@ -22928,6 +23307,11 @@
         "descanso": 45
       },
       "organizacion": "Con 12: los doce a la vez, tres en cada rincón.",
+      "niveles": {
+        "base": "tres rincones y sin balón.",
+        "intermedio": "cuatro rincones llevando el balón.",
+        "avanzado": "cuatro rincones botando, y el entrenador puede decir dos seguidos que hay que recordar."
+      },
       "criterio_exito": "usar el desplazamiento correcto en nueve de cada diez órdenes",
       "aplicacion": "el espejo defensivo, que es el mismo desplazamiento lateral pero ya con un rival delante"
     },
@@ -23059,7 +23443,6 @@
     "objetivos": "Conciencia corporal y equilibrio con un objeto, que es lo que sostiene después todo el manejo.",
     "descripcion_texto": "Se camina por el espacio llevando el balón como diga el entrenador: entre las rodillas, sobre la cabeza sin manos, en la espalda con las manos por detrás, sujeto con el codo y el costado. Si se cae, se recoge y se sigue. Sin prisa y sin competir.",
     "notas": "Puntos clave: no hay velocidad, hay control; el niño tiene que notar dónde está el balón sin mirarlo. Es de los pocos ejercicios donde el balón no se bota, y tiene sentido justo en Escuela: primero saber que existe el balón y dónde está el propio cuerpo. Error del entrenador: convertirlo en carrera. Si se convierte en carrera, deja de servir.",
-    "variantes": "Base: dos formas de llevarlo, andando despacio. Intermedio: cuatro formas. Avanzado: cuatro formas con recorrido entre conos y cambio a la orden.",
     "tags": [
       "equilibrio",
       "coordinación",
@@ -23084,6 +23467,11 @@
         "descanso": 20
       },
       "organizacion": "Con 12: los doce a la vez, un balón cada uno, repartidos por una media pista.",
+      "niveles": {
+        "base": "dos formas de llevarlo, andando despacio.",
+        "intermedio": "cuatro formas.",
+        "avanzado": "cuatro formas con recorrido entre conos y cambio a la orden."
+      },
       "criterio_exito": "completar cada forma sin que el balón se caiga más de dos veces",
       "aplicacion": "todo el bloque de manejo: es el paso previo a controlar el balón botando"
     },

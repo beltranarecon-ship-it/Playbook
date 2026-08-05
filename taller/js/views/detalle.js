@@ -14,7 +14,7 @@ import { getEjercicio, duplicarEjercicio, setFavorito, eliminarEjercicio } from 
 import { dificultadDe } from '../config.js';
 import {
   PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA,
-  textoDosis, textoJugadores, textoCanastas, textoDuracion, niveles,
+  textoDosis, textoJugadores, textoCanastas, textoDuracion, nivelesDe,
 } from '../ficha.js';
 
 const STAR = 'M11.48 3.5a.56.56 0 0 1 1.04 0l2.17 4.4 4.85.7a.56.56 0 0 1 .31.96l-3.51 3.42.83 4.83a.56.56 0 0 1-.81.59L12 16.9l-4.34 2.28a.56.56 0 0 1-.81-.59l.83-4.83-3.51-3.42a.56.56 0 0 1 .31-.96l4.85-.7Z';
@@ -133,7 +133,7 @@ function ficha(ej) {
     : h('div', { class: 'ficha-row' }, h('small', null, label), h('span', null, Array.isArray(val) ? val.join(' · ') : String(val)));
 
   const dosis = textoDosis(r.dosis);
-  const escalones = niveles(ej.variantes);
+  const escalones = nivelesDe(ej);
 
   /* --- 1 · se puede montar hoy? ------------------------------- */
   const montaje = h('div', { class: 'ficha card flow' },

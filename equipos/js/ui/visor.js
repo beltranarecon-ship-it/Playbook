@@ -28,7 +28,7 @@ import { getEjercicioCompleto } from '../data/ejercicios.js';
 import { INTENSIDAD_LABEL, INTENSIDAD_MAX } from '../data/carga.js';
 import {
   PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA,
-  textoDosis, textoJugadores, textoCanastas, textoDuracion, niveles,
+  textoDosis, textoJugadores, textoCanastas, textoDuracion, nivelesDe,
 } from '../../../taller/js/ficha.js';
 
 const ICO = {
@@ -236,7 +236,7 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
     const req = ficha.requisitos || {};
     const material = resumenMaterial(guion?.resumen);
     const dosis = textoDosis(req.dosis);
-    const escalones = niveles(ficha.variantes);
+    const escalones = nivelesDe(ficha);
     const fila = (lbl, val) => (val == null || val === '' || (Array.isArray(val) && !val.length)
       ? null
       : h('div', { class: 'eq-vfila' },
@@ -330,7 +330,9 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
         'aria-label': 'Abrir en el proyector',
         // se guarda el handle: si el entrenador navega fuera con el proyector
         // abierto, destroy() lo cierra en vez de dejar un telón negro encima
-        onClick: () => { proyector = abrirProyector(ficha.animacion, { nombre: ficha.name }); },
+        // se le pasan los requisitos: el proyector enseña dosis, criterio
+        // y el nivel de exigencia que se está corriendo
+        onClick: () => { proyector = abrirProyector(ficha.animacion, { nombre: ficha.name, requisitos: ficha.requisitos, variantes: ficha.variantes }); },
       }, icon(ICO.proyector, { size: 18 })) : null,
       bloque.exercise_id ? h('a', {
         class: 'eq-vbtn', href: `/ejercicios/${bloque.exercise_id}`,

@@ -117,7 +117,13 @@ const CAMPOS = [
   'requisitos', 'autor_nombre',
 ];
 
-const contenidoDe = (f) => Object.fromEntries(CAMPOS.map((k) => [k, f[k]]));
+/* `?? null` y no `f[k]` a secas: JSON.stringify BORRA las claves con
+   valor undefined, así que un campo que la ficha ya no tiene no viajaba
+   en el PATCH y se quedaba con su valor viejo en la base para siempre.
+   Se veía como una actualización que decía "97 con cambios" una y otra
+   vez después de haber escrito — el actualizador no podía VACIAR nada.
+   Salió al mover el contenido de `variantes` a `requisitos.niveles`. */
+const contenidoDe = (f) => Object.fromEntries(CAMPOS.map((k) => [k, f[k] ?? null]));
 
 /* Comparación estable para saber qué ha cambiado de verdad.
    PostgreSQL guarda `jsonb` con las claves REORDENADAS (las suyas, no
