@@ -33,7 +33,7 @@ export const TANDA_02 = [
     tags: ['tiro', 'mecánica de tiro', 'analítico', 'series'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'tirar bajo el aro con la mecánica estable y sin empujar',
       dosis: { series: 2, cantidad: 25, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, en parejas (uno tira y el otro devuelve). Cada pareja empieza en una posición distinta para no cruzarse.',
@@ -75,7 +75,7 @@ export const TANDA_02 = [
     tags: ['tiro', 'tiro tras bote', 'parada', 'bote', 'lectura'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva',
+      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva', presion: 'ninguna',
       requisito_previo: 'parar en dos tiempos tras bote sin arrastrar el pie de pivote',
       dosis: { series: 3, cantidad: 6, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: dos estaciones, una por canasta, seis por estación: fila de cinco y un defensor que sale a cerrar. Se rota atacante, defensor y final de la fila.',
@@ -115,7 +115,7 @@ export const TANDA_02 = [
     tags: ['tiro', 'tiro libre', 'competición'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 16, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'baja', oposicion: 'nula',
+      material: ['balones'], densidad: 'baja', oposicion: 'nula', presion: 'marcador',
       requisito_previo: 'tirar desde la línea de tiros libres llegando al aro sin lanzar desde el pecho',
       dosis: { series: 2, cantidad: 2, unidad: 'repeticiones', descanso: 20 },
       organizacion: 'Con 12: dos equipos de seis, uno en cada canasta, y al terminar se comparan los fallos. Todos tiran una vez antes de que nadie repita.',
@@ -157,7 +157,7 @@ export const TANDA_02 = [
     tags: ['tiro', 'tiro tras recepción', 'contraataque', 'bote'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 12, canastas: 2, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva',
+      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva', presion: 'ninguna',
       requisito_previo: 'botar la pista entera a velocidad alta sin perder el balón',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 90 },
       organizacion: 'Con 12: seis parejas repartidas entre las dos canastas. Salen escalonadas cada quince segundos para no chocarse en el medio campo.',
@@ -178,7 +178,13 @@ export const TANDA_02 = [
       fases: [
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'tiro_libre' }] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }] },
+        // "El compañero que pasa SALE A CERRAR el tiro sin saltar": la
+        // ficha declaraba oposición semiactiva y no había nadie
+        // cerrando en toda la animación. El pasador es el que cierra.
+        { eventos: [
+          { jugador: 'A1', tipo: 'tiro', hacia: 'canasta' },
+          { jugador: 'A2', tipo: 'defiende', marca: 'A1' },
+        ] },
       ],
     },
   },
@@ -194,7 +200,7 @@ export const TANDA_02 = [
     tags: ['tiro', 'tiro tras recepción', '1c1', 'toma de decisiones', 'lectura', 'competición'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'media', oposicion: 'real',
+      material: ['balones'], densidad: 'media', oposicion: 'real', presion: 'marcador',
       requisito_previo: 'tirar tras recepción con los pies ya orientados al aro',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos que rotan pasador, tirador y defensor.',
@@ -232,7 +238,7 @@ export const TANDA_02 = [
     tags: ['tiro', 'competición', 'mecánica de tiro', 'tiro tras recepción'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'pasiva',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'pasiva', presion: 'marcador',
       requisito_previo: 'anotar desde dos metros con la mecánica estable',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, en parejas. Cada pareja recorre las cinco estaciones y apunta su total.',
@@ -258,6 +264,10 @@ export const TANDA_02 = [
       fases: [
         { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }, { jugador: 'A2', tipo: 'corte', hacia: 'canasta' }] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A1' }] },
+        // "El reboteador puede levantar las manos delante del tirador":
+        // eso ES la oposición pasiva que declara la ficha, y no estaba
+        // dibujada por ninguna parte. Se coloca delante y se queda.
+        { eventos: [{ jugador: 'A2', tipo: 'defiende', marca: 'A1' }] },
       ],
     },
   },
@@ -275,7 +285,7 @@ export const TANDA_02 = [
     tags: ['bote', 'cabeza levantada', 'analítico', 'coordinación'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones'], densidad: 'alta', oposicion: 'nula', presion: 'tiempo',
       requisito_previo: 'botar en el sitio sin que el balón se escape',
       dosis: { series: 4, cantidad: 30, unidad: 'segundos', descanso: 20 },
       organizacion: 'Con 12: los doce a la vez en una media pista, un balón cada uno. El entrenador canta los números desde fuera para verlos a todos.',
@@ -309,7 +319,7 @@ export const TANDA_02 = [
          colas de ocho y D5 no admite más de cuatro esperando. Además el
          relevo se hace más corto y todos tocan más balón. */
       jugadores_min: 4, jugadores_max: 16, canastas: 0, estaciones: 4,
-      material: ['balones'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones'], densidad: 'alta', oposicion: 'nula', presion: 'marcador',
       requisito_previo: 'botar en carrera sin mirar el balón continuamente',
       dosis: { series: 4, cantidad: 2, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: cuatro filas de tres en la línea de fondo, compitiendo entre ellas a lo largo de toda la pista. No usa canastas.',
@@ -346,7 +356,7 @@ export const TANDA_02 = [
     tags: ['bote', 'bote de protección', 'pivote', '1c1', 'defensa del bote'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real', presion: 'ninguna',
       requisito_previo: 'botar con las dos manos y pivotar sin levantar el pie de apoyo',
       dosis: { series: 4, cantidad: 20, unidad: 'segundos', descanso: 40 },
       organizacion: 'Con 12: seis parejas repartidas por la pista, sin invadirse. Treinta segundos y cambio de rol.',
@@ -383,7 +393,7 @@ export const TANDA_02 = [
     tags: ['bote', 'mano no dominante', '1c1', 'entrada'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva',
+      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva', presion: 'ninguna',
       requisito_previo: 'botar diez veces seguidas con la mano no dominante sin perder el balón',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos canastas, seis por canasta, tres parejas que se turnan. Cinco ataques y se cambia atacante y defensor.',
@@ -422,7 +432,7 @@ export const TANDA_02 = [
     tags: ['bote', 'cabeza levantada', 'cambio de ritmo', 'toma de decisiones', 'oposición'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 16, canastas: 0, estaciones: 1,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real', presion: 'espacio',
       requisito_previo: 'botar en carrera sin mirar el balón',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: los doce a la vez en dos túneles paralelos de seis. Se cruza y se vuelve al final del propio túnel, sin parar.',
@@ -439,7 +449,31 @@ export const TANDA_02 = [
       cono(0.58, 0.10), cono(0.58, 0.90), cono(0.44, 0.10), cono(0.44, 0.90), cono(0.30, 0.10), cono(0.30, 0.90),
       balon(0.72, 0.35), balon(0.72, 0.65),
     ],
-    intent: null,
+    /* Una fase por franja, y el hueco lo dice el defensor: en la
+       primera está en el medio y los dos salen por fuera; en la
+       segunda está arriba y se cruza por abajo; en la tercera está
+       abajo y se cruza por arriba. Es LA decisión del ejercicio, y
+       en el montaje estático no se veía por ninguna parte. */
+    intent: {
+      canasta: null,
+      fases: [
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.52, y: 0.26 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.52, y: 0.78 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.58, y: 0.38 } },
+        ] },
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.38, y: 0.58 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.38, y: 0.76 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.44, y: 0.44 } },
+        ] },
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.22, y: 0.34 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.22, y: 0.20 } },
+          { jugador: 'B3', tipo: 'defiende', hacia: { x: 0.30, y: 0.50 } },
+        ] },
+      ],
+    },
   },
 
   /* ═══ HUECOS QUE MARCABA EL LINTER ═════════════════════════ */
@@ -455,7 +489,7 @@ export const TANDA_02 = [
     tags: ['pase', 'superioridad', 'toma de decisiones', 'lectura', 'ventaja'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'real',
+      material: ['balones'], densidad: 'alta', oposicion: 'real', presion: 'ninguna',
       requisito_previo: 'pasar en movimiento y recibir sin frenar del todo',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, trabajando en tríos. Rotan las tres posiciones cada ataque.',
@@ -493,7 +527,7 @@ export const TANDA_02 = [
     tags: ['juego reducido', 'superioridad', 'contraataque', 'espaciado', 'toma de decisiones', 'transición'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 15, canastas: 2, estaciones: 1,
-      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real', presion: 'ninguna',
       requisito_previo: 'correr el contraataque por carriles y pasar sin frenar',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 90 },
       organizacion: 'Con 12: un solo grupo en pista entera. Salen de cinco en cinco y el resto espera al fondo; se entra en cuanto la jugada anterior cruza el medio.',
@@ -523,7 +557,7 @@ export const TANDA_02 = [
     tags: ['rebote defensivo', 'bloqueo de rebote', 'rebote ofensivo', 'defensa individual'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'real',
+      material: ['balones'], densidad: 'alta', oposicion: 'real', presion: 'ninguna',
       requisito_previo: 'mantener la postura defensiva y girar sin perder el equilibrio',
       dosis: { series: 4, cantidad: 5, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta. En cada uno, dos parejas alrededor de la zona y dos que se turnan para tirar y fallar.',

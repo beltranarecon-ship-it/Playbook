@@ -248,6 +248,25 @@ libres y posesión.
 > reducido` → `completa`. Coincide con la progresión federativa del bote y es
 > exactamente la escala del campo `oposicion`, de modo que la ficha y la doctrina
 > usan la misma regla.
+>
+> **D19b · Oposición no es lo mismo que presión, y son dos campos.**
+>
+> Hay oposición cuando existe **alguien a quien hay que ganar o que te puede
+> quitar el balón**. El compañero que levanta dedos para que mires arriba, el
+> que te devuelve el rebote y el equipo que tira a la vez en la otra canasta
+> aprietan, pero no oponen: ninguno disputa nada. Durante noventa y siete
+> fichas `oposicion` respondió a las dos preguntas a la vez, y el resultado
+> fueron diez ejercicios que declaraban oposición sin un solo defensor que
+> dibujar.
+>
+> Lo que aprieta sin rival vive en `presion`: `ninguna` · `espacio` (se
+> comparte o se estrecha) · `tiempo` (hay una señal o un reloj) · `marcador` (se
+> compite). Es **ortogonal**: un 1c1 puede tener defensa real y marcador, y un
+> ejercicio de manejo puede no tener a nadie enfrente y ser el más exigente de
+> la sesión.
+>
+> El tope de D1 se mide sobre los dos: lo que no se puede acumular es el gesto
+> suelto, sin rival **ni** presión.
 
 > **D20 · «Entrenar baloncesto, no bote aislado».**
 >

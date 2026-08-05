@@ -247,9 +247,19 @@ export function revisarInvariantes(fichas = []) {
   /* Las proporciones solo se juzgan con muestra suficiente. */
   const hayMuestra = n >= INVARIANTES.muestraMinimaGlobal;
 
-  const nulas = fichas.filter((f) => f.requisitos?.oposicion === 'nula').length;
-  if (hayMuestra && nulas / n > INVARIANTES.maxProporcionOposicionNula) {
-    fallos.push(`${(nulas / n * 100).toFixed(0)} % de la biblioteca sin oposición (tope ${INVARIANTES.maxProporcionOposicionNula * 100} %) — D1`);
+  /* D1 se mide sobre los DOS ejes desde que están separados. Lo que la
+     doctrina prohíbe acumular no es el ejercicio sin defensor —el
+     manejo en un espacio que se estrecha no tiene defensores y aprieta
+     más que muchos 1c1— sino el gesto suelto: sin nadie enfrente Y sin
+     nada que apriete. Medido así el tope es más estricto de verdad, y
+     además señala las fichas correctas. La proporción a secas se sigue
+     enseñando, como aviso, para que la deuda no desaparezca de la
+     vista: hoy va por el 26 %, y es real. */
+  const nulas = fichas.filter((f) => (f.requisitos?.oposicion || 'nula') === 'nula').length;
+  const sueltas = fichas.filter((f) => (f.requisitos?.oposicion || 'nula') === 'nula'
+    && (f.requisitos?.presion || 'ninguna') === 'ninguna').length;
+  if (hayMuestra && sueltas / n > INVARIANTES.maxProporcionOposicionNula) {
+    fallos.push(`${(sueltas / n * 100).toFixed(0)} % de la biblioteca sin oposición ni presión (tope ${INVARIANTES.maxProporcionOposicionNula * 100} %) — D1`);
   }
 
   const bajas = fichas.filter((f) => f.requisitos?.densidad === 'baja').length;

@@ -24,7 +24,7 @@ export const TANDA_07 = [
     tags: ['bote', 'cambio de dirección', 'cabeza levantada', 'coordinación', 'toma de decisiones'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'pasiva',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula', presion: 'tiempo',
       requisito_previo: 'botar en movimiento cambiando de dirección sin perder el balón',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 45 },
       organizacion: 'Con 12: cuatro grupos de tres a la vez, repartidos por la pista. No usa canastas.',
@@ -42,7 +42,25 @@ export const TANDA_07 = [
       cono(0.34, 0.64),
       balon(0.42, 0.44), balon(0.42, 0.56), balon(0.48, 0.50),
     ],
-    intent: null,
+    /* Ida y vuelta: cada uno sale del centro hacia SU hora, la rodea
+       por fuera y vuelve. Tres jugadores a tres horas distintas para
+       que se vea lo que de verdad tiene que verse — que hay que
+       levantar la cabeza antes de arrancar o te llevas al de al lado. */
+    intent: {
+      canasta: null,
+      fases: [
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.42, y: 0.25 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.53, y: 0.73 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.61, y: 0.41 } },
+        ] },
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.42, y: 0.44 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.42, y: 0.56 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.48, y: 0.50 } },
+        ] },
+      ],
+    },
   },
   {
     name: 'Pasar sin mirar la pared',
@@ -56,7 +74,7 @@ export const TANDA_07 = [
     tags: ['pase', 'recepción', 'coordinación', 'cabeza levantada', 'analítico'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'alta', oposicion: 'pasiva',
+      material: ['balones'], densidad: 'alta', oposicion: 'nula', presion: 'tiempo',
       requisito_previo: 'pasar de pecho y recibir con las dos manos sin que se caiga',
       dosis: { series: 3, cantidad: 30, unidad: 'segundos', descanso: 30 },
       organizacion: 'Con 12: los doce a la vez contra la pared o la valla, separados metro y medio para no invadirse.',
@@ -69,8 +87,9 @@ export const TANDA_07 = [
       aplicacion: 'el rondo 4c2, donde esa misma velocidad de manos se usa con gente encima',
     },
     tablero: () => [
-      jug('A', 1, 0.30, 0.30), jug('B', 1, 0.36, 0.30),
-      jug('A', 2, 0.30, 0.70), jug('B', 2, 0.36, 0.70),
+      // El que canta los números es compañero, no defensor.
+      jug('A', 1, 0.30, 0.30), jug('A', 3, 0.36, 0.30),
+      jug('A', 2, 0.30, 0.70), jug('A', 4, 0.36, 0.70),
       balon(0.30, 0.30), balon(0.30, 0.70),
     ],
     intent: null,
@@ -87,7 +106,7 @@ export const TANDA_07 = [
     tags: ['bote', 'coordinación', 'mano no dominante', 'analítico', 'calentamiento'],
     requisitos: {
       jugadores_min: 1, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones'], densidad: 'alta', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'botar el balón en el sitio con cualquiera de las dos manos',
       dosis: { series: 3, cantidad: 60, unidad: 'segundos', descanso: 20 },
       organizacion: 'Con 12: los doce a la vez, un balón cada uno, en dos filas a lo ancho para que el entrenador los vea a todos de frente.',
@@ -120,7 +139,7 @@ export const TANDA_07 = [
     tags: ['rebote defensivo', 'pase', 'equilibrio'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'pasiva',
+      material: ['balones'], densidad: 'alta', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'saltar y coger un balón en el aire con las dos manos',
       dosis: { series: 3, cantidad: 8, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: seis parejas, tres en cada canasta, turnándose para tirar y coger.',
@@ -156,7 +175,7 @@ export const TANDA_07 = [
     tags: ['rebote defensivo', 'bloqueo de rebote', 'lectura', 'toma de decisiones', 'inferioridad'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real', presion: 'ninguna',
       requisito_previo: 'hacer contacto de bloqueo con el cuerpo antes de ir al balón',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta: un defensor, dos atacantes y tres esperando que rotan cada cinco tiros.',
@@ -207,7 +226,7 @@ export const TANDA_07 = [
     tags: ['calentamiento', 'activación', 'pase', 'recepción', 'carriles', 'entrada'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 16, canastas: 2, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones'], densidad: 'alta', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'pasar y recibir en carrera sin frenar',
       dosis: { series: 2, cantidad: 3, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: seis parejas recorriendo la pista a lo largo, saliendo escalonadas cada cinco segundos y terminando en las dos canastas.',
@@ -249,7 +268,7 @@ export const TANDA_07 = [
     tags: ['calentamiento', 'activación', 'pase', 'recepción', 'coordinación'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'media', oposicion: 'pasiva',
+      material: ['balones'], densidad: 'media', oposicion: 'nula', presion: 'espacio',
       requisito_previo: 'pasar y recibir en movimiento',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 30 },
       organizacion: 'Con 12: los doce en un solo círculo. Con más de dieciséis se parte en dos, porque la espera se hace larga.',
@@ -281,7 +300,7 @@ export const TANDA_07 = [
     tags: ['equilibrio', 'coordinación', 'ritmo', 'lateralidad'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 2,
-      material: ['balones', 'conos'], densidad: 'media', oposicion: 'nula',
+      material: ['balones', 'conos'], densidad: 'media', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'saltar y caer con los dos pies sin apoyar las manos',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 40 },
       organizacion: 'Con 12: dos recorridos en paralelo de seis, para que nadie espere su turno más de dos saltos.',
@@ -313,7 +332,7 @@ export const TANDA_07 = [
     tags: ['lateralidad', 'coordinación', 'ritmo', 'equilibrio', 'desplazamiento defensivo'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula', presion: 'tiempo',
       requisito_previo: 'correr y desplazarse lateralmente sin caerse',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 45 },
       organizacion: 'Con 12: los doce a la vez, tres en cada rincón.',
@@ -344,7 +363,7 @@ export const TANDA_07 = [
     tags: ['equilibrio', 'coordinación', 'lateralidad'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'media', oposicion: 'nula',
+      material: ['balones'], densidad: 'media', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'caminar sosteniendo un balón con las dos manos',
       dosis: { series: 3, cantidad: 60, unidad: 'segundos', descanso: 20 },
       organizacion: 'Con 12: los doce a la vez, un balón cada uno, repartidos por una media pista.',

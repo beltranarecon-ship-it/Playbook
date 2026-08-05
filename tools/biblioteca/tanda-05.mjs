@@ -34,7 +34,7 @@ export const TANDA_05 = [
     tags: ['bote', 'coordinación', 'mano no dominante', 'cabeza levantada'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'alta', oposicion: 'pasiva',
+      material: ['balones'], densidad: 'alta', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'botar con cada mano por separado sin mirar el balón',
       dosis: { series: 4, cantidad: 30, unidad: 'segundos', descanso: 30 },
       organizacion: 'Con 12: seis parejas a la vez, repartidas a lo ancho de la pista y separadas cuatro metros. Treinta segundos y se cambia quien bota.',
@@ -46,8 +46,12 @@ export const TANDA_05 = [
       criterio_exito: 'treinta segundos sin perder ninguno de los dos balones y respondiendo a todas las señales',
     },
     tablero: () => [
-      jug('A', 1, 0.34, 0.30), jug('B', 1, 0.48, 0.30),
-      jug('A', 2, 0.34, 0.70), jug('B', 2, 0.48, 0.70),
+      // El compañero es COMPAÑERO, no rival: marca alturas y se
+      // desplaza para que haya algo que mirar, pero no disputa nada.
+      // Estaba pintado de equipo B, y el equipo B se dibuja como
+      // defensa: la pizarra prometía una oposición que no existe.
+      jug('A', 1, 0.34, 0.30), jug('A', 3, 0.48, 0.30),
+      jug('A', 2, 0.34, 0.70), jug('A', 4, 0.48, 0.70),
       // los dos balones de cada botador, separados: puestos en la MISMA
       // coordenada se dibujaban uno encima del otro y parecía uno solo,
       // en el ejercicio que se llama precisamente "dos balones"
@@ -68,7 +72,7 @@ export const TANDA_05 = [
     tags: ['bote de protección', 'pivote', '1c1', 'competición', 'oposición'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'real',
+      material: ['balones'], densidad: 'alta', oposicion: 'real', presion: 'marcador',
       requisito_previo: 'pivotar sin levantar el pie de apoyo',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: seis parejas repartidas por la pista, sin canastas. Se cambia de rol cada treinta segundos.',
@@ -104,7 +108,7 @@ export const TANDA_05 = [
     tags: ['bote', 'cabeza levantada', 'bote de protección', 'coordinación', 'competición'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'pasiva',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula', presion: 'marcador',
       requisito_previo: 'botar en movimiento sin mirar el balón continuamente',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 45 },
       organizacion: 'Con 12: los doce a la vez dentro de una media pista, un balón cada uno. Si sobra espacio, se estrecha con conos.',
@@ -121,7 +125,37 @@ export const TANDA_05 = [
       cono(0.28, 0.24), cono(0.28, 0.76), cono(0.58, 0.24), cono(0.58, 0.76),
       balon(0.34, 0.32), balon(0.34, 0.66), balon(0.50, 0.32), balon(0.50, 0.66), balon(0.42, 0.50),
     ],
-    intent: null,
+    /* Los conos no se pueden mover en una animación, así que el
+       estrechamiento se cuenta con los jugadores: dos fases cruzándose
+       por todo el cuadrado y una tercera en la que todos caben en el
+       centro. Lo que hay que ver es que al final se pasa por huecos de
+       nada — que es cuando el bote baja solo. */
+    intent: {
+      canasta: null,
+      fases: [
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.48, y: 0.42 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.48, y: 0.58 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.36, y: 0.42 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.36, y: 0.58 } },
+          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.42, y: 0.30 } },
+        ] },
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.34, y: 0.66 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.34, y: 0.32 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.52, y: 0.68 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.52, y: 0.34 } },
+          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.42, y: 0.70 } },
+        ] },
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.39, y: 0.55 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.39, y: 0.45 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.47, y: 0.56 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.47, y: 0.44 } },
+          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.43, y: 0.50 } },
+        ] },
+      ],
+    },
   },
 
   /* ═══ JUEGO DE PIES ════════════════════════════════════════ */
@@ -137,7 +171,7 @@ export const TANDA_05 = [
     tags: ['parada', 'pivote', 'recepción', 'tiro tras recepción'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'pasiva',
+      material: ['balones'], densidad: 'alta', oposicion: 'pasiva', presion: 'ninguna',
       requisito_previo: 'recibir en carrera sin que se le escape el balón',
       dosis: { series: 3, cantidad: 8, unidad: 'repeticiones', descanso: 40 },
       organizacion: 'Con 12: dos estaciones, una por canasta, seis por estación: fila de cuatro, un pasador y el que molesta con las manos arriba. Rotan los tres papeles.',
@@ -177,7 +211,7 @@ export const TANDA_05 = [
     tags: ['finta', 'desmarque', 'recepción', 'cambio de ritmo', '1c1'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'media', oposicion: 'semiactiva',
+      material: ['balones'], densidad: 'media', oposicion: 'semiactiva', presion: 'ninguna',
       requisito_previo: 'correr cambiando de dirección sin perder el equilibrio',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, receptor y defensor. Rotan cada tres recepciones.',
@@ -215,7 +249,7 @@ export const TANDA_05 = [
     tags: ['pivote', 'pase', 'recepción', 'toma de decisiones', 'oposición'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 0, estaciones: 2,
-      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real', presion: 'tiempo',
       requisito_previo: 'pivotar sobre los dos pies sin levantar el de apoyo',
       dosis: { series: 3, cantidad: 10, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: seis parejas repartidas por la pista, sin canastas. Se cambia de rol cada treinta segundos.',
@@ -231,7 +265,29 @@ export const TANDA_05 = [
       jug('B', 1, 0.38, 0.36),
       balon(0.34, 0.32),
     ],
-    intent: null,
+    /* El triángulo da la vuelta entera con un solo defensor que
+       persigue siempre al balón: eso es lo que obliga a pivotar antes
+       de pasar. Sin bote en ninguna fase, como manda la regla. */
+    intent: {
+      canasta: null,
+      // El defensor llega AL LADO del que recibe, no encima: pegado del
+      // todo las dos fichas se dibujan una sobre otra y desaparece
+      // justo el jugador que tiene que pivotar.
+      fases: [
+        { eventos: [
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.50, y: 0.43 } },
+          { jugador: 'A1', tipo: 'pase', a: 'A3' },
+        ] },
+        { eventos: [
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.41, y: 0.60 } },
+          { jugador: 'A3', tipo: 'pase', a: 'A2' },
+        ] },
+        { eventos: [
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.41, y: 0.37 } },
+          { jugador: 'A2', tipo: 'pase', a: 'A1' },
+        ] },
+      ],
+    },
   },
   {
     name: 'Salida directa y salida cruzada',
@@ -245,7 +301,7 @@ export const TANDA_05 = [
     tags: ['salida en bote', 'pivote', 'finta', 'bote', 'lectura'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva',
+      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva', presion: 'ninguna',
       requisito_previo: 'botar con las dos manos y pivotar sin levantar el pie de apoyo',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: seis parejas, tres en cada canasta, cada una en un punto distinto del perímetro.',
@@ -283,7 +339,7 @@ export const TANDA_05 = [
     tags: ['rebote ofensivo', 'bloqueo de rebote', 'tiro', 'competición'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'real',
+      material: ['balones'], densidad: 'alta', oposicion: 'real', presion: 'marcador',
       requisito_previo: 'tirar desde el codo y mantener el equilibrio al caer',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: seis parejas, tres en cada canasta, cada una en un lado distinto de la zona.',
@@ -319,7 +375,7 @@ export const TANDA_05 = [
     tags: ['rebote defensivo', 'bloqueo de rebote', 'rebote ofensivo', 'defensa individual', 'competición'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real', presion: 'marcador',
       requisito_previo: 'hacer contacto de bloqueo con el cuerpo sin empujar con las manos',
       dosis: { series: 4, cantidad: 5, unidad: 'repeticiones', descanso: 75 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, jugando 3c3 al rebote. Nadie fuera.',
@@ -333,9 +389,36 @@ export const TANDA_05 = [
     tablero: () => [
       jug('A', 1, M.escolta_der[0], M.escolta_der[1]), jug('A', 2, M.escolta_izq[0], M.escolta_izq[1]), jug('A', 3, M.esquina_der[0], M.esquina_der[1]),
       jug('B', 1, M.escolta_der[0] - 0.05, M.escolta_der[1]), jug('B', 2, M.escolta_izq[0] - 0.05, M.escolta_izq[1]), jug('B', 3, M.esquina_der[0] - 0.05, M.esquina_der[1]),
-      balon(M.base[0], M.base[1]),
+      // El balón sale del aro, no de la base: el tiro del entrenador ya
+      // está hecho cuando empieza lo que este ejercicio entrena. Con el
+      // balón en la base parecía que alguien iba a atacar desde ahí.
+      balon(0.235, 0.50),
     ],
-    intent: null,
+    /* Primero encontrar al par, después el balón — que es justo el
+       orden que las notas dicen que cuesta instalar. Fase 1: los tres
+       defensores dan el paso de bloqueo mientras sus pares intentan
+       rodearles. Fase 2: solo entonces alguien va al rebote.
+
+       Sin evento `bloqueo`: en el compilador ése es el bloqueo
+       INDIRECTO —se pone para un compañero—, y el guion automático lo
+       narra "bloquea para". Un cierre de rebote es lo contrario: se le
+       pone al rival para que no pase. El paso del defensor hacia su
+       par ya lo cuenta, y una palabra equivocada engaña más que una
+       que falta. */
+    intent: {
+      canasta: 'norte',
+      fases: [
+        { eventos: [
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: M.escolta_der[0] - 0.02, y: M.escolta_der[1] } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: M.escolta_izq[0] - 0.02, y: M.escolta_izq[1] } },
+          { jugador: 'B3', tipo: 'defiende', marca: 'A3', hacia: { x: M.esquina_der[0] - 0.02, y: M.esquina_der[1] - 0.015 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: M.escolta_der[0], y: M.escolta_der[1] + 0.07 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: M.escolta_izq[0], y: M.escolta_izq[1] - 0.07 } },
+          { jugador: 'A3', tipo: 'corte', hacia: { x: M.esquina_der[0] + 0.02, y: M.esquina_der[1] - 0.06 } },
+        ] },
+        { eventos: [{ jugador: 'B2', tipo: 'recoge' }] },
+      ],
+    },
   },
 
   /* ═══ CALENTAMIENTO ════════════════════════════════════════ */
@@ -351,7 +434,7 @@ export const TANDA_05 = [
     tags: ['calentamiento', 'activación', 'coordinación', 'equilibrio'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'media', oposicion: 'nula',
+      material: ['balones'], densidad: 'media', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'sostener y manipular el balón con las dos manos en movimiento',
       dosis: { series: 2, cantidad: 4, unidad: 'repeticiones', descanso: 30 },
       organizacion: 'Con 12: los doce a la vez recorriendo la pista a lo largo, en dos filas de seis para que no se pisen.',
@@ -381,7 +464,7 @@ export const TANDA_05 = [
     tags: ['calentamiento', 'activación', 'bote', 'competición', 'cambio de mano'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 16, canastas: 0, estaciones: 4,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula', presion: 'marcador',
       requisito_previo: 'botar en carrera sin perder el balón',
       dosis: { series: 3, cantidad: 2, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: cuatro equipos de tres en la línea de fondo, compitiendo a la vez a lo largo de la pista.',
@@ -426,7 +509,7 @@ export const TANDA_05 = [
     tags: ['lateralidad', 'equilibrio', 'coordinación', 'ritmo', 'bote'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones', 'aros'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones', 'aros'], densidad: 'alta', oposicion: 'nula', presion: 'tiempo',
       requisito_previo: 'botar en movimiento sin perder el balón la mayor parte del tiempo',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 40 },
       organizacion: 'Con 12: los doce a la vez, con los aros repartidos por una media pista.',
@@ -459,7 +542,7 @@ export const TANDA_05 = [
     tags: ['lateralidad', 'coordinación', 'equilibrio', 'ritmo'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'media', oposicion: 'pasiva',
+      material: ['balones'], densidad: 'media', oposicion: 'nula', presion: 'tiempo',
       requisito_previo: 'sostener el balón con las dos manos sin que se caiga',
       dosis: { series: 4, cantidad: 30, unidad: 'segundos', descanso: 30 },
       organizacion: 'Con 12: seis parejas a la vez, repartidas a lo ancho y mirándose.',
@@ -471,8 +554,9 @@ export const TANDA_05 = [
       criterio_exito: 'copiar en espejo la mayoría de los gestos sin que haya que recordárselo',
     },
     tablero: () => [
-      jug('A', 1, 0.36, 0.30), jug('B', 1, 0.50, 0.30),
-      jug('A', 2, 0.36, 0.70), jug('B', 2, 0.50, 0.70),
+      // Pareja, no rival: el que copia el gesto está en el mismo bando.
+      jug('A', 1, 0.36, 0.30), jug('A', 3, 0.50, 0.30),
+      jug('A', 2, 0.36, 0.70), jug('A', 4, 0.50, 0.70),
       balon(0.36, 0.30), balon(0.36, 0.70),
     ],
     intent: null,

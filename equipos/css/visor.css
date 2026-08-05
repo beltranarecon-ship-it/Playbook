@@ -327,6 +327,11 @@
 .eq-veje.dens--alta  { border-color: var(--success); color: var(--success); }
 .eq-veje.dens--baja  { border-color: var(--error);   color: var(--error); }
 .eq-veje.opo--real   { border-color: var(--papaya);  color: var(--papaya-deep); }
+/* Presión: el eje que dice qué aprieta cuando no hay rival. Solo se
+   resaltan los dos que cambian de verdad el ejercicio; `ninguna` y
+   `espacio` se quedan en el gris de base para no gritar. */
+.eq-veje.pres--marcador { border-color: var(--papaya); color: var(--papaya-deep); }
+.eq-veje.pres--tiempo   { border-color: var(--warning, #B45309); color: var(--warning, #B45309); }
 
 /* Los tres escalones de exigencia: el eje que ordena la biblioteca. */
 .eq-vniveles { display: flex; flex-direction: column; gap: 0.375rem; }

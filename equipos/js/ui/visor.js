@@ -27,7 +27,7 @@ import { guionDeAnimacion, resumenMaterial } from '../data/guion.js';
 import { getEjercicioCompleto } from '../data/ejercicios.js';
 import { INTENSIDAD_LABEL, INTENSIDAD_MAX } from '../data/carga.js';
 import {
-  PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA,
+  PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA, PRESION_AYUDA,
   textoDosis, textoJugadores, textoCanastas, textoDuracion, nivelesDe,
 } from '../../../taller/js/ficha.js';
 
@@ -267,6 +267,7 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
       h('div', { class: 'eq-vejes' }, ...[
         req.densidad ? h('span', { class: `eq-veje dens--${req.densidad}`, title: DENSIDAD_AYUDA[req.densidad] || '' }, `densidad ${req.densidad}`) : null,
         req.oposicion ? h('span', { class: `eq-veje opo--${req.oposicion}`, title: OPOSICION_AYUDA[req.oposicion] || '' }, `oposición ${req.oposicion}`) : null,
+        req.presion ? h('span', { class: `eq-veje pres--${req.presion}`, title: PRESION_AYUDA[req.presion] || '' }, `presión ${req.presion}`) : null,
       ].filter(Boolean)),
       seccionTexto('Está bien hecho cuando', req.criterio_exito),
       seccionTexto('Antes hace falta saber', req.requisito_previo),

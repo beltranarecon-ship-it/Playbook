@@ -13,7 +13,7 @@ import { confirmModal } from '../ui/modal.js';
 import { getEjercicio, duplicarEjercicio, setFavorito, eliminarEjercicio } from '../supabase/ejercicios.js';
 import { dificultadDe } from '../config.js';
 import {
-  PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA,
+  PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA, PRESION_AYUDA,
   textoDosis, textoJugadores, textoCanastas, textoDuracion, nivelesDe,
 } from '../ficha.js';
 
@@ -169,6 +169,10 @@ function ficha(ej) {
     h('div', { class: 'ficha-chips' },
       r.densidad ? h('span', { class: `ficha-chip dens--${r.densidad}`, title: DENSIDAD_AYUDA[r.densidad] || '' }, `densidad ${r.densidad}`) : null,
       r.oposicion ? h('span', { class: `ficha-chip opo--${r.oposicion}`, title: OPOSICION_AYUDA[r.oposicion] || '' }, `oposición ${r.oposicion}`) : null,
+      // Qué aprieta cuando no hay rival. Sin este chip, un ejercicio de
+      // manejo en un espacio que se estrecha y una serie de tiro en
+      // silencio se leían igual: los dos «sin oposición».
+      r.presion ? h('span', { class: `ficha-chip pres--${r.presion}`, title: PRESION_AYUDA[r.presion] || '' }, `presión ${r.presion}`) : null,
       ej.intensidad ? h('span', { class: 'ficha-chip' }, `intensidad ${ej.intensidad}/5`) : null,
     ),
     r.justificacion_densidad ? seccion('Por qué se acepta esta densidad', r.justificacion_densidad) : null,

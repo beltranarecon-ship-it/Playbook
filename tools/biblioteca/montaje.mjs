@@ -26,7 +26,11 @@ export const reiniciarIds = () => { _n = 0; };
 export const jug = (equipo, label, x, y, extra = {}) =>
   ({ id: `el_${++_n}`, kind: 'jugador', equipo, label: String(label), dorsal: null, nombre: null, x, y, ...extra });
 
-export const balon = (x, y) => ({ id: `el_balon_${++_n}`, kind: 'balon', x, y, portador_id: null });
+/* El `id` es opcional, y se pone cuando la INTENCIÓN tiene que nombrar
+   ese balón concreto: con dos balones que acaban en el mismo sitio —dos
+   equipos tirando al mismo aro— el `recoge` por defecto elige el suelto
+   más cercano, y los dos reboteadores irían a por el mismo. */
+export const balon = (x, y, id = null) => ({ id: id || `el_balon_${++_n}`, kind: 'balon', x, y, portador_id: null });
 
 /* El `id` es opcional salvo en los conos de RODEAR: el compilador no
    deduce el slalom de que haya conos en el tablero — la intención

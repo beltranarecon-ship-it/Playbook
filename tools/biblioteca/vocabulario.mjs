@@ -122,8 +122,36 @@ export const DENSIDAD = {
 };
 export const DENSIDAD_KEYS = Object.keys(DENSIDAD);
 
-/** Cuánta oposición real hay. Un ejercicio que se vende como táctico y no tiene a nadie enfrente es un ejercicio mal clasificado. */
+/**
+ * OPOSICIÓN — cuánto RIVAL hay: alguien a quien hay que ganar o que te
+ * puede quitar el balón. Un ejercicio que se vende como táctico y no
+ * tiene a nadie enfrente es un ejercicio mal clasificado.
+ *
+ * Ojo con lo que NO es oposición, porque durante noventa y siete fichas
+ * lo fue: el compañero que levanta dedos para que mires arriba, el que
+ * te devuelve el rebote, el equipo contrario que tira a la vez en la
+ * otra canasta. Ninguno disputa nada. Todos ésos aprietan —y por eso
+ * existe `PRESION`—, pero no oponen. Mezclarlos hacía que diez fichas
+ * declararan oposición sin que hubiera un solo defensor que dibujar.
+ */
 export const OPOSICION = ['nula', 'pasiva', 'semiactiva', 'real'];
+
+/**
+ * PRESIÓN — qué aprieta cuando NO hay rival. Es el segundo eje, y es
+ * el que explica por qué un ejercicio sin defensores puede exigir más
+ * que uno con ellos:
+ *
+ *   ninguna  · nada aprieta; se repite el gesto tranquilo.
+ *   espacio  · el espacio se comparte o se estrecha: hay que esquivar,
+ *              proteger y decidir por dónde.
+ *   tiempo   · hay una señal o un reloj al que responder ya.
+ *   marcador · se compite: hay tanteo, duelo o récord que batir.
+ *
+ * Es ortogonal a la oposición: un 1c1 puede tener defensa real Y
+ * marcador, y un ejercicio de manejo puede no tener a nadie enfrente y
+ * aun así ser el más exigente de la sesión.
+ */
+export const PRESION = ['ninguna', 'espacio', 'tiempo', 'marcador'];
 
 /* ---- 5 · Forma de `requisitos` (jsonb) ------------------------
    Todo lo estructurado de la ficha vive aquí. Se eligió jsonb en vez
@@ -179,7 +207,7 @@ export const DOSIS_UNIDADES = {
  * o en su espacio. No hay colas posibles, así que la comprobación de
  * fila larga (D5) no aplica. También salió del piloto.
  */
-export const REQUISITOS_OPCIONALES = ['estaciones', 'simultaneo', 'aplicacion', 'justificacion_densidad'];
+export const REQUISITOS_OPCIONALES = ['estaciones', 'simultaneo', 'aplicacion', 'justificacion_densidad', 'presion'];
 
 /**
  * Campos obligatorios SOLO en ciertos casos (DOCTRINA.md).

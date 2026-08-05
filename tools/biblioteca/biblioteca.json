@@ -32,7 +32,8 @@
         "conos"
       ],
       "densidad": "alta",
-      "oposicion": "pasiva",
+      "oposicion": "nula",
+      "presion": "espacio",
       "requisito_previo": "botar en el sitio con una mano sin perder el balón",
       "dosis": {
         "series": 3,
@@ -59,7 +60,7 @@
             0.3,
             0.25
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -71,7 +72,7 @@
             0.3,
             0.72
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -83,7 +84,7 @@
             0.55,
             0.25
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -95,43 +96,43 @@
             0.55,
             0.72
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         }
       ],
       "balones": [
         {
-          "id": "balon_1",
+          "id": "el_balon_9",
           "posicion_inicial": [
             0.3,
             0.25
           ],
-          "portador_id": null
+          "portador_id": "A1"
         },
         {
-          "id": "balon_2",
+          "id": "el_balon_10",
           "posicion_inicial": [
             0.3,
             0.72
           ],
-          "portador_id": null
+          "portador_id": "A2"
         },
         {
-          "id": "balon_3",
+          "id": "el_balon_11",
           "posicion_inicial": [
             0.55,
             0.25
           ],
-          "portador_id": null
+          "portador_id": "A3"
         },
         {
-          "id": "balon_4",
+          "id": "el_balon_12",
           "posicion_inicial": [
             0.55,
             0.72
           ],
-          "portador_id": null
+          "portador_id": "A4"
         }
       ],
       "conos": [
@@ -172,9 +173,248 @@
           "fila_config": null
         }
       ],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.3,
+                  "y": 0.25,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.36,
+                  "y": 0.41,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.55,
+                  "y": 0.25,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.49,
+                  "y": 0.41,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A4",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.55,
+                  "y": 0.72,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.49,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.3,
+                  "y": 0.72,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.36,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.36,
+                  "y": 0.41,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.55,
+                  "y": 0.25,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.49,
+                  "y": 0.41,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.55,
+                  "y": 0.72,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A4",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.49,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.3,
+                  "y": 0.72,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.36,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.3,
+                  "y": 0.25,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.36,
+                  "y": 0.41
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.49,
+                  "y": 0.41
+                }
+              },
+              {
+                "jugador": "A4",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.49,
+                  "y": 0.58
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.36,
+                  "y": 0.58
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.55,
+                  "y": 0.25
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.55,
+                  "y": 0.72
+                }
+              },
+              {
+                "jugador": "A4",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.3,
+                  "y": 0.72
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.3,
+                  "y": 0.25
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -213,6 +453,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "botar en carrera con la mano derecha y con la izquierda sin perder el balón",
       "dosis": {
         "series": 4,
@@ -543,6 +784,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "botar con las dos manos en carrera y cambiar de mano sin frenar",
       "dosis": {
         "series": 3,
@@ -841,6 +1083,7 @@
       ],
       "densidad": "media",
       "oposicion": "pasiva",
+      "presion": "ninguna",
       "requisito_previo": "recibir con las dos manos sin que se le caiga el balón",
       "dosis": {
         "series": 3,
@@ -1233,6 +1476,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "tiempo",
       "requisito_previo": "pasar de pecho y picado a cinco metros sin que el balón pierda dirección",
       "dosis": {
         "series": 4,
@@ -1259,7 +1503,7 @@
             0.3,
             0.3
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -1326,12 +1570,12 @@
       ],
       "balones": [
         {
-          "id": "balon_1",
+          "id": "el_balon_11",
           "posicion_inicial": [
             0.3,
             0.3
           ],
-          "portador_id": null
+          "portador_id": "A1"
         }
       ],
       "conos": [
@@ -1372,9 +1616,292 @@
           "fila_config": null
         }
       ],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.4,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.37,
+                  "y": 0.52,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.48,
+                  "y": 0.56,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.45,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [
+            {
+              "id": "pase_1_1",
+              "de_id": "A1",
+              "balon_id": "el_balon_11",
+              "a_id": "A2",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.3,
+                  "y": 0.3
+                },
+                {
+                  "x": 0.3,
+                  "y": 0.7
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.37,
+                  "y": 0.52,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.35,
+                  "y": 0.62,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.45,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.45,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [
+            {
+              "id": "pase_2_1",
+              "de_id": "A2",
+              "balon_id": "el_balon_11",
+              "a_id": "A3",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.3,
+                  "y": 0.7
+                },
+                {
+                  "x": 0.58,
+                  "y": 0.3
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.35,
+                  "y": 0.62,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.47,
+                  "y": 0.38,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.45,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.44,
+                  "y": 0.52,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [
+            {
+              "id": "pase_3_1",
+              "de_id": "A3",
+              "balon_id": "el_balon_11",
+              "a_id": "A4",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.58,
+                  "y": 0.3
+                },
+                {
+                  "x": 0.58,
+                  "y": 0.7
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2"
+          ]
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.37,
+                  "y": 0.52
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.45,
+                  "y": 0.44
+                }
+              },
+              {
+                "jugador": "A1",
+                "tipo": "pase",
+                "a": "A2"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.35,
+                  "y": 0.62
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.45,
+                  "y": 0.5
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "pase",
+                "a": "A3"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.47,
+                  "y": 0.38
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.44,
+                  "y": 0.52
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "pase",
+                "a": "A4"
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -1410,6 +1937,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "sostener el balón con una mano debajo y la otra al lado sin que se caiga",
       "dosis": {
         "series": 4,
@@ -1644,6 +2172,7 @@
       ],
       "densidad": "media",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "tirar desde el codo con la mecánica estable y sin empujar",
       "dosis": {
         "series": 3,
@@ -1856,6 +2385,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "coordinar dos apoyos con el balón en las manos sin dar pasos",
       "dosis": {
         "series": 3,
@@ -2228,6 +2758,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "marcador",
       "requisito_previo": "entrar en doble ritmo por los dos lados sin defensa",
       "dosis": {
         "series": 3,
@@ -2426,6 +2957,7 @@
       ],
       "densidad": "alta",
       "oposicion": "pasiva",
+      "presion": "tiempo",
       "requisito_previo": "botar en carrera y recoger el balón con las dos manos sin que se le escape",
       "dosis": {
         "series": 3,
@@ -2447,7 +2979,7 @@
         {
           "id": "B1",
           "equipo": "B",
-          "tipo": "atacante",
+          "tipo": "defensor",
           "posicion_inicial": [
             0.30600000000000005,
             0.496
@@ -2554,13 +3086,32 @@
                   "tipo_nodo": "lineal"
                 }
               ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.30600000000000005,
+                  "y": 0.496,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.30600000000000005,
+                  "y": 0.446,
+                  "tipo_nodo": "lineal"
+                }
+              ]
             }
           ],
           "pases": [],
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [
+            "B1"
+          ]
         },
         {
           "id": "fase_3",
@@ -2689,6 +3240,15 @@
                 "jugador": "fila1",
                 "tipo": "bote",
                 "hacia": "aro"
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "marca": "fila1",
+                "hacia": {
+                  "x": 0.30600000000000005,
+                  "y": 0.446
+                }
               }
             ]
           },
@@ -2757,6 +3317,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "salir en bote con las dos manos y parar en dos tiempos sin pasos",
       "dosis": {
         "series": 3,
@@ -2956,6 +3517,7 @@
       ],
       "densidad": "media",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "correr cambiando de dirección sin perder el equilibrio",
       "dosis": {
         "series": 3,
@@ -3232,6 +3794,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "pasar en movimiento y recibir orientado al aro",
       "dosis": {
         "series": 4,
@@ -3579,6 +4142,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "mantener la postura defensiva y desplazarse lateralmente sin cruzar los pies",
       "dosis": {
         "series": 4,
@@ -3951,6 +4515,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "mantenerse en postura defensiva diez segundos sin levantarse",
       "dosis": {
         "series": 4,
@@ -4213,6 +4778,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "botar en carrera a velocidad alta y pasar sin frenar",
       "dosis": {
         "series": 4,
@@ -4485,6 +5051,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "pasar y recibir en movimiento y defender individualmente a un par",
       "dosis": {
         "series": 4,
@@ -4627,6 +5194,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "espacio",
       "requisito_previo": "botar en movimiento sin perder el balón",
       "dosis": {
         "series": 3,
@@ -4797,6 +5365,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "tiempo",
       "requisito_previo": "botar el balón en el sitio con cualquiera de las dos manos",
       "dosis": {
         "series": 3,
@@ -4949,6 +5518,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "tirar bajo el aro con la mecánica estable y sin empujar",
       "dosis": {
         "series": 2,
@@ -5193,6 +5763,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "parar en dos tiempos tras bote sin arrastrar el pie de pivote",
       "dosis": {
         "series": 3,
@@ -5498,6 +6069,7 @@
       ],
       "densidad": "baja",
       "oposicion": "nula",
+      "presion": "marcador",
       "requisito_previo": "tirar desde la línea de tiros libres llegando al aro sin lanzar desde el pecho",
       "dosis": {
         "series": 2,
@@ -5730,6 +6302,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "botar la pista entera a velocidad alta sin perder el balón",
       "dosis": {
         "series": 3,
@@ -5763,7 +6336,7 @@
         {
           "id": "A2",
           "equipo": "A",
-          "tipo": "atacante",
+          "tipo": "defensor",
           "posicion_inicial": [
             0.622,
             0.236
@@ -5847,7 +6420,25 @@
           "id": "fase_3",
           "duracion_ms": 1000,
           "pausa_post_ms": 600,
-          "movimientos": [],
+          "movimientos": [
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.622,
+                  "y": 0.236,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.536075,
+                  "y": 0.21184999999999998,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
           "pases": [],
           "bloqueos": [],
           "tiros": [
@@ -5868,7 +6459,9 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [
+            "A2"
+          ]
         }
       ],
       "canasta": "norte",
@@ -5899,6 +6492,11 @@
                 "jugador": "A1",
                 "tipo": "tiro",
                 "hacia": "canasta"
+              },
+              {
+                "jugador": "A2",
+                "tipo": "defiende",
+                "marca": "A1"
               }
             ]
           }
@@ -5943,6 +6541,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "tirar tras recepción con los pies ya orientados al aro",
       "dosis": {
         "series": 3,
@@ -6216,6 +6815,7 @@
       ],
       "densidad": "alta",
       "oposicion": "pasiva",
+      "presion": "marcador",
       "requisito_previo": "anotar desde dos metros con la mecánica estable",
       "dosis": {
         "series": 3,
@@ -6249,7 +6849,7 @@
         {
           "id": "A2",
           "equipo": "A",
-          "tipo": "atacante",
+          "tipo": "defensor",
           "posicion_inicial": [
             0.222,
             0.386
@@ -6390,6 +6990,37 @@
           "tiros": [],
           "recogidas": [],
           "defensores": []
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.1983,
+                  "y": 0.4193,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.211565,
+                  "y": 0.530915,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "A2"
+          ]
         }
       ],
       "canasta": "norte",
@@ -6416,6 +7047,15 @@
                 "jugador": "A2",
                 "tipo": "pase",
                 "a": "A1"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A2",
+                "tipo": "defiende",
+                "marca": "A1"
               }
             ]
           }
@@ -6459,6 +7099,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "tiempo",
       "requisito_previo": "botar en el sitio sin que el balón se escape",
       "dosis": {
         "series": 4,
@@ -6584,6 +7225,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "marcador",
       "requisito_previo": "botar en carrera sin mirar el balón continuamente",
       "dosis": {
         "series": 4,
@@ -6841,6 +7483,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "botar con las dos manos y pivotar sin levantar el pie de apoyo",
       "dosis": {
         "series": 4,
@@ -7169,6 +7812,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "botar diez veces seguidas con la mano no dominante sin perder el balón",
       "dosis": {
         "series": 3,
@@ -7429,6 +8073,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "espacio",
       "requisito_previo": "botar en carrera sin mirar el balón",
       "dosis": {
         "series": 4,
@@ -7455,7 +8100,7 @@
             0.72,
             0.35
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -7467,7 +8112,7 @@
             0.72,
             0.65
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -7510,20 +8155,20 @@
       ],
       "balones": [
         {
-          "id": "balon_1",
+          "id": "el_balon_12",
           "posicion_inicial": [
             0.72,
             0.35
           ],
-          "portador_id": null
+          "portador_id": "A1"
         },
         {
-          "id": "balon_2",
+          "id": "el_balon_13",
           "posicion_inicial": [
             0.72,
             0.65
           ],
-          "portador_id": null
+          "portador_id": "A2"
         }
       ],
       "conos": [
@@ -7582,9 +8227,295 @@
           "fila_config": null
         }
       ],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.72,
+                  "y": 0.35,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.52,
+                  "y": 0.26,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.72,
+                  "y": 0.65,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.52,
+                  "y": 0.78,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.58,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.58,
+                  "y": 0.38,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.52,
+                  "y": 0.26,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.38,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.52,
+                  "y": 0.78,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.38,
+                  "y": 0.76,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.44,
+                  "y": 0.32,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.44,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.38,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.22,
+                  "y": 0.34,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.38,
+                  "y": 0.76,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.22,
+                  "y": 0.2,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.3,
+                  "y": 0.62,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.3,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B3"
+          ]
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.52,
+                  "y": 0.26
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.52,
+                  "y": 0.78
+                }
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.58,
+                  "y": 0.38
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.38,
+                  "y": 0.58
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.38,
+                  "y": 0.76
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.44,
+                  "y": 0.44
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.22,
+                  "y": 0.34
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.22,
+                  "y": 0.2
+                }
+              },
+              {
+                "jugador": "B3",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.3,
+                  "y": 0.5
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -7621,6 +8552,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "pasar en movimiento y recibir sin frenar del todo",
       "dosis": {
         "series": 4,
@@ -7893,6 +8825,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "correr el contraataque por carriles y pasar sin frenar",
       "dosis": {
         "series": 4,
@@ -8021,6 +8954,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "mantener la postura defensiva y girar sin perder el equilibrio",
       "dosis": {
         "series": 4,
@@ -8374,6 +9308,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "pivotar sobre los dos pies sin levantar el de apoyo",
       "dosis": {
         "series": 3,
@@ -8648,6 +9583,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "botar protegiendo con el cuerpo sin perder el balón",
       "dosis": {
         "series": 4,
@@ -8948,6 +9884,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "salir en bote con un primer paso largo hacia el aro",
       "dosis": {
         "series": 3,
@@ -9145,6 +10082,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "salir en bote sin dar pasos y parar en dos tiempos",
       "dosis": {
         "series": 3,
@@ -9344,6 +10282,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "recibir en carrera sin que se le escape el balón",
       "dosis": {
         "series": 3,
@@ -9676,6 +10615,7 @@
       "material": [],
       "densidad": "alta",
       "oposicion": "pasiva",
+      "presion": "ninguna",
       "requisito_previo": "mantenerse agachado con los pies separados sin apoyar las manos",
       "dosis": {
         "series": 4,
@@ -9745,9 +10685,379 @@
       ],
       "balones": [],
       "conos": [],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.3,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.34,
+                  "y": 0.22,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.44,
+                  "y": 0.3,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.44,
+                  "y": 0.22,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.7,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.34,
+                  "y": 0.62,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.44,
+                  "y": 0.7,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.44,
+                  "y": 0.62,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.22,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.34,
+                  "y": 0.4,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.44,
+                  "y": 0.22,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.44,
+                  "y": 0.4,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.62,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.34,
+                  "y": 0.8,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.44,
+                  "y": 0.62,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.44,
+                  "y": 0.8,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.4,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.29,
+                  "y": 0.3,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.44,
+                  "y": 0.4,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.39,
+                  "y": 0.3,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.8,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.29,
+                  "y": 0.7,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.44,
+                  "y": 0.8,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.39,
+                  "y": 0.7,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2"
+          ]
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.34,
+                  "y": 0.22
+                }
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "marca": "A1",
+                "hacia": {
+                  "x": 0.44,
+                  "y": 0.22
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.34,
+                  "y": 0.62
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "marca": "A2",
+                "hacia": {
+                  "x": 0.44,
+                  "y": 0.62
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.34,
+                  "y": 0.4
+                }
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "marca": "A1",
+                "hacia": {
+                  "x": 0.44,
+                  "y": 0.4
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.34,
+                  "y": 0.8
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "marca": "A2",
+                "hacia": {
+                  "x": 0.44,
+                  "y": 0.8
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.29,
+                  "y": 0.3
+                }
+              },
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "marca": "A1",
+                "hacia": {
+                  "x": 0.39,
+                  "y": 0.3
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.29,
+                  "y": 0.7
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "marca": "A2",
+                "hacia": {
+                  "x": 0.39,
+                  "y": 0.7
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -9784,6 +11094,7 @@
       ],
       "densidad": "media",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "mantener la postura defensiva desplazándose",
       "dosis": {
         "series": 3,
@@ -10056,6 +11367,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "defender al jugador con balón manteniendo la postura",
       "dosis": {
         "series": 3,
@@ -10328,6 +11640,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "desplazarse en postura defensiva sin cruzar los pies",
       "dosis": {
         "series": 4,
@@ -10566,6 +11879,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "ayudar y recuperar una vez sin quedarse dentro de la zona",
       "dosis": {
         "series": 3,
@@ -11073,6 +12387,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "resolver el uno contra uno con bote y con tiro",
       "dosis": {
         "series": 3,
@@ -11187,6 +12502,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "recibir orientado al aro y pasar en movimiento",
       "dosis": {
         "series": 4,
@@ -11306,6 +12622,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "pasar y recibir en movimiento con un defensor cerca",
       "dosis": {
         "series": 3,
@@ -11473,6 +12790,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "defender individualmente a un par y correr el contraataque por carriles",
       "dosis": {
         "series": 3,
@@ -11601,6 +12919,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "pasar con las dos manos desde encima de la cabeza a cinco metros",
       "dosis": {
         "series": 3,
@@ -11812,6 +13131,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "pasar con una mano a diez metros manteniendo la dirección",
       "dosis": {
         "series": 3,
@@ -12124,6 +13444,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "pasar de pecho y picado con precisión a cinco metros",
       "dosis": {
         "series": 4,
@@ -12150,7 +13471,7 @@
             0.28,
             0.28
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -12217,18 +13538,301 @@
       ],
       "balones": [
         {
-          "id": "balon_1",
+          "id": "el_balon_7",
           "posicion_inicial": [
             0.28,
             0.28
           ],
-          "portador_id": null
+          "portador_id": "A1"
         }
       ],
       "conos": [],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.4,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.36,
+                  "y": 0.56,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.48,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.44,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [
+            {
+              "id": "pase_1_1",
+              "de_id": "A1",
+              "balon_id": "el_balon_7",
+              "a_id": "A2",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.28,
+                  "y": 0.28
+                },
+                {
+                  "x": 0.28,
+                  "y": 0.72
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.36,
+                  "y": 0.56,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.42,
+                  "y": 0.66,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.44,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.36,
+                  "y": 0.52,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [
+            {
+              "id": "pase_2_1",
+              "de_id": "A2",
+              "balon_id": "el_balon_7",
+              "a_id": "A4",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.28,
+                  "y": 0.72
+                },
+                {
+                  "x": 0.6,
+                  "y": 0.72
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2"
+          ]
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.42,
+                  "y": 0.66,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.54,
+                  "y": 0.6,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.36,
+                  "y": 0.52,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.46,
+                  "y": 0.48,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [
+            {
+              "id": "pase_3_1",
+              "de_id": "A4",
+              "balon_id": "el_balon_7",
+              "a_id": "A3",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.6,
+                  "y": 0.72
+                },
+                {
+                  "x": 0.6,
+                  "y": 0.28
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2"
+          ]
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.36,
+                  "y": 0.56
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.44,
+                  "y": 0.44
+                }
+              },
+              {
+                "jugador": "A1",
+                "tipo": "pase",
+                "a": "A2"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.42,
+                  "y": 0.66
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.36,
+                  "y": 0.52
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "pase",
+                "a": "A4"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.54,
+                  "y": 0.6
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.46,
+                  "y": 0.48
+                }
+              },
+              {
+                "jugador": "A4",
+                "tipo": "pase",
+                "a": "A3"
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -12266,6 +13870,7 @@
       ],
       "densidad": "media",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "pasar y recibir en movimiento con un defensor cerca",
       "dosis": {
         "series": 3,
@@ -12587,6 +14192,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "entrar en doble ritmo por los dos lados sin defensa",
       "dosis": {
         "series": 3,
@@ -12783,6 +14389,7 @@
       ],
       "densidad": "alta",
       "oposicion": "pasiva",
+      "presion": "ninguna",
       "requisito_previo": "entrar en doble ritmo con la mano no dominante",
       "dosis": {
         "series": 3,
@@ -13045,6 +14652,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "entrar en doble ritmo y proteger el balón con el cuerpo",
       "dosis": {
         "series": 3,
@@ -13383,6 +14991,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "cortar cambiando de ritmo y recibir en movimiento",
       "dosis": {
         "series": 3,
@@ -13632,6 +15241,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "resolver el uno contra uno con bote y decidir entre tirar y pasar",
       "dosis": {
         "series": 3,
@@ -13940,6 +15550,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "salir en bote a velocidad tras recibir el balón en movimiento",
       "dosis": {
         "series": 3,
@@ -14286,6 +15897,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "resolver el uno contra uno con balón y desmarcarse para recibir sin él",
       "dosis": {
         "series": 3,
@@ -14700,6 +16312,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "coger el rebote con las dos manos y pasar sin botar",
       "dosis": {
         "series": 4,
@@ -15021,6 +16634,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "defender individualmente y correr la pista entera",
       "dosis": {
         "series": 4,
@@ -15267,6 +16881,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "botar en carrera a velocidad alta y pasar sin frenar",
       "dosis": {
         "series": 4,
@@ -15628,7 +17243,8 @@
         "balones"
       ],
       "densidad": "alta",
-      "oposicion": "pasiva",
+      "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "botar con cada mano por separado sin mirar el balón",
       "dosis": {
         "series": 4,
@@ -15660,9 +17276,9 @@
           "nombre": null
         },
         {
-          "id": "B1",
-          "equipo": "B",
-          "tipo": "defensor",
+          "id": "A3",
+          "equipo": "A",
+          "tipo": "atacante",
           "posicion_inicial": [
             0.48,
             0.3
@@ -15684,9 +17300,9 @@
           "nombre": null
         },
         {
-          "id": "B2",
-          "equipo": "B",
-          "tipo": "defensor",
+          "id": "A4",
+          "equipo": "A",
+          "tipo": "atacante",
           "posicion_inicial": [
             0.48,
             0.7
@@ -15770,6 +17386,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "pivotar sin levantar el pie de apoyo",
       "dosis": {
         "series": 4,
@@ -16034,7 +17651,8 @@
         "conos"
       ],
       "densidad": "alta",
-      "oposicion": "pasiva",
+      "oposicion": "nula",
+      "presion": "marcador",
       "requisito_previo": "botar en movimiento sin mirar el balón continuamente",
       "dosis": {
         "series": 3,
@@ -16061,7 +17679,7 @@
             0.34,
             0.32
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -16073,7 +17691,7 @@
             0.34,
             0.66
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -16085,7 +17703,7 @@
             0.5,
             0.32
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -16097,7 +17715,7 @@
             0.5,
             0.66
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -16109,51 +17727,51 @@
             0.42,
             0.5
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         }
       ],
       "balones": [
         {
-          "id": "balon_1",
+          "id": "el_balon_10",
           "posicion_inicial": [
             0.34,
             0.32
           ],
-          "portador_id": null
+          "portador_id": "A1"
         },
         {
-          "id": "balon_2",
+          "id": "el_balon_11",
           "posicion_inicial": [
             0.34,
             0.66
           ],
-          "portador_id": null
+          "portador_id": "A2"
         },
         {
-          "id": "balon_3",
+          "id": "el_balon_12",
           "posicion_inicial": [
             0.5,
             0.32
           ],
-          "portador_id": null
+          "portador_id": "A3"
         },
         {
-          "id": "balon_4",
+          "id": "el_balon_13",
           "posicion_inicial": [
             0.5,
             0.66
           ],
-          "portador_id": null
+          "portador_id": "A4"
         },
         {
-          "id": "balon_5",
+          "id": "el_balon_14",
           "posicion_inicial": [
             0.42,
             0.5
           ],
-          "portador_id": null
+          "portador_id": "A5"
         }
       ],
       "conos": [
@@ -16194,9 +17812,439 @@
           "fila_config": null
         }
       ],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.32,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.48,
+                  "y": 0.42,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.66,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.48,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.5,
+                  "y": 0.32,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.36,
+                  "y": 0.42,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A4",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.5,
+                  "y": 0.66,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.36,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A5",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.42,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.42,
+                  "y": 0.3,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.48,
+                  "y": 0.42,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.34,
+                  "y": 0.66,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.48,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.34,
+                  "y": 0.32,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.36,
+                  "y": 0.42,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.52,
+                  "y": 0.68,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A4",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.36,
+                  "y": 0.58,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.52,
+                  "y": 0.34,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A5",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.42,
+                  "y": 0.3,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.42,
+                  "y": 0.7,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.66,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.39,
+                  "y": 0.55,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.32,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.39,
+                  "y": 0.45,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.52,
+                  "y": 0.68,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.47,
+                  "y": 0.56,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A4",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.52,
+                  "y": 0.34,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.47,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A5",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.42,
+                  "y": 0.7,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.43,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.48,
+                  "y": 0.42
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.48,
+                  "y": 0.58
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.36,
+                  "y": 0.42
+                }
+              },
+              {
+                "jugador": "A4",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.36,
+                  "y": 0.58
+                }
+              },
+              {
+                "jugador": "A5",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.42,
+                  "y": 0.3
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.34,
+                  "y": 0.66
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.34,
+                  "y": 0.32
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.52,
+                  "y": 0.68
+                }
+              },
+              {
+                "jugador": "A4",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.52,
+                  "y": 0.34
+                }
+              },
+              {
+                "jugador": "A5",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.42,
+                  "y": 0.7
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.39,
+                  "y": 0.55
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.39,
+                  "y": 0.45
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.47,
+                  "y": 0.56
+                }
+              },
+              {
+                "jugador": "A4",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.47,
+                  "y": 0.44
+                }
+              },
+              {
+                "jugador": "A5",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.43,
+                  "y": 0.5
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -16232,6 +18280,7 @@
       ],
       "densidad": "alta",
       "oposicion": "pasiva",
+      "presion": "ninguna",
       "requisito_previo": "recibir en carrera sin que se le escape el balón",
       "dosis": {
         "series": 3,
@@ -16590,6 +18639,7 @@
       ],
       "densidad": "media",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "correr cambiando de dirección sin perder el equilibrio",
       "dosis": {
         "series": 3,
@@ -16865,6 +18915,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "tiempo",
       "requisito_previo": "pivotar sobre los dos pies sin levantar el de apoyo",
       "dosis": {
         "series": 3,
@@ -16891,7 +18942,7 @@
             0.34,
             0.32
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -16934,18 +18985,223 @@
       ],
       "balones": [
         {
-          "id": "balon_1",
+          "id": "el_balon_5",
           "posicion_inicial": [
             0.34,
             0.32
           ],
-          "portador_id": null
+          "portador_id": "A1"
         }
       ],
       "conos": [],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.38,
+                  "y": 0.36,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.5,
+                  "y": 0.43,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [
+            {
+              "id": "pase_1_1",
+              "de_id": "A1",
+              "balon_id": "el_balon_5",
+              "a_id": "A3",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.32
+                },
+                {
+                  "x": 0.56,
+                  "y": 0.5
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.5,
+                  "y": 0.43,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.41,
+                  "y": 0.6,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [
+            {
+              "id": "pase_2_1",
+              "de_id": "A3",
+              "balon_id": "el_balon_5",
+              "a_id": "A2",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.56,
+                  "y": 0.5
+                },
+                {
+                  "x": 0.34,
+                  "y": 0.68
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.41,
+                  "y": 0.6,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.41,
+                  "y": 0.37,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [
+            {
+              "id": "pase_3_1",
+              "de_id": "A2",
+              "balon_id": "el_balon_5",
+              "a_id": "A1",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.34,
+                  "y": 0.68
+                },
+                {
+                  "x": 0.34,
+                  "y": 0.32
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1"
+          ]
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.5,
+                  "y": 0.43
+                }
+              },
+              {
+                "jugador": "A1",
+                "tipo": "pase",
+                "a": "A3"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.41,
+                  "y": 0.6
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "pase",
+                "a": "A2"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "hacia": {
+                  "x": 0.41,
+                  "y": 0.37
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "pase",
+                "a": "A1"
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -16982,6 +19238,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "botar con las dos manos y pivotar sin levantar el pie de apoyo",
       "dosis": {
         "series": 3,
@@ -17179,6 +19436,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "tirar desde el codo y mantener el equilibrio al caer",
       "dosis": {
         "series": 3,
@@ -17403,6 +19661,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "hacer contacto de bloqueo con el cuerpo sin empujar con las manos",
       "dosis": {
         "series": 4,
@@ -17496,18 +19755,257 @@
       ],
       "balones": [
         {
-          "id": "balon_1",
+          "id": "el_balon_7",
           "posicion_inicial": [
-            0.406,
-            0.496
+            0.235,
+            0.5
           ],
           "portador_id": null
         }
       ],
       "conos": [],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "B1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.336,
+                  "y": 0.656,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.366,
+                  "y": 0.656,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.336,
+                  "y": 0.336,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.366,
+                  "y": 0.336,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.15599999999999997,
+                  "y": 0.893,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.186,
+                  "y": 0.878,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.386,
+                  "y": 0.656,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.386,
+                  "y": 0.726,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.386,
+                  "y": 0.336,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.386,
+                  "y": 0.266,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "corte",
+              "path": [
+                {
+                  "x": 0.206,
+                  "y": 0.893,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.22599999999999998,
+                  "y": 0.833,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": [
+            "B1",
+            "B2",
+            "B3"
+          ]
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.366,
+                  "y": 0.336,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.2587074080960685,
+                  "y": 0.4703204967346928,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "el_balon_7",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.235,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.2587074080960685,
+                  "y": 0.4703204967346928,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "B2",
+              "balon_id": "el_balon_7"
+            }
+          ],
+          "defensores": []
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "B1",
+                "tipo": "defiende",
+                "marca": "A1",
+                "hacia": {
+                  "x": 0.366,
+                  "y": 0.656
+                }
+              },
+              {
+                "jugador": "B2",
+                "tipo": "defiende",
+                "marca": "A2",
+                "hacia": {
+                  "x": 0.366,
+                  "y": 0.336
+                }
+              },
+              {
+                "jugador": "B3",
+                "tipo": "defiende",
+                "marca": "A3",
+                "hacia": {
+                  "x": 0.186,
+                  "y": 0.878
+                }
+              },
+              {
+                "jugador": "A1",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.386,
+                  "y": 0.726
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.386,
+                  "y": 0.266
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "corte",
+                "hacia": {
+                  "x": 0.22599999999999998,
+                  "y": 0.833
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "B2",
+                "tipo": "recoge"
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -17544,6 +20042,7 @@
       ],
       "densidad": "media",
       "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "sostener y manipular el balón con las dos manos en movimiento",
       "dosis": {
         "series": 2,
@@ -17686,7 +20185,8 @@
         "conos"
       ],
       "densidad": "alta",
-      "oposicion": "real",
+      "oposicion": "nula",
+      "presion": "marcador",
       "requisito_previo": "botar en carrera sin perder el balón",
       "dosis": {
         "series": 3,
@@ -18056,6 +20556,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "tiempo",
       "requisito_previo": "botar en movimiento sin perder el balón la mayor parte del tiempo",
       "dosis": {
         "series": 3,
@@ -18282,7 +20783,8 @@
         "balones"
       ],
       "densidad": "media",
-      "oposicion": "pasiva",
+      "oposicion": "nula",
+      "presion": "tiempo",
       "requisito_previo": "sostener el balón con las dos manos sin que se caiga",
       "dosis": {
         "series": 4,
@@ -18314,9 +20816,9 @@
           "nombre": null
         },
         {
-          "id": "B1",
-          "equipo": "B",
-          "tipo": "defensor",
+          "id": "A3",
+          "equipo": "A",
+          "tipo": "atacante",
           "posicion_inicial": [
             0.5,
             0.3
@@ -18338,9 +20840,9 @@
           "nombre": null
         },
         {
-          "id": "B2",
-          "equipo": "B",
-          "tipo": "defensor",
+          "id": "A4",
+          "equipo": "A",
+          "tipo": "atacante",
           "posicion_inicial": [
             0.5,
             0.7
@@ -18410,6 +20912,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "pasar y recibir en movimiento con un defensor cerca",
       "dosis": {
         "series": 3,
@@ -18541,6 +21044,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "defender individualmente y correr el contraataque por carriles",
       "dosis": {
         "series": 3,
@@ -18682,6 +21186,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "resolver el uno contra uno con bote y defender individualmente",
       "dosis": {
         "series": 3,
@@ -18992,6 +21497,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "marcador",
       "requisito_previo": "pasar y recibir bajo presión y defender individualmente a un par",
       "dosis": {
         "series": 3,
@@ -19176,6 +21682,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "tirar tras recepción con los pies orientados al aro",
       "dosis": {
         "series": 3,
@@ -19484,7 +21991,8 @@
         "balones"
       ],
       "densidad": "alta",
-      "oposicion": "pasiva",
+      "oposicion": "nula",
+      "presion": "marcador",
       "requisito_previo": "anotar desde dos metros con la mecánica estable",
       "dosis": {
         "series": 3,
@@ -19511,7 +22019,7 @@
             0.336,
             0.606
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -19530,19 +22038,19 @@
         {
           "id": "B1",
           "equipo": "B",
-          "tipo": "defensor",
+          "tipo": "atacante",
           "posicion_inicial": [
             0.336,
             0.386
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
         {
           "id": "B2",
           "equipo": "B",
-          "tipo": "defensor",
+          "tipo": "atacante",
           "posicion_inicial": [
             0.232,
             0.386
@@ -19554,26 +22062,260 @@
       ],
       "balones": [
         {
-          "id": "balon_1",
+          "id": "balon_der",
           "posicion_inicial": [
             0.336,
             0.606
           ],
-          "portador_id": null
+          "portador_id": "A1"
         },
         {
-          "id": "balon_2",
+          "id": "balon_izq",
           "posicion_inicial": [
             0.336,
             0.386
           ],
-          "portador_id": null
+          "portador_id": "B1"
         }
       ],
       "conos": [],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1000,
+          "pausa_post_ms": 600,
+          "movimientos": [],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [
+            {
+              "jugador_id": "A1",
+              "balon_id": "balon_der",
+              "canasta": "norte",
+              "path": [
+                {
+                  "x": 0.336,
+                  "y": 0.606
+                },
+                {
+                  "x": 0.172,
+                  "y": 0.5
+                }
+              ]
+            },
+            {
+              "jugador_id": "B1",
+              "balon_id": "balon_izq",
+              "canasta": "norte",
+              "path": [
+                {
+                  "x": 0.336,
+                  "y": 0.386
+                },
+                {
+                  "x": 0.172,
+                  "y": 0.5
+                }
+              ]
+            }
+          ],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.232,
+                  "y": 0.606,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.19113597263766277,
+                  "y": 0.5338068849932043,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "balon_der",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.19113597263766277,
+                  "y": 0.5338068849932043,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "B2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_sin_balon",
+              "path": [
+                {
+                  "x": 0.232,
+                  "y": 0.386,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.19016599924267172,
+                  "y": 0.46548460143892373,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "balon_izq",
+              "tipo_elemento": "balon",
+              "tipo_movimiento": "recogida",
+              "path": [
+                {
+                  "x": 0.172,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.19016599924267172,
+                  "y": 0.46548460143892373,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [
+            {
+              "jugador_id": "A2",
+              "balon_id": "balon_der"
+            },
+            {
+              "jugador_id": "B2",
+              "balon_id": "balon_izq"
+            }
+          ],
+          "defensores": []
+        },
+        {
+          "id": "fase_3",
+          "duracion_ms": 1100,
+          "pausa_post_ms": 500,
+          "movimientos": [],
+          "pases": [
+            {
+              "id": "pase_3_1",
+              "de_id": "A2",
+              "balon_id": "balon_der",
+              "a_id": "A1",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.19113597263766277,
+                  "y": 0.5338068849932043
+                },
+                {
+                  "x": 0.336,
+                  "y": 0.606
+                }
+              ]
+            },
+            {
+              "id": "pase_3_2",
+              "de_id": "B2",
+              "balon_id": "balon_izq",
+              "a_id": "B1",
+              "duracion_ms": 450,
+              "path": [
+                {
+                  "x": 0.19016599924267172,
+                  "y": 0.46548460143892373
+                },
+                {
+                  "x": 0.336,
+                  "y": 0.386
+                }
+              ]
+            }
+          ],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "tiro"
+              },
+              {
+                "jugador": "B1",
+                "tipo": "tiro"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A2",
+                "tipo": "recoge",
+                "balon_id": "balon_der"
+              },
+              {
+                "jugador": "B2",
+                "tipo": "recoge",
+                "balon_id": "balon_izq"
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A2",
+                "tipo": "pase",
+                "a": "A1"
+              },
+              {
+                "jugador": "B2",
+                "tipo": "pase",
+                "a": "B1"
+              }
+            ]
+          }
+        ],
+        "balones": [
+          {
+            "id": "balon_der",
+            "portador": "A1"
+          },
+          {
+            "id": "balon_izq",
+            "portador": "B1"
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -19610,6 +22352,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "parar en dos tiempos tras recibir en carrera",
       "dosis": {
         "series": 3,
@@ -19969,6 +22712,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "botar protegiendo con el cuerpo y pasar sin botar antes",
       "dosis": {
         "series": 3,
@@ -20268,6 +23012,7 @@
       ],
       "densidad": "alta",
       "oposicion": "semiactiva",
+      "presion": "ninguna",
       "requisito_previo": "botar con la cabeza levantada sin perder el balón",
       "dosis": {
         "series": 3,
@@ -20553,6 +23298,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "recibir orientado al aro y salir en bote por los dos lados",
       "dosis": {
         "series": 3,
@@ -20828,6 +23574,7 @@
       ],
       "densidad": "media",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "resolver el uno contra uno con bote y pasar desde el bote",
       "dosis": {
         "series": 3,
@@ -21215,6 +23962,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "desplazarse en postura defensiva sin cruzar los pies",
       "dosis": {
         "series": 3,
@@ -21439,6 +24187,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "cerrar a un tirador llegando frenado y en postura",
       "dosis": {
         "series": 3,
@@ -21677,7 +24426,8 @@
         "conos"
       ],
       "densidad": "alta",
-      "oposicion": "pasiva",
+      "oposicion": "nula",
+      "presion": "tiempo",
       "requisito_previo": "botar en movimiento cambiando de dirección sin perder el balón",
       "dosis": {
         "series": 3,
@@ -21704,7 +24454,7 @@
             0.42,
             0.44
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -21716,7 +24466,7 @@
             0.42,
             0.56
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         },
@@ -21728,35 +24478,35 @@
             0.48,
             0.5
           ],
-          "tiene_balon": false,
+          "tiene_balon": true,
           "dorsal": null,
           "nombre": null
         }
       ],
       "balones": [
         {
-          "id": "balon_1",
+          "id": "el_balon_13",
           "posicion_inicial": [
             0.42,
             0.44
           ],
-          "portador_id": null
+          "portador_id": "A1"
         },
         {
-          "id": "balon_2",
+          "id": "el_balon_14",
           "posicion_inicial": [
             0.42,
             0.56
           ],
-          "portador_id": null
+          "portador_id": "A2"
         },
         {
-          "id": "balon_3",
+          "id": "el_balon_15",
           "posicion_inicial": [
             0.48,
             0.5
           ],
-          "portador_id": null
+          "portador_id": "A3"
         }
       ],
       "conos": [
@@ -21842,9 +24592,198 @@
           "fila_config": null
         }
       ],
-      "fases": [],
+      "fases": [
+        {
+          "id": "fase_1",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.42,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.42,
+                  "y": 0.25,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.42,
+                  "y": 0.56,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.53,
+                  "y": 0.73,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.48,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.61,
+                  "y": 0.41,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        },
+        {
+          "id": "fase_2",
+          "duracion_ms": 1500,
+          "pausa_post_ms": 400,
+          "movimientos": [
+            {
+              "elemento_id": "A1",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.42,
+                  "y": 0.25,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.42,
+                  "y": 0.44,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A2",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.53,
+                  "y": 0.73,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.42,
+                  "y": 0.56,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            },
+            {
+              "elemento_id": "A3",
+              "tipo_elemento": "jugador",
+              "tipo_movimiento": "carrera_con_balon",
+              "path": [
+                {
+                  "x": 0.61,
+                  "y": 0.41,
+                  "tipo_nodo": "lineal"
+                },
+                {
+                  "x": 0.48,
+                  "y": 0.5,
+                  "tipo_nodo": "lineal"
+                }
+              ]
+            }
+          ],
+          "pases": [],
+          "bloqueos": [],
+          "tiros": [],
+          "recogidas": [],
+          "defensores": []
+        }
+      ],
       "canasta": "norte",
-      "warnings": []
+      "_intent": {
+        "canasta": "norte",
+        "fases": [
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.42,
+                  "y": 0.25
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.53,
+                  "y": 0.73
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.61,
+                  "y": 0.41
+                }
+              }
+            ]
+          },
+          {
+            "eventos": [
+              {
+                "jugador": "A1",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.42,
+                  "y": 0.44
+                }
+              },
+              {
+                "jugador": "A2",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.42,
+                  "y": 0.56
+                }
+              },
+              {
+                "jugador": "A3",
+                "tipo": "bote",
+                "hacia": {
+                  "x": 0.48,
+                  "y": 0.5
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "warnings": [],
+      "_mock": true
     },
     "autor_nombre": "Biblioteca CBP",
     "favorito": false
@@ -21881,7 +24820,8 @@
         "balones"
       ],
       "densidad": "alta",
-      "oposicion": "pasiva",
+      "oposicion": "nula",
+      "presion": "tiempo",
       "requisito_previo": "pasar de pecho y recibir con las dos manos sin que se caiga",
       "dosis": {
         "series": 3,
@@ -21914,9 +24854,9 @@
           "nombre": null
         },
         {
-          "id": "B1",
-          "equipo": "B",
-          "tipo": "defensor",
+          "id": "A3",
+          "equipo": "A",
+          "tipo": "atacante",
           "posicion_inicial": [
             0.36,
             0.3
@@ -21938,9 +24878,9 @@
           "nombre": null
         },
         {
-          "id": "B2",
-          "equipo": "B",
-          "tipo": "defensor",
+          "id": "A4",
+          "equipo": "A",
+          "tipo": "atacante",
           "posicion_inicial": [
             0.36,
             0.7
@@ -22009,6 +24949,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "botar el balón en el sitio con cualquiera de las dos manos",
       "dosis": {
         "series": 3,
@@ -22168,7 +25109,8 @@
         "balones"
       ],
       "densidad": "alta",
-      "oposicion": "pasiva",
+      "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "saltar y coger un balón en el aire con las dos manos",
       "dosis": {
         "series": 3,
@@ -22346,6 +25288,7 @@
       ],
       "densidad": "alta",
       "oposicion": "real",
+      "presion": "ninguna",
       "requisito_previo": "hacer contacto de bloqueo con el cuerpo antes de ir al balón",
       "dosis": {
         "series": 3,
@@ -22657,6 +25600,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "pasar y recibir en carrera sin frenar",
       "dosis": {
         "series": 2,
@@ -22967,7 +25911,8 @@
         "balones"
       ],
       "densidad": "media",
-      "oposicion": "pasiva",
+      "oposicion": "nula",
+      "presion": "espacio",
       "requisito_previo": "pasar y recibir en movimiento",
       "dosis": {
         "series": 3,
@@ -23119,6 +26064,7 @@
       ],
       "densidad": "media",
       "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "saltar y caer con los dos pies sin apoyar las manos",
       "dosis": {
         "series": 3,
@@ -23299,6 +26245,7 @@
       ],
       "densidad": "alta",
       "oposicion": "nula",
+      "presion": "tiempo",
       "requisito_previo": "correr y desplazarse lateralmente sin caerse",
       "dosis": {
         "series": 3,
@@ -23459,6 +26406,7 @@
       ],
       "densidad": "media",
       "oposicion": "nula",
+      "presion": "ninguna",
       "requisito_previo": "caminar sosteniendo un balón con las dos manos",
       "dosis": {
         "series": 3,

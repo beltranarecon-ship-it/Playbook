@@ -54,7 +54,7 @@ export const PILOTO = [
     tags: ['bote', 'cabeza levantada', 'cambio de mano', 'coordinación', 'toma de decisiones'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'pasiva',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula', presion: 'espacio',
       requisito_previo: 'botar en el sitio con una mano sin perder el balón',
       dosis: { series: 3, cantidad: 60, unidad: 'segundos', descanso: 45 },
       organizacion: 'Con 12: los doce a la vez, un balón cada uno, tres por cuadrante. No usa canastas, así que puede ir en paralelo con algo de tiro en los aros.',
@@ -71,7 +71,32 @@ export const PILOTO = [
       cono(0.42, 0.20), cono(0.42, 0.77), cono(0.22, 0.49), cono(0.62, 0.49),
       balon(0.30, 0.25), balon(0.30, 0.72), balon(0.55, 0.25), balon(0.55, 0.72),
     ],
-    intent: null,
+    /* El montaje solo enseñaba cuatro niños con balón dentro de cuatro
+       cuadrantes: exactamente lo que NO es el ejercicio. Lo que hay que
+       ver es el cruce — se pasa por el centro, se cambia de mano ahí, y
+       se sale al cuadrante de al lado. Dos fases: la entrada al centro
+       y la salida al siguiente cuadrante, girando todos en el mismo
+       sentido para que se lea que nadie se choca. */
+    intent: {
+      canasta: null,
+      fases: [
+        // Se juntan en el centro, pero no encima: cuatro fichas CON
+        // balón a menos de un palmo se dibujan como una mancha, y lo
+        // que hay que leer es que cada uno llega por su diagonal.
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.36, y: 0.41 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.49, y: 0.41 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.49, y: 0.58 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.36, y: 0.58 } },
+        ] },
+        { eventos: [
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.55, y: 0.25 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.55, y: 0.72 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.30, y: 0.72 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.30, y: 0.25 } },
+        ] },
+      ],
+    },
   },
 
   /* ═══ BOTE ═════════════════════════════════════════════════ */
@@ -87,7 +112,7 @@ export const PILOTO = [
     tags: ['bote', 'cambio de mano', 'entrada', 'doble ritmo', 'analítico', 'series'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'botar en carrera con la mano derecha y con la izquierda sin perder el balón',
       dosis: { series: 4, cantidad: 5, unidad: 'repeticiones', descanso: 40 },
       organizacion: 'Con 12: dos estaciones, una en cada canasta, seis por estación en dos filas de tres. Cada fila con su juego de conos; el que termina vuelve a la suya.',
@@ -144,7 +169,7 @@ export const PILOTO = [
     tags: ['bote', 'cambio de ritmo', '1c1', 'defensa del bote', 'competición'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real', presion: 'marcador',
       requisito_previo: 'botar con las dos manos en carrera y cambiar de mano sin frenar',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos pasillos de conos, uno hacia cada canasta, seis en cada uno. Tres parejas por pasillo que se turnan; los que esperan, detrás del cono de salida.',
@@ -183,7 +208,7 @@ export const PILOTO = [
     tags: ['pase', 'pase de pecho', 'pase picado', 'recepción', 'toma de decisiones'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 15, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'media', oposicion: 'pasiva',
+      material: ['balones'], densidad: 'media', oposicion: 'pasiva', presion: 'ninguna',
       requisito_previo: 'recibir con las dos manos sin que se le caiga el balón',
       dosis: { series: 3, cantidad: 20, unidad: 'repeticiones', descanso: 30 },
       organizacion: 'Con 12: dos triángulos en paralelo, uno en cada media pista, seis en cada uno (tres filas de dos). No usa canastas.',
@@ -252,7 +277,7 @@ export const PILOTO = [
     tags: ['pase', 'recepción', 'toma de decisiones', 'lectura', 'espaciado', 'oposición'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 12, canastas: 0, estaciones: 2,
-      material: ['balones', 'conos', 'petos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'conos', 'petos'], densidad: 'alta', oposicion: 'real', presion: 'tiempo',
       requisito_previo: 'pasar de pecho y picado a cinco metros sin que el balón pierda dirección',
       dosis: { series: 4, cantidad: 3, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: dos cuadrados, uno en cada media pista, seis por cuadrado: cuatro en las esquinas y dos de intrusos. Los intrusos cambian cada minuto.',
@@ -270,7 +295,31 @@ export const PILOTO = [
       cono(0.30, 0.30), cono(0.30, 0.70), cono(0.58, 0.30), cono(0.58, 0.70),
       balon(0.30, 0.30),
     ],
-    intent: null,
+    /* Tres pases que respetan las dos reglas del ejercicio: no se
+       devuelve a quien te la pasó y no se cruza el cuadrado. Lado
+       izquierdo, diagonal, lado derecho — y los dos de dentro
+       persiguiendo el balón, que es lo que hace que el pase de enfrente
+       no esté. */
+    intent: {
+      canasta: null,
+      fases: [
+        { eventos: [
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.37, y: 0.52 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.45, y: 0.44 } },
+          { jugador: 'A1', tipo: 'pase', a: 'A2' },
+        ] },
+        { eventos: [
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.35, y: 0.62 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.45, y: 0.50 } },
+          { jugador: 'A2', tipo: 'pase', a: 'A3' },
+        ] },
+        { eventos: [
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.47, y: 0.38 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.44, y: 0.52 } },
+          { jugador: 'A3', tipo: 'pase', a: 'A4' },
+        ] },
+      ],
+    },
   },
 
   /* ═══ TIRO ═════════════════════════════════════════════════ */
@@ -286,7 +335,7 @@ export const PILOTO = [
     tags: ['tiro', 'mecánica de tiro', 'analítico', 'series'],
     requisitos: {
       jugadores_min: 2, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones'], densidad: 'alta', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'sostener el balón con una mano debajo y la otra al lado sin que se caiga',
       dosis: { series: 4, cantidad: 10, unidad: 'repeticiones', descanso: 30 },
       organizacion: 'Con 12: seis parejas, tres en cada canasta, repartidas a un metro del aro por los dos lados y el frontal. Diez tiros y cambio dentro de la pareja.',
@@ -333,7 +382,7 @@ export const PILOTO = [
     tags: ['tiro', 'tiro tras recepción', 'recepción', 'lectura', 'toma de decisiones', 'finta'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'media', oposicion: 'semiactiva',
+      material: ['balones'], densidad: 'media', oposicion: 'semiactiva', presion: 'ninguna',
       requisito_previo: 'tirar desde el codo con la mecánica estable y sin empujar',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos que rotan tirador, pasador y defensor.',
@@ -372,7 +421,7 @@ export const PILOTO = [
     tags: ['entrada', 'doble ritmo', 'recepción', 'finalización', 'analítico', 'series'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones'], densidad: 'alta', oposicion: 'nula', presion: 'ninguna',
       requisito_previo: 'coordinar dos apoyos con el balón en las manos sin dar pasos',
       dosis: { series: 3, cantidad: 6, unidad: 'repeticiones', descanso: 30 },
       organizacion: 'Con 12: dos estaciones, una por canasta, seis por estación en dos filas de tres (una en cada 45). Dos balones por estación para que no pare.',
@@ -429,7 +478,7 @@ export const PILOTO = [
     tags: ['entrada', 'finalización', '1c1', 'bote de protección', 'competición'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva',
+      material: ['balones'], densidad: 'alta', oposicion: 'semiactiva', presion: 'marcador',
       requisito_previo: 'entrar en doble ritmo por los dos lados sin defensa',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos estaciones, una por canasta, seis por estación. Tres parejas que se turnan; se cambia atacante y perseguidor cada tres entradas.',
@@ -469,7 +518,7 @@ export const PILOTO = [
     tags: ['parada', 'pivote', 'salida en bote', 'bote', 'coordinación'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'pasiva',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'pasiva', presion: 'tiempo',
       requisito_previo: 'botar en carrera y recoger el balón con las dos manos sin que se le escape',
       dosis: { series: 3, cantidad: 8, unidad: 'repeticiones', descanso: 40 },
       organizacion: 'Con 12: dos estaciones, una por canasta, seis por estación: fila de cinco y el compañero que señala el lado. El que señala cambia cada vuelta.',
@@ -495,7 +544,13 @@ export const PILOTO = [
         { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'tiro_libre' }] },
         // "se sale botando por el lado contrario HACIA LA CANASTA": la
         // salida termina en el aro, no en el ancla del poste bajo.
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'aro' }] },
+        // El compañero del cono no era un adorno y estaba dibujado sin
+        // hacer nada: señala el lado y se queda ahí, que es lo que
+        // sostiene la oposición pasiva que declara la ficha.
+        { eventos: [
+          { jugador: 'fila1', tipo: 'bote', hacia: 'aro' },
+          { jugador: 'B1', tipo: 'defiende', marca: 'fila1', hacia: { x: M.tiro_libre[0] - 0.03, y: M.tiro_libre[1] - 0.05 } },
+        ] },
         { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
@@ -516,7 +571,7 @@ export const PILOTO = [
     tags: ['1c1', 'bote', 'finta', 'toma de decisiones', 'ventaja', 'competición'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'media', oposicion: 'real',
+      material: ['balones'], densidad: 'media', oposicion: 'real', presion: 'marcador',
       requisito_previo: 'salir en bote con las dos manos y parar en dos tiempos sin pasos',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos canastas, seis por canasta. Tres parejas que se turnan; las que esperan, en el 45 contrario y listas para entrar sin pausa.',
@@ -552,7 +607,7 @@ export const PILOTO = [
     tags: ['desmarque', 'recepción', 'corte', '1c1', 'cambio de ritmo', 'lectura'],
     requisitos: {
       jugadores_min: 3, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones'], densidad: 'media', oposicion: 'semiactiva',
+      material: ['balones'], densidad: 'media', oposicion: 'semiactiva', presion: 'ninguna',
       requisito_previo: 'correr cambiando de dirección sin perder el equilibrio',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 45 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante y defensor. Rotan las tres posiciones.',
@@ -592,7 +647,7 @@ export const PILOTO = [
     tags: ['pasar y cortar', 'corte', 'espaciado', 'pase', 'lectura', 'ventaja'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real', presion: 'ninguna',
       requisito_previo: 'pasar en movimiento y recibir orientado al aro',
       dosis: { series: 4, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan fuera; entran cada dos ataques.',
@@ -632,7 +687,7 @@ export const PILOTO = [
     tags: ['ayuda', 'recuperación', 'defensa individual', 'desplazamiento defensivo', 'lectura'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real', presion: 'ninguna',
       requisito_previo: 'mantener la postura defensiva y desplazarse lateralmente sin cruzar los pies',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan; se cambia ataque y defensa cada cuatro posesiones.',
@@ -684,7 +739,7 @@ export const PILOTO = [
     tags: ['postura defensiva', 'desplazamiento defensivo', 'defensa del bote', 'defensa individual'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 14, canastas: 1, estaciones: 2,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real', presion: 'ninguna',
       requisito_previo: 'mantenerse en postura defensiva diez segundos sin levantarse',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 60 },
       organizacion: 'Con 12: dos pasillos de conos, uno hacia cada canasta, seis en cada uno. Tres parejas que se turnan atacante y defensor.',
@@ -722,7 +777,7 @@ export const PILOTO = [
     tags: ['contraataque', 'transición', 'superioridad', 'carriles', 'toma de decisiones', 'pase'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 15, canastas: 2, estaciones: 1,
-      material: ['balones'], densidad: 'alta', oposicion: 'real',
+      material: ['balones'], densidad: 'alta', oposicion: 'real', presion: 'ninguna',
       requisito_previo: 'botar en carrera a velocidad alta y pasar sin frenar',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 90 },
       organizacion: 'Con 12: un solo grupo en pista entera con las dos canastas. Salen de tres en tres sin parar; los otros nueve esperan por orden en la línea de fondo.',
@@ -761,7 +816,7 @@ export const PILOTO = [
     tags: ['juego reducido', 'espaciado', 'pasar y cortar', 'toma de decisiones', 'competición', 'lectura'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 12, canastas: 1, estaciones: 2,
-      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
+      material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real', presion: 'marcador',
       requisito_previo: 'pasar y recibir en movimiento y defender individualmente a un par',
       dosis: { series: 4, cantidad: 1, unidad: 'repeticiones', descanso: 90 },
       organizacion: 'Con 12: dos partidos de 3c3 a la vez, uno en cada canasta. Nadie fuera.',
@@ -793,7 +848,7 @@ export const PILOTO = [
     tags: ['calentamiento', 'activación', 'bote', 'cabeza levantada', 'bote de protección'],
     requisitos: {
       jugadores_min: 6, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones'], densidad: 'alta', oposicion: 'real',
+      material: ['balones'], densidad: 'alta', oposicion: 'real', presion: 'espacio',
       requisito_previo: 'botar en movimiento sin perder el balón',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 45 },
       organizacion: 'Con 12: los doce a la vez en una media pista, con dos que la ligan. Si se hace fácil, se estrecha el espacio en vez de añadir gente que liga.',
@@ -825,7 +880,7 @@ export const PILOTO = [
     tags: ['lateralidad', 'ritmo', 'equilibrio', 'coordinación', 'bote', 'mano no dominante'],
     requisitos: {
       jugadores_min: 4, jugadores_max: 16, canastas: 0, estaciones: 1, simultaneo: true,
-      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula',
+      material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula', presion: 'tiempo',
       requisito_previo: 'botar el balón en el sitio con cualquiera de las dos manos',
       dosis: { series: 3, cantidad: 90, unidad: 'segundos', descanso: 40 },
       organizacion: 'Con 12: los doce a la vez en una media pista, un balón cada uno. Sin canastas.',

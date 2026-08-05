@@ -67,6 +67,14 @@
 .ficha-chip.opo--semiactiva { background: #DBEAFE; border-color: #93C5FD; color: #1E3A8A; }
 .ficha-chip.opo--real       { background: #E0E7FF; border-color: #A5B4FC; color: #312E81; }
 
+/* Presión: el eje que dice qué aprieta cuando NO hay rival. Va en una
+   familia de color distinta a la de oposición —cálida contra fría— para
+   que de un vistazo se vea que son dos preguntas y no una escala. */
+.ficha-chip.pres--ninguna  { background: var(--surface-2); }
+.ficha-chip.pres--espacio  { background: #CCFBF1; border-color: #5EEAD4; color: #134E4A; }
+.ficha-chip.pres--tiempo   { background: #FFEDD5; border-color: #FDBA74; color: #7C2D12; }
+.ficha-chip.pres--marcador { background: #FCE7F3; border-color: #F9A8D4; color: #831843; }
+
 /* Los tres escalones de exigencia: el eje que ordena la biblioteca.
    El escalón lo dice la etiqueta —que es lo que se lee— en vez de un
    código de color al margen que hay que aprenderse. */

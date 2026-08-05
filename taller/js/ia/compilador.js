@@ -482,7 +482,15 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
       tiene_balon: conBalonInicial.has(j.id),
       dorsal: j.dorsal ?? null, nombre: j.nombre ?? null,
     })),
-    balones: balones.map((b) => {
+    // El balón sintetizado solo existe si alguien LLEGA a tocarlo. Se
+    // inventa uno cuando el tablero no trae ninguno porque el camino IA
+    // suele describir un ejercicio con balón y olvidarse de dibujarlo;
+    // pero hay ejercicios que de verdad no llevan balón —el espejo
+    // defensivo es puro juego de pies— y ahí aparecía una pelota
+    // fantasma en el centro de la pista, en la ficha que dice
+    // literalmente "sin balón". Los balones DIBUJADOS no se filtran
+    // nunca: si el entrenador lo puso, se ve.
+    balones: balones.filter((b) => !b._sintetico || ownerDe.has(b.id)).map((b) => {
       const owner = ownerDe.get(b.id) || null;
       const oj = owner && byId.get(owner);
       // en manos de su dueño inicial; suelto, donde estaba en el tablero.

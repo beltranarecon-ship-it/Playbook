@@ -36,6 +36,19 @@ export const OPOSICION_AYUDA = {
   real: 'defensa de verdad, se puede perder el balón',
 };
 
+/* El tercer eje, y el que faltaba. `oposicion` respondía a dos
+   preguntas a la vez —"¿hay rival?" y "¿esto aprieta?"— y por eso diez
+   fichas decían tener oposición sin un solo defensor: el compañero que
+   levanta dedos, el que devuelve el rebote, el equipo que tira a la
+   vez. Ninguno disputa nada, y los tres ejercicios aprietan. Aquí va
+   lo que aprieta cuando no hay nadie enfrente. */
+export const PRESION_AYUDA = {
+  ninguna: 'nada aprieta: se repite el gesto tranquilo',
+  espacio: 'el espacio se comparte o se estrecha',
+  tiempo: 'hay una señal o un reloj al que responder ya',
+  marcador: 'se compite: tanteo, duelo o récord',
+};
+
 /**
  * "4 series × 5 repeticiones · 40 s de descanso".
  *

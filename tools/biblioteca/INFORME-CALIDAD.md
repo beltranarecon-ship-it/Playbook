@@ -20,8 +20,8 @@ de las intenciones.
 
 | | |
 |---|---|
-| ✅ **Hecho** | Prioridades 1 a 7: la ficha enseña lo que tiene, la geometría de las finalizaciones y el cierre de ciclo (con reglas de linter y las 97 fichas actualizadas en Supabase), buscador y filtros, propagación en el editor, campo de organización para 12, generador de miniaturas, y los tres niveles de exigencia como dato. |
-| ⬜ **Pendiente** | Prioridad 8 (limpieza de coherencia) y **pulsar el botón** de la pasada de miniaturas, que necesita sesión iniciada. |
+| ✅ **Hecho** | Las ocho prioridades: la ficha enseña lo que tiene, la geometría de las finalizaciones y el cierre de ciclo (con reglas de linter y las 97 fichas actualizadas en Supabase), buscador y filtros, propagación en el editor, campo de organización para 12, generador de miniaturas, los tres niveles de exigencia como dato, y la separación de oposición y presión en dos ejes con diez animaciones nuevas. |
+| ⬜ **Pendiente** | **Pulsar el botón** de la pasada de miniaturas, que necesita sesión iniciada — y ahora hace falta de verdad: las diez fichas recién animadas siguen con el póster de su montaje viejo. |
 
 Lo verificado sobre la base de datos después de los arreglos:
 
@@ -41,6 +41,10 @@ Lo verificado sobre la base de datos después de los arreglos:
 | Peso de las miniaturas de toda la biblioteca | — | **522 kB** (5 kB de media) |
 | Niveles de exigencia que existen como dato | 0 | **97 × 3** |
 | Datos de la ficha que usa el proyector | 1 de 6 | dosis, criterio y nivel elegido |
+| Fichas con animación | 65 de 97 | **75** |
+| Fichas que declaran oposición y no dibujan defensor | 8 | **0**, y el linter ya no lo deja pasar |
+| Ejes para decir qué exige un ejercicio | 1 (`oposicion`, con dos significados) | **2** (`oposicion` + `presion`) |
+| Biblioteca sin rival **ni** presión (lo que D1 prohíbe acumular) | — | **11 %** (tope 25 %) |
 | Casos en los dos bancos tocados (motor + linter) | 132 | **149**, todos en verde |
 
 ---
@@ -190,6 +194,15 @@ una secuencia concreta que contar** y se quedaron en foto fija:
 `Duelo de tiro por equipos` · `El reloj` · `Pasar sin mirar la pared` ·
 `Bote sentado y de rodillas`
 
+> **Resuelto en P8: diez animadas, cuatro no.** La regla que separa unas de
+> otras: se anima cuando hay **desplazamiento** que el montaje no puede
+> enseñar. Se quedan en montaje `Números y bote`, `Pasar sin mirar la pared` y
+> `Bote sentado y de rodillas` porque el trabajo es **en el sitio** —no hay
+> nada que desplazar, y una animación inventada sería peor que la foto—, y
+> `Dos balones y un compañero` porque el compilador ata un balón por jugador y
+> el segundo se quedaría en el suelo, en el ejercicio que se llama «dos
+> balones». La biblioteca pasa de 65 a **75 fichas animadas**.
+
 ---
 
 ## 2 · La ficha: qué se enseña, qué se esconde, qué sobra
@@ -261,16 +274,19 @@ tres opciones seleccionables, y en pantalla salen como un párrafo denso que
 nadie lee con prisa. El eje de exigencia —que es **la** decisión de diseño de
 esta biblioteca— no existe como dato.
 
-### 2.5 · Las 97 fichas dicen «Minibasket» y eso contradice la doctrina
+### 2.5 · ~~Las 97 fichas dicen «Minibasket» y eso contradice la doctrina~~ — **falso, revisado en P8**
 
-`categoria_rama` = `Minibasket` en las 97. `categoria_nivel` está vacío en 91,
-que es lo correcto (D9: el eje es la exigencia, no la edad). Pero la rama sigue
-etiquetando toda la biblioteca como minibasket, así que la ficha le dice al
-entrenador «Categoría: Minibasket» en ejercicios que valen perfectamente para
-infantil o cadete subiendo el nivel de exigencia.
+Esto lo escribí mal y hay que corregirlo. Al mirar el dato de cerca:
+`categoria_rama` = `Minibasket` en las 97 **es cierto** —es una biblioteca de
+minibasket, escrita contra una doctrina de minibasket— y no dice nada sobre la
+edad de quien la usa. Lo que D9 prohíbe es ordenar por edad, y eso se mira en
+`categoria_nivel`, que está **vacío en 91 de 97**: justo lo que la doctrina
+pide. Las seis que sí llevan edad (`Escuela`, `Escuela+Benjamín`) son las seis
+de psicomotricidad, que es la excepción que la propia doctrina documenta —ahí
+el ejercicio sí es específico de la edad—.
 
-O la rama se vacía también, o pasa a ser un rango («desde Escuela»), o se
-sustituye por el nivel de exigencia, que es lo que de verdad la ordena.
+No hay nada que arreglar. Lo que sí es cierto es que **la rama no discrimina
+nada**: como vale igual en las 97, no sirve como filtro; solo como etiqueta.
 
 ### 2.6 · La rejilla de la biblioteca son 97 tarjetas de texto idénticas
 
@@ -378,6 +394,15 @@ equipo, o contra el reloj). El campo `oposicion` está mezclando dos cosas
 distintas: **si hay alguien defendiendo** y **si hay presión competitiva**. Son
 ejes independientes y deberían ser dos campos.
 
+> **Resuelto en P8.** Son dos campos: `oposicion` (¿hay rival que dispute?) y
+> `presion` (`ninguna · espacio · tiempo · marcador`). Diez fichas tenían la
+> oposición mal puesta —el compañero que levanta dedos, el que devuelve el
+> rebote, el equipo que tira a la vez en la otra canasta: ninguno disputa
+> nada— y se corrigieron. Las dos que **sí** tenían oposición de verdad y no la
+> dibujaban (`Ida y vuelta: tiro con fatiga`, con el pasador que sale a cerrar;
+> `Concurso de las cinco estaciones`, con el reboteador que levanta las manos)
+> ahora la dibujan. El linter falla si vuelve a pasar.
+
 ### 4.3 · Veinticinco fichas dibujan menos gente de la que declaran necesitar
 
 Ejemplos: `Dos contra uno continuo` pide 6 y dibuja 3; `Balance defensivo` pide
@@ -394,6 +419,11 @@ por estación? Está definido como «por estación», así que en realidad hacen
 falta dos aros — pero el dato, leído tal cual, dice uno. Como además no se
 enseña en ninguna pantalla, hoy da igual; en cuanto se enseñe, hay que
 desambiguarlo o mentirá.
+
+> **Cerrado en P1, comprobado en P8.** Se enseña, y se enseña bien: el texto
+> dice «**1 por estación**» siempre que hay más de una estación, y lo dicen las
+> dos superficies con el mismo código (`taller/js/ficha.js#textoCanastas`), así
+> que no pueden divergir. No hace falta tocar el dato.
 
 ### 4.5 · Una cola de cinco (la doctrina fija cuatro)
 
@@ -516,12 +546,43 @@ le faltan los datos.
 Sacar base/intermedio/avanzado de `variantes` a un campo estructurado. Habilita
 filtrar por exigencia, que es el eje que ordena esta biblioteca.
 
-### Prioridad 8 — Limpieza de coherencia
+### Prioridad 8 — Limpieza de coherencia · **HECHA**
 
-Las 14 fichas analíticas sin animar (1.7), las 13 fichas de jugador inertes
-(1.3), los 3 desajustes texto/pizarra (4.1), la separación de `oposicion` en
-dos campos (4.2), la cola de cinco (4.5), la rama «Minibasket» (2.5), las dos
-escalas de dificultad (3.5) y los escuchadores acumulados (5.5).
+**Diez animaciones nuevas.** De las 14 candidatas de 1.7 se animaron las diez
+que tienen desplazamiento que la foto fija no puede contar. Las otras cuatro
+—`Números y bote`, `Pasar sin mirar la pared`, `Bote sentado y de rodillas` y
+`Dos balones y un compañero`— se quedan en montaje **a propósito**, y la regla
+queda escrita: *se anima cuando hay desplazamiento que el montaje no puede
+enseñar; se deja en montaje cuando el juego es abierto (animar uno sería
+enseñar una jugada cerrada donde debe haber lectura) o cuando el trabajo es en
+el sitio y no hay nada que desplazar*. En `Dos balones` hay además un motivo
+técnico: el compilador ata un balón por jugador, y el segundo se quedaría atrás.
+
+**Los dos ejes, separados.** `oposicion` respondía a dos preguntas a la vez.
+Ahora responde a una —¿hay un rival que dispute?— y la otra vive en `presion`:
+`ninguna · espacio · tiempo · marcador`. Diez fichas tenían la oposición mal
+puesta y se corrigieron; la ficha del Taller y el visor del planificador
+enseñan los dos chips, y el linter **falla** si una ficha declara oposición sin
+un defensor dibujado.
+
+**El tope de D1, mejor medido.** Al corregir las diez, la proporción sin rival
+subió del 24 % al 26 %: el tope del 25 % se cumplía porque diez fichas mentían.
+El tope duro pasa a medir lo que la doctrina prohíbe de verdad —el gesto suelto,
+sin rival **ni** presión—, que va por el **11 %**; y el número a secas se sigue
+enseñando como aviso para que la deuda no desaparezca de la vista.
+
+**Un balón fantasma menos.** El compilador inventaba un balón cuando el tablero
+no traía ninguno. `Espejo defensivo` dice literalmente «sin balón: aquí solo se
+entrenan los pies» y dibujaba una pelota en el centro del campo. Ahora el balón
+sintetizado solo existe si alguien llega a tocarlo.
+
+**Tres compañeros que iban de defensa.** El que canta números, el que marca
+alturas y el que copia el gesto estaban pintados de equipo B —y el equipo B se
+dibuja como defensa—. Son compañeros.
+
+Queda fuera, y no era de esta prioridad: las dos escalas de dificultad (3.5) y
+las 25 fichas que dibujan menos gente de la que declaran (4.3), que necesita el
+campo «la pizarra es una muestra» de 2.7.
 
 ---
 

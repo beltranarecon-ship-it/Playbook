@@ -27,7 +27,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  TIPOS, RAMAS, NIVELES, PISTAS, BLOQUE_KEYS, DENSIDAD_KEYS, OPOSICION,
+  TIPOS, RAMAS, NIVELES, PISTAS, BLOQUE_KEYS, DENSIDAD_KEYS, OPOSICION, PRESION,
   NIVELES_EXIGENCIA, REQUISITOS_OBLIGATORIOS, REQUISITOS_CONDICIONALES,
   DOSIS_UNIDADES, ORGANIZACION_REFERENCIA, tagsDesconocidos,
 } from './vocabulario.mjs';
@@ -150,6 +150,7 @@ export function revisaFicha(f) {
     }
     if (r.densidad && !DENSIDAD_KEYS.includes(r.densidad)) E(`densidad "${r.densidad}" desconocida`);
     if (r.oposicion && !OPOSICION.includes(r.oposicion)) E(`oposicion "${r.oposicion}" fuera de la escala de D19`);
+    if (r.presion && !PRESION.includes(r.presion)) E(`presion "${r.presion}" fuera de la escala (${PRESION.join(', ')})`);
     if (r.jugadores_min > r.jugadores_max) E(`jugadores_min (${r.jugadores_min}) mayor que jugadores_max (${r.jugadores_max})`);
     if (r.canastas > 2) E(`canastas ${r.canastas}: el entrenador dispone de 2`);
 
@@ -379,6 +380,25 @@ export function revisaGeometria(f) {
     if (quietos.length) avisos.push(`sin participar en ninguna fase: ${quietos.join(', ')} — ¿es a propósito?`);
   }
 
+  /* 5 · La oposición declarada tiene que estar DIBUJADA.
+     `oposicion` había acabado significando dos cosas a la vez: "hay un
+     rival" y "esto aprieta". Diez fichas declaraban oposición y no
+     tenían un solo defensor que enseñar — el compañero que levanta
+     dedos, el que devuelve el rebote, el equipo que tira en la otra
+     canasta. Ninguno disputa nada. Lo que aprieta sin oponer vive
+     ahora en `presion`, y esta regla impide que vuelvan a mezclarse:
+     si la ficha dice que hay oposición, en la pizarra hay un defensor.
+     Al revés solo avisa: un defensor dibujado con `oposicion: 'nula'`
+     puede ser un compañero al que se le ha puesto peto por claridad. */
+  const op = f.requisitos?.oposicion;
+  const hayDefensor = (a.jugadores || []).some((j) => j.tipo === 'defensor');
+  if (op && op !== 'nula' && !hayDefensor) {
+    errores.push(`declara oposicion "${op}" y no hay ningún defensor en la pizarra: o se dibuja, o es presión (${PRESION.join('/')}) y no oposición`);
+  }
+  if ((!op || op === 'nula') && hayDefensor) {
+    avisos.push('oposicion "nula" pero hay un defensor dibujado — ¿es un compañero con peto?');
+  }
+
   return { errores, avisos };
 }
 
@@ -396,6 +416,14 @@ export function revisaConjunto(fichas) {
     const k = clave(f.name);
     if (vistos.has(k)) errores.push(`nombre duplicado: "${f.name}" y "${vistos.get(k)}"`);
     else vistos.set(k, f.name);
+  }
+
+  /* La proporción sin rival, a la vista. El tope duro de D1 mira ahora
+     los dos ejes (mapa.mjs), pero este número sigue diciendo cuánta
+     biblioteca no tiene a nadie enfrente, y conviene no perderlo. */
+  if (fichas.length >= 20) {
+    const nulas = fichas.filter((f) => (f.requisitos?.oposicion || 'nula') === 'nula').length;
+    avisos.push(`${(nulas / fichas.length * 100).toFixed(0)} % sin rival enfrente (${nulas}/${fichas.length}) — el tope duro mira oposición Y presión`);
   }
 
   for (const h of huecos(fichas)) {
