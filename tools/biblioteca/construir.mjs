@@ -33,6 +33,9 @@ import { TANDA_12 } from './tanda-12.mjs';
 import { TANDA_13 } from './tanda-13.mjs';
 import { TANDA_14 } from './tanda-14.mjs';
 import { TANDA_15 } from './tanda-15.mjs';
+import { TANDA_16 } from './tanda-16.mjs';
+import { TANDA_17 } from './tanda-17.mjs';
+import { TANDA_18 } from './tanda-18.mjs';
 import { MAPA, OBJETIVO_TOTAL } from './mapa.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -54,6 +57,9 @@ export const TANDAS = [
   { nombre: 'tanda-13 · pase: la decisión de pasar, no solo el gesto', fichas: TANDA_13 },
   { nombre: 'tanda-14 · entrada: los dos lados, el contacto y la mano cambiada', fichas: TANDA_14 },
   { nombre: 'tanda-15 · juego de dos: pasar y cortar, aclarado y los dos bloqueos', fichas: TANDA_15 },
+  { nombre: 'tanda-16 · contraataque: los carriles, las superioridades y el balance', fichas: TANDA_16 },
+  { nombre: 'tanda-17 · manejo con algo que mirar y el juego de pies completo', fichas: TANDA_17 },
+  { nombre: 'tanda-18 · rebote, calentamiento con balón y percepción espacial', fichas: TANDA_18 },
 ];
 
 export function biblioteca() {
