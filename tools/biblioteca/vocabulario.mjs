@@ -140,7 +140,24 @@ export const REQUISITOS_OBLIGATORIOS = [
   'requisito_previo',  // string — QUÉ hay que saber hacer ya. NUNCA una edad.
   'dosis',             // { series, cantidad, unidad, descanso } — ver DOSIS_UNIDADES
   'criterio_exito',    // string — cuándo está bien hecho y cómo se compite
+  'organizacion',      // string — CÓMO se monta con el grupo entero. Ver abajo.
 ];
+
+/**
+ * ORGANIZACIÓN — el campo que más se lee, y el que faltaba.
+ *
+ * La pizarra dibuja una MUESTRA: dos, tres o cuatro jugadores, los justos
+ * para que se entienda el mecanismo. Con doce niños delante eso no dice
+ * nada — hay que saber cuántos grupos se montan, en qué canasta va cada
+ * uno y cada cuánto se rota. Ese hueco es lo que hacía que ejercicios
+ * perfectamente escalables parecieran "no tener sentido en un grupo de
+ * 12": casi todos escalan bien, pero ninguno explicaba cómo.
+ *
+ * Se escribe SIEMPRE para doce, que es el grupo de referencia del club,
+ * y sobre pista entera con dos canastas. Una frase o dos, concretas:
+ * cuántos, dónde y cuándo se cambia. Nada de "se puede adaptar".
+ */
+export const ORGANIZACION_REFERENCIA = 12;
 
 /**
  * Unidad de la dosis. Salió del piloto: en un juego continuo como un

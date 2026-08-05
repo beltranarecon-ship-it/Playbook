@@ -147,6 +147,9 @@ function ficha(ej) {
       row('Duración', textoDuracion(ej)),
     ),
     dosis ? h('div', { class: 'ficha-dosis' }, h('small', null, 'Dosis'), h('strong', null, dosis)) : null,
+    // Cómo se reparte el grupo: es lo que se consulta con doce niños ya
+    // en la pista, así que va aquí y no enterrado entre los textos.
+    seccion('Con el grupo entero', r.organizacion),
   );
 
   /* --- 2 · cómo se juega -------------------------------------- */

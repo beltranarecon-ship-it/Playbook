@@ -37,6 +37,7 @@ export const TANDA_02 = [
       material: ['balones', 'conos'], densidad: 'alta', oposicion: 'nula',
       requisito_previo: 'tirar bajo el aro con la mecánica estable y sin empujar',
       dosis: { series: 2, cantidad: 25, unidad: 'repeticiones', descanso: 45 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta, en parejas (uno tira y el otro devuelve). Cada pareja empieza en una posición distinta para no cruzarse.',
       criterio_exito: 'quince de veinticinco dentro, y ninguna posición por debajo de dos de cinco',
       aplicacion: 'tiro tras recepción con cierre, donde el mismo gesto sale con un defensor encima',
     },
@@ -74,6 +75,7 @@ export const TANDA_02 = [
       material: ['balones'], densidad: 'alta', oposicion: 'semiactiva',
       requisito_previo: 'parar en dos tiempos tras bote sin arrastrar el pie de pivote',
       dosis: { series: 3, cantidad: 6, unidad: 'repeticiones', descanso: 45 },
+      organizacion: 'Con 12: dos estaciones, una por canasta, seis por estación: fila de cinco y un defensor que sale a cerrar. Se rota atacante, defensor y final de la fila.',
       criterio_exito: 'seis paradas de seis equilibradas, con los pies orientados al aro antes de subir el balón',
     },
     tablero: () => [
@@ -109,6 +111,7 @@ export const TANDA_02 = [
       material: ['balones'], densidad: 'baja', oposicion: 'nula',
       requisito_previo: 'tirar desde la línea de tiros libres llegando al aro sin lanzar desde el pecho',
       dosis: { series: 2, cantidad: 2, unidad: 'repeticiones', descanso: 20 },
+      organizacion: 'Con 12: dos equipos de seis, uno en cada canasta, y al terminar se comparan los fallos. Todos tiran una vez antes de que nadie repita.',
       criterio_exito: 'la rutina es idéntica en los dos tiros, la meta o la falle',
       justificacion_densidad: 'el tiro libre se entrena esperando el turno con el equipo mirando, que es exactamente la situación del partido; quitarle la espera le quita el sentido',
     },
@@ -146,6 +149,7 @@ export const TANDA_02 = [
       material: ['balones'], densidad: 'alta', oposicion: 'semiactiva',
       requisito_previo: 'botar la pista entera a velocidad alta sin perder el balón',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 90 },
+      organizacion: 'Con 12: seis parejas repartidas entre las dos canastas. Salen escalonadas cada quince segundos para no chocarse en el medio campo.',
       criterio_exito: 'el porcentaje de la cuarta ida y vuelta no baja más de un tiro respecto a la primera',
     },
     tablero: () => [
@@ -178,6 +182,7 @@ export const TANDA_02 = [
       material: ['balones'], densidad: 'media', oposicion: 'real',
       requisito_previo: 'tirar tras recepción con los pies ya orientados al aro',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos que rotan pasador, tirador y defensor.',
       criterio_exito: 'la decisión es la correcta en dos de cada tres posesiones, entre o no entre el tiro',
     },
     tablero: () => [
@@ -211,6 +216,7 @@ export const TANDA_02 = [
       material: ['balones', 'conos'], densidad: 'alta', oposicion: 'pasiva',
       requisito_previo: 'anotar desde dos metros con la mecánica estable',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta, en parejas. Cada pareja recorre las cinco estaciones y apunta su total.',
       criterio_exito: 'completar las cinco estaciones sin que el gesto se convierta en empujón',
     },
     tablero: () => [
@@ -249,6 +255,7 @@ export const TANDA_02 = [
       material: ['balones'], densidad: 'alta', oposicion: 'nula',
       requisito_previo: 'botar en el sitio sin que el balón se escape',
       dosis: { series: 4, cantidad: 30, unidad: 'segundos', descanso: 20 },
+      organizacion: 'Con 12: los doce a la vez en una media pista, un balón cada uno. El entrenador canta los números desde fuera para verlos a todos.',
       criterio_exito: 'acertar nueve de cada diez números sin mirar el balón ni una vez',
       aplicacion: 'el túnel, donde la cabeza levantada sirve para ver por dónde no viene nadie',
     },
@@ -278,6 +285,7 @@ export const TANDA_02 = [
       material: ['balones'], densidad: 'alta', oposicion: 'nula',
       requisito_previo: 'botar en carrera sin mirar el balón continuamente',
       dosis: { series: 4, cantidad: 2, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: cuatro filas de tres en la línea de fondo, compitiendo entre ellas a lo largo de toda la pista. No usa canastas.',
       criterio_exito: 'completar la ida y la vuelta sin perder el balón ni una vez',
       aplicacion: 'dos contra uno continuo, donde ese bote de avance es el que sube el balón al contraataque',
     },
@@ -310,6 +318,7 @@ export const TANDA_02 = [
       material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'botar con las dos manos y pivotar sin levantar el pie de apoyo',
       dosis: { series: 4, cantidad: 20, unidad: 'segundos', descanso: 40 },
+      organizacion: 'Con 12: seis parejas repartidas por la pista, sin invadirse. Treinta segundos y cambio de rol.',
       criterio_exito: 'conservar el balón los veinte segundos completos en tres de cada cuatro intentos',
     },
     tablero: () => [
@@ -342,6 +351,7 @@ export const TANDA_02 = [
       material: ['balones'], densidad: 'alta', oposicion: 'semiactiva',
       requisito_previo: 'botar diez veces seguidas con la mano no dominante sin perder el balón',
       dosis: { series: 3, cantidad: 5, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos canastas, seis por canasta, tres parejas que se turnan. Cinco ataques y se cambia atacante y defensor.',
       criterio_exito: 'terminar los cinco ataques sin cambiar de mano ni una sola vez, entre o no entre',
     },
     tablero: () => [
@@ -376,6 +386,7 @@ export const TANDA_02 = [
       material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'botar en carrera sin mirar el balón',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 45 },
+      organizacion: 'Con 12: los doce a la vez en dos túneles paralelos de seis. Se cruza y se vuelve al final del propio túnel, sin parar.',
       criterio_exito: 'cruzar tres de cada cuatro veces sin que le toquen el balón',
     },
     tablero: () => [
@@ -404,6 +415,7 @@ export const TANDA_02 = [
       material: ['balones'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'pasar en movimiento y recibir sin frenar del todo',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta, trabajando en tríos. Rotan las tres posiciones cada ataque.',
       criterio_exito: 'anotar tras pase en tres de cada cuatro superioridades',
     },
     tablero: () => [
@@ -437,6 +449,7 @@ export const TANDA_02 = [
       material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'correr el contraataque por carriles y pasar sin frenar',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 90 },
+      organizacion: 'Con 12: un solo grupo en pista entera. Salen de cinco en cinco y el resto espera al fondo; se entra en cuanto la jugada anterior cruza el medio.',
       criterio_exito: 'anotar en tres de cada cuatro superioridades dentro de los seis segundos',
     },
     tablero: () => [
@@ -462,6 +475,7 @@ export const TANDA_02 = [
       material: ['balones'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'mantener la postura defensiva y girar sin perder el equilibrio',
       dosis: { series: 4, cantidad: 5, unidad: 'repeticiones', descanso: 45 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta. En cada uno, dos parejas alrededor de la zona y dos que se turnan para tirar y fallar.',
       criterio_exito: 'el defensor hace contacto antes de ir al balón en cuatro de cada cinco tiros',
     },
     tablero: () => [

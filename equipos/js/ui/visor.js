@@ -261,6 +261,9 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
       dosis
         ? h('div', { class: 'eq-vdosis' }, h('span', { class: 'eq-vdosis-l' }, 'Dosis'), h('strong', null, dosis))
         : null,
+      // Cómo se reparte el grupo: lo primero que se mira al plantear el
+      // bloque, así que va antes que los textos largos.
+      seccionTexto('Con el grupo entero', req.organizacion),
       h('div', { class: 'eq-vejes' }, ...[
         req.densidad ? h('span', { class: `eq-veje dens--${req.densidad}`, title: DENSIDAD_AYUDA[req.densidad] || '' }, `densidad ${req.densidad}`) : null,
         req.oposicion ? h('span', { class: `eq-veje opo--${req.oposicion}`, title: OPOSICION_AYUDA[req.oposicion] || '' }, `oposición ${req.oposicion}`) : null,

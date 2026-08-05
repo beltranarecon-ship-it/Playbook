@@ -37,6 +37,7 @@ export const TANDA_03 = [
       material: ['balones'], densidad: 'media', oposicion: 'real',
       requisito_previo: 'pivotar sobre los dos pies sin levantar el de apoyo',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante de espaldas y defensor. Rotan cada ataque.',
       criterio_exito: 'gira hacia el lado libre en dos de cada tres posesiones, entre o no entre',
     },
     tablero: () => [
@@ -70,6 +71,7 @@ export const TANDA_03 = [
       material: ['balones', 'conos'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'botar protegiendo con el cuerpo sin perder el balón',
       dosis: { series: 4, cantidad: 20, unidad: 'segundos', descanso: 45 },
+      organizacion: 'Con 12: dos cuadrados de conos, uno en cada media pista, seis en cada uno. Tres parejas que se turnan.',
       criterio_exito: 'salir del cuadrado en tres de cada cuatro intentos',
     },
     tablero: () => [
@@ -102,6 +104,7 @@ export const TANDA_03 = [
       material: ['balones'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'salir en bote con un primer paso largo hacia el aro',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos canastas, seis por canasta, tres parejas turnándose. Se cambia atacante y defensor cada ataque.',
       criterio_exito: 'la ventaja acaba en canasta o en tiro cómodo en dos de cada tres ataques',
     },
     tablero: () => [
@@ -135,6 +138,7 @@ export const TANDA_03 = [
       material: ['balones'], densidad: 'media', oposicion: 'real',
       requisito_previo: 'salir en bote sin dar pasos y parar en dos tiempos',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos canastas, seis por canasta, tres parejas turnándose. Se cambia de rol cada ataque.',
       criterio_exito: 'terminar dentro del bote permitido en tres de cada tres, y que el defensor se mueva con la finta al menos la mitad de las veces',
     },
     tablero: () => [
@@ -166,6 +170,7 @@ export const TANDA_03 = [
       material: ['balones'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'recibir en carrera sin que se le escape el balón',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante y defensor. Rotan cada ataque.',
       criterio_exito: 'atacar sin parón en dos de cada tres recepciones',
     },
     tablero: () => [
@@ -203,6 +208,7 @@ export const TANDA_03 = [
       material: [], densidad: 'alta', oposicion: 'pasiva',
       requisito_previo: 'mantenerse agachado con los pies separados sin apoyar las manos',
       dosis: { series: 4, cantidad: 30, unidad: 'segundos', descanso: 30 },
+      organizacion: 'Con 12: seis parejas a la vez, repartidas a lo ancho de la pista y mirándose. Treinta segundos y cambio. No usa canastas.',
       criterio_exito: 'treinta segundos sin cruzar los pies ni una vez, comprobado por la pareja',
     },
     tablero: () => [
@@ -227,6 +233,7 @@ export const TANDA_03 = [
       material: ['balones', 'petos'], densidad: 'media', oposicion: 'semiactiva',
       requisito_previo: 'mantener la postura defensiva desplazándose',
       dosis: { series: 3, cantidad: 6, unidad: 'repeticiones', descanso: 45 },
+      organizacion: 'Con 12: tres grupos de cuatro repartidos por la pista, dos atacantes y dos defensores en cada uno. El entrenador grita para los tres a la vez.',
       criterio_exito: 'poder señalar a par y balón en cinco de cada seis congelaciones',
     },
     tablero: () => [
@@ -258,6 +265,7 @@ export const TANDA_03 = [
       material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'defender al jugador con balón manteniendo la postura',
       dosis: { series: 3, cantidad: 3, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta. Juegan cuatro y dos esperan; se rota cada tres cortes.',
       criterio_exito: 'el cortador no recibe libre en dos de cada tres posesiones',
     },
     tablero: () => [
@@ -289,6 +297,7 @@ export const TANDA_03 = [
       material: ['balones'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'desplazarse en postura defensiva sin cruzar los pies',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 60 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta, en tríos: pasador, atacante y defensor. Rotan cada tres cierres.',
       criterio_exito: 'molestar el tiro sin ser superado en tres de cada cuatro cierres',
     },
     tablero: () => [
@@ -321,6 +330,7 @@ export const TANDA_03 = [
       material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'ayudar y recuperar una vez sin quedarse dentro de la zona',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 75 },
+      organizacion: 'Con 12: dos grupos de seis, uno por canasta. Los seis juegan a la vez, tres atacando y tres defendiendo, y se cambia de rol cada dos jugadas.',
       criterio_exito: 'las dos ayudas llegan a tiempo y los dos ayudantes recuperan a su par en tres de cada cuatro jugadas',
     },
     tablero: () => [
@@ -375,6 +385,7 @@ export const TANDA_03 = [
       material: ['balones'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'resolver el uno contra uno con bote y con tiro',
       dosis: { series: 3, cantidad: 7, unidad: 'repeticiones', descanso: 75 },
+      organizacion: 'Con 12: dos canastas, seis por canasta, tres parejas que se turnan. Cada duelo, una posesión.',
       criterio_exito: 'la mayoría de los ataques van a la zona de más valor sin que nadie lo haya dicho',
     },
     tablero: () => [
@@ -400,6 +411,7 @@ export const TANDA_03 = [
       material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'recibir orientado al aro y pasar en movimiento',
       dosis: { series: 4, cantidad: 4, unidad: 'repeticiones', descanso: 75 },
+      organizacion: 'Con 12: dos partidos de 2c2, uno por canasta, con dos esperando en cada uno que entran cada dos ataques.',
       criterio_exito: 'ninguna posesión se queda parada con el balón en las manos más de dos segundos',
     },
     tablero: () => [
@@ -425,6 +437,7 @@ export const TANDA_03 = [
       material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'pasar y recibir en movimiento con un defensor cerca',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 90 },
+      organizacion: 'Con 12: dos grupos, uno de ocho jugando 4c4 en una canasta y otro de cuatro jugando 2c2 en la otra. Se cambian a la mitad del tiempo.',
       criterio_exito: 'ninguna posesión termina por no encontrar a quién pasar',
     },
     tablero: () => [
@@ -452,6 +465,7 @@ export const TANDA_03 = [
       material: ['balones', 'petos'], densidad: 'alta', oposicion: 'real',
       requisito_previo: 'defender individualmente a un par y correr el contraataque por carriles',
       dosis: { series: 3, cantidad: 4, unidad: 'repeticiones', descanso: 120 },
+      organizacion: 'Con 12: un solo grupo en pista entera. Salen de cinco en cinco y el resto espera al fondo por orden.',
       criterio_exito: 'la defensa en inferioridad evita la canasta fácil en la mitad de las jugadas',
     },
     tablero: () => [

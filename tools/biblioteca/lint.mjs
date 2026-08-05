@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 import {
   TIPOS, RAMAS, NIVELES, PISTAS, BLOQUE_KEYS, DENSIDAD_KEYS, OPOSICION,
   NIVELES_EXIGENCIA, REQUISITOS_OBLIGATORIOS, REQUISITOS_CONDICIONALES,
-  DOSIS_UNIDADES, tagsDesconocidos,
+  DOSIS_UNIDADES, ORGANIZACION_REFERENCIA, tagsDesconocidos,
 } from './vocabulario.mjs';
 import { huecos, revisarInvariantes, validarMapa, MAPA, OBJETIVO_TOTAL } from './mapa.mjs';
 import { aroExacto, ANCLAS } from '../../taller/js/canvas/anclas.js';
@@ -139,6 +139,21 @@ export function revisaFicha(f) {
     if (r.oposicion && !OPOSICION.includes(r.oposicion)) E(`oposicion "${r.oposicion}" fuera de la escala de D19`);
     if (r.jugadores_min > r.jugadores_max) E(`jugadores_min (${r.jugadores_min}) mayor que jugadores_max (${r.jugadores_max})`);
     if (r.canastas > 2) E(`canastas ${r.canastas}: el entrenador dispone de 2`);
+
+    /* La organización tiene que ser una RESPUESTA, no una intención.
+       El campo existe para que el entrenador sepa qué hacer con doce
+       niños delante, así que si no dice el número de referencia y algún
+       reparto concreto no sirve: "se puede adaptar al grupo" ocupa una
+       línea y deja el problema donde estaba. */
+    if (typeof r.organizacion === 'string' && r.organizacion) {
+      const o = r.organizacion;
+      if (!new RegExp(`\\b${ORGANIZACION_REFERENCIA}\\b`).test(o)) {
+        E(`organizacion no dice qué hacer con ${ORGANIZACION_REFERENCIA}: "${o.slice(0, 60)}…"`);
+      }
+      if (!/\b(grupo|grupos|pareja|parejas|tr[íi]o|tr[íi]os|fila|filas|estaci[óo]n|estaciones|equipo|equipos|reino|reinos|cuadrado|cuadrados|rondo|rondos|pasillo|pasillos|recorrido|recorridos|tri[áa]ngulo|tri[áa]ngulos|t[úu]nel|t[úu]neles|c[íi]rculo|a la vez|cada uno)\b/i.test(o)) {
+        A('organizacion no concreta el reparto (grupos, parejas, filas, estaciones…)');
+      }
+    }
 
     /* D9 · el "desde cuándo" es un requisito, jamás una edad. */
     if (typeof r.requisito_previo === 'string' && HUELE_A_EDAD.test(r.requisito_previo)) {

@@ -42,6 +42,7 @@ export const FICHA_BUENA = {
     oposicion: 'nula',
     requisito_previo: 'coordinar dos apoyos con el balón en las manos sin dar pasos',
     dosis: { series: 3, cantidad: 6, unidad: 'repeticiones', descanso: 30 },
+    organizacion: 'Con 12: dos estaciones, una por canasta, seis por estación en dos filas de tres. Dos balones por estación para que no pare.',
     criterio_exito: 'ocho de cada diez entradas terminan con el balón tocando tablero antes que el aro',
     aplicacion: '2c2 en media pista con entrada obligatoria tras pase',
   },
@@ -120,6 +121,22 @@ const CASOS = [
   { que: 'D1 · analítico sin aplicación declarada', mut: (f) => { f.tags.push('analítico'); delete f.requisitos.aplicacion; }, espera: /aplicacion es obligatorio/ },
   { que: 'D4 · densidad baja sin justificar', mut: (f) => { f.requisitos.densidad = 'baja'; }, espera: /justificacion_densidad/ },
   { que: 'D4 · densidad baja justificada pasa', mut: (f) => { f.requisitos.densidad = 'baja'; f.requisitos.justificacion_densidad = 'el tiro libre exige esperar el turno'; }, espera: null },
+
+  // ---- organización con el grupo entero (Prioridad 5 del informe) ----
+  { que: 'ORGANIZACIÓN · falta el campo', mut: (f) => { delete f.requisitos.organizacion; }, espera: /requisitos\.organizacion vac[íi]o/ },
+  {
+    que: 'ORGANIZACIÓN · no dice qué hacer con el grupo de referencia',
+    // El campo existe justo para eso: una frase bienintencionada que no
+    // da un número deja el problema donde estaba.
+    mut: (f) => { f.requisitos.organizacion = 'Se puede adaptar al número de jugadores que haya ese día.'; },
+    espera: /no dice qu[ée] hacer con 12/,
+  },
+  {
+    que: 'ORGANIZACIÓN · dice el número pero no el reparto: aviso',
+    mut: (f) => { f.requisitos.organizacion = 'Con 12 sale bien.'; },
+    espera: null,
+    esperaAviso: /no concreta el reparto/,
+  },
 
   // ---- capa 2 · geometría ----
   { que: 'jugador fuera de la pista', mut: (f) => { f.animacion.jugadores[0].posicion_inicial = [1.4, 0.3]; }, espera: /fuera de la pista/ },
