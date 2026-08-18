@@ -475,7 +475,7 @@ Objetivo: que las animaciones salgan siempre correctas.
 | 2.10 ✅ | Desplegable «Manualmente» y nodos de flecha en la dirección de la flecha | 2.9 | Se corrige una sola acción de una sola fase sin tocar nada más |
 | 2.11 ✅ | Retirar la función de IA, el lector local y la clave | 2.9 | La app no hace ninguna llamada de pago |
 | 2.12 ✅ | Paso 3 con la ficha completa del molde (sin dosis) + puente al chat + linter | 2.9 | Un ejercicio nuevo pasa el linter de la biblioteca |
-| 2.13 | Editar y duplicar con el flujo de cuatro pasos; «X-variante de …» | 2.12 | Editar abre el paso 0 con todo cargado |
+| 2.13 ✅ | Editar y duplicar con el flujo de cuatro pasos; «X-variante de …» | 2.12 | Editar abre el paso 0 con todo cargado |
 | 2.14 | Vídeo por acción: YouTube con tramo y pausa; TikTok como enlace | 2.5 | En el proyector la animación se pausa, se ve el tramo y continúa sola |
 | 2.15 | Pausa en cualquier momento, en ficha y proyector | — | Se pausa a mitad de una fase |
 
@@ -594,6 +594,55 @@ reservados en el cliente **y** en un trigger: redefinir «tira» cambiaría el
 significado de las 204 fichas sin tocar ninguna.
 
 **Pendiente del usuario**: aplicar la migración `020`.
+
+### Estado de 2.13 (hecha)
+
+Editar abría un **editor a pantalla completa aparte** que solo sabía retocar flechas. Para
+cambiar el nombre, la dificultad o media ficha había que ir a otro sitio, y el paso 2 —el
+que sabe describir la jugada— no estaba. Ahora los tres caminos entran por el **mismo
+asistente** (§6): crear, corregir y hacer una variante.
+
+**Editar abre por el paso 0 con todo cargado**, que es el criterio de aceptación:
+comprobado en pantalla —título «Editar ejercicio», botón «Guardar cambios», y los cuatro
+pasos con el nombre, el tipo, el bloque, la pista, el tablero, **las líneas del paso 2** y
+la ficha entera del molde en su sitio.
+
+**Lo que se guardó pensando en este momento.** Las líneas de las fases y las posiciones
+marcadas ya viajaban dentro de la animación (2.9, 2.12); ahora también **el tablero**
+(`_elementos`). Se podía reconstruir de la animación, pero no del todo, y el fallo habría
+sido mudo: la cola dibujada de una fila viene **descontada de los que salieron a
+trabajar**, así que cada apertura y guardado le habría quitado un jugador a la fila hasta
+vaciarla. Para las 204 fichas de la biblioteca, que son anteriores y no lo guardaron, se
+reconstruye devolviendo esos jugadores a su cola — con su prueba en el banco.
+
+**Duplicar ya no crea a ciegas.** Creaba una copia llamada «Copia de X» y te dejaba
+delante de un ejercicio ya existente que casi siempre había que corregir. Ahora abre el
+asistente con el original cargado, nombre de variante y **sin id**: se cambia lo que se
+quiera y se guarda una vez, cuando ya es lo que se quería.
+
+El nombre es **«X-variante de …»** con el número delante y no detrás, por algo práctico:
+en una lista alfabética las variantes no se separan del ejercicio —siguen empezando por su
+nombre— pero sí se distinguen entre ellas. Y duplicar una variante da otra **del
+original**: si no, a la tercera vuelta sale «1-variante de 1-variante de…», que no lo lee
+nadie.
+
+**No puede haber dos con el mismo nombre** (§6). Se compara sin distinguir mayúsculas ni
+espacios de sobra —«Bote en cuadrantes» y «bote en  cuadrantes» son el mismo ejercicio
+para quien los lea en una lista— y nunca contra uno mismo, para que guardar sin cambiar el
+nombre siga funcionando. Si no se puede consultar la lista (sin sesión, sin red) no se
+bloquea: dejar de poder guardar por no haber podido comprobar un nombre sería peor que el
+nombre repetido.
+
+**Lo que se ha retirado**: `views/editor.js` (163 líneas) y `css/editor.css` (43), que se
+quedaron sin entrada; y `duplicarEjercicio`, sin llamadores. El botón «Regenerar» ya era
+«Editar» desde antes (§7).
+
+**Un hallazgo del harness que conviene contar.** Al montar la comprobación escribí el
+ejercicio de prueba con `bota hasta el aro` para lo que la ficha llama «entradas». El
+listón del paso 3 lo cazó en vivo: *«la ficha promete una finalización y el tiro sale a 5,6
+m del aro; usa hacia 'aro'»*. Es **exactamente** el defecto que costó trece fichas mal
+dibujadas, detectado ahora al abrir el ejercicio en vez de al revisar la biblioteca meses
+después. El linter del Tramo 2.12 funcionando sobre un caso que no era de prueba.
 
 ### Estado de 2.12 (hecha)
 

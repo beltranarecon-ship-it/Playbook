@@ -5,7 +5,6 @@
 import { Router } from './router.js';
 import * as wizard from './views/wizard.js';
 import * as detalle from './views/detalle.js';
-import * as editor from './views/editor.js';
 import { getSession } from './supabase/auth.js';
 
 const app = document.getElementById('app');
@@ -21,8 +20,13 @@ function show(mod, params) {
 export const router = new Router();
 
 router
-  .on('/ejercicios/nuevo', () => show(wizard, { mode: 'nuevo' }))
-  .on('/ejercicios/:id/editar', (p) => show(editor, p))
+  /* Los tres caminos entran por el MISMO asistente (Tramo 2.13): crear,
+     corregir y hacer una variante. El editor a pantalla completa que
+     vivía en /editar se ha retirado — solo sabía retocar flechas, y eso
+     lo hace ahora el paso 2 con «Manualmente». */
+  .on('/ejercicios/nuevo', () => show(wizard, { modo: 'nuevo' }))
+  .on('/ejercicios/:id/editar', (p) => show(wizard, { ...p, modo: 'editar' }))
+  .on('/ejercicios/:id/duplicar', (p) => show(wizard, { ...p, modo: 'duplicar' }))
   .on('/ejercicios/:id', (p) => show(detalle, p))
   .otherwise(() => router.navigate('/ejercicios/nuevo', { replace: true }));
 

@@ -1,7 +1,19 @@
 /* ============================================================
-   wizard.js — vista de creación de ejercicio (§2.1, §3, §13).
+   wizard.js — los CUATRO PASOS, para crear y para corregir.
    Orquesta los 4 pasos sobre un Stage persistente, autoguarda el
    borrador en localStorage, ofrece recuperarlo, y guarda en Supabase.
+
+   ── TRES MANERAS DE ENTRAR (Tramo 2.13) ─────────────────────
+     nuevo      un ejercicio en blanco
+     editar     uno guardado, con TODO cargado — abre por el paso 0
+     duplicar   uno guardado como base, con nombre de variante y sin
+                id, así que guardar crea otro en vez de pisar el suyo
+
+   Antes, editar abría un editor a pantalla completa aparte que solo
+   sabía retocar flechas: para cambiar el nombre o media ficha había
+   que ir a otro sitio, y el paso 2 —el que sabe describir la jugada—
+   no estaba. Un solo camino para las tres cosas (§6): lo que se
+   aprende creando vale corrigiendo.
    ============================================================ */
 
 import { h, mount, icon } from '../ui/dom.js';
@@ -9,9 +21,10 @@ import { header, savebar, stepNav } from '../ui/chrome.js';
 import { Stage } from '../canvas/stage.js';
 import { toast, confirmToast } from '../ui/toast.js';
 import { nuevoDraft, puedeGuardar } from '../wizard/draft.js';
+import { borradorDeEjercicio, nombreRepetido } from '../wizard/cargar.js';
 import { guardarBorrador, leerBorrador, borrarBorrador, borradorConContenido, fechaBorrador } from '../wizard/borrador.js';
 import { getUser } from '../supabase/auth.js';
-import { guardarEjercicio } from '../supabase/ejercicios.js';
+import { guardarEjercicio, actualizarEjercicio, getEjercicio, nombresDeEjercicios } from '../supabase/ejercicios.js';
 import { paso0 } from '../wizard/paso0.js';
 import { paso1 } from '../wizard/paso1.js';
 import { paso2 } from '../wizard/paso2.js';
@@ -25,12 +38,15 @@ const STEPS = [
 ];
 const STEP_FNS = [paso0, paso1, paso2, paso3];
 
-export function render(root) {
+export function render(root, { id = null, modo = 'nuevo' } = {}) {
   const draft = nuevoDraft();
   const stage = new Stage({ pista: draft.tipo_pista });
 
   const state = { step: 0 };
   let current = null;
+  // nombres del resto de ejercicios: para el nombre de la variante y
+  // para no dejar dos iguales (§6). Sin red se queda vacío y no bloquea.
+  let otros = [];
 
   const navHost = h('div');
   const stepHost = h('div', { class: 'wizard-step' });
@@ -85,6 +101,15 @@ export function render(root) {
 
   async function guardar() {
     if (!puedeGuardar(draft)) { toast('Faltan el nombre y el tipo del ejercicio.', { type: 'warn' }); goTo(0); return; }
+    /* Dos ejercicios con el mismo nombre son dos ejercicios que nadie
+       distingue en la lista del planificador (§6). Se comprueba contra
+       los demás, nunca contra uno mismo: guardar sin cambiar el nombre
+       tiene que seguir funcionando. */
+    if (nombreRepetido(draft.nombre, otros, draft.id)) {
+      toast(`Ya hay un ejercicio llamado «${draft.nombre.trim()}». Cámbiale el nombre.`, { type: 'warn', timeout: 6000 });
+      goTo(0);
+      return;
+    }
     if (!draft.animacion) {
       const ok = await confirmToast('Estás guardando sin animación. ¿Continuar?');
       if (!ok) return;
@@ -94,10 +119,13 @@ export function render(root) {
     try {
       const user = await getUser();
       if (!user) { toast('Inicia sesión en Playbook CBP para guardar en la nube.', { type: 'warn', timeout: 5000 }); return; }
-      const { id } = await guardarEjercicio(draft, stage.board.getElementos());
+      // con id, se corrige el que ya existe; sin él, se crea uno nuevo
+      const { id: guardadoId } = draft.id
+        ? await actualizarEjercicio(draft.id, draft, stage.board.getElementos())
+        : await guardarEjercicio(draft, stage.board.getElementos());
       borrarBorrador();
-      toast('Ejercicio guardado.', { type: 'ok' });
-      history.pushState({}, '', `/ejercicios/${id}`);
+      toast(draft.id ? 'Cambios guardados.' : 'Ejercicio guardado.', { type: 'ok' });
+      history.pushState({}, '', `/ejercicios/${guardadoId}`);
       window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (e) {
       const msg = e.message === 'SIN_SESION' ? 'Inicia sesión para guardar.' : (e.message || 'Error desconocido');
@@ -107,11 +135,23 @@ export function render(root) {
     }
   }
 
-  const bar = savebar({ onSave: guardar, hint: 'Tu progreso se autoguarda como borrador.' });
+  /* El título dice en qué se está: crear, corregir o hacer una
+     variante. Se guarda el nodo porque la carga llega después. */
+  const TITULOS = { nuevo: 'Nuevo ejercicio', editar: 'Editar ejercicio', duplicar: 'Variante de un ejercicio' };
+  const cabecera = header({ title: TITULOS[modo] || TITULOS.nuevo, backHref: '/app.html' });
+  const titulo = cabecera.querySelector('.header-title') || h('span');
+
+  const bar = savebar({
+    onSave: guardar,
+    saveLabel: modo === 'editar' ? 'Guardar cambios' : 'Guardar',
+    hint: modo === 'editar'
+      ? 'Los cambios sustituyen al ejercicio; el original no se conserva.'
+      : 'Tu progreso se autoguarda como borrador.',
+  });
   const btnGuardar = bar.querySelector('#btn-guardar');
 
   const view = h('div', { class: 'taller taller--wizard' },
-    header({ title: 'Nuevo ejercicio', backHref: '/app.html' }),
+    cabecera,
     h('div', { class: 'taller-body' },
       h('div', { class: 'wizard-grid' },
         h('section', { class: 'wizard-form' }, navHost, stepHost, footHost),
@@ -124,16 +164,47 @@ export function render(root) {
   paint();
   root.append(view);
 
-  // ofrecer recuperar borrador (§13)
-  const b = leerBorrador();
-  if (borradorConContenido(b)) {
-    toast(`Tienes un borrador sin guardar del ${fechaBorrador(b)}. ¿Retomar?`, {
-      type: 'info', timeout: 0,
-      actions: [
-        { label: 'Retomar', onClick: () => aplicarBorrador(b) },
-        { label: 'Descartar', onClick: () => borrarBorrador() },
-      ],
-    });
+  /* ---- entrar con un ejercicio cargado (Tramo 2.13) --------------
+     Se hace en segundo plano y se repinta al llegar: el asistente ya
+     está en pantalla, así que abrir para editar no deja al entrenador
+     mirando un hueco en blanco mientras viaja la consulta. */
+  const cargando = (id && modo !== 'nuevo') ? (async () => {
+    try {
+      const fila = await getEjercicio(id);
+      otros = await nombresDeEjercicios().catch(() => []);
+      const { draft: cargado, elementos } = borradorDeEjercicio(fila, {
+        duplicar: modo === 'duplicar',
+        nombres: otros.map((o) => o.name),
+      });
+      Object.assign(draft, cargado);
+      stage.setPista(draft.tipo_pista);
+      stage.board.setElementos(elementos);
+      paint();
+      if (draft.animacion) stage.showPreview(draft.animacion);
+      titulo.textContent = modo === 'duplicar' ? 'Variante de un ejercicio' : 'Editar ejercicio';
+      toast(modo === 'duplicar'
+        ? `Variante de «${fila.name}». Cambia lo que quieras: se guardará como un ejercicio nuevo.`
+        : 'Ejercicio cargado en los cuatro pasos.', { type: 'ok', timeout: 5000 });
+    } catch (e) {
+      toast('No se pudo cargar el ejercicio: ' + (e.message || 'error'), { type: 'error', timeout: 6000 });
+    }
+  })() : (async () => { otros = await nombresDeEjercicios().catch(() => []); })();
+
+  /* El borrador sin guardar solo se ofrece al crear: al abrir un
+     ejercicio existente, lo que hay que cargar es ESE ejercicio, y
+     preguntar por un borrador de otra cosa a media pantalla es la
+     manera más rápida de perder lo que se acaba de abrir. */
+  if (modo === 'nuevo') {
+    const b = leerBorrador();
+    if (borradorConContenido(b)) {
+      toast(`Tienes un borrador sin guardar del ${fechaBorrador(b)}. ¿Retomar?`, {
+        type: 'info', timeout: 0,
+        actions: [
+          { label: 'Retomar', onClick: () => aplicarBorrador(b) },
+          { label: 'Descartar', onClick: () => borrarBorrador() },
+        ],
+      });
+    }
   }
 
   if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') { window.__stage = stage; window.__draft = draft; window.__wizard = { guardar, aplicarBorrador }; }

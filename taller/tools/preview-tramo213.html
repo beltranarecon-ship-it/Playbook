@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harness manual · Tramo 2.13 (editar y duplicar) — solo desarrollo</title>
+  <link rel="stylesheet" href="/taller/css/tokens.css">
+  <link rel="stylesheet" href="/taller/css/base.css">
+  <link rel="stylesheet" href="/taller/css/canvas.css">
+  <link rel="stylesheet" href="/taller/css/anim.css">
+  <link rel="stylesheet" href="/taller/css/wizard.css">
+  <style> body { font-family: 'Hanken Grotesk', system-ui, sans-serif; margin: 0; background: #DFE8F0; } </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    /* Harness manual del Tramo 2.13: monta el asistente REAL en modo
+       «editar» y en modo «duplicar» sobre un ejercicio de mentira, sin
+       sesión ni red. `getEjercicio` acepta window.__demoEjercicio en
+       localhost, así que el fixture entra por el mismo camino que un
+       ejercicio de verdad. */
+    import { compilarAnimacion } from '/taller/js/ia/compilador.js';
+    import * as wizard from '/taller/js/views/wizard.js';
+
+    const TABLERO = [
+      { id: 'j1', kind: 'jugador', equipo: 'B', label: '1', x: 0.42, y: 0.30, dorsal: null, nombre: null },
+      { id: 'b1', kind: 'balon', x: 0.84, y: 0.30, portador_id: null },
+      { id: 'cf', kind: 'cono', x: 0.86, y: 0.30, funcion: 'fila',
+        fila_config: { n_jugadores: 6, direccion_grados: 180, equipo: 'A', rondas: true, cadencia_s: null, rol: 'atacante' } },
+    ];
+    const anim = compilarAnimacion({
+      canasta: 'norte',
+      fases: [
+        { eventos: [{ jugador: 'fila1', accion: 'entra', args: {} }] },
+        { eventos: [{ jugador: 'fila1', accion: 'tira', args: {} }] },
+        { eventos: [{ jugador: 'fila1', accion: 'recoge', args: {} }] },
+        { eventos: [{ jugador: 'fila1', accion: 'vuelve_a_fila', args: {} }] },
+      ],
+    }, TABLERO, 'media');
+    anim._fases_texto = [
+      { texto: 'la Fila 1 entra a canasta', duracion_ms: null, pausa_post_ms: null },
+      { texto: 'tira', duracion_ms: null, pausa_post_ms: null },
+      { texto: 'recoge', duracion_ms: null, pausa_post_ms: null },
+      { texto: 'vuelve a la fila', duracion_ms: null, pausa_post_ms: null },
+    ];
+    anim._elementos = TABLERO.map((e) => ({ ...e }));
+
+    window.__demoEjercicio = {
+      id: 'demo', name: 'Entradas desde la fila', type: 'Bote', category: 'entrada',
+      tipo_pista: 'media', categoria_rama: 'Minibasket', categoria_nivel: [],
+      difficulty: 4, intensidad: 3, duration_min: 8, duration_max: 12,
+      description: 'Entradas por parejas desde la fila, alternando lado.',
+      objetivos: 'Fijar el doble ritmo por los dos lados.',
+      descripcion_texto: 'Una fila en el 45. Sale el primero botando…',
+      notas: 'Corregir el último apoyo, no la mano.',
+      tags: ['entrada', 'doble ritmo'], autor_nombre: 'Beltrán',
+      requisitos: {
+        jugadores_min: 4, jugadores_max: 12, canastas: 1, estaciones: 2, simultaneo: false,
+        material: ['balones'], densidad: 'media', oposicion: 'nula', presion: 'tiempo',
+        requisito_previo: 'botar en carrera sin mirar el balón',
+        organizacion: 'Con 12: dos estaciones, una por canasta, seis por estación.',
+        criterio_exito: 'entrar sin apoyar dos veces la misma mano',
+        niveles: { base: 'sin defensor', intermedio: 'con un cono', avanzado: 'con un defensor' },
+      },
+      animacion: anim,
+    };
+
+    const modo = new URLSearchParams(location.search).get('modo') || 'editar';
+    const vista = wizard.render(document.getElementById('app'), { id: 'demo', modo });
+    window.__vista = vista;
+  </script>
+</body>
+</html>

@@ -175,6 +175,12 @@ export function paso2(ctx) {
        donde ya vive `_intent` por la misma razón. */
     anim._fases_texto = draft.fases_texto.map((f) => ({ ...f }));
     if (Object.keys(draft.posiciones).length) anim._posiciones = { ...draft.posiciones };
+    /* Y el TABLERO (Tramo 2.13). Se puede reconstruir de la animación,
+       pero no del todo: la cola dibujada de una fila viene descontada de
+       los que salieron a trabajar, y una zona invisible no deja rastro.
+       Guardarlo cuesta nada y hace que reabrir un ejercicio devuelva
+       exactamente lo que había, no una aproximación. */
+    anim._elementos = elementos.map((e) => ({ ...e }));
     draft.animacion = anim;
 
     if (animar) { stage.showAnimation(anim); desmontarSenalar(); }

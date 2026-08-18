@@ -78,11 +78,50 @@ export async function getEjercicio(id) {
   return data;
 }
 
-export async function actualizarEjercicio(id, campos) {
+/**
+ * Corrige un ejercicio que ya existe (Tramo 2.13).
+ *
+ * Acepta las dos formas por las que le llaman:
+ *   · un BORRADOR de los cuatro pasos (+ el tablero), que se serializa
+ *     con las mismas reglas que el alta — si divergieran, editar
+ *     dejaría fichas a medias;
+ *   · un objeto de campos suelto, como hacía el editor de flechas.
+ */
+export async function actualizarEjercicio(id, draftOCampos, elementos = null) {
+  let campos = draftOCampos;
+  if (elementos !== null || draftOCampos?.nombre !== undefined) {
+    const r = aRegistro(draftOCampos);
+    const animacion = r.animacion || animacionDesdeBoard(elementos || [], r.tipo_pista);
+    campos = {
+      name: r.nombre, type: r.tipo, category: r.category,
+      difficulty: r.dificultad_valor, intensidad: r.intensidad,
+      duration_min: r.duracion_min, duration_max: r.duracion_max,
+      description: r.description || null, tags: r.tags,
+      animacion, tipo_pista: r.tipo_pista,
+      categoria_rama: r.categoria_rama, categoria_nivel: r.categoria_nivel,
+      dificultad_label: r.dificultad_label, autor_nombre: r.autor_nombre || null,
+      objetivos: r.objetivos || null, notas: r.notas || null,
+      descripcion_texto: r.descripcion_texto || null, requisitos: r.requisitos,
+    };
+  }
   if (campos.animacion) campos = await conMiniatura({ ...campos }, campos.animacion);
-  const { data, error } = await supabase.from('exercises').update(campos).eq('id', id).select().single();
+  const { data, error } = await supabase.from('exercises').update(campos).eq('id', id).select('id').single();
   if (error) throw error;
   return data;
+}
+
+/**
+ * Nombre e id de todos los ejercicios, para no dejar dos iguales y para
+ * numerar las variantes (§6). Nunca lanza: sin sesión o sin red
+ * devuelve [] y el asistente sigue — dejar de poder guardar porque no
+ * se ha podido comprobar un nombre sería peor que el nombre repetido.
+ */
+export async function nombresDeEjercicios() {
+  try {
+    const { data, error } = await supabase.from('exercises').select('id,name');
+    if (error) return [];
+    return data || [];
+  } catch { return []; }
 }
 
 /** Favorito (§14): toggle del campo favorito. */
@@ -90,19 +129,13 @@ export async function setFavorito(id, favorito) {
   return actualizarEjercicio(id, { favorito });
 }
 
-/** Duplicar (§14): copia con nombre "Copia de …" y nuevo id. */
-export async function duplicarEjercicio(ej) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('SIN_SESION');
-  const row = { ...ej };
-  delete row.id; delete row.created_at; delete row.updated_at;
-  row.name = `Copia de ${ej.name}`;
-  row.created_by = user.id;
-  row.favorito = false;
-  const { data, error } = await supabase.from('exercises').insert(row).select('id').single();
-  if (error) throw error;
-  return data;
-}
+/*
+   `duplicarEjercicio` se ha retirado (Tramo 2.13). Creaba una copia
+   directa llamada «Copia de X» y te dejaba delante de un ejercicio ya
+   existente que casi siempre había que corregir. Ahora duplicar abre
+   el asistente con el original cargado y nombre de variante: se cambia
+   lo que se quiera y se guarda una vez, cuando ya es lo que se quería.
+*/
 
 /** Eliminar (§14): los coaches archivan (RLS de DELETE es solo admin). */
 export async function eliminarEjercicio(id) {

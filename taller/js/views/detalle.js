@@ -10,7 +10,7 @@ import { Stage } from '../canvas/stage.js';
 import { abrirProyector } from '../canvas/proyector.js';
 import { toast } from '../ui/toast.js';
 import { confirmModal } from '../ui/modal.js';
-import { getEjercicio, duplicarEjercicio, setFavorito, eliminarEjercicio } from '../supabase/ejercicios.js';
+import { getEjercicio, setFavorito, eliminarEjercicio } from '../supabase/ejercicios.js';
 import { dificultadDe } from '../config.js';
 import {
   PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA, PRESION_AYUDA,
@@ -76,7 +76,10 @@ export function render(root, { id } = {}) {
       h('a', { class: 'btn btn--primary has-arrow', href: `/ejercicios/${ej.id}/editar`, 'data-link': true }, 'Editar ', icon('M9 18l6-6-6-6', { size: 16 })),
       h('button', { class: 'btn btn--secondary', type: 'button', onClick: () => abrir(anim, ej) }, 'Proyector'),
       favBtn,
-      h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => duplicar(ej) }, 'Duplicar'),
+      /* Duplicar ya no crea una copia a ciegas: abre el asistente con
+         el ejercicio cargado y nombre de variante, para poder cambiar
+         lo que se quiera ANTES de que exista (§6). */
+      h('a', { class: 'btn btn--ghost', href: `/ejercicios/${ej.id}/duplicar`, 'data-link': true }, 'Duplicar'),
       h('button', { class: 'btn btn--ghost act-danger', type: 'button', onClick: () => borrar(ej) }, 'Eliminar'),
     );
   }
@@ -85,10 +88,7 @@ export function render(root, { id } = {}) {
     proj = abrirProyector(anim, { nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min, categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos });
   }
 
-  async function duplicar(ej) {
-    try { const { id: nid } = await duplicarEjercicio(ej); toast('Ejercicio duplicado.', { type: 'ok' }); nav(`/ejercicios/${nid}`); }
-    catch (e) { toast('No se pudo duplicar: ' + e.message, { type: 'error' }); }
-  }
+
 
   async function borrar(ej) {
     const ok = await confirmModal({ title: 'Eliminar ejercicio', message: '¿Eliminar este ejercicio? Esta acción no se puede deshacer.' });
