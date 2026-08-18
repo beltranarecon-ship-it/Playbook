@@ -13,7 +13,8 @@
    ============================================================ */
 
 import { supabase } from './client.js';
-import { fusionarCatalogo, validarAccion, CATALOGO_SISTEMA } from '../ia/acciones.js';
+import { fusionarCatalogo, validarAccion, conVideos, CATALOGO_SISTEMA } from '../ia/acciones.js';
+import { cargarVideos } from './videos.js';
 
 const COLS = 'id, slug, nombre, familia, parametros, pide, sinonimos, simbolo, descripcion, video, created_by';
 
@@ -34,6 +35,24 @@ export async function cargarCatalogo() {
   } catch {
     return { acciones: [...CATALOGO_SISTEMA], descartadas: [] };
   }
+}
+
+/**
+ * El catálogo con los vídeos de referencia ya puestos (Tramo 2.14).
+ *
+ * Es lo que necesita quien va a ENSEÑAR un ejercicio —la ficha, el
+ * proyector, el paso 2—, y va en una sola llamada porque las dos
+ * consultas son independientes y esperar una detrás de otra retrasaría
+ * la pantalla por nada. Ninguna de las dos lanza: sin red se abre con
+ * el vocabulario del sistema y sin vídeos, que es exactamente como
+ * funcionaba antes (§11).
+ */
+export async function cargarCatalogoConVideos() {
+  const [cat, videos] = await Promise.all([
+    cargarCatalogo(),
+    cargarVideos().catch(() => ({})),
+  ]);
+  return { ...cat, acciones: conVideos(cat.acciones, videos), videos };
 }
 
 /**

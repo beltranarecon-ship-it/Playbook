@@ -345,3 +345,20 @@
 }
 .liston__lista--error { color: #92400E; }
 .liston__lista--error li::marker { color: var(--color-warn); }
+
+/* ============================================================
+   Vídeos de las acciones (Tramo 2.14)
+   ============================================================ */
+.videos-lista { display: grid; gap: var(--sp-2); }
+.videos-fila {
+  padding: var(--sp-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  background: var(--color-surface);
+}
+.videos-cab { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.videos-cab .row { margin-left: auto; gap: var(--sp-2); }
+.videos-tiene { color: var(--color-accent); font-weight: 600; font-size: var(--fs-300); }
+.videos-form { display: grid; gap: var(--sp-2); margin-top: var(--sp-3); }
+.videos-aviso:empty { display: none; }
+.videos-aviso { color: var(--color-danger); font-size: var(--fs-300); }

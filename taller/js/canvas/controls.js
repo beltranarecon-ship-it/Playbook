@@ -21,7 +21,14 @@ function svg(d, { fill = 'currentColor', stroke = 'none', w = 2 } = {}) {
 }
 
 export function controls(engine) {
+  /* Arrastrar la barra con la animación en marcha era pelearse con el
+     reloj: se soltaba el dedo en el fotograma que se quería enseñar y
+     ese fotograma ya se había ido. Ahora arrastrar SOSTIENE la
+     animación —lo que se pidió como «pausar y arrastrar»— y al soltar
+     vuelve a como estaba: si iba, sigue; si estaba en pausa, se queda.
+     (Tramo 2.15.) */
   let scrubbing = false;
+  let reanudar = false;
 
   const btn = (cls, title, node, on) => h('button', { class: 'ac-btn ' + cls, type: 'button', title, 'aria-label': title, onClick: on }, node);
 
@@ -41,8 +48,11 @@ export function controls(engine) {
   const phase = h('span', { class: 'ac-phase mono' }, 'Fase 1 / 1');
   const progress = h('input', {
     class: 'ac-progress', type: 'range', min: 0, max: 1000, value: 0, step: 1, 'aria-label': 'Progreso de la animación',
-    onInput: (e) => { scrubbing = true; engine.seek(+e.target.value / 1000); },
-    onChange: () => { scrubbing = false; },
+    onInput: (e) => {
+      if (!scrubbing) { scrubbing = true; reanudar = engine.playing; if (reanudar) engine.pause(); }
+      engine.seek(+e.target.value / 1000);
+    },
+    onChange: () => { scrubbing = false; if (reanudar) { reanudar = false; engine.play(); } },
   });
 
   const setPlayIcon = (playing) => { playBtn.replaceChildren(svg(playing ? ICON.pause : ICON.play)); playBtn.title = playing ? 'Pausar' : 'Reproducir'; };

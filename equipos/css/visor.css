@@ -386,3 +386,64 @@
 @media (prefers-reduced-motion: reduce) {
   .eq-vskel i { animation: none; }
 }
+
+/* ============================================================
+   Vídeo de la acción (Tramo 2.14) y rótulo de pausa (2.15)
+
+   Copia hermana de taller/css/detalle.css, como el resto del bloque
+   del proyector: los dos sistemas de diseño no comparten variables.
+   ============================================================ */
+.proy-videos {
+  display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;
+  transition: opacity var(--t-slow);
+}
+.proy-video-chip {
+  padding: 3px 12px; border-radius: 999px;
+  font-size: 0.8rem; font-weight: 700;
+  color: rgba(255,255,255,0.88); background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.proy-video-chip:hover { background: rgba(255,255,255,0.2); color: var(--white); }
+.proyector.is-idle .proy-videos { opacity: 0; }
+.proyector.sin-videos .proy-videos { opacity: 0.45; }
+
+/* Desde el fondo de la pista, un icono de 20 px no dice si está parada
+   o si es un momento en el que nadie se mueve. Esto sí. */
+.proy-pausa {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  padding: 0.5rem 1.75rem;
+  font-family: var(--font-display); font-weight: 800;
+  text-transform: uppercase; font-size: 1.5rem; letter-spacing: 0.08em;
+  color: var(--white); background: rgba(0,0,0,0.55);
+  border: 2px solid rgba(255,255,255,0.35); border-radius: 999px;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--t-base);
+}
+.proyector.is-pausado .proy-pausa { opacity: 1; }
+
+/* La capa del vídeo. Cuelga del proyector (no del body) para que se vea
+   por encima de la pantalla completa. */
+.video-capa {
+  position: fixed; inset: 0; z-index: 310;   /* el proyector va a 300 */
+  display: grid; place-items: center; padding: 1rem;
+  background: rgba(0,0,0,0.86);
+}
+.video-caja { width: min(1100px, 92vw); display: grid; gap: 0.75rem; }
+.video-cab { display: flex; align-items: center; gap: 1rem; justify-content: space-between; }
+.video-tit { display: grid; gap: 2px; color: var(--white); }
+.video-tit strong {
+  font-family: var(--font-display); font-weight: 800;
+  text-transform: uppercase; font-size: 1.5rem; line-height: 1;
+}
+.video-tit small { color: rgba(255,255,255,0.55); font-size: 0.8rem; }
+.video-frame {
+  width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: var(--radius);
+  background: #000; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.video-enlace {
+  display: grid; gap: 0.75rem; justify-items: start;
+  padding: 1.5rem; border-radius: var(--radius);
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.88);
+}

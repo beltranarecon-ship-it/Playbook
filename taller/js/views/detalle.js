@@ -11,6 +11,8 @@ import { abrirProyector } from '../canvas/proyector.js';
 import { toast } from '../ui/toast.js';
 import { confirmModal } from '../ui/modal.js';
 import { getEjercicio, setFavorito, eliminarEjercicio } from '../supabase/ejercicios.js';
+import { cargarCatalogoConVideos } from '../supabase/acciones.js';
+import { chipVideo } from '../ui/video.js';
 import { dificultadDe } from '../config.js';
 import {
   PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA, PRESION_AYUDA,
@@ -21,6 +23,11 @@ const STAR = 'M11.48 3.5a.56.56 0 0 1 1.04 0l2.17 4.4 4.85.7a.56.56 0 0 1 .31.96
 
 export function render(root, { id } = {}) {
   let stage = null; let proj = null; let curEj = null; let curAnim = null; let favBtnRef = null;
+  /* El catálogo de acciones con sus vídeos (Tramo 2.14). Llega por red
+     y se suma cuando llega: la ficha se pinta sin esperarlo, y el
+     proyector lo recoge en el momento de abrirse. Sin él —sin sesión,
+     sin red— todo funciona igual y no hay vídeos (§11). */
+  let catalogo = [];
   const body = h('div', { class: 'taller-body' }, h('div', { class: 'detalle-loading' }, h('span', { class: 'spinner-lg' })));
   const titleEl = h('div', { class: 'header-title' }, 'Cargando…');
   const view = h('div', { class: 'taller taller--detalle' },
@@ -37,6 +44,9 @@ export function render(root, { id } = {}) {
     try {
       const ej = await getEjercicio(id);
       pintar(ej);
+      cargarCatalogoConVideos()
+        .then(({ acciones }) => { catalogo = acciones || []; pintarVideos(); })
+        .catch(() => {});
     } catch (e) {
       mount(body, h('div', { class: 'detalle-error card' },
         h('h2', { class: 'section-title' }, 'No se pudo cargar el ejercicio'),
@@ -81,11 +91,29 @@ export function render(root, { id } = {}) {
          lo que se quiera ANTES de que exista (§6). */
       h('a', { class: 'btn btn--ghost', href: `/ejercicios/${ej.id}/duplicar`, 'data-link': true }, 'Duplicar'),
       h('button', { class: 'btn btn--ghost act-danger', type: 'button', onClick: () => borrar(ej) }, 'Eliminar'),
+      hostVideos,
     );
   }
 
   function abrir(anim, ej) {
-    proj = abrirProyector(anim, { nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min, categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos });
+    proj = abrirProyector(anim, { nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min, categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos, catalogo });
+  }
+
+  /* ---- vídeos de las acciones de ESTE ejercicio (Tramo 2.14) ------
+     Solo las que aparecen en su animación: el catálogo entero aquí
+     sería una lista de vocabulario, no una ficha. En la ficha no
+     interrumpen nada —nadie está proyectando—: son un botón. */
+  const hostVideos = h('div', { class: 'ficha-videos' });
+  function pintarVideos() {
+    const usadas = new Set();
+    for (const f of curAnim?.fases || []) for (const sl of f.acciones || []) usadas.add(sl);
+    const chips = catalogo
+      .filter((a) => usadas.has(a.slug) && a.video)
+      .map((a) => chipVideo(a))
+      .filter(Boolean);
+    hostVideos.replaceChildren(...(chips.length
+      ? [h('small', { class: 'ficha-videos__t' }, 'Cómo se hace'), ...chips]
+      : []));
   }
 
 

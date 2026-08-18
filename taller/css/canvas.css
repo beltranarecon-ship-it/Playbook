@@ -177,3 +177,7 @@
 .court-senalar.is-sujeto { background: var(--color-accent); }
 /* En «solo mirar» el lienzo no invita a arrastrar: colocar es del paso 1. */
 .court.is-solo-mirar .court__layer { cursor: crosshair; }
+
+/* Tocar la pista para pausar (Tramo 2.15): solo mientras se reproduce
+   de verdad; en el paso 1 y en el paso 2 el clic tiene otro dueño. */
+.court-wrap.is-tocable .court__layer { cursor: pointer; }

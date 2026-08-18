@@ -614,7 +614,23 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
     const duracion = Number.isFinite(faseIntent.duracion_ms) ? faseIntent.duracion_ms : t.duracion_ms;
     const pausa = Number.isFinite(faseIntent.pausa_post_ms) ? faseIntent.pausa_post_ms : t.pausa_post_ms;
 
-    fases.push({ id: `fase_${i + 1}`, duracion_ms: duracion, pausa_post_ms: pausa, movimientos, pases, bloqueos, tiros, recogidas, defensores: defensoresFase });
+    /* QUÉ acción se está haciendo en esta fase (Tramo 2.14). El
+       compilador es el único sitio donde eso se sabe sin adivinar:
+       aquí están los eventos ya resueltos contra el catálogo, y de
+       aquí para abajo solo queda geometría.
+
+       Lo necesita el proyector para parar la animación en la fase de
+       «entra» y enseñar el vídeo del doble ritmo. Deducirlo después
+       —desde `_intent`— no vale: las rondas de fila (2.8) reordenan y
+       FUNDEN fases, así que la fase 14 de la animación no tiene por
+       qué corresponderse con ninguna del intent.
+
+       Se guardan los slugs y no los nombres: el nombre de una acción
+       del club se puede cambiar, y entonces el vídeo dejaría de
+       encontrarse. */
+    const accionesFase = [...new Set(eventos.map((e) => e.accion?.slug).filter(Boolean))];
+
+    fases.push({ id: `fase_${i + 1}`, duracion_ms: duracion, pausa_post_ms: pausa, movimientos, pases, bloqueos, tiros, recogidas, defensores: defensoresFase, acciones: accionesFase });
   });
 
   /* ---- RONDAS DE FILA (Tramo 2.8) -------------------------------

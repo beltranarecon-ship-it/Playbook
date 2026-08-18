@@ -48,7 +48,10 @@ import { collapsible } from '../ui/components.js';
 import { simularJugada } from '../ia/simulador.js';
 import { resolverAnimacion, upsertEdicion } from '../ia/resolver.js';
 import { cargarPosiciones, guardarPosicion } from '../supabase/posiciones.js';
-import { cargarCatalogo } from '../supabase/acciones.js';
+import { cargarCatalogoConVideos } from '../supabase/acciones.js';
+import { guardarVideo, borrarVideo } from '../supabase/videos.js';
+import { leerVideo, textoTramo, segundosDe, mmss, normalizarVideo } from '../ia/video.js';
+import { abrirVideo } from '../ui/video.js';
 import { CATALOGO_SISTEMA, FAMILIAS } from '../ia/acciones.js';
 import { sujetosDelTablero, siguientePosicion, nombreDeSlug } from '../ia/sujetos.js';
 import { crearLexico, leerFases, textoDeAccion, escribirFrase, huecosDe, actoresDe, anclarSujetos } from '../ia/frase.js';
@@ -187,6 +190,7 @@ export function paso2(ctx) {
     else { stage.showPreview(anim); montarSenalar(); }
     pintarPanel();
     pintarManual();
+    pintarVideos();
     onDraftChange?.();
   }
 
@@ -812,6 +816,133 @@ export function paso2(ctx) {
     ),
   });
 
+  /* ---- vídeo de referencia por acción (Tramo 2.14) ----------------
+     El sitio donde un entrenador está pensando en «entra» es este, no
+     una pantalla de administración del vocabulario que además no
+     existe. Aquí se listan solo las acciones que USA este ejercicio:
+     el catálogo entero sería una lista de palabras, no una decisión.
+
+     El vídeo NO es de este ejercicio, es de la acción: al ponérselo a
+     «entra» aparece en los treinta ejercicios que la usan. Se dice en
+     pantalla, porque es justo lo que hace que valga la pena y también
+     lo que sorprendería si se callara. */
+  const listaVideos = h('div', { class: 'videos-lista' });
+
+  /** Las acciones que de verdad ocurren en la animación compilada. */
+  function accionesUsadas() {
+    const slugs = new Set();
+    for (const f of draft.animacion?.fases || []) for (const s of f.acciones || []) slugs.add(s);
+    return catalogo.filter((a) => slugs.has(a.slug));
+  }
+
+  function pintarVideos() {
+    const usadas = accionesUsadas();
+    if (!usadas.length) {
+      mount(listaVideos, h('p', { class: 'muted' }, 'Describe alguna fase y aquí aparecerán sus acciones.'));
+      return;
+    }
+    mount(listaVideos, ...usadas.map(filaVideo));
+  }
+
+  function filaVideo(accion) {
+    const tramo = textoTramo(accion.video);
+    const estado = accion.video
+      ? h('span', { class: 'videos-tiene' }, accion.video.tipo === 'tiktok' ? 'TikTok (enlace)' : (tramo || 'vídeo entero'))
+      : h('span', { class: 'muted' }, 'sin vídeo');
+
+    const form = h('div', { class: 'videos-form' });
+    form.hidden = true;
+
+    const fila = h('div', { class: 'videos-fila' },
+      h('div', { class: 'videos-cab' },
+        h('strong', null, accion.nombre),
+        estado,
+        h('div', { class: 'row' },
+          accion.video ? h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => abrirVideo(accion.video, { titulo: accion.nombre }) }, 'Ver') : null,
+          h('button', {
+            class: 'btn btn--ghost btn--sm', type: 'button',
+            onClick: () => { form.hidden = !form.hidden; },
+          }, accion.video ? 'Cambiar' : 'Añadir vídeo'),
+          accion.video ? h('button', {
+            class: 'btn btn--ghost btn--sm', type: 'button',
+            onClick: () => quitarVideo(accion),
+          }, 'Quitar') : null,
+        ),
+      ),
+      form,
+    );
+
+    const enlace = h('input', {
+      class: 'input', type: 'url', placeholder: 'Pega aquí el enlace de YouTube o de TikTok',
+      'aria-label': `Enlace del vídeo de ${accion.nombre}`,
+    });
+    const desde = h('input', { class: 'input input--ms', type: 'text', placeholder: '0:12', 'aria-label': 'Desde' });
+    const hasta = h('input', { class: 'input input--ms', type: 'text', placeholder: '0:19', 'aria-label': 'Hasta' });
+    const aviso = h('p', { class: 'videos-aviso' });
+
+    if (accion.video?.tipo === 'youtube') {
+      enlace.value = `https://youtu.be/${accion.video.id}`;
+      if (accion.video.desde != null) desde.value = mmss(accion.video.desde);
+      if (accion.video.hasta != null) hasta.value = mmss(accion.video.hasta);
+    } else if (accion.video?.tipo === 'tiktok') {
+      enlace.value = accion.video.url;
+    }
+
+    mount(form,
+      enlace,
+      h('div', { class: 'row' },
+        h('label', { class: 'fase__ajuste' }, 'del', desde),
+        h('label', { class: 'fase__ajuste' }, 'al', hasta),
+        h('button', { class: 'btn btn--primary btn--sm', type: 'button', onClick: guardar }, 'Guardar'),
+      ),
+      h('p', { class: 'muted' }, 'Solo YouTube admite tramo: el proyector para la animación, enseña esos segundos y sigue solo. Un TikTok se abre aparte y no interrumpe nada.'),
+      aviso,
+    );
+
+    async function guardar() {
+      aviso.textContent = '';
+      const leido = leerVideo(enlace.value);
+      if (!leido) { aviso.textContent = 'No se reconoce ese enlace. Tiene que ser de YouTube o de TikTok.'; return; }
+      const v = normalizarVideo(leido.tipo === 'youtube'
+        ? { ...leido, desde: segundosDe(desde.value) ?? leido.desde, hasta: segundosDe(hasta.value) ?? leido.hasta }
+        : leido);
+      if (!v) { aviso.textContent = 'Ese vídeo no se puede usar.'; return; }
+      try {
+        await guardarVideo(accion.slug, v);
+        /* El catálogo que tenemos en memoria se actualiza en el sitio:
+           volver a pedirlo por red para leer lo que acabamos de escribir
+           es una vuelta entera para saber lo que ya sabemos. */
+        accion.video = v;
+        ctx.toast?.(`Vídeo puesto en «${accion.nombre}». Aparece en todos los ejercicios que la usan.`, { type: 'ok' });
+        pintarVideos();
+      } catch (e) {
+        aviso.textContent = `No se ha podido guardar: ${e.message}`;
+      }
+    }
+
+    return fila;
+  }
+
+  async function quitarVideo(accion) {
+    try {
+      const fuera = await borrarVideo(accion.slug);
+      if (!fuera) { ctx.toast?.('Ese vídeo lo puso otro entrenador: solo puede quitarlo quien lo puso, o un administrador.', { type: 'warn' }); return; }
+      accion.video = null;
+      pintarVideos();
+    } catch (e) {
+      ctx.toast?.(`No se ha podido quitar: ${e.message}`, { type: 'error' });
+    }
+  }
+
+  const videos = collapsible({
+    label: 'Vídeos de las acciones',
+    open: false,
+    content: h('div', { class: 'flow' },
+      h('p', { class: 'muted' }, 'La animación dibuja por dónde va cada uno; el gesto no lo dibuja nadie. Un vídeo corto sí. Cuelga de la ACCIÓN, así que se pone una vez y sale en todos los ejercicios que la usan.'),
+      listaVideos,
+    ),
+  });
+
   /* ---- montaje ---------------------------------------------------- */
 
   const el = h('div', { class: 'card flow' },
@@ -822,11 +953,13 @@ export function paso2(ctx) {
     panelPos,
     panel,
     manual,
+    videos,
     simulacion,
   );
 
   pintarBarra();
   pintarFases();
+  pintarVideos();
   /* Rehacer la animación al entrar cubre lo que pide §5.2 —cambiar una
      posición inicial en el paso 1 rehace la fase— y lo cubre entero: se
      rehacen TODAS las fases, no solo la primera, porque mover una ficha
@@ -837,13 +970,14 @@ export function paso2(ctx) {
   // se suman cuando llegan: el paso funciona entero sin ellos
   (async () => {
     const [cat, pos] = await Promise.all([
-      cargarCatalogo().catch(() => null),
+      cargarCatalogoConVideos().catch(() => null),
       cargarPosiciones(draft.tipo_pista).catch(() => ({})),
     ]);
     if (cat && cat.acciones && cat.acciones.length) catalogo = cat.acciones;
     posGuardadas = pos || {};
     pintarBarra();
     recompilar();
+    pintarVideos();
   })();
 
   return {

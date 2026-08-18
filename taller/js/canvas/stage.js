@@ -31,6 +31,29 @@ export class Stage {
       else this.board.render();
     };
     this._bindBasketTip();
+    this._bindTocarPausa();
+  }
+
+  /* ---- Tocar la pista para pausar (Tramo 2.15) -------------------
+     «Pausar en cualquier momento» en el pabellón no es encontrar un
+     botón de veinte píxeles con el móvil en una mano: es tocar lo que
+     se está mirando. Mientras se REPRODUCE, un toque en la pista para
+     y otro sigue.
+
+     Solo en reproducción de verdad. En el paso 1 el clic coloca fichas,
+     en el paso 2 señala sujetos y en la vista previa el fotograma ya
+     está quieto a propósito: ahí este atajo le robaría el clic a quien
+     lo necesita. */
+  _bindTocarPausa() {
+    this._tocarPausa = false;
+    this.view.canvas.addEventListener('click', () => {
+      if (!this._tocarPausa || !this.engine) return;
+      this.engine.toggle();
+    });
+  }
+  _setTocarPausa(on) {
+    this._tocarPausa = !!on;
+    this.el.classList.toggle('is-tocable', !!on);
   }
 
   /* ---- Etiqueta "Canasta 1/2" al pasar el ratón por un aro --------
@@ -75,6 +98,7 @@ export class Stage {
   showBoard() {
     this._tearDownEditor();
     this.mode = 'edit';
+    this._setTocarPausa(false);
     this.engine?.pause();
     this.controlsSlot.replaceChildren();
     this.board.setActive(true);
@@ -89,6 +113,7 @@ export class Stage {
     if (!this.engine) this.engine = new AnimationEngine(this.view, anim, { autoplay: true, loop: true });
     else { this.engine.preview = null; this.engine.load(anim); }
     this.controlsSlot.replaceChildren(controls(this.engine).el);
+    this._setTocarPausa(true);
   }
 
   /** Modo edición manual (Tramo 6): monta un EditorCanvas sobre la MISMA vista
@@ -100,6 +125,7 @@ export class Stage {
     // señalar y editar flechas se pelearían por el mismo clic
     this._tearDownSenalar();
     this.mode = 'editando';
+    this._setTocarPausa(false);
     this._hideBasketTip();
     this.engine?.pause();
     this.board.setActive(false);
@@ -125,6 +151,7 @@ export class Stage {
     // el compilador; si falta — geometría legada — simplemente no se resalta).
     this.engine.preview = { canasta: anim.canasta || null };
     this.engine.render();
+    this._setTocarPausa(false);
     this.controlsSlot.replaceChildren();
   }
 

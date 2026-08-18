@@ -72,6 +72,10 @@ function fundir(a, b) {
     recogidas: [...(a.recogidas || []), ...(b.recogidas || [])],
     bloqueos: [...(a.bloqueos || []), ...(b.bloqueos || [])],
     defensores: [...new Set([...(a.defensores || []), ...(b.defensores || [])])],
+    // Con cadencia, en un mismo hueco pueden estar entrando uno y
+    // tirando otro: las dos acciones ocurren, así que las dos cuentan
+    // para el vídeo (Tramo 2.14).
+    acciones: [...new Set([...(a.acciones || []), ...(b.acciones || [])])],
   };
 }
 

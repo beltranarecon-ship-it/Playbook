@@ -241,7 +241,7 @@ tener la app instalada en la pantalla de inicio.
 | Generación de sesiones | Botón «Guardar y regenerar» sobre toda la temporada | Rango elegible (temporada, meses, mes, semanas). Horarios guardados visibles arriba en cajita del color del equipo. «Regenerar» pasa a llamarse **Editar**: regenera solo las sesiones sin programar. «Añadir nuevo día» genera solo a partir de ese día. Vista previa con recuento y conflictos | Pedido explícito |
 | Editar y duplicar ejercicio | Editor a pantalla completa aparte | Mismo flujo de pasos 0 → 1 → 2 → 3 con todo cargado. Duplicar abre un ejercicio nuevo llamado «X-variante de …»; no puede haber dos con el mismo nombre | Pedido explícito |
 | Ficha del ejercicio | 2 columnas | Ejercicios similares abajo, en carrusel horizontal con flecha a la derecha | Pedido explícito |
-| Reproducción | Pausa solo al acabar una fase | Pausa **en cualquier momento**, también en el proyector | Pedido explícito |
+| Reproducción | *(se creía que pausaba solo al acabar una fase; al comprobarlo, ya paraba en el fotograma exacto — 2.15)* Botón pequeño que se desvanece, y arrastrar la barra no sostenía la imagen | **Un toque en la pista** pausa, en la ficha y en el proyector, con rótulo «En pausa»; arrastrar sostiene la animación | Pedido explícito |
 | Borradores | Solo en el Taller | Mismo guardado con recuperación al **planificar sesiones** y al **editar ejercicios ya creados** | Pedido explícito |
 | Equipos | Lista con correos | Nombre de los entrenadores en vez de correos, imagen por equipo, borde del color del equipo. Más colores, elegibles desde ajustes | Pedido explícito |
 | Categorías de objetivo | 3 fijas | El entrenador crea categorías nuevas al añadir un objetivo | Pedido explícito |
@@ -476,8 +476,8 @@ Objetivo: que las animaciones salgan siempre correctas.
 | 2.11 ✅ | Retirar la función de IA, el lector local y la clave | 2.9 | La app no hace ninguna llamada de pago |
 | 2.12 ✅ | Paso 3 con la ficha completa del molde (sin dosis) + puente al chat + linter | 2.9 | Un ejercicio nuevo pasa el linter de la biblioteca |
 | 2.13 ✅ | Editar y duplicar con el flujo de cuatro pasos; «X-variante de …» | 2.12 | Editar abre el paso 0 con todo cargado |
-| 2.14 | Vídeo por acción: YouTube con tramo y pausa; TikTok como enlace | 2.5 | En el proyector la animación se pausa, se ve el tramo y continúa sola |
-| 2.15 | Pausa en cualquier momento, en ficha y proyector | — | Se pausa a mitad de una fase |
+| 2.14 ✅ | Vídeo por acción: YouTube con tramo y pausa; TikTok como enlace | 2.5 | En el proyector la animación se pausa, se ve el tramo y continúa sola |
+| 2.15 ✅ | Pausa en cualquier momento, en ficha y proyector | — | Se pausa a mitad de una fase |
 
 **Riesgo del tramo:** 2.3 es el punto de no retorno. Copia previa y linter obligatorios.
 
@@ -594,6 +594,87 @@ reservados en el cliente **y** en un trigger: redefinir «tira» cambiaría el
 significado de las 204 fichas sin tocar ninguna.
 
 **Pendiente del usuario**: aplicar la migración `020`.
+
+### Estado de 2.14 y 2.15 (hechas)
+
+Van juntas porque tocan lo mismo: el mando de la reproducción.
+
+**El vídeo cuelga de la ACCIÓN, no del ejercicio.** La animación dibuja por dónde va
+cada uno; el gesto —el apoyo, la muñeca, el ritmo— no lo dibuja nadie. Se le pone un
+vídeo a «entra» una vez y aparece en los treinta ejercicios que la usan.
+
+**En el proyector.** Al empezar la fase de esa acción, la animación se para, salen los
+segundos del gesto y **sigue sola**. Se para al empezar la fase y no al acabarla: así se
+ve primero cómo se hace y luego por dónde va.
+
+| | |
+|---|---|
+| Cuándo vuelve | Se cuenta `hasta − desde` + 900 ms de arranque del reproductor |
+| Por qué se cuenta | Que YouTube avise de que ha terminado exige cargar SU librería: una llamada a un tercero desde la pantalla del pabellón. No se carga |
+| Sin `hasta` | No se adivina: se queda abierto con un botón de «Seguir» |
+| Cuántas veces | **Una por sesión de proyector.** Seis rondas de fila en bucle repetirían el mismo clip cada veinte segundos |
+| Volver a verlo | Chips en la cabecera, uno por acción con vídeo |
+| Apagarlos | Tecla **V** |
+
+**TikTok es un enlace y no interrumpe nada** (§12.36). Su incrustado no admite segundo
+de entrada ni de salida, y pararlo desde fuera exige su librería. Media función es peor
+que decir lo que hay: se abre aparte, en otra pestaña, y la proyección no se toca.
+
+**De la fase al vídeo.** El compilador anota en cada fase los *slugs* de sus acciones
+(`fases[].acciones`). Es el único sitio donde eso se sabe sin adivinar: deducirlo del
+`_intent` no vale porque las rondas de fila (2.8) reordenan y **funden** fases, así que
+la fase 14 de la animación no se corresponde con ninguna del intent. Se guardan slugs y
+no nombres, para que renombrar una acción del club no pierda su vídeo.
+
+**Dónde se guarda, y por qué hace falta una tabla nueva.** Las diez acciones del sistema
+viven en código y sus *slugs* están reservados por el guard de `020` —redefinir «entra»
+cambiaría las 204 fichas de golpe—. Pero «entra» es justo a la que se le quiere colgar
+el vídeo. Así que el vídeo se guarda **por slug**, aparte (`021_videos_accion`), y vale
+para cualquier acción, del sistema o del club. `acciones.video` sigue siendo el vídeo con
+el que **nace** una acción del club; lo puesto por slug manda.
+
+**Dónde se pone.** Desplegable **«Vídeos de las acciones»** en el paso 2, con las
+acciones que USA este ejercicio —el catálogo entero sería una lista de vocabulario, no
+una decisión—. Se pega el enlace y, si hace falta, el tramo. Se leen las cinco formas de
+URL de YouTube (`youtu.be`, `watch`, `shorts`, `embed`, `live`), el `?t=` del «compartir
+a partir de aquí» en sus tres formatos (`90`, `1:30`, `1m30s`) y las dos de TikTok. Lo
+que no se reconoce **se rechaza diciendo por qué**, en vez de guardar un enlace roto que
+solo fallaría en el pabellón.
+
+En la ficha del ejercicio los vídeos salen como botones bajo las acciones («Cómo se
+hace»): ahí nadie está proyectando, así que no interrumpen nada.
+
+#### Lo que de verdad faltaba en la pausa
+
+La tabla de §6 daba por hecho que la reproducción «pausaba solo al acabar una fase». **No
+era cierto**: `pause()` para en el fotograma exacto, y se ha comprobado —fase 2 congelada
+en el 0,640 de su duración—. Lo que faltaba era otra cosa, y son tres:
+
+| | Antes | Ahora |
+|---|---|---|
+| Cómo se pausa | Un botón de 20 px que además se desvanece a los 3 s, o la barra espaciadora (que un iPad no tiene) | **Un toque en la pista**, en la ficha y en el proyector |
+| Se nota que está parada | El icono de la barra, ilegible desde el fondo de la pista | Rótulo **«En pausa»** en el centro |
+| Arrastrar la barra | El reloj seguía corriendo bajo el dedo: se soltaba en un fotograma y ya se había ido | Arrastrar **sostiene** la animación y al soltar la deja como estaba |
+
+Y un fallo real que salió buscando: **terminada y sin bucle, el botón de play no hacía
+nada.** El reloj arrancaba con la última fase ya consumida, así que el primer latido la
+daba por acabada otra vez; el icono cambiaba y volvía. Para verla de nuevo había que
+descubrir que el botón de al lado era «reiniciar». Ahora darle al play cuando algo ha
+terminado significa verlo otra vez.
+
+El toque en la pista solo vale **reproduciendo de verdad**: en el paso 1 el clic coloca
+fichas, en el paso 2 señala sujetos y en la vista previa el fotograma está quieto a
+propósito. Ahí este atajo le robaría el clic a quien lo necesita.
+
+**Comprobado**: 34 pruebas nuevas en `eval-video` (las cinco URL, los tres formatos de
+tiempo, el tramo del revés, el TikTok que no se incrusta, la fase que sabe su acción, las
+rondas que la conservan, la cadencia que funde dos acciones en un hueco). En el navegador:
+la capa se abre dentro del proyector con `start=12&end=19`, el iframe carga de
+`youtube-nocookie.com`, y a los 7,9 s se cierra sola y la animación sigue. Biblioteca
+reconstruida: **204 fichas · 0 errores · 7 avisos**, los mismos.
+
+**Pendiente del usuario**: aplicar la migración `021`. Hasta entonces, poner un vídeo
+dice en castellano que falta la tabla, y todo lo demás funciona igual.
 
 ### Estado de 2.13 (hecha)
 

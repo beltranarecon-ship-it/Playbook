@@ -135,7 +135,21 @@ export class AnimationEngine {
   tNorm() { return Math.min(1, this.phaseElapsed / this._dur()); }
   progress() { return Math.min(1, ((this.cumDur[this.k] || 0) + this.phaseElapsed) / this.totalDuration); }
 
-  play() { if (this.playing || !this.fases.length) return; this.playing = true; this._last = performance.now(); this._schedule(); this._emit('play'); this._emitFrame(); }
+  /* ¿Se acabó? Solo puede estarlo sin bucle: con bucle, `_advance`
+     vuelve al principio y nunca se queda quieta al final. */
+  _agotada() { return !this.loop && this.k >= this.phaseCount - 1 && this.phaseElapsed >= this._dur(); }
+
+  play() {
+    if (this.playing || !this.fases.length) return;
+    /* Terminada y sin bucle, `play` no hacía NADA (Tramo 2.15): el
+       reloj arrancaba con la última fase ya consumida, así que el
+       primer latido volvía a darla por acabada y se paraba otra vez.
+       El botón cambiaba de icono y volvía, y para verlo de nuevo había
+       que descubrir que el de al lado era «reiniciar». Darle al play
+       cuando algo ha terminado significa verlo otra vez. */
+    if (this._agotada()) { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this._emit('phase', this._infoFase(0)); }
+    this.playing = true; this._last = performance.now(); this._schedule(); this._emit('play'); this._emitFrame();
+  }
   pause() { this.playing = false; if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } this.render(); this._emit('pause'); this._emitFrame(); }
   toggle() { this.playing ? this.pause() : this.play(); }
   restart() { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this._emit('phase', this._infoFase(0)); this.play(); }
@@ -160,7 +174,11 @@ export class AnimationEngine {
   }
 
   _goPhase(k) { this.k = k; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this.render(); this._emit('phase', this._infoFase(k)); this._emitFrame(); }
-  _infoFase(k) { return { k, n: this.phaseCount, ronda: this.fases[k]?.ronda || 1, rondas: this.rondas }; }
+  /* Qué acciones ocurren en una fase (Tramo 2.14). Lo escribe el
+     compilador; una fase dibujada a mano en el editor de flechas no
+     tiene ninguna, y eso es una lista vacía, no un fallo. */
+  accionesDeFase(k) { const a = this.fases[k]?.acciones; return Array.isArray(a) ? a : []; }
+  _infoFase(k) { return { k, n: this.phaseCount, ronda: this.fases[k]?.ronda || 1, rondas: this.rondas, acciones: this.accionesDeFase(k) }; }
   setSpeed(s) { this.speed = s; this._emitFrame(); }
   setLoop(b) { this.loop = b; this._emitFrame(); }
   seek(u) {

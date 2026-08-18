@@ -36,6 +36,8 @@
    estando, pero ya no es la única defensa.
    ============================================================ */
 
+import { validarVideo, normalizarVideo } from './video.js';
+
 /* ── 1. Las cinco familias ─────────────────────────────────── */
 
 /*
@@ -335,6 +337,12 @@ export function validarAccion(a) {
     }
   }
 
+  /* El vídeo de referencia (Tramo 2.14). Se valida aquí y no solo al
+     pegarlo porque una acción del club llega de la base de datos, donde
+     el `jsonb` solo garantiza que es un objeto: un vídeo con la forma
+     rota no falla al guardarlo, falla proyectado en la pared. */
+  for (const m of validarVideo(a.video ?? null).errores) E(`vídeo: ${m}`);
+
   // Un parámetro con `soloSi` sin su condición no rompe nada, pero es una
   // señal de que la acción se copió de otra y quedó a medias.
   for (const [k, def] of Object.entries(fam.parametros)) {
@@ -420,6 +428,33 @@ export function fusionarCatalogo(club = []) {
     acciones.push({ ...a, origen: 'club' });
   }
   return { acciones, descartadas };
+}
+
+/**
+ * El catálogo con los vídeos de referencia puestos (Tramo 2.14).
+ *
+ * ── POR QUÉ NO BASTA CON `acciones.video` ───────────────────
+ * Las diez acciones del sistema viven en CÓDIGO y sus slugs están
+ * reservados: nadie puede crear una fila «entra» en la tabla, y con
+ * razón —redefinir «entra» cambiaría las 204 fichas de golpe—. Pero
+ * «entra» es justo la acción a la que un entrenador quiere colgarle el
+ * vídeo del doble ritmo. Así que el vídeo se guarda aparte, por slug
+ * (migración 021), y se pega aquí encima.
+ *
+ * Manda lo asignado por slug sobre lo que trajera la acción: es el acto
+ * más reciente y más explícito de alguien que ha ido a ponerlo.
+ *
+ * @param acciones        catálogo ya fusionado (sistema + club)
+ * @param videosPorSlug   { slug: video } de la tabla `videos_accion`
+ */
+export function conVideos(acciones = [], videosPorSlug = {}) {
+  const v = videosPorSlug && typeof videosPorSlug === 'object' ? videosPorSlug : {};
+  return acciones.map((a) => {
+    const puesto = normalizarVideo(v[a.slug]);
+    const propio = normalizarVideo(a.video);
+    const video = puesto || propio || null;
+    return video === a.video ? a : { ...a, video };
+  });
 }
 
 /** Valor efectivo de un parámetro: lo que fija la acción, o el de la familia. */

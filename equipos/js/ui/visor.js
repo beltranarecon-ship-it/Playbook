@@ -22,6 +22,7 @@ import { CourtView } from '../../../taller/js/canvas/court.js';
 import { AnimationEngine } from '../../../taller/js/canvas/engine.js';
 import { controls } from '../../../taller/js/canvas/controls.js';
 import { abrirProyector } from '../../../taller/js/canvas/proyector.js';
+import { cargarCatalogoConVideos } from '../../../taller/js/supabase/acciones.js';
 import { dificultadDe } from '../../../taller/js/config.js';
 import { guionDeAnimacion, resumenMaterial } from '../data/guion.js';
 import { getEjercicioCompleto } from '../data/ejercicios.js';
@@ -81,6 +82,11 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
   let ctrl = null;
   let guion = null;
   let proyector = null;      // handle del proyector abierto, para poder cerrarlo
+  /* Catálogo de acciones con sus vídeos de referencia (Tramo 2.14).
+     Se pide UNA vez al abrir el visor y se le pasa al proyector; sin
+     él —sin red— el proyector se comporta como siempre (§11). */
+  let catalogo = [];
+  cargarCatalogoConVideos().then(({ acciones }) => { catalogo = acciones || []; }).catch(() => {});
 
   // ── lienzo (se construye UNA vez) ───────────────────────────
   // rotate 90: apaisado, como el proyector. En una columna lateral de
@@ -333,7 +339,7 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
         // abierto, destroy() lo cierra en vez de dejar un telón negro encima
         // se le pasan los requisitos: el proyector enseña dosis, criterio
         // y el nivel de exigencia que se está corriendo
-        onClick: () => { proyector = abrirProyector(ficha.animacion, { nombre: ficha.name, requisitos: ficha.requisitos, variantes: ficha.variantes }); },
+        onClick: () => { proyector = abrirProyector(ficha.animacion, { nombre: ficha.name, requisitos: ficha.requisitos, variantes: ficha.variantes, catalogo }); },
       }, icon(ICO.proyector, { size: 18 })) : null,
       bloque.exercise_id ? h('a', {
         class: 'eq-vbtn', href: `/ejercicios/${bloque.exercise_id}`,

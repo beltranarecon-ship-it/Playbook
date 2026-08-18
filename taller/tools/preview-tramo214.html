@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harness manual · Tramo 2.14/2.15 (vídeo por acción y pausa) — solo desarrollo</title>
+  <link rel="stylesheet" href="/taller/css/tokens.css">
+  <link rel="stylesheet" href="/taller/css/base.css">
+  <link rel="stylesheet" href="/taller/css/canvas.css">
+  <link rel="stylesheet" href="/taller/css/anim.css">
+  <link rel="stylesheet" href="/taller/css/wizard.css">
+  <link rel="stylesheet" href="/taller/css/detalle.css">
+  <style>
+    body { font-family: 'Hanken Grotesk', system-ui, sans-serif; padding: 16px; background: #DFE8F0; }
+    .harness { display: grid; grid-template-columns: 520px 1fr; gap: 24px; align-items: start; }
+    .harness .court-wrap { max-width: 480px; }
+    .h-panel { display: grid; gap: 10px; }
+    .h-panel pre { background: #fff; padding: 10px; border-radius: 8px; font-size: 12px; margin: 0; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="harness">
+    <div id="courtHost"></div>
+    <div class="h-panel">
+      <div class="row">
+        <button id="proy" type="button" class="btn btn--secondary">Abrir proyector</button>
+        <button id="estado" type="button" class="btn btn--ghost">Leer estado</button>
+      </div>
+      <div id="chips"></div>
+      <pre id="out">—</pre>
+    </div>
+  </div>
+  <script type="module">
+    /* Harness manual de 2.14 (vídeo por acción) y 2.15 (pausa en
+       cualquier momento): un ejercicio de fila REAL, con la ficha a la
+       izquierda y el proyector a un clic, sin sesión ni red.
+
+       El catálogo se inventa aquí con dos vídeos —uno de YouTube con
+       tramo en «entra» y un TikTok en «tira»— para poder comprobar las
+       dos formas sin tocar la base de datos. */
+    import { Stage } from '/taller/js/canvas/stage.js';
+    import { abrirProyector } from '/taller/js/canvas/proyector.js';
+    import { compilarAnimacion } from '/taller/js/ia/compilador.js';
+    import { CATALOGO_SISTEMA, conVideos } from '/taller/js/ia/acciones.js';
+    import { chipVideo } from '/taller/js/ui/video.js';
+
+    const TABLERO = [
+      { id: 'cf', kind: 'cono', x: 0.86, y: 0.30, funcion: 'fila',
+        fila_config: { n_jugadores: 3, direccion_grados: 180, equipo: 'A', rondas: true, cadencia_s: null, rol: 'atacante' } },
+      { id: 'b1', kind: 'balon', x: 0.84, y: 0.30, portador_id: null },
+    ];
+    const anim = compilarAnimacion({
+      canasta: 'norte',
+      fases: [
+        { eventos: [{ jugador: 'fila1', accion: 'entra', args: {} }] },
+        { eventos: [{ jugador: 'fila1', accion: 'tira', args: {} }] },
+        { eventos: [{ jugador: 'fila1', accion: 'recoge', args: {} }] },
+        { eventos: [{ jugador: 'fila1', accion: 'vuelve_a_fila', args: {} }] },
+      ],
+    }, TABLERO, 'media');
+
+    const catalogo = conVideos(CATALOGO_SISTEMA, {
+      entra: { tipo: 'youtube', id: 'dQw4w9WgXcQ', desde: 12, hasta: 19 },
+      tira: { tipo: 'tiktok', url: 'https://www.tiktok.com/@entrenador/video/7300000000000000000' },
+    });
+
+    const stage = new Stage({ pista: 'media' });
+    document.getElementById('courtHost').append(stage.el);
+    stage.showAnimation(anim);
+
+    document.getElementById('chips').append(...catalogo.filter((a) => a.video).map((a) => chipVideo(a)));
+
+    const meta = { nombre: 'Entradas desde la fila', requisitos: { criterio_exito: 'entrar sin apoyar dos veces la misma mano' }, catalogo };
+    document.getElementById('proy').addEventListener('click', () => { window.__proy = abrirProyector(anim, meta); });
+    document.getElementById('estado').addEventListener('click', () => {
+      const e = stage.engine;
+      document.getElementById('out').textContent = JSON.stringify({
+        playing: e.playing, k: e.k, phaseElapsed: Math.round(e.phaseElapsed),
+        dur: e._dur(), mode: e.mode, acciones: e.accionesDeFase(e.k),
+      }, null, 2);
+    });
+
+    window.__stage = stage;
+    window.__anim = anim;
+    window.__catalogo = catalogo;
+  </script>
+</body>
+</html>

@@ -207,3 +207,77 @@
 .modal-x:hover { background: var(--surface-2); color: var(--color-text); }
 .modal-body { padding: var(--sp-5); color: var(--color-text); }
 .modal-foot { display: flex; justify-content: flex-end; gap: var(--sp-2); padding: var(--sp-4) var(--sp-5); border-top: 1px solid var(--color-border); }
+
+/* ============================================================
+   Vídeo de la acción (Tramo 2.14) y rótulo de pausa (2.15)
+   ============================================================ */
+
+/* Los vídeos que tiene este ejercicio, para volver a verlos cuando se
+   quiera: el automático solo interrumpe una vez. */
+.proy-videos { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.proy-video-chip {
+  padding: 3px 12px; border-radius: var(--r-pill);
+  font-size: var(--fs-300); font-weight: 700;
+  color: #E2E8F0; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.2);
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.proy-video-chip:hover { background: rgba(255,255,255,.2); color: #fff; }
+/* Con V se apagan: siguen estando para verlos a mano, pero ya no paran
+   la animación. Se dice en pantalla en vez de callarlo. */
+.proyector.sin-videos .proy-videos { opacity: .45; }
+
+/* Desde el fondo de la pista, un icono de 20 px no dice si está parada
+   o si es un momento en el que nadie se mueve. Esto sí. */
+.proy-pausa {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  padding: var(--sp-2) var(--sp-5);
+  font-family: var(--font-display); text-transform: uppercase;
+  font-size: var(--fs-600); letter-spacing: .08em;
+  color: #fff; background: rgba(0,0,0,.55);
+  border: 2px solid rgba(255,255,255,.35); border-radius: var(--r-pill);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-2) var(--ease);
+}
+.proyector.is-pausado .proy-pausa { opacity: 1; }
+
+/* La capa del vídeo. Cuelga del proyector (no del body) para que se vea
+   por encima de la pantalla completa. */
+/* `fixed` y no `absolute`: la capa se abre también desde la FICHA, donde
+   cuelga del body y no de un contenedor a pantalla completa. Dentro del
+   proyector se comporta igual, porque un elemento en pantalla completa
+   es el bloque contenedor de sus descendientes fijos. */
+.video-capa {
+  position: fixed; inset: 0; z-index: calc(var(--z-projector) + 5);
+  display: grid; place-items: center; padding: var(--sp-4);
+  background: rgba(0,0,0,.86);
+}
+.video-caja {
+  width: min(1100px, 92vw);
+  display: grid; gap: var(--sp-3);
+}
+.video-cab { display: flex; align-items: center; gap: var(--sp-4); justify-content: space-between; }
+.video-tit { display: grid; gap: 2px; color: #fff; }
+.video-tit strong { font-family: var(--font-display); text-transform: uppercase; font-size: var(--fs-600); line-height: 1; }
+.video-tit small { color: #94A3B8; font-size: var(--fs-300); }
+.video-frame {
+  width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: var(--r-md);
+  background: #000; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+.video-enlace {
+  display: grid; gap: var(--sp-3); justify-items: start;
+  padding: var(--sp-5); border-radius: var(--r-md);
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.16);
+  color: #E2E8F0;
+}
+
+/* Los vídeos de las acciones de este ejercicio, en la ficha (2.14).
+   Aquí no interrumpen nada: nadie está proyectando. */
+.ficha-videos { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.ficha-videos:empty { display: none; }
+.ficha-videos__t {
+  width: 100%; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: .06em; font-size: var(--fs-300);
+}
+.chip--video { cursor: pointer; }
+.chip--video small { opacity: .7; font-weight: 400; }

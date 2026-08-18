@@ -252,7 +252,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -332,7 +335,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         }
       ],
       "canasta": "norte",
@@ -581,7 +587,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_2",
@@ -608,7 +617,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_3",
@@ -659,7 +671,10 @@
               "balon_id": "el_balon_2"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_4",
@@ -688,7 +703,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -923,6 +941,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -971,6 +993,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -998,7 +1024,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -1250,6 +1279,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -1316,6 +1349,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -1364,6 +1402,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         }
       ],
@@ -1682,6 +1724,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -1749,6 +1795,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -1816,6 +1866,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         }
       ],
@@ -2019,7 +2073,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_2",
@@ -2070,7 +2127,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_3",
@@ -2099,7 +2159,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -2287,6 +2350,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -2314,7 +2381,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -2504,7 +2574,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_2",
@@ -2533,7 +2606,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_3",
@@ -2560,7 +2636,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -2611,7 +2690,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -2657,7 +2739,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota",
+            "corta"
+          ]
         }
       ],
       "canasta": "norte",
@@ -2860,6 +2946,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -2887,7 +2977,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -3063,7 +3156,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -3111,6 +3207,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -3138,7 +3238,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -3189,7 +3292,10 @@
               "balon_id": "el_balon_4"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -3218,7 +3324,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -3419,6 +3528,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -3446,7 +3559,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -3631,6 +3747,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -3679,6 +3799,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -3708,7 +3832,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -3939,6 +4066,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -3987,6 +4118,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -4016,7 +4151,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -4043,7 +4181,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -4286,6 +4427,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -4317,6 +4462,9 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "defiende"
           ]
         },
         {
@@ -4383,6 +4531,11 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -4410,7 +4563,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -4654,6 +4810,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -4702,6 +4862,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -4909,6 +5073,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -4938,7 +5107,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -4965,7 +5137,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -5664,7 +5839,11 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira",
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -5693,7 +5872,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -5879,6 +6061,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -5906,7 +6092,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_3",
@@ -5957,7 +6146,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_4",
@@ -5986,7 +6178,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -6187,7 +6382,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_2",
@@ -6233,7 +6431,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         }
       ],
       "canasta": "norte",
@@ -6385,7 +6586,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -6414,7 +6618,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -6461,6 +6668,10 @@
           "recogidas": [],
           "defensores": [
             "A2"
+          ],
+          "acciones": [
+            "tira",
+            "defiende"
           ]
         }
       ],
@@ -6656,6 +6867,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -6704,6 +6919,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -6731,7 +6950,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -6960,7 +7182,11 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira",
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -6989,7 +7215,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -7020,6 +7249,9 @@
           "recogidas": [],
           "defensores": [
             "A2"
+          ],
+          "acciones": [
+            "defiende"
           ]
         }
       ],
@@ -7361,7 +7593,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -7407,7 +7642,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         }
       ],
       "canasta": "norte",
@@ -7622,6 +7860,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -7670,6 +7912,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -7718,6 +7964,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -7914,6 +8164,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -7962,6 +8216,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -7989,7 +8247,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -8291,6 +8552,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -8356,6 +8621,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -8421,6 +8690,10 @@
           "recogidas": [],
           "defensores": [
             "B3"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -8683,6 +8956,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -8712,7 +8990,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -8739,7 +9020,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -9071,7 +9355,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_2",
@@ -9154,6 +9441,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -9205,7 +9496,10 @@
               "balon_id": "el_balon_6"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         }
       ],
       "canasta": "norte",
@@ -9423,6 +9717,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -9471,6 +9769,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -9498,7 +9800,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -9722,6 +10027,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -9770,6 +10079,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -9797,7 +10110,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -9986,6 +10302,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -10013,7 +10333,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -10184,6 +10507,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -10211,7 +10538,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -10396,6 +10726,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -10445,6 +10779,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -10493,6 +10831,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -10520,7 +10862,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -10767,6 +11112,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -10850,6 +11199,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -10933,6 +11286,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         }
       ],
@@ -11238,6 +11595,10 @@
           "defensores": [
             "B2",
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -11286,6 +11647,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         }
       ],
@@ -11512,6 +11877,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -11560,6 +11929,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         }
       ],
@@ -11755,6 +12128,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -11803,6 +12180,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -12065,6 +12446,10 @@
             "B1",
             "B2",
             "B3"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -12096,6 +12481,9 @@
           "recogidas": [],
           "defensores": [
             "B3"
+          ],
+          "acciones": [
+            "defiende"
           ]
         },
         {
@@ -12145,6 +12533,10 @@
           "recogidas": [],
           "defensores": [
             "B3"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -12228,6 +12620,11 @@
           "defensores": [
             "B3",
             "B2"
+          ],
+          "acciones": [
+            "entra",
+            "defiende",
+            "corta"
           ]
         },
         {
@@ -12255,7 +12652,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -13034,6 +13434,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -13061,7 +13465,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -13245,6 +13652,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -13274,7 +13685,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -13322,6 +13736,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -13349,7 +13767,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -13613,6 +14034,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -13680,6 +14105,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -13747,6 +14176,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         }
       ],
@@ -14027,6 +14460,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -14076,6 +14513,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -14103,7 +14544,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -14294,6 +14738,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -14321,7 +14769,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -14491,6 +14942,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -14539,6 +14994,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -14566,7 +15025,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -14767,6 +15229,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -14815,6 +15281,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -14863,6 +15333,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -14890,7 +15364,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -15105,6 +15582,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -15134,7 +15615,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -15161,7 +15645,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -15385,6 +15872,10 @@
           "defensores": [
             "B2",
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -15433,6 +15924,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -15460,7 +15955,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -15694,6 +16192,10 @@
           "defensores": [
             "B2",
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -15723,7 +16225,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -15771,6 +16276,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -15798,7 +16307,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -16041,6 +16553,10 @@
           "defensores": [
             "B3",
             "B2"
+          ],
+          "acciones": [
+            "bloquea",
+            "defiende"
           ]
         },
         {
@@ -16107,6 +16623,10 @@
           "defensores": [
             "B3",
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -16173,6 +16693,11 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -16200,7 +16725,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -16419,7 +16947,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_2",
@@ -16484,6 +17015,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -16513,7 +17049,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_4",
@@ -16540,7 +17079,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "sur",
@@ -16739,7 +17281,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_2",
@@ -16805,6 +17350,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         }
       ],
@@ -17041,7 +17590,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota",
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -17090,6 +17643,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -17119,7 +17676,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_4",
@@ -17146,7 +17706,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -17488,6 +18051,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -17536,6 +18103,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -17563,7 +18134,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -17908,7 +18482,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -18005,7 +18582,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -18102,7 +18682,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         }
       ],
       "canasta": "norte",
@@ -18389,7 +18972,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -18438,6 +19024,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -18465,7 +19055,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -18516,7 +19109,10 @@
               "balon_id": "el_balon_4"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -18545,7 +19141,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -18753,6 +19352,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -18801,6 +19404,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -18830,7 +19437,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -19042,6 +19652,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -19091,6 +19705,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -19140,6 +19758,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         }
       ],
@@ -19340,6 +19962,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -19367,7 +19993,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -19537,6 +20166,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "tira",
+            "defiende"
           ]
         },
         {
@@ -19585,6 +20218,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         }
       ],
@@ -19881,6 +20518,10 @@
             "B1",
             "B2",
             "B3"
+          ],
+          "acciones": [
+            "defiende",
+            "corta"
           ]
         },
         {
@@ -19932,7 +20573,10 @@
               "balon_id": "el_balon_7"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         }
       ],
       "canasta": "norte",
@@ -20398,7 +21042,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -20461,7 +21108,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -21302,6 +21952,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -21329,7 +21983,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_3",
@@ -21380,7 +22037,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_4",
@@ -21409,7 +22069,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -21796,6 +22459,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -21844,6 +22511,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -21873,7 +22544,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -21900,7 +22574,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -22120,7 +22797,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_2",
@@ -22209,7 +22889,10 @@
               "balon_id": "balon_izq"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_3",
@@ -22255,7 +22938,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -22480,6 +23166,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -22509,7 +23199,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -22536,7 +23229,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -22587,7 +23283,10 @@
               "balon_id": "el_balon_4"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -22616,7 +23315,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -22839,6 +23541,9 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende"
           ]
         },
         {
@@ -22868,7 +23573,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -22897,7 +23605,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_4",
@@ -22924,7 +23635,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -23138,6 +23852,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -23184,7 +23902,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_3",
@@ -23213,7 +23934,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -23413,6 +24137,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -23461,6 +24189,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -23488,7 +24220,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -23718,6 +24453,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -23749,6 +24488,9 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "defiende"
           ]
         },
         {
@@ -23778,7 +24520,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -23826,6 +24571,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -23853,7 +24602,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -24064,6 +24816,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -24112,6 +24868,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -24302,6 +25062,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -24350,6 +25114,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -24654,7 +25422,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -24717,7 +25488,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         }
       ],
       "canasta": "norte",
@@ -25193,7 +25967,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -25222,7 +25999,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -25393,7 +26173,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_2",
@@ -25458,6 +26241,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -25509,7 +26296,10 @@
               "balon_id": "el_balon_5"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         }
       ],
       "canasta": "norte",
@@ -25684,7 +26474,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_2",
@@ -25730,7 +26523,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota",
+            "corta"
+          ]
         },
         {
           "id": "fase_3",
@@ -25759,7 +26556,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -25788,7 +26588,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_5",
@@ -25815,7 +26618,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -26783,7 +27589,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -26863,7 +27672,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -26943,7 +27755,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -27198,6 +28013,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -27246,6 +28065,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -27273,7 +28096,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -27324,7 +28150,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -27353,7 +28182,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -27700,6 +28532,10 @@
             "B1",
             "B2",
             "B3"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -27818,6 +28654,10 @@
             "B1",
             "B2",
             "B3"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -28119,6 +28959,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -28148,7 +28992,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -28177,7 +29024,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -28432,6 +29282,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -28480,6 +29334,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -28923,6 +29781,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -28971,6 +29833,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -29019,6 +29885,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -29231,6 +30101,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -29279,6 +30153,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -29306,7 +30184,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -29583,7 +30464,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -29663,7 +30547,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -29743,7 +30630,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         }
       ],
       "canasta": "norte",
@@ -30165,7 +31055,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -30228,7 +31121,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -30291,7 +31187,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -30603,7 +31502,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -30666,7 +31568,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -30729,7 +31634,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -30947,7 +31855,11 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira",
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -30998,7 +31910,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_3",
@@ -31027,7 +31942,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -31252,7 +32170,11 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira",
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -31303,7 +32225,10 @@
               "balon_id": "el_balon_8"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_3",
@@ -31350,7 +32275,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta",
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -31377,7 +32306,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -31556,7 +32488,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_2",
@@ -31603,6 +32538,10 @@
           "recogidas": [],
           "defensores": [
             "A2"
+          ],
+          "acciones": [
+            "tira",
+            "defiende"
           ]
         },
         {
@@ -31654,7 +32593,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         }
       ],
       "canasta": "norte",
@@ -31847,6 +32789,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -31874,7 +32820,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_3",
@@ -31925,7 +32874,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_4",
@@ -31954,7 +32906,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -32160,6 +33115,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -32189,7 +33148,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -32236,6 +33198,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "tira",
+            "defiende"
           ]
         },
         {
@@ -32287,7 +33253,10 @@
               "balon_id": "el_balon_4"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         }
       ],
       "canasta": "norte",
@@ -32498,6 +33467,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "tira",
+            "defiende"
           ]
         },
         {
@@ -32549,7 +33522,10 @@
               "balon_id": "el_balon_4"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_3",
@@ -32578,7 +33554,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -32771,6 +33750,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -32819,6 +33802,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -32846,7 +33833,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -33049,6 +34039,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "tira",
+            "defiende"
           ]
         },
         {
@@ -33100,7 +34094,10 @@
               "balon_id": "el_balon_4"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_3",
@@ -33129,7 +34126,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -33291,6 +34291,9 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "defiende"
           ]
         },
         {
@@ -33338,6 +34341,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "tira",
+            "defiende"
           ]
         },
         {
@@ -33389,7 +34396,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         }
       ],
       "canasta": "norte",
@@ -33554,7 +34564,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_2",
@@ -33605,7 +34618,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_3",
@@ -33634,7 +34650,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_4",
@@ -33663,7 +34682,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_5",
@@ -33692,7 +34714,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_6",
@@ -33719,7 +34744,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -34040,6 +35068,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -34210,6 +35242,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -34258,6 +35294,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -34449,6 +35489,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -34497,6 +35541,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -34545,6 +35593,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -34769,6 +35821,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -34817,6 +35873,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -34846,7 +35906,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -34873,7 +35936,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -35093,6 +36159,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -35122,7 +36192,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -35169,6 +36242,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "tira",
+            "defiende"
           ]
         }
       ],
@@ -35365,6 +36442,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -35392,7 +36473,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -35589,6 +36673,10 @@
           ],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "defiende",
+            "recoge"
           ]
         },
         {
@@ -35637,6 +36725,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -35685,6 +36777,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -35712,7 +36808,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -35924,6 +37023,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -35972,6 +37075,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -35999,7 +37106,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -36228,6 +37338,10 @@
           ],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "recoge",
+            "defiende"
           ]
         },
         {
@@ -36276,6 +37390,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -36324,6 +37442,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -36351,7 +37473,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -36701,6 +37826,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -36730,7 +37859,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -36778,6 +37910,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -36805,7 +37941,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -37151,6 +38290,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -37234,6 +38377,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -37317,6 +38464,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -37647,6 +38798,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -37730,6 +38885,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -37968,6 +39127,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -38016,6 +39179,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -38260,6 +39427,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -38327,6 +39498,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -38394,6 +39569,10 @@
           "defensores": [
             "B2",
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         }
       ],
@@ -38636,6 +39815,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -38685,6 +39868,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -38712,7 +39899,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -38933,6 +40123,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -38999,6 +40193,10 @@
           "defensores": [
             "B2",
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -39048,6 +40246,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -39075,7 +40277,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -39406,6 +40611,10 @@
             "B1",
             "B2",
             "B3"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         }
       ],
@@ -39682,6 +40891,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "corta"
           ]
         },
         {
@@ -39733,7 +40946,10 @@
               "balon_id": "el_balon_6"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_3",
@@ -39762,7 +40978,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -40253,6 +41472,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -40302,6 +41525,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -40349,6 +41576,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "tira"
           ]
         }
       ],
@@ -40582,6 +41813,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -40611,7 +41847,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -40659,6 +41898,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -40686,7 +41929,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -40971,6 +42217,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -41020,6 +42271,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -41069,6 +42324,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -41117,6 +42376,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -41144,7 +42407,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -42577,6 +43843,9 @@
           "defensores": [
             "B2",
             "B1"
+          ],
+          "acciones": [
+            "defiende"
           ]
         },
         {
@@ -42625,6 +43894,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -42654,7 +43927,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -42681,7 +43957,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -42967,6 +44246,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -43034,6 +44317,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -43063,7 +44350,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -43309,6 +44599,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -43358,6 +44652,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -43407,6 +44705,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "defiende",
+            "pasa"
           ]
         }
       ],
@@ -43635,7 +44937,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -43664,7 +44969,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -43727,7 +45035,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_4",
@@ -43756,7 +45067,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_5",
@@ -43785,7 +45099,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_6",
@@ -43812,7 +45129,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -44064,6 +45384,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -44093,7 +45417,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_3",
@@ -44122,7 +45449,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -44380,6 +45710,10 @@
           "defensores": [
             "B2",
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -44463,6 +45797,10 @@
           "defensores": [
             "B2",
             "B3"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -44492,7 +45830,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -44730,6 +46071,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -44759,7 +46104,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -44786,7 +46134,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -45140,7 +46491,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta",
+            "pasa"
+          ]
         },
         {
           "id": "fase_2",
@@ -45255,7 +46610,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta",
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -45533,6 +46892,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -45599,6 +46963,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende",
+            "pasa"
           ]
         },
         {
@@ -45665,6 +47034,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende",
+            "pasa"
           ]
         }
       ],
@@ -45883,7 +47257,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_2",
@@ -45910,7 +47287,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_3",
@@ -45961,7 +47341,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_4",
@@ -45990,7 +47373,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -46155,7 +47541,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -46184,7 +47573,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_3",
@@ -46211,7 +47603,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -46262,7 +47657,10 @@
               "balon_id": "el_balon_2"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -46291,7 +47689,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -46480,7 +47881,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -46509,7 +47913,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -46538,7 +47945,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_4",
@@ -46565,7 +47975,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_5",
@@ -46616,7 +48029,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_6",
@@ -46645,7 +48061,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -46862,6 +48281,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -46910,6 +48333,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -46937,7 +48364,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -46988,7 +48418,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -47017,7 +48450,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -47241,6 +48677,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -47270,7 +48710,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -47297,7 +48740,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -47348,7 +48794,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -47377,7 +48826,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -47596,6 +49048,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -47644,6 +49100,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -47671,7 +49131,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -47722,7 +49185,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -47751,7 +49217,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -47975,7 +49444,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -48004,7 +49476,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_3",
@@ -48031,7 +49506,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -48082,7 +49560,10 @@
               "balon_id": "el_balon_4"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -48111,7 +49592,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -48341,6 +49825,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -48424,6 +49912,11 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "entra",
+            "defiende",
+            "corta"
           ]
         },
         {
@@ -48451,7 +49944,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -48645,7 +50141,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_2",
@@ -48672,7 +50171,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_3",
@@ -48723,7 +50225,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_4",
@@ -48752,7 +50257,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_5",
@@ -48781,7 +50289,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -49002,6 +50513,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -49050,6 +50565,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -49079,7 +50598,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -49106,7 +50628,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -49361,6 +50886,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "pasa",
+            "defiende"
           ]
         },
         {
@@ -49444,6 +50973,10 @@
           "defensores": [
             "B1",
             "B3"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -49473,7 +51006,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -49699,6 +51235,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -49728,7 +51268,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -49755,7 +51298,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -49967,6 +51513,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -50015,6 +51565,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -50042,7 +51596,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -50263,6 +51820,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -50311,6 +51872,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -50340,7 +51905,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -50565,6 +52133,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -50594,7 +52166,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -50642,6 +52217,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -50671,7 +52250,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_5",
@@ -50698,7 +52280,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -51005,6 +52590,11 @@
             "B3",
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bloquea",
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -51034,7 +52624,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -51061,7 +52654,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -51301,6 +52897,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bloquea",
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -51349,6 +52950,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "defiende",
+            "corta"
           ]
         },
         {
@@ -51378,7 +52983,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -51405,7 +53013,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -51644,6 +53255,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bloquea",
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -51692,6 +53308,10 @@
           "recogidas": [],
           "defensores": [
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -51721,7 +53341,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -51748,7 +53371,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -51986,7 +53612,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota",
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -52015,7 +53645,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -52078,7 +53711,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_4",
@@ -52107,7 +53743,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_5",
@@ -52136,7 +53775,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_6",
@@ -52163,7 +53805,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -52415,6 +54060,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -52444,7 +54093,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -52492,6 +54144,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -52519,7 +54175,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -52754,6 +54413,11 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -52783,7 +54447,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -52831,6 +54498,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "entra",
+            "defiende"
           ]
         },
         {
@@ -52858,7 +54529,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -53217,7 +54891,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_2",
@@ -53282,6 +54959,10 @@
           "recogidas": [],
           "defensores": [
             "A1"
+          ],
+          "acciones": [
+            "defiende",
+            "corta"
           ]
         },
         {
@@ -53347,6 +55028,10 @@
           "recogidas": [],
           "defensores": [
             "A1"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         }
       ],
@@ -53631,6 +55316,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -53660,7 +55349,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -53723,7 +55415,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota",
+            "corta"
+          ]
         }
       ],
       "canasta": "norte",
@@ -53973,7 +55669,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_2",
@@ -54002,7 +55701,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -54065,7 +55767,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_4",
@@ -54094,7 +55799,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_5",
@@ -54123,7 +55831,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_6",
@@ -54150,7 +55861,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -54467,6 +56181,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "recoge",
+            "defiende"
           ]
         },
         {
@@ -54530,7 +56248,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota",
+            "corta"
+          ]
         },
         {
           "id": "fase_3",
@@ -54593,7 +56315,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota",
+            "corta"
+          ]
         }
       ],
       "canasta": "norte",
@@ -55068,7 +56794,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -55165,7 +56894,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -55262,7 +56994,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         }
       ],
       "canasta": "norte",
@@ -55586,6 +57321,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -55615,7 +57354,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -55644,7 +57386,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -55940,7 +57685,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta",
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -55969,7 +57718,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -56032,7 +57784,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota",
+            "corta"
+          ]
         },
         {
           "id": "fase_4",
@@ -56061,7 +57817,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -56434,6 +58193,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -56517,6 +58280,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -56736,7 +58503,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -56765,7 +58535,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -56958,6 +58731,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         },
         {
@@ -56987,7 +58764,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -57016,7 +58796,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -57273,6 +59056,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         },
         {
@@ -57356,6 +59143,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "corta",
+            "defiende"
           ]
         }
       ],
@@ -57564,6 +59355,9 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "defiende"
           ]
         },
         {
@@ -57612,6 +59406,10 @@
           "recogidas": [],
           "defensores": [
             "B1"
+          ],
+          "acciones": [
+            "bota",
+            "defiende"
           ]
         }
       ],
@@ -57815,7 +59613,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -57844,7 +59645,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_3",
@@ -57873,7 +59677,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_4",
@@ -57902,7 +59709,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -58177,6 +59987,11 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "recoge",
+            "defiende",
+            "corta"
           ]
         }
       ],
@@ -58338,7 +60153,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_2",
@@ -58389,7 +60207,10 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_3",
@@ -58416,7 +60237,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -58484,7 +60308,11 @@
               "balon_id": "el_balon_3"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge",
+            "corta"
+          ]
         },
         {
           "id": "fase_5",
@@ -58511,7 +60339,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         }
       ],
       "canasta": "norte",
@@ -58773,6 +60604,10 @@
           "defensores": [
             "B1",
             "B2"
+          ],
+          "acciones": [
+            "recoge",
+            "defiende"
           ]
         },
         {
@@ -58802,7 +60637,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_3",
@@ -58831,7 +60669,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -59141,7 +60982,11 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta",
+            "pasa"
+          ]
         },
         {
           "id": "fase_2",
@@ -59170,7 +61015,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_3",
@@ -59199,7 +61047,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_4",
@@ -59262,7 +61113,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
@@ -59559,7 +61413,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -59639,7 +61496,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         }
       ],
       "canasta": "norte",
@@ -59943,7 +61803,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -59972,7 +61835,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "entra"
+          ]
         },
         {
           "id": "fase_3",
@@ -59999,7 +61865,10 @@
             }
           ],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "tira"
+          ]
         },
         {
           "id": "fase_4",
@@ -60050,7 +61919,10 @@
               "balon_id": "el_balon_5"
             }
           ],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "recoge"
+          ]
         },
         {
           "id": "fase_5",
@@ -60113,7 +61985,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "vuelve_a_fila"
+          ]
         }
       ],
       "canasta": "norte",
@@ -60526,7 +62401,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         },
         {
           "id": "fase_2",
@@ -60640,7 +62518,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "bota"
+          ]
         }
       ],
       "canasta": "norte",
@@ -60976,7 +62857,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         },
         {
           "id": "fase_2",
@@ -61039,7 +62923,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "corta"
+          ]
         },
         {
           "id": "fase_3",
@@ -61102,7 +62989,10 @@
           "bloqueos": [],
           "tiros": [],
           "recogidas": [],
-          "defensores": []
+          "defensores": [],
+          "acciones": [
+            "pasa"
+          ]
         }
       ],
       "canasta": "norte",
