@@ -76,7 +76,9 @@ export function render(root, params) {
   // ── Asistencia ─────────────────────────────────────────────
   function actualizaResumen() {
     const r = resumenAsistencia(densas);
-    nodoResumen.replaceChildren(
+    // mount y NO nodoResumen.replaceChildren: con todos presentes, las tres
+    // últimas líneas valen null y el nativo las pintaba como texto "null".
+    mount(nodoResumen,
       h('div', { class: 'eq-carga-dato' },
         h('span', { class: 'eq-carga-num' }, `${r.entrenaron}/${r.total}`),
         h('span', { class: 'eq-carga-lbl' }, 'entrenaron')),

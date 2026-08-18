@@ -1,16 +1,21 @@
 /* ============================================================
    equipo-detalle.js — /equipos/:teamId · pestañas ?tab=
-   plantilla (roster + pegar lista) | horarios (slots + periodos +
-   regenerar con preview) | ajustes (color, convocatoria, nombre).
+   plantilla (roster + pegar lista) | horarios (una cajita por día, se
+   edita y se genera de uno en uno, con tramo elegible y vista previa +
+   periodos sin entreno) | ajustes (color, convocatoria, nombre).
    ============================================================ */
 
 import { h, mount } from '../ui/dom.js';
 import { toast, toastDeshacer } from '../ui/toast.js';
 import { abrirModal, confirmar } from '../ui/modal.js';
-import { colorPicker, diaChips, slotsEditor, avatar, puntoEquipo } from '../ui/components.js';
+import { colorPicker, diaChips, avatar, puntoEquipo } from '../ui/components.js';
 import { getEquipo, actualizarEquipo, guardarAjustes } from '../data/teams.js';
 import { getJugadores, crearJugador, crearJugadoresBulk, actualizarJugador } from '../data/players.js';
-import { getSlots, guardarSlots, previewRegeneracion, getPeriodos, addPeriodo, addPeriodosBulk, borrarPeriodo, getSlotsOtrasTemporadas } from '../data/schedules.js';
+import {
+  getSlots, guardarSlots, guardarSlot, desactivarSlot, reactivarSlot, previewRegeneracion,
+  contarSesiones, getPeriodos, addPeriodo, addPeriodosBulk, borrarPeriodo,
+  getSlotsOtrasTemporadas,
+} from '../data/schedules.js';
 import { getTemporadas } from '../data/seasons.js';
 import { getPartidosEquipo } from '../data/matches.js';
 import {
@@ -29,7 +34,7 @@ import { modalObjetivo, filaObjetivo } from './objetivo-form.js';
 import { avisoTemporada, fechaLarga } from './temporada-form.js';
 import { temporadaCubre } from '../data/programacion.js';
 import { invalidarEquipos, esAdmin } from '../store.js';
-import { CATEGORIAS_EQUIPO, POSICIONES, ESTADOS_JUGADOR, weekdayNombre } from '../config.js';
+import { CATEGORIAS_EQUIPO, POSICIONES, ESTADOS_JUGADOR, weekdayNombre, WEEKDAYS } from '../config.js';
 import { router } from '../main.js';
 
 export function render(root, params) {
@@ -356,11 +361,12 @@ export function render(root, params) {
 
   // ── Pestaña HORARIOS ───────────────────────────────────────
   async function pintaHorarios(zona) {
-    const [slots, periodos] = await Promise.all([
+    const [slots, periodos, conteo] = await Promise.all([
       getSlots(teamId, temporada.id),
       getPeriodos(temporada.id, teamId),
+      contarSesiones(teamId, temporada.id).catch(() => null),
     ]);
-    const editor = slotsEditor(slots);
+    const colorEquipo = equipo.team_settings?.color || 'var(--muted)';
 
     // Los horarios son de cada temporada. Al abrir una nueva el equipo se
     // queda en blanco y tocaría reescribir lo mismo de siempre: se ofrece
@@ -387,36 +393,232 @@ export function render(root, params) {
           weekday: s.weekday, hora_inicio: s.hora_inicio, hora_fin: s.hora_fin, lugar: s.lugar,
         })));
         refrescar();
-        toast(`${heredables.length} horarios copiados de ${heredables.label}. Revísalos y pulsa «Guardar y regenerar».`);
+        toast(`${heredables.length} horarios copiados de ${heredables.label}. Ábrelos con «Editar» para crear sus entrenamientos.`);
       } catch (e) { toast('Error: ' + e.message, 'error'); }
     };
 
-    const regenerar = async () => {
-      try {
-        await guardarSlots(teamId, temporada.id, editor.leer());
-        const { plan, resumen } = await previewRegeneracion(teamId, temporada);
-        if (!resumen.insertar && !resumen.actualizar && !resumen.borrar) {
-          toast('El calendario ya está al día'); return;
-        }
-        const partes = [];
-        if (resumen.insertar) partes.push(`${resumen.insertar} nuevas`);
-        if (resumen.actualizar) partes.push(`${resumen.actualizar} actualizadas (hora/lugar)`);
-        if (resumen.borrar) partes.push(`${resumen.borrar} preliminares eliminadas`);
-        // el rango se dice SIEMPRE: la generación solo puebla la temporada
-        // activa, y verlo aquí evita el "no se generan" cuando en realidad
-        // se generaron 86 sesiones en fechas ya pasadas
-        const rango = `Se generarán entre el ${fechaLarga(temporada.start_date)} y el ${fechaLarga(temporada.end_date)} (temporada ${temporada.label}).`;
-        const ok = await confirmar({
-          titulo: 'Regenerar calendario',
-          mensaje: `${rango} Sesiones preliminares: ${partes.join(', ')}. Las programadas, realizadas o movidas a mano no se tocan. ¿Continuar?`,
-          textoOk: 'Regenerar',
-        });
-        if (!ok) return;
-        const r = await aplicarPlan(teamId, temporada.id, plan);
-        toast(`Calendario actualizado: +${r.insertadas} · ~${r.actualizadas} · −${r.borradas}`
-          + (r.conservadas ? ` · ${r.conservadas} conservadas (ya tenían lista pasada)` : ''));
-      } catch (e) { toast('Error al regenerar: ' + e.message, 'error'); }
+    const soloHora = (t) => (t ? String(t).slice(0, 5) : '');
+    const hoy = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
+    const masDias = (iso, n) =>
+      new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+    const finDeMes = (iso) => {
+      const [y, m] = iso.split('-').map(Number);
+      return `${y}-${String(m).padStart(2, '0')}-${new Date(Date.UTC(y, m, 0)).getUTCDate()}`;
+    };
+    const corta = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
+
+    // Tramos que se pueden generar. Al AÑADIR un día nuevo se propone «de hoy en
+    // adelante»: generar hacia atrás llenaría el calendario de entrenamientos
+    // que nunca existieron.
+    const TRAMOS = [
+      { id: 'temporada', txt: 'Toda la temporada', rango: () => ({ desde: null, hasta: null }) },
+      { id: 'hoy', txt: 'De hoy en adelante', rango: () => ({ desde: hoy(), hasta: null }) },
+      { id: 'mes', txt: 'Hasta fin de mes', rango: () => ({ desde: hoy(), hasta: finDeMes(hoy()) }) },
+      { id: 'semanas', txt: 'Las próximas 4 semanas', rango: () => ({ desde: hoy(), hasta: masDias(hoy(), 28) }) },
+    ];
+
+    /** Alta o edición de UN horario, con tramo a generar y vista previa. */
+    const modalHorario = (slot) => {
+      const esNuevo = !slot;
+      const s0 = esNuevo
+        ? { weekday: 1, hora_inicio: '18:00', hora_fin: '19:30', lugar: '' }
+        : {
+            id: slot.id, weekday: slot.weekday, lugar: slot.lugar || '',
+            hora_inicio: soloHora(slot.hora_inicio), hora_fin: soloHora(slot.hora_fin),
+          };
+      // SIEMPRE 'hoy', también al editar. Con 'temporada' por defecto, cambiar en
+      // febrero el horario de los lunes al miércoles llenaba el calendario de
+      // veintidós miércoles de septiembre a enero que nunca se entrenaron. Que
+      // el tramo largo se elija a mano.
+      let tramoId = 'hoy';
+      let pendiente = null;   // { plan, resumen, conflictos, tramo, opciones } del paso 2
+
+      const cuerpo = h('div', {});
+      const btnSec = h('button', { class: 'btn btn-secondary', type: 'button' }, 'Cancelar');
+      const btnPri = h('button', { class: 'btn btn-primary', type: 'button' }, 'Guardar y ver qué pasa');
+
+      const campo = (etiqueta, control) => h('div', { class: 'field-group' },
+        h('label', { class: 'field-label' }, etiqueta), control);
+
+      const pasoDatos = () => {
+        pendiente = null;
+        btnSec.textContent = 'Cancelar';
+        btnSec.onclick = () => md.cerrar();
+        btnPri.textContent = 'Guardar y ver qué pasa';
+        btnPri.onclick = verPrevia;
+        mount(cuerpo,
+          h('div', { class: 'field-row' },
+            campo('Día', h('select', {
+              class: 'field-select', onChange: (e) => { s0.weekday = Number(e.target.value); },
+            }, ...WEEKDAYS.map((d) => h('option', {
+              value: d.iso, ...(d.iso === s0.weekday ? { selected: true } : {}),
+            }, d.nombre)))),
+            campo('Lugar', h('input', {
+              class: 'field-input', type: 'text', value: s0.lugar, placeholder: 'Pabellón',
+              onInput: (e) => { s0.lugar = e.target.value; },
+            })),
+          ),
+          h('div', { class: 'field-row' },
+            campo('Empieza', h('input', {
+              class: 'field-input', type: 'time', value: s0.hora_inicio,
+              onChange: (e) => { s0.hora_inicio = e.target.value; },
+            })),
+            campo('Acaba', h('input', {
+              class: 'field-input', type: 'time', value: s0.hora_fin,
+              onChange: (e) => { s0.hora_fin = e.target.value; },
+            })),
+          ),
+          h('div', { class: 'eq-tramo' },
+            h('span', { class: 'field-label' }, 'Crear los entrenamientos de este horario en:'),
+            h('div', { class: 'eq-catchips', role: 'radiogroup', 'aria-label': 'Tramo a generar' },
+              ...TRAMOS.map((t) => h('button', {
+                class: 'eq-catchip' + (t.id === tramoId ? ' sel' : ''), type: 'button',
+                role: 'radio', 'aria-checked': String(t.id === tramoId),
+                onClick: (e) => {
+                  tramoId = t.id;
+                  [...e.target.parentNode.children].forEach((b) => {
+                    const sel = b === e.target;
+                    b.classList.toggle('sel', sel);
+                    b.setAttribute('aria-checked', String(sel));
+                  });
+                },
+              }, t.txt)),
+            ),
+          ),
+        );
+      };
+
+      const verPrevia = async () => {
+        if (!s0.hora_inicio || !s0.hora_fin) { toast('Faltan las horas', 'error'); return; }
+        if (s0.hora_fin <= s0.hora_inicio) { toast('La hora de fin va después de la de inicio', 'error'); return; }
+        btnPri.disabled = true;
+        try {
+          const guardado = await guardarSlot(teamId, temporada.id, s0);
+          s0.id = guardado.id;   // segunda pasada tras «Atrás» → actualiza, no duplica
+          const { desde, hasta } = TRAMOS.find((t) => t.id === tramoId).rango();
+          const opciones = { desde, hasta, slotIds: [guardado.id] };
+          pendiente = { ...(await previewRegeneracion(teamId, temporada, opciones)), opciones };
+          pasoPrevia();
+        } catch (e) {
+          toast('Error: ' + e.message, 'error');
+        } finally { btnPri.disabled = false; }
+      };
+
+      const pasoPrevia = () => {
+        const { resumen, conflictos, tramo } = pendiente;
+        const nada = !resumen.insertar && !resumen.actualizar && !resumen.borrar;
+        btnSec.textContent = 'Atrás';
+        btnSec.onclick = pasoDatos;
+        btnPri.textContent = nada ? 'Cerrar' : 'Crear los entrenamientos';
+        btnPri.onclick = nada ? () => md.cerrar() : aplicar;
+
+        const linea = (txt, clase = '') => h('li', { class: clase }, txt);
+        mount(cuerpo,
+          h('p', { class: 'eq-ayuda' }, tramo
+            ? `Del ${fechaLarga(tramo.start_date)} al ${fechaLarga(tramo.end_date)}.`
+            : (!temporada.start_date || !temporada.end_date)
+                ? `La temporada ${temporada.label} no tiene fechas de inicio y fin: sin eso no se puede generar nada.`
+                : 'Ese tramo no cae dentro de la temporada.'),
+          h('ul', { class: 'eq-previa' },
+            resumen.insertar
+              ? linea(`Se crearán ${resumen.insertar} entrenamientos.`, 'eq-previa-alta')
+              : linea('No hay ningún entrenamiento nuevo que crear.'),
+            resumen.actualizar ? linea(`${resumen.actualizar} cambian de hora o de lugar.`) : null,
+            resumen.borrar ? linea(`${resumen.borrar} sin programar se quitan.`, 'eq-previa-baja') : null,
+            resumen.saltadas ? linea(`${resumen.saltadas} no se crean: caen en días sin entreno.`) : null,
+            resumen.descartadas ? linea(`${resumen.descartadas} las quitaste tú a mano y no vuelven.`) : null,
+          ),
+          conflictos.length ? h('div', { class: 'eq-aviso' },
+            h('strong', {}, `${conflictos.length} días ya tienen algo de este equipo`),
+            h('ul', { class: 'eq-previa' }, ...conflictos.slice(0, 6).map((c) => h('li', {},
+              `${corta(c.fecha)} · ya hay ${c.con.length === 1 ? 'una sesión' : `${c.con.length} sesiones`}`))),
+            conflictos.length > 6 ? h('p', { class: 'eq-ayuda' }, `…y ${conflictos.length - 6} más.`) : null,
+            h('p', { class: 'eq-ayuda' }, 'No lo impide: se crearán igual y podrás quitar la que sobre.'),
+          ) : null,
+          h('p', { class: 'eq-ayuda' },
+            'Lo ya programado, realizado o movido a mano no se toca nunca.'),
+        );
+      };
+
+      const aplicar = async () => {
+        btnPri.disabled = true;
+        try {
+          // Se RECALCULA justo antes de aplicar. El plan de la vista previa
+          // envejece: entre que se mira y se acepta, el entrenador puede haber
+          // quitado un entrenamiento desde el calendario (y aplicar el plan
+          // viejo se lo devolvería, rompiendo la promesa de que no vuelve) o
+          // el otro entrenador del equipo puede haber tocado algo.
+          const fresco = await previewRegeneracion(teamId, temporada, pendiente.opciones);
+          const r = await aplicarPlan(teamId, temporada.id, fresco.plan);
+          md.cerrar();
+          toast(`${r.insertadas} entrenamientos creados`
+            + (r.actualizadas ? ` · ${r.actualizadas} actualizados` : '')
+            + (r.borradas ? ` · ${r.borradas} quitados` : '')
+            + (r.conservadas ? ` · ${r.conservadas} conservados (ya tenían lista)` : ''));
+        } catch (e) {
+          toast('Error: ' + e.message, 'error');
+        } finally { btnPri.disabled = false; }
+      };
+
+      const md = abrirModal({
+        titulo: esNuevo ? 'Nuevo día de entreno' : 'Editar horario',
+        cuerpo,
+        pie: [btnSec, btnPri],
+        // Se repinta SIEMPRE al cerrar, salga por donde salga (Cancelar, Atrás,
+        // Escape, la × o el clic fuera). El horario ya se guardó al pedir la
+        // vista previa: si al cerrar la lista siguiera igual, parecería que no
+        // se guardó nada y se acabaría creando el mismo día dos veces.
+        alCerrar: () => refrescar(),
+      });
+      pasoDatos();
+    };
+
+    const quitarHorario = async (slot) => {
+      const ok = await confirmar({
+        titulo: 'Quitar este horario',
+        mensaje: `Se deja de entrenar los ${weekdayNombre(slot.weekday).toLowerCase()}. `
+          + 'Los entrenamientos que ya estén programados o realizados se quedan; '
+          + 'se quitan solo los que nadie ha tocado.',
+        textoOk: 'Quitar',
+      });
+      if (!ok) return;
+      try {
+        await desactivarSlot(slot.id);
+        try {
+          const { plan } = await previewRegeneracion(teamId, temporada, { slotIds: [slot.id] });
+          const r = await aplicarPlan(teamId, temporada.id, plan);
+          refrescar();
+          toast(`Horario quitado${r.borradas ? ` · ${r.borradas} entrenamientos sin programar retirados` : ''}`);
+        } catch (e) {
+          // el horario ya estaba desactivado: sin esto desaparecería de la lista
+          // y sus entrenamientos se quedarían colgando sin ninguna pantalla
+          // desde la que volver a limpiarlos
+          await reactivarSlot(slot.id);
+          refrescar();
+          throw e;
+        }
+      } catch (e) { toast('No se pudo quitar el horario: ' + e.message, 'error'); }
+    };
+
+    const tarjetaHorario = (s) => h('div', {
+      class: 'eq-horario', style: { '--team-color': colorEquipo },
+    },
+      h('div', { class: 'eq-horario-info' },
+        h('span', { class: 'eq-horario-dia' }, weekdayNombre(s.weekday)),
+        h('span', { class: 'eq-horario-hora' }, `${soloHora(s.hora_inicio)}–${soloHora(s.hora_fin)}`),
+        s.lugar ? h('span', { class: 'eq-horario-lugar' }, s.lugar) : null,
+      ),
+      h('div', { class: 'eq-horario-acciones' },
+        h('button', { class: 'btn btn-secondary eq-btn-mini', type: 'button', onClick: () => modalHorario(s) }, 'Editar'),
+        h('button', {
+          class: 'btn btn-secondary eq-btn-mini eq-btn-peligro', type: 'button',
+          onClick: () => quitarHorario(s),
+        }, 'Quitar'),
+      ),
+    );
 
     // un periodo cuyas fechas no rozan la temporada activa no bloquea nada:
     // se dice, en vez de dejar al entrenador creyendo que sí cuenta
@@ -500,11 +702,15 @@ export function render(root, params) {
 
     const modalPegarPeriodos = () => {
       let ta;
+      // las líneas que no se entienden se dicen aquí, y el modal NO se cierra:
+      // antes se descartaban en silencio y faltaban periodos sin previo aviso
+      const aviso = h('div', { class: 'eq-aviso', hidden: true });
       const md = abrirModal({
         titulo: 'Pegar calendario escolar',
         cuerpo: h('div', { class: 'field-group' },
-          h('label', { class: 'field-label' }, 'Una línea por periodo: «2025-12-22 2026-01-07 Navidad» (o una sola fecha)'),
-          ta = h('textarea', { class: 'field-textarea', rows: 8, placeholder: '2025-10-13 Fiesta local\n2025-12-22 2026-01-07 Navidad' }),
+          h('label', { class: 'field-label' }, 'Una línea por periodo: «12/10/2026 Fiesta» o «23/12/2026 10/01/2027 Navidad»'),
+          ta = h('textarea', { class: 'field-textarea', rows: 8, placeholder: '12/10/2026 Fiesta Nacional\n23/12/2026 10/01/2027 Navidad' }),
+          aviso,
           esAdmin() ? h('p', { class: 'eq-ayuda' }, 'Se añadirán como periodos de CLUB (todos los equipos).') : null,
         ),
         pie: [
@@ -513,17 +719,29 @@ export function render(root, params) {
             class: 'btn btn-primary', type: 'button',
             onClick: async () => {
               try {
-                const filas = await addPeriodosBulk({
+                const { filas, ignoradas } = await addPeriodosBulk({
                   season_id: temporada.id,
                   team_id: esAdmin() ? null : teamId,
                   texto: ta.value,
                 });
-                md.cerrar(); refrescar();
                 const fuera = filas.filter((f) =>
                   !temporadaCubre(temporada, f.fecha_inicio) && !temporadaCubre(temporada, f.fecha_fin)).length;
-                toast(`${filas.length} periodos añadidos`
-                  + (fuera ? ` · ${fuera} fuera de la temporada ${temporada.label}` : ''),
-                  fuera ? 'error' : 'success');
+                const resumen = `${filas.length} periodos añadidos`
+                  + (fuera ? ` · ${fuera} fuera de la temporada ${temporada.label}` : '');
+                if (ignoradas.length) {
+                  // lo añadido ya está guardado: se refresca por detrás y el modal
+                  // se queda abierto con lo que falta por corregir
+                  refrescar();
+                  ta.value = ignoradas.map((i) => i.linea).join('\n');
+                  mount(aviso, h('strong', {}, `${ignoradas.length} líneas sin entender`),
+                    h('p', { class: 'eq-ayuda' },
+                      'Se han quedado arriba para que las corrijas. ' + ignoradas[0].porque + '.'));
+                  aviso.hidden = false;
+                  toast(resumen + ` · ${ignoradas.length} sin entender`, 'error');
+                  return;
+                }
+                md.cerrar(); refrescar();
+                toast(resumen, fuera ? 'error' : 'success');
               } catch (e) { toast('Error: ' + e.message, 'error'); }
             },
           }, 'Añadir'),
@@ -536,16 +754,35 @@ export function render(root, params) {
       avisoTemporada(temporada, { onCambiada: refrescar }),
       h('div', { class: 'eq-zona-head' },
         h('h2', { class: 'eq-zona-titulo' }, `Horario semanal · ${temporada.label}`),
-        h('button', { class: 'btn btn-primary', type: 'button', onClick: regenerar }, 'Guardar y regenerar'),
+        h('button', { class: 'btn btn-primary', type: 'button', onClick: () => modalHorario(null) },
+          'Añadir día de entreno'),
       ),
-      h('p', { class: 'eq-ayuda' },
-        `Estos días se repetirán del ${fechaLarga(temporada.start_date)} al ${fechaLarga(temporada.end_date)}.`),
+      // Cuántos entrenamientos hay YA. Sin este dato, "no se ha generado nada"
+      // y "ya está todo generado" se ven exactamente igual en pantalla, que es
+      // justo lo que hacía parecer que la generación estaba rota.
+      conteo && conteo.total === 0
+        ? h('div', { class: 'eq-aviso eq-aviso-temporada' },
+            h('span', {}, `Todavía no hay ningún entrenamiento en el calendario de ${temporada.label}. `
+              + 'Añade un día de entreno, o abre uno de los de abajo con «Editar», para crearlos.'))
+        : conteo
+          ? h('p', { class: 'eq-ayuda' },
+              `${conteo.total} entrenamientos en el calendario de ${temporada.label}: `
+              + [
+                  conteo.por.preliminar ? `${conteo.por.preliminar} sin programar` : null,
+                  conteo.por.programada ? `${conteo.por.programada} programados` : null,
+                  conteo.por.realizada ? `${conteo.por.realizada} realizados` : null,
+                  conteo.por.cancelada ? `${conteo.por.cancelada} cancelados` : null,
+                ].filter(Boolean).join(' · '))
+          : null,
       heredables.length ? h('div', { class: 'eq-aviso eq-aviso-temporada' },
         h('span', {}, `Este equipo no tiene horarios en ${temporada.label}, pero sí ${heredables.length} en ${heredables.label}.`),
         h('button', { class: 'btn btn-primary eq-btn-mini', type: 'button', onClick: copiarHorarios },
           `Copiar los de ${heredables.label}`),
       ) : null,
-      editor,
+      slots.length
+        ? h('div', { class: 'eq-horarios' }, ...slots.map(tarjetaHorario))
+        : h('p', { class: 'eq-ayuda' },
+            'Sin horarios en esta temporada. Añade un día de entreno para que el calendario se llene solo.'),
       h('div', { class: 'eq-zona-head eq-zona-head-sep' },
         h('h2', { class: 'eq-zona-titulo' }, 'Días sin entreno'),
         h('div', { class: 'eq-zona-acciones' },

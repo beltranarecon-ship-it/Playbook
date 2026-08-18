@@ -6,9 +6,11 @@
    ============================================================ */
 
 import {
+  recortarTemporada,
   diasEntre, isoWeekday, enPeriodo, duracionMin,
   expandirTemporada, planRegeneracion,
   temporadaCubre, estadoTemporada, proponerTemporada,
+  parsearFecha, parsearPeriodos,
 } from '../js/data/programacion.js';
 
 let pasan = 0, fallan = 0;
@@ -151,7 +153,7 @@ caso('slot borrado → poda SOLO las preliminares intactas', () => {
     sesionDe(deMie[0]), sesionDe(deMie[1]),        // su slot sigue → intactas
   ];
   const plan = planRegeneracion(expandirTemporada(TEMporada, [SLOT_MIE]), existentes);
-  eq(plan.aBorrar, [existentes[0].id]);
+  eq(plan.aBorrar.map((b) => b.id), [existentes[0].id]);
   eq(plan.aInsertar, []); eq(plan.aActualizar, []);
 });
 
@@ -161,7 +163,7 @@ caso('periodo añadido después → poda la intacta que ahora cae en él', () =>
   const oc1 = expandirTemporada(TEMporada, [SLOT_LUN],
     [{ fecha_inicio: '2025-09-08', fecha_fin: '2025-09-08' }]);
   const plan = planRegeneracion(oc1, existentes);
-  eq(plan.aBorrar, [existentes[1].id]); // la del lunes 08
+  eq(plan.aBorrar.map((b) => b.id), [existentes[1].id]); // la del lunes 08
   eq(plan.aInsertar, []);
 });
 
@@ -213,6 +215,278 @@ caso('una temporada terminada no genera nada donde el entrenador mira', () => {
   eq(oc.length, 86);
   eq(oc.filter((o) => o.slot_date >= '2026-07-26').length, 0);
   eq(estadoTemporada(T2526, '2026-07-26'), 'terminada');
+});
+
+// ── exclusiones (018): lo descartado a mano NO resucita ───────
+console.log('— exclusiones —');
+
+caso('sin exclusiones, el plan es exactamente el de siempre', () => {
+  const oc = expandirTemporada(TEMporada, [SLOT_LUN, SLOT_MIE]);
+  eq(planRegeneracion(oc, []), planRegeneracion(oc, [], { exclusiones: [] }));
+  eq(planRegeneracion(oc, [], undefined).aInsertar.length, oc.length);
+  eq(planRegeneracion(oc, [], null).aInsertar.length, oc.length);
+  eq(planRegeneracion(oc, [], {}).aInsertar.length, oc.length);
+});
+
+caso('EL FALLO QUE CIERRA LA 018: borrada y sin excluir, vuelve a nacer', () => {
+  const oc = expandirTemporada(TEMporada, [SLOT_LUN]);
+  // se borró la primera: su fila ya no está en la BD
+  const existentes = oc.slice(1).map((o) => sesionDe(o));
+  const plan = planRegeneracion(oc, existentes);          // sin exclusiones
+  eq(plan.aInsertar.length, 1, 'resucita');
+  eq(plan.aInsertar[0].slot_date, oc[0].slot_date);
+});
+
+caso('con la exclusión anotada, esa ocurrencia ya no vuelve', () => {
+  const oc = expandirTemporada(TEMporada, [SLOT_LUN]);
+  const existentes = oc.slice(1).map((o) => sesionDe(o));
+  const plan = planRegeneracion(oc, existentes,
+    { exclusiones: [{ slot_id: oc[0].slot_id, slot_date: oc[0].slot_date }] });
+  eq(plan.aInsertar, []);
+  eq(plan.aBorrar, []);
+  eq(plan.aActualizar, []);
+});
+
+caso('la exclusión es de UNA ocurrencia, no del slot entero', () => {
+  const oc = expandirTemporada(TEMporada, [SLOT_LUN]);
+  const plan = planRegeneracion(oc, [],
+    { exclusiones: [{ slot_id: oc[0].slot_id, slot_date: oc[0].slot_date }] });
+  eq(plan.aInsertar.length, oc.length - 1);
+  eq(plan.aInsertar.some((o) => o.slot_date === oc[0].slot_date), false);
+  eq(plan.aInsertar.some((o) => o.slot_date === oc[1].slot_date), true);
+});
+
+caso('una exclusión de otro slot el mismo día no se contagia', () => {
+  const oc = expandirTemporada(TEMporada, [SLOT_LUN, SLOT_MIE]);
+  const plan = planRegeneracion(oc, [],
+    { exclusiones: [{ slot_id: 'sl-mie', slot_date: oc.find((o) => o.slot_id === 'sl-mie').slot_date }] });
+  eq(plan.aInsertar.filter((o) => o.slot_id === 'sl-lun').length,
+     oc.filter((o) => o.slot_id === 'sl-lun').length);
+  eq(plan.aInsertar.filter((o) => o.slot_id === 'sl-mie').length,
+     oc.filter((o) => o.slot_id === 'sl-mie').length - 1);
+});
+
+caso('IDEMPOTENCIA: regenerar dos veces con exclusiones no hace nada nuevo', () => {
+  const oc = expandirTemporada(TEMporada, [SLOT_LUN]);
+  const exc = [{ slot_id: oc[0].slot_id, slot_date: oc[0].slot_date }];
+  const primera = planRegeneracion(oc, [], { exclusiones: exc });
+  const trasAplicar = primera.aInsertar.map((o) => sesionDe(o));
+  const segunda = planRegeneracion(oc, trasAplicar, { exclusiones: exc });
+  eq(segunda, { aInsertar: [], aActualizar: [], aBorrar: [] });
+});
+
+caso('si una excluida acabase teniendo fila, no se toca ni se poda', () => {
+  const oc = expandirTemporada(TEMporada, [SLOT_LUN]);
+  // misma clave, pero con hora distinta: sin la exclusión se parchearía
+  const fila = sesionDe(oc[0], { hora_inicio: '11:11' });
+  const plan = planRegeneracion(oc, [fila],
+    { exclusiones: [{ slot_id: oc[0].slot_id, slot_date: oc[0].slot_date }] });
+  eq(plan.aActualizar, []);
+  eq(plan.aBorrar, []);
+});
+
+caso('exclusiones basura (sin slot o sin fecha) se ignoran sin romper', () => {
+  const oc = expandirTemporada(TEMporada, [SLOT_LUN]);
+  const plan = planRegeneracion(oc, [],
+    { exclusiones: [null, {}, { slot_id: 'sl-lun' }, { slot_date: '2025-09-01' }] });
+  eq(plan.aInsertar.length, oc.length);
+});
+
+caso('aBorrar lleva la fecha teórica, que es la guarda anti-carrera', () => {
+  const oc = expandirTemporada(TEMporada, [SLOT_LUN, SLOT_MIE]);
+  const existentes = oc.map((o) => sesionDe(o));
+  const plan = planRegeneracion(expandirTemporada(TEMporada, [SLOT_MIE]), existentes);
+  eq(plan.aBorrar.length, 2);
+  for (const b of plan.aBorrar) {
+    if (!b.id || !b.slot_date) throw new Error('falta id o slot_date: ' + JSON.stringify(b));
+  }
+  // y la fecha es la TEÓRICA de la ocurrencia, no otra cosa
+  eq(plan.aBorrar.map((b) => b.slot_date), ['2025-09-01', '2025-09-08']);
+});
+
+// ── rango parcial: generar un tramo sin arrasar el resto ──────
+console.log('— rango parcial —');
+
+const T8SEM = { start_date: '2025-09-01', end_date: '2025-10-26' }; // 8 lunes
+
+caso('recortarTemporada acota sin salirse nunca de la temporada', () => {
+  eq(recortarTemporada(T8SEM, '2025-09-15', '2025-09-28'),
+     { start_date: '2025-09-15', end_date: '2025-09-28' });
+  // pedir más de lo que dura la temporada no la agranda
+  eq(recortarTemporada(T8SEM, '2025-01-01', '2026-12-31'), T8SEM);
+  // sin límites, la temporada entera
+  eq(recortarTemporada(T8SEM), T8SEM);
+});
+
+caso('recortarTemporada da null si el tramo ni la roza', () => {
+  eq(recortarTemporada(T8SEM, '2026-01-01', '2026-02-01'), null);
+  eq(recortarTemporada(null, '2025-09-01', '2025-09-30'), null);
+  eq(recortarTemporada({ start_date: null, end_date: null }), null);
+});
+
+caso('EL DESASTRE QUE SE EVITA: sin límites, generar un tramo poda el resto', () => {
+  const todas = expandirTemporada(T8SEM, [SLOT_LUN]);
+  const existentes = todas.map((o) => sesionDe(o));        // 8 preliminares intactas
+  const soloSept = expandirTemporada(recortarTemporada(T8SEM, null, '2025-09-30'), [SLOT_LUN]);
+  const plan = planRegeneracion(soloSept, existentes);      // ← sin desde/hasta
+  eq(plan.aBorrar.length, 3, 'se cargaría los lunes de octubre');
+});
+
+caso('con desde/hasta, lo de fuera del tramo NI SE MIRA', () => {
+  const todas = expandirTemporada(T8SEM, [SLOT_LUN]);
+  const existentes = todas.map((o) => sesionDe(o));
+  const soloSept = expandirTemporada(recortarTemporada(T8SEM, null, '2025-09-30'), [SLOT_LUN]);
+  const plan = planRegeneracion(soloSept, existentes, { hasta: '2025-09-30' });
+  eq(plan.aBorrar, []);
+  eq(plan.aInsertar, []);
+  eq(plan.aActualizar, []);
+});
+
+caso('dentro del tramo la poda SIGUE funcionando', () => {
+  const todas = expandirTemporada(T8SEM, [SLOT_LUN]);
+  const existentes = todas.map((o) => sesionDe(o));
+  // se mete un periodo sin entreno el 2º lunes: dentro del tramo, debe podarse
+  const conPeriodo = expandirTemporada(recortarTemporada(T8SEM, null, '2025-09-30'), [SLOT_LUN],
+    [{ fecha_inicio: '2025-09-08', fecha_fin: '2025-09-08' }]);
+  const plan = planRegeneracion(conPeriodo, existentes, { hasta: '2025-09-30' });
+  eq(plan.aBorrar.length, 1);
+  eq(plan.aBorrar[0].slot_date, '2025-09-08');
+});
+
+caso('generar solo un tramo inserta solo ese tramo', () => {
+  const tramo = expandirTemporada(recortarTemporada(T8SEM, '2025-10-01', '2025-10-31'), [SLOT_LUN]);
+  const plan = planRegeneracion(tramo, [], { desde: '2025-10-01', hasta: '2025-10-31' });
+  eq(plan.aInsertar.map((o) => o.slot_date),
+     ['2025-10-06', '2025-10-13', '2025-10-20']);
+});
+
+caso('«a partir de hoy»: un día nuevo no genera hacia atrás', () => {
+  const hoy = '2025-10-01';
+  const desdeHoy = expandirTemporada(recortarTemporada(T8SEM, hoy, null), [SLOT_LUN]);
+  eq(desdeHoy.every((o) => o.slot_date >= hoy), true);
+  const plan = planRegeneracion(desdeHoy, [], { desde: hoy });
+  eq(plan.aInsertar.length, 3);
+  eq(plan.aInsertar.some((o) => o.slot_date < hoy), false);
+});
+
+caso('rango y exclusiones conviven', () => {
+  const tramo = expandirTemporada(recortarTemporada(T8SEM, '2025-10-01', '2025-10-31'), [SLOT_LUN]);
+  const plan = planRegeneracion(tramo, [], {
+    desde: '2025-10-01', hasta: '2025-10-31',
+    exclusiones: [{ slot_id: 'sl-lun', slot_date: '2025-10-13' }],
+  });
+  eq(plan.aInsertar.map((o) => o.slot_date), ['2025-10-06', '2025-10-20']);
+});
+
+// ── parsearFecha / parsearPeriodos (pegar el calendario escolar) ──
+console.log('— parsearFecha —');
+
+caso('dd/mm/aaaa es lo que escribe el entrenador', () => {
+  eq(parsearFecha('12/10/2026'), '2026-10-12');
+  eq(parsearFecha('1/5/2027'), '2027-05-01');       // sin ceros a la izquierda
+});
+
+caso('también con guion y con punto', () => {
+  eq(parsearFecha('12-10-2026'), '2026-10-12');
+  eq(parsearFecha('12.10.2026'), '2026-10-12');
+});
+
+caso('el ISO de siempre sigue valiendo', () => {
+  eq(parsearFecha('2026-10-12'), '2026-10-12');
+});
+
+caso('una fecha que no existe se rechaza, no se corre de mes', () => {
+  eq(parsearFecha('31/02/2026'), null);             // febrero no tiene 31
+  eq(parsearFecha('29/02/2027'), null);             // 2027 no es bisiesto
+  eq(parsearFecha('29/02/2028'), '2028-02-29');     // 2028 sí
+  eq(parsearFecha('00/10/2026'), null);
+  eq(parsearFecha('12/13/2026'), null);
+});
+
+caso('lo que no es una fecha da null', () => {
+  eq(parsearFecha('Navidad'), null);
+  eq(parsearFecha('12/10/26'), null);               // el año va entero
+  eq(parsearFecha(''), null);
+});
+
+console.log('— parsearPeriodos —');
+
+caso('un día suelto con su motivo', () => {
+  const { filas, ignoradas } = parsearPeriodos('12/10/2026 Fiesta Nacional');
+  eq(ignoradas, []);
+  eq(filas, [{ fecha_inicio: '2026-10-12', fecha_fin: '2026-10-12', motivo: 'Fiesta Nacional' }]);
+});
+
+caso('un rango con las dos fechas separadas por espacio', () => {
+  const { filas } = parsearPeriodos('23/12/2026 10/01/2027 Navidad');
+  eq(filas, [{ fecha_inicio: '2026-12-23', fecha_fin: '2027-01-10', motivo: 'Navidad' }]);
+});
+
+caso('el rango admite guion, raya y las palabras a / al / hasta', () => {
+  for (const sep of ['-', '–', '—', 'a', 'al', 'hasta']) {
+    const { filas } = parsearPeriodos(`20/03/2027 ${sep} 30/03/2027 Semana Santa`);
+    eq(filas, [{ fecha_inicio: '2027-03-20', fecha_fin: '2027-03-30', motivo: 'Semana Santa' }], `sep=${sep}`);
+  }
+});
+
+caso('un motivo que empieza por "a" no se confunde con el separador', () => {
+  const { filas } = parsearPeriodos('12/10/2026 aniversario del club');
+  eq(filas, [{ fecha_inicio: '2026-10-12', fecha_fin: '2026-10-12', motivo: 'aniversario del club' }]);
+});
+
+caso('sin motivo, el motivo es null (no cadena vacía)', () => {
+  const { filas } = parsearPeriodos('12/10/2026');
+  eq(filas[0].motivo, null);
+});
+
+caso('las fechas al revés se enderezan en vez de rechazarse', () => {
+  const { filas } = parsearPeriodos('10/01/2027 23/12/2026 Navidad');
+  eq(filas, [{ fecha_inicio: '2026-12-23', fecha_fin: '2027-01-10', motivo: 'Navidad' }]);
+});
+
+caso('las líneas en blanco no estorban', () => {
+  const { filas, ignoradas } = parsearPeriodos('\n  \n12/10/2026 Fiesta\n\n');
+  eq(filas.length, 1);
+  eq(ignoradas, []);
+});
+
+caso('lo que no se entiende se DEVUELVE, no se traga en silencio', () => {
+  const { filas, ignoradas } = parsearPeriodos(
+    '12/10/2026 Fiesta\nNavidad entera\n31/02/2026 Inventada');
+  eq(filas.length, 1);
+  eq(ignoradas.length, 2);
+  eq(ignoradas[0].porque, 'no empieza por una fecha');
+  eq(ignoradas[1].porque, 'esa fecha no existe');
+  eq(ignoradas[1].linea, '31/02/2026 Inventada');
+});
+
+caso('el calendario real de la temporada 2026/27 entra entero', () => {
+  const { filas, ignoradas } = parsearPeriodos([
+    '12/10/2026 Fiesta Nacional de España',
+    '30/10/2026 Día del Docente',
+    '02/11/2026 Todos los Santos',
+    '07/12/2026 Día de la Constitución',
+    '08/12/2026 Inmaculada Concepción',
+    '23/12/2026 10/01/2027 Vacaciones de Navidad',
+    '08/02/2027 Carnaval',
+    '09/02/2027 Carnaval',
+    '20/03/2027 30/03/2027 Vacaciones de Semana Santa',
+    '23/04/2027 Día de Castilla y León',
+    '01/05/2027 Día del Trabajo',
+  ].join('\n'));
+  eq(ignoradas, []);
+  eq(filas.length, 11);
+  eq(filas[5], { fecha_inicio: '2026-12-23', fecha_fin: '2027-01-10', motivo: 'Vacaciones de Navidad' });
+  eq(filas[10], { fecha_inicio: '2027-05-01', fecha_fin: '2027-05-01', motivo: 'Día del Trabajo' });
+  // y de verdad bloquean: el 24 de diciembre cae dentro
+  eq(enPeriodo('2026-12-24', filas), true);
+  eq(enPeriodo('2026-12-22', filas), false);
+});
+
+caso('texto vacío o nulo no revienta', () => {
+  eq(parsearPeriodos(''), { filas: [], ignoradas: [] });
+  eq(parsearPeriodos(null), { filas: [], ignoradas: [] });
+  eq(parsearPeriodos(undefined), { filas: [], ignoradas: [] });
 });
 
 // ── Resumen ──────────────────────────────────────────────────

@@ -42,7 +42,13 @@ export function frag(...children) {
   return f;
 }
 
-/** Limpia un nodo y le mete contenido nuevo. */
+/**
+ * Limpia un nodo y le mete contenido nuevo. ES EL SUSTITUTO de
+ * host.replaceChildren(...) para los re-pintados parciales: el nativo NO filtra
+ * null y lo pinta como el texto "null" en pantalla. Si los hijos son fijos da
+ * igual cuál uses; en cuanto haya un `cond ? nodo : null`, tiene que ser mount
+ * (o .filter(Boolean) antes del spread).
+ */
 export function mount(host, ...children) {
   host.replaceChildren();
   append(host, children);

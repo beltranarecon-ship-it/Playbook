@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEV · reinicio de datos y temporada nueva</title>
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/equipos/css/panel.css">
+  <style>
+    body { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem 5rem; background: var(--bone); }
+    h1 { margin: 0 0 .25rem; }
+    .paso { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+            padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
+    .paso[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+    .paso h2 { font-size: 1.0625rem; margin: 0 0 .5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; margin: .75rem 0; }
+    th, td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--line); }
+    td.n { text-align: right; font-family: var(--font-mono); }
+    tr.vacia { color: var(--muted); }
+    #log { font-family: var(--font-mono); font-size: .78rem; white-space: pre-wrap;
+           background: var(--carbon); color: #d7dae0; padding: .9rem 1rem; border-radius: var(--radius);
+           max-height: 320px; overflow: auto; margin-top: 1rem; }
+    .peligro { border-color: var(--error); }
+    .peligro h2 { color: var(--error); }
+    label.check { display: flex; gap: .5rem; align-items: flex-start; margin: .75rem 0; font-size: .9375rem; }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     dev/reinicio.html — Tramo 1, tareas 1.3 y 1.4.
+     Copia de seguridad + borrado de equipos/sesiones/temporadas +
+     alta de la temporada 2026/27 con sus periodos de vacaciones.
+
+     POR QUÉ ES UNA PÁGINA Y NO UN SCRIPT DE NODE: desde Node haría falta
+     la clave de servicio (o, peor, la contraseña del entrenador). Aquí
+     hay sesión de admin de verdad y la RLS ya permite todo lo necesario,
+     porque el borrado EN CASCADA no evalúa las policies.
+
+     Vive en /dev/ a propósito: netlify.toml devuelve 404 forzado para
+     /dev/*, así que esto no existe en producción. Y encima se niega a
+     arrancar fuera de localhost.
+     ============================================================ -->
+<script>
+  (function () {
+    if (!['localhost', '127.0.0.1', '::1'].includes(location.hostname)) {
+      document.documentElement.innerHTML =
+        '<body style="font:16px system-ui;padding:3rem">Herramienta de mantenimiento. Solo en localhost.</body>';
+      throw new Error('fuera de localhost');
+    }
+  })();
+</script>
+
+<h1>Reinicio de datos</h1>
+<p class="eq-ayuda">Borra equipos, sesiones y temporadas, y deja montada la 2026/27.
+   <strong>No toca los ejercicios de la biblioteca.</strong></p>
+
+<div class="paso" id="paso-sesion">
+  <h2>0 · Quién eres</h2>
+  <p id="quien" class="eq-ayuda">Comprobando la sesión…</p>
+</div>
+
+<div class="paso" id="paso-copia" aria-disabled="true">
+  <h2>1 · Copia de seguridad</h2>
+  <p class="eq-ayuda">Descarga un fichero con todo lo que se va a borrar. Ábrelo y comprueba que
+     tiene contenido antes de seguir. Esto no se puede deshacer de otra manera.</p>
+  <div id="recuento"></div>
+  <button class="btn btn-primary" id="btn-copia" type="button">Leer y descargar la copia</button>
+</div>
+
+<div class="paso peligro" id="paso-borrar" aria-disabled="true">
+  <h2>2 · Borrar</h2>
+  <p class="eq-ayuda">Se borran los equipos uno a uno (arrastran en cascada plantilla, horarios,
+     sesiones, bloques, asistencias, reflexiones, objetivos, partidos y notas), después los periodos
+     de club y por último las temporadas.</p>
+  <label class="check">
+    <input type="checkbox" id="chk-copia">
+    <span>He descargado la copia, la he abierto y tiene lo que esperaba.</span>
+  </label>
+  <label class="check">
+    <input type="checkbox" id="chk-temporadas">
+    <span>Borrar también las temporadas antiguas (2025/26 y «prueba»).
+      Si lo dejas sin marcar, se quedan vacías pero conservadas.</span>
+  </label>
+  <button class="btn btn-primary" id="btn-borrar" type="button" disabled>Borrar</button>
+</div>
+
+<div class="paso" id="paso-temporada" aria-disabled="true">
+  <h2>3 · Temporada 2026/27</h2>
+  <p class="eq-ayuda">Del 24/08/2026 al 30/06/2027, activa, con los 11 periodos sin entrenamiento
+     del curso. Si la temporada ya existe se reutiliza; los periodos no se duplican.</p>
+  <button class="btn btn-primary" id="btn-temporada" type="button">Crear o activar y cargar periodos</button>
+</div>
+
+<div id="log">esperando…</div>
+
+<script type="module">
+  import { supabase } from '/equipos/js/data/_client.js';
+  import { crearTemporada, activarTemporada, getTemporadas } from '/equipos/js/data/seasons.js';
+  import { addPeriodosBulk } from '/equipos/js/data/schedules.js';
+
+  const $ = (id) => document.getElementById(id);
+  const logEl = $('log');
+  let lineas = [];
+  const log = (t) => { lineas.push(t); logEl.textContent = lineas.join('\n'); logEl.scrollTop = 1e9; };
+  const abre = (id) => $(id).setAttribute('aria-disabled', 'false');
+
+  // Orden deliberado. session_objectives va PRIMERO porque su FK a objectives
+  // es RESTRICT (013), y RESTRICT se comprueba en el acto: si al borrar el
+  // equipo Postgres dispara ese trigger antes que el de sessions, la cascada
+  // entera revienta a mitad. Vaciarla antes lo vuelve determinista.
+  const TABLAS = [
+    'teams', 'team_coaches', 'team_settings', 'players', 'team_schedules',
+    'no_training_periods', 'sessions', 'session_blocks', 'session_objectives',
+    'attendance', 'reflection_questions', 'reflection_answers', 'objectives',
+    'matches', 'team_notes', 'session_slot_exclusions', 'seasons',
+  ];
+
+  const VACACIONES = [
+    '12/10/2026 Fiesta Nacional de España',
+    '30/10/2026 Día del Docente',
+    '02/11/2026 Todos los Santos (traslado)',
+    '07/12/2026 Día de la Constitución (traslado)',
+    '08/12/2026 Inmaculada Concepción',
+    '23/12/2026 10/01/2027 Vacaciones de Navidad',
+    '08/02/2027 Carnaval',
+    '09/02/2027 Carnaval',
+    '20/03/2027 30/03/2027 Vacaciones de Semana Santa',
+    '23/04/2027 Día de Castilla y León',
+    '01/05/2027 Día del Trabajo',
+  ].join('\n');
+
+  let copia = null;
+
+  // ── 0 · sesión ───────────────────────────────────────────────
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    $('quien').textContent = 'No hay sesión. Entra en la app en otra pestaña y recarga esta.';
+    $('quien').className = 'eq-aviso';
+  } else {
+    const { data: perfil } = await supabase.from('profiles')
+      .select('full_name, role').eq('id', user.id).single();
+    $('quien').textContent = `${perfil?.full_name || user.email} · rol ${perfil?.role || '?'}`;
+    if (perfil?.role !== 'admin') {
+      $('quien').textContent += ' — hace falta rol admin para borrar temporadas y periodos de club.';
+      $('quien').className = 'eq-aviso';
+    }
+    abre('paso-copia');
+    log('sesión lista: ' + (perfil?.full_name || user.email));
+  }
+
+  // ── 1 · copia ────────────────────────────────────────────────
+  $('btn-copia').onclick = async () => {
+    $('btn-copia').disabled = true;
+    try {
+      copia = { generada: new Date().toISOString(), tablas: {} };
+      const filas = [];
+      for (const t of TABLAS) {
+        const { data, error } = await supabase.from(t).select('*');
+        if (error) {
+          log(`  ${t}: NO SE PUDO LEER (${error.message})`);
+          filas.push([t, '—']);
+          continue;
+        }
+        copia.tablas[t] = data ?? [];
+        filas.push([t, (data ?? []).length]);
+        log(`  ${t}: ${(data ?? []).length}`);
+      }
+
+      $('recuento').innerHTML = '<table><thead><tr><th>Tabla</th><th style="text-align:right">Filas</th></tr></thead><tbody>'
+        + filas.map(([t, n]) =>
+            `<tr class="${n === 0 ? 'vacia' : ''}"><td>${t}</td><td class="n">${n}</td></tr>`).join('')
+        + '</tbody></table>';
+
+      const blob = new Blob([JSON.stringify(copia, null, 1)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `cbp-copia-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      log('copia descargada. Ábrela antes de seguir.');
+      abre('paso-borrar');
+    } catch (e) {
+      log('ERROR: ' + e.message);
+    } finally { $('btn-copia').disabled = false; }
+  };
+
+  const revisaCheck = () => {
+    $('btn-borrar').disabled = !$('chk-copia').checked;
+  };
+  $('chk-copia').onchange = revisaCheck;
+
+  // ── 2 · borrado ──────────────────────────────────────────────
+  $('btn-borrar').onclick = async () => {
+    if (!copia) { log('Primero la copia.'); return; }
+    const equipos = copia.tablas.teams || [];
+    const temporadas = copia.tablas.seasons || [];
+    const borrarTemps = $('chk-temporadas').checked;
+    if (!confirm(`Se van a borrar ${equipos.length} equipos con TODO su contenido`
+      + (borrarTemps ? ` y ${temporadas.length} temporadas` : '') + '. ¿Seguro?')) return;
+
+    $('btn-borrar').disabled = true;
+    try {
+      // 1) la única FK RESTRICT del subárbol, fuera antes de nada
+      const { data: so, error: eso } = await supabase
+        .from('session_objectives').delete().not('session_id', 'is', null).select('session_id');
+      if (eso) log('  session_objectives: ' + eso.message);
+      else log(`  session_objectives vaciada (${so?.length ?? 0})`);
+
+      // 2) los equipos, UNO A UNO: cada uno arrastra su temporada de datos en
+      //    cascada, y en un solo statement eso puede pasarse de tiempo
+      for (const eq of equipos) {
+        const { data, error } = await supabase.from('teams').delete().eq('id', eq.id).select('id');
+        if (error) log(`  equipo ${eq.name}: ERROR ${error.message}`);
+        else log(`  equipo ${eq.name}: ${data?.length ? 'borrado' : 'no se borró (¿permisos?)'}`);
+      }
+
+      // 3) los periodos de CLUB no cuelgan de ningún equipo: sobreviven a la
+      //    cascada y luego bloquean el borrado de la temporada
+      const { data: per, error: eper } = await supabase
+        .from('no_training_periods').delete().is('team_id', null).select('id');
+      if (eper) log('  periodos de club: ' + eper.message);
+      else log(`  periodos de club borrados: ${per?.length ?? 0}`);
+
+      // 4) por último las temporadas (todas sus FKs son RESTRICT)
+      if (borrarTemps) {
+        for (const t of temporadas) {
+          const { data, error } = await supabase.from('seasons').delete().eq('id', t.id).select('id');
+          if (error) log(`  temporada ${t.label}: ERROR ${error.message}`);
+          else log(`  temporada ${t.label}: ${data?.length ? 'borrada' : 'no se borró'}`);
+        }
+      } else {
+        log('  temporadas conservadas (vacías)');
+      }
+
+      log('BORRADO TERMINADO.');
+      abre('paso-temporada');
+    } catch (e) {
+      log('ERROR: ' + e.message);
+    } finally { $('btn-borrar').disabled = false; }
+  };
+
+  // ── 3 · temporada 2026/27 ────────────────────────────────────
+  $('btn-temporada').onclick = async () => {
+    $('btn-temporada').disabled = true;
+    try {
+      const LABEL = '2026/27';
+      const existentes = await getTemporadas();
+      let temp = existentes.find((t) => t.label === LABEL);
+      if (temp) {
+        log(`temporada ${LABEL} ya existía (${temp.start_date} → ${temp.end_date})`);
+        // las fechas mandan: 24/08 es una decisión, no el 1 de septiembre por defecto
+        if (temp.start_date !== '2026-08-24' || temp.end_date !== '2027-06-30') {
+          const { error } = await supabase.from('seasons')
+            .update({ start_date: '2026-08-24', end_date: '2027-06-30' }).eq('id', temp.id);
+          if (error) throw error;
+          log('  fechas corregidas a 24/08/2026 → 30/06/2027');
+        }
+        await activarTemporada(temp.id);
+        log('  activada');
+      } else {
+        temp = await crearTemporada({
+          label: LABEL, start_date: '2026-08-24', end_date: '2027-06-30', activar: true,
+        });
+        log(`temporada ${LABEL} creada y activada`);
+      }
+
+      // idempotente a mano: la tabla no tiene unicidad, así que se comprueba antes
+      const { data: ya } = await supabase.from('no_training_periods')
+        .select('fecha_inicio').eq('season_id', temp.id).is('team_id', null);
+      if ((ya ?? []).length) {
+        log(`  ya había ${ya.length} periodos de club: no se tocan`);
+      } else {
+        const { filas, ignoradas } = await addPeriodosBulk({
+          season_id: temp.id, team_id: null, texto: VACACIONES,
+        });
+        log(`  ${filas.length} periodos cargados`
+          + (ignoradas.length ? ` · ${ignoradas.length} SIN ENTENDER` : ''));
+        for (const i of ignoradas) log(`    ✗ ${i.linea} (${i.porque})`);
+      }
+
+      log('LISTO. Recarga la app: ya puedes crear equipos y sus horarios.');
+    } catch (e) {
+      log('ERROR: ' + e.message);
+    } finally { $('btn-temporada').disabled = false; }
+  };
+</script>
+</body>
+</html>

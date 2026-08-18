@@ -134,6 +134,45 @@ export async function borrarPreliminar(id) {
 }
 
 /**
+ * Descarta una ocurrencia automática: la borra Y la anota como excluida (018),
+ * para que la próxima regeneración no la resucite. Sin la anotación, borrar una
+ * preliminar solo la hace desaparecer hasta que alguien vuelva a generar.
+ *
+ * ORDEN DELIBERADO: primero la exclusión, después el borrado. Al revés, si el
+ * borrado sale bien y la exclusión falla, la sesión vuelve semanas después.
+ * Si el borrado lo rechaza la policy (015 §7: ya tiene lista o reflexión), se
+ * retira la exclusión y no queda nada a medias.
+ *
+ * @returns true si se descartó; false si la policy la protegió.
+ */
+export async function descartarOcurrencia(sesion, motivo = null) {
+  const { id, team_id, season_id, slot_id, slot_date } = sesion;
+  const anotable = Boolean(slot_id && slot_date);
+
+  // insert y NO upsert: supabase-js manda ON CONFLICT DO UPDATE por defecto, y
+  // la 018 deja la tabla sin policy de UPDATE a propósito (una exclusión existe
+  // o no existe). El upsert reventaría justo al descartar algo ya descartado.
+  // 23505 es la clave duplicada: no es un fallo, es el estado que buscábamos.
+  let anotadaAhora = false;
+  if (anotable) {
+    const { error } = await supabase
+      .from('session_slot_exclusions')
+      .insert({ team_id, season_id, slot_id, slot_date, motivo: motivo || null });
+    if (error && error.code !== '23505') throw error;
+    anotadaAhora = !error;
+  }
+
+  const borrada = await borrarPreliminar(id);
+  // solo se retira la anotación si la acabamos de poner nosotros: si ya existía
+  // de antes, quitarla haría que esa ocurrencia volviese a generarse
+  if (!borrada && anotadaAhora) {
+    await supabase.from('session_slot_exclusions')
+      .delete().eq('slot_id', slot_id).eq('slot_date', slot_date);
+  }
+  return borrada;
+}
+
+/**
  * Aplica un plan de planRegeneracion() para un equipo/temporada.
  * Orden: borrar → actualizar → insertar (así el índice único parcial
  * (slot_id, slot_date) nunca colisiona en el camino).
@@ -142,12 +181,19 @@ export async function aplicarPlan(teamId, seasonId, plan) {
   // La policy de borrado puede rechazar filas en silencio (p. ej. una
   // preliminar que ya tiene asistencia o reflexión, M5): se cuenta lo que
   // REALMENTE se ha borrado, no lo que se pidió borrar.
+  // Y va fila a fila con la MISMA guarda anti-carrera que el update de abajo:
+  // un plan se calcula en la vista previa y se aplica después, y por medio el
+  // entrenador (o el otro entrenador del equipo) puede haber reprogramado esa
+  // preliminar a mano. Si ya no está en su fecha teórica, no es andamiaje y no
+  // se toca. La RLS no cubre esto: su policy solo mira origen y estado.
   let borradas = 0;
-  if (plan.aBorrar.length) {
-    const { data, error } = await supabase
-      .from('sessions').delete().in('id', plan.aBorrar).select('id');
+  for (const b of plan.aBorrar) {
+    const { id, slot_date } = typeof b === 'string' ? { id: b, slot_date: null } : b;
+    let q = supabase.from('sessions').delete().eq('id', id).eq('estado', 'preliminar');
+    if (slot_date) q = q.eq('fecha', slot_date);
+    const { data, error } = await q.select('id');
     if (error) throw error;
-    borradas = data?.length ?? 0;
+    borradas += data?.length ?? 0;
   }
   for (const u of plan.aActualizar) {
     // guarda anti-carrera: el patch solo aterriza si la sesión SIGUE intacta

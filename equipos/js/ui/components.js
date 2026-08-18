@@ -4,7 +4,7 @@
    slots semanales y avatar por iniciales.
    ============================================================ */
 
-import { h } from './dom.js';
+import { h, mount } from './dom.js';
 import { WEEKDAYS, TEAM_COLORS } from '../config.js';
 
 /** Paleta curada. onChange(color). */
@@ -116,7 +116,9 @@ export function avatar(nombre, color = null, size = 36) {
 export function estrellas(valor, onChange, { max = 5, labels = null, soloLectura = false } = {}) {
   let sel = Number(valor) || 0;
   const wrap = h('div', { class: 'eq-estrellas', role: 'radiogroup', 'aria-label': `Valoración de 1 a ${max}` });
-  const pinta = () => wrap.replaceChildren(
+  // mount y NO wrap.replaceChildren: sin `labels` la última línea vale null, y el
+  // replaceChildren nativo lo pinta como el texto "null" detrás de las estrellas.
+  const pinta = () => mount(wrap,
     ...Array.from({ length: max }, (_, i) => {
       const n = i + 1;
       const txt = labels?.[n] ? `${n} · ${labels[n]}` : `${n} de ${max}`;

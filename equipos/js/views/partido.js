@@ -53,12 +53,15 @@ export function render(root, params) {
     const oficial = p.estado === 'jugado' ? resultadoPartido(p) : null;
     const marca = nodoMarcador.querySelector('.eq-marcador-res');
     if (!marca) return;
-    marca.replaceChildren(
+    // mount y NO marca.replaceChildren: el nativo no filtra null y lo pinta como
+    // el texto "null" (así salía "Sin marcador null" en todo partido sin cerrar).
+    mount(marca,
       oficial
         ? h('span', { class: `eq-res eq-res-${oficial}` }, RESULTADO_TXT[oficial])
         : res
           ? h('span', { class: 'eq-ayuda' }, `Sin cerrar · sería ${RESULTADO_TXT[res].toLowerCase()}`)
           : h('span', { class: 'eq-ayuda' }, 'Sin marcador'),
+      // != null y no truthy: un empate son 0 puntos de diferencia y se pinta.
       dif != null ? h('span', { class: 'eq-marcador-dif' }, dif > 0 ? `+${dif}` : String(dif)) : null,
     );
   }

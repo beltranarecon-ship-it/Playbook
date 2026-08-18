@@ -14,7 +14,7 @@ import { getMisEquipos } from '../data/teams.js';
 import { getPeriodos } from '../data/schedules.js';
 import {
   getTemporadaActiva, getSesionesRango, crearSesionManual,
-  reprogramarSesion, promoverSesion, cancelarSesion, restaurarSesion, borrarPreliminar,
+  reprogramarSesion, promoverSesion, cancelarSesion, restaurarSesion, descartarOcurrencia,
 } from '../data/sessions.js';
 import { getState, setState, esAdmin } from '../store.js';
 import { diasEntre, isoWeekday, enPeriodo, temporadaCubre } from '../data/programacion.js';
@@ -120,8 +120,10 @@ export function render(root) {
   const chip = (s) => h('button', {
     class: `eq-ses eq-ses-${s.estado}`, type: 'button',
     style: { '--team-color': colores.get(s.team_id) || 'var(--muted)' },
-    title: `${nombres.get(s.team_id) || ''} · ${ESTADOS_SESION[s.estado]}`,
-    onClick: (e) => { e.stopPropagation(); panelDia(s.fecha); },
+    title: `${nombres.get(s.team_id) || ''} · ${ESTADOS_SESION[s.estado]} · abre el plan`,
+    // pinchar la sesión abre SU plan; el panel del día se queda para el resto
+    // de la celda (que es donde se dan de alta sesiones y partidos)
+    onClick: (e) => { e.stopPropagation(); router.navigate(`/sesiones/${s.id}`); },
   },
     h('span', { class: 'eq-ses-hora' }, hhmm(s.hora_inicio) || '·'),
     h('span', { class: 'eq-ses-equipo' }, nombres.get(s.team_id) || '—'),
@@ -199,9 +201,31 @@ export function render(root) {
             });
           },
         }, 'Reprogramar') : null,
+        // UN solo botón para las dos cosas: antes había "Cancelar" y "Eliminar"
+        // haciendo casi lo mismo sobre una preliminar. Lo que cambia no es el
+        // botón, es el estado: lo que nunca se programó desaparece; lo que sí,
+        // se tacha y se puede reabrir.
         (s.estado === 'preliminar' || s.estado === 'programada') ? h('button', {
           class: 'btn btn-secondary eq-btn-mini eq-btn-peligro', type: 'button',
           onClick: async () => {
+            if (s.estado === 'preliminar') {
+              const ok = await confirmar({
+                titulo: 'Quitar este entrenamiento',
+                mensaje: 'Todavía no lo habías programado, así que desaparece del calendario. '
+                  + 'No volverá a generarse aunque regeneres los horarios.',
+                textoOk: 'Quitar',
+              });
+              if (!ok) return;
+              // la RLS la protege si ya tiene lista o reflexión (015 §7), y lo
+              // hace en silencio: sin comprobarlo diríamos "quitada" mintiendo
+              const fue = await descartarOcurrencia(s);
+              md.cerrar(); refrescar();
+              toast(fue
+                ? 'Entrenamiento quitado'
+                : 'No se pudo quitar: esta sesión ya tiene lista o reflexión guardadas',
+                fue ? undefined : 'error');
+              return;
+            }
             const motivo = await pedirTexto({
               titulo: 'Cancelar sesión',
               etiqueta: 'Motivo (obligatorio)', placeholder: 'Lluvia, pabellón cerrado…',
@@ -211,20 +235,18 @@ export function render(root) {
             md.cerrar(); refrescar();
             toastDeshacer('Sesión cancelada', async () => { await restaurarSesion(s.id); refrescar(); });
           },
-        }, 'Cancelar') : null,
-        (s.origen === 'auto' && s.estado === 'preliminar') ? h('button', {
-          class: 'btn btn-secondary eq-btn-mini', type: 'button', title: 'Eliminar esta preliminar',
+        }, s.estado === 'preliminar' ? 'Quitar' : 'Cancelar') : null,
+        // hasta ahora una cancelada solo se podía recuperar desde el "deshacer"
+        // del aviso, que dura unos segundos. Pasado eso, se quedaba tachada
+        // para siempre. Vuelve a 'programada', nunca a preliminar (guard 010).
+        s.estado === 'cancelada' ? h('button', {
+          class: 'btn btn-primary eq-btn-mini', type: 'button',
           onClick: async () => {
-            if (!(await confirmar({ titulo: 'Eliminar preliminar', mensaje: '¿Eliminar esta sesión preliminar? (solo se borra el hueco automático)', textoOk: 'Eliminar' }))) return;
-            // la RLS la protege si ya tiene lista o reflexión (015 §7), y lo
-            // hace en silencio: sin comprobarlo diríamos "eliminada" mintiendo
-            const fue = await borrarPreliminar(s.id);
+            await restaurarSesion(s.id);
             md.cerrar(); refrescar();
-            toast(fue
-              ? 'Preliminar eliminada'
-              : 'No se eliminó: esta sesión ya tiene lista o reflexión guardadas', fue ? undefined : 'error');
+            toast('Sesión reabierta · vuelve a estar programada');
           },
-        }, 'Eliminar') : null,
+        }, 'Reabrir') : null,
       ),
     );
 
@@ -246,10 +268,12 @@ export function render(root) {
     );
 
     const formAlta = () => {
-      const m0 = {
-        team_id: estado.filtro !== 'todos' ? estado.filtro : (equipos[0]?.id || ''),
-        hora_inicio: '', hora_fin: '', lugar: '', rival: '', es_local: true,
-      };
+      const porDefecto = estado.filtro !== 'todos' ? estado.filtro : (equipos[0]?.id || '');
+      const m0 = { team_id: porDefecto, hora_inicio: '', hora_fin: '', lugar: '' };
+      // el partido tiene sus PROPIOS campos: antes tomaba prestados el equipo,
+      // la hora y el lugar del formulario de sesión, así que no se podía dar de
+      // alta un partido de un equipo distinto ni a otra hora sin tocar el de arriba
+      const p0 = { team_id: porDefecto, rival: '', lugar: '', hora: '', es_local: true };
       return h('div', { class: 'eq-dia-alta' },
         h('div', { class: 'field-row' },
           h('div', { class: 'field-group' },
@@ -281,34 +305,58 @@ export function render(root) {
           },
         }, 'Añadir sesión este día'),
 
-        // …o un PARTIDO: mismo día, mismo equipo, otra naturaleza
+        // …o un PARTIDO: mismo día, otra naturaleza y sus propios datos
         h('div', { class: 'eq-dia-alta-part' },
-          h('div', { class: 'field-group' },
-            h('label', { class: 'field-label' }, 'Rival'),
-            h('input', {
-              class: 'field-input', type: 'text', placeholder: 'CB Palencia',
-              onInput: (e) => { m0.rival = e.target.value; },
-            }),
+          h('div', { class: 'field-row' },
+            h('div', { class: 'field-group' },
+              h('label', { class: 'field-label' }, 'Equipo'),
+              h('select', { class: 'field-select', onChange: (e) => { p0.team_id = e.target.value; } },
+                ...equipos.map((t) => h('option', { value: t.id, ...(t.id === p0.team_id ? { selected: true } : {}) }, t.name))),
+            ),
+            h('div', { class: 'field-group' },
+              h('label', { class: 'field-label' }, 'Rival'),
+              h('input', {
+                class: 'field-input', type: 'text', placeholder: 'CB Palencia',
+                onInput: (e) => { p0.rival = e.target.value; },
+              }),
+            ),
+          ),
+          h('div', { class: 'field-row' },
+            h('div', { class: 'field-group' },
+              h('label', { class: 'field-label' }, 'Lugar'),
+              h('input', {
+                class: 'field-input', type: 'text', placeholder: 'Pabellón Marta Domínguez',
+                onInput: (e) => { p0.lugar = e.target.value; },
+              }),
+            ),
+            h('div', { class: 'field-group' },
+              h('label', { class: 'field-label' }, 'Hora de comienzo'),
+              h('input', { class: 'field-input', type: 'time', onChange: (e) => { p0.hora = e.target.value; } }),
+            ),
           ),
           h('div', { class: 'eq-catchips', role: 'radiogroup', 'aria-label': 'Local o visitante' },
             ...[[true, 'Local'], [false, 'Visitante']].map(([v, txt]) => h('button', {
-              class: 'eq-catchip' + (m0.es_local === v ? ' sel' : ''), type: 'button',
-              role: 'radio', 'aria-checked': String(m0.es_local === v),
+              class: 'eq-catchip' + (p0.es_local === v ? ' sel' : ''), type: 'button',
+              role: 'radio', 'aria-checked': String(p0.es_local === v),
               onClick: (e) => {
-                m0.es_local = v;
-                [...e.target.parentNode.children].forEach((b, i) => b.classList.toggle('sel', i === (v ? 0 : 1)));
+                p0.es_local = v;
+                [...e.target.parentNode.children].forEach((b, i) => {
+                  b.classList.toggle('sel', i === (v ? 0 : 1));
+                  b.setAttribute('aria-checked', String(i === (v ? 0 : 1)));
+                });
               },
             }, txt)),
           ),
           h('button', {
-            class: 'btn btn-secondary', type: 'button',
+            class: 'btn btn-primary', type: 'button',
             onClick: async () => {
-              if (!m0.team_id) { toast('Elige un equipo', 'error'); return; }
-              if (!m0.rival.trim()) { toast('Falta el rival', 'error'); return; }
+              if (!p0.team_id) { toast('Elige un equipo', 'error'); return; }
+              if (!p0.rival.trim()) { toast('Falta el rival', 'error'); return; }
               try {
                 const nuevo = await crearPartido({
-                  team_id: m0.team_id, season_id: temporada.id, fecha,
-                  hora: m0.hora_inicio, lugar: m0.lugar, rival: m0.rival, es_local: m0.es_local,
+                  team_id: p0.team_id, season_id: temporada.id, fecha,
+                  hora: p0.hora || null, lugar: p0.lugar.trim() || null,
+                  rival: p0.rival.trim(), es_local: p0.es_local,
                 });
                 md.cerrar(); toast('Partido añadido');
                 router.navigate(`/partidos/${nuevo.id}`);

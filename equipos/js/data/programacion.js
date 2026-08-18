@@ -48,6 +48,63 @@ export function duracionMin(horaInicio, horaFin) {
   return (h2 * 60 + m2) - (h1 * 60 + m1);
 }
 
+// ── Pegar el calendario escolar ───────────────────────────────
+// El entrenador copia los festivos de donde los tenga, y ahí las fechas van
+// en dd/mm/aaaa, que es como se escriben en España. Antes solo se aceptaba
+// el formato ISO y las líneas que no encajaban se tiraban EN SILENCIO: pegabas
+// once periodos, entraban seis y no te enterabas. Ahora se aceptan los dos
+// formatos y lo que no se entiende se devuelve para poder decirlo.
+
+/** Un día real, en UTC. Rechaza el 31 de febrero en vez de correrlo a marzo. */
+function fechaValida(anio, mes, dia) {
+  if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+  const d = new Date(Date.UTC(anio, mes - 1, dia));
+  if (d.getUTCFullYear() !== anio || d.getUTCMonth() !== mes - 1 || d.getUTCDate() !== dia) return null;
+  return `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+}
+
+/** 'dd/mm/aaaa' (con / - o .) o 'aaaa-mm-dd'. null si no es una fecha real. */
+export function parsearFecha(txt) {
+  let m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(txt);
+  if (m) return fechaValida(+m[3], +m[2], +m[1]);
+  m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(txt);
+  if (m) return fechaValida(+m[1], +m[2], +m[3]);
+  return null;
+}
+
+const FECHA = '\\d{1,2}[/.-]\\d{1,2}[/.-]\\d{4}|\\d{4}-\\d{1,2}-\\d{1,2}';
+// separador de rango: espacio, guion de cualquier clase, o "a" / "al" / "hasta".
+// La segunda fecha es obligatoria dentro del grupo, así que "12/10/2026 aniversario"
+// no confunde la "a" de aniversario con un separador: el grupo falla y va al motivo.
+const LINEA = new RegExp(`^(${FECHA})(?:\\s*(?:[-–—]|a|al|hasta)?\\s*(${FECHA}))?\\s*(.*)$`, 'i');
+
+/**
+ * Convierte el texto pegado en periodos. Función PURA: no toca ni BD ni DOM.
+ * @param texto  una línea por periodo: «12/10/2026 Fiesta» o «23/12/2026 10/01/2027 Navidad»
+ * @returns {filas:[{fecha_inicio, fecha_fin, motivo}], ignoradas:[{linea, porque}]}
+ */
+export function parsearPeriodos(texto) {
+  const filas = [];
+  const ignoradas = [];
+  for (const cruda of String(texto ?? '').split('\n')) {
+    const linea = cruda.trim();
+    if (!linea) continue;
+    const m = LINEA.exec(linea);
+    if (!m) { ignoradas.push({ linea, porque: 'no empieza por una fecha' }); continue; }
+    const ini = parsearFecha(m[1]);
+    const fin = m[2] ? parsearFecha(m[2]) : ini;
+    if (!ini || !fin) { ignoradas.push({ linea, porque: 'esa fecha no existe' }); continue; }
+    // al revés se endereza en vez de rechazarse: la intención es evidente
+    const [a, b] = ini <= fin ? [ini, fin] : [fin, ini];
+    filas.push({
+      fecha_inicio: a,
+      fecha_fin: b,
+      motivo: m[3].replace(/^[\s–—-]+/, '').trim() || null,
+    });
+  }
+  return { filas, ignoradas };
+}
+
 // ── Temporada: dónde cae "hoy" y cuál tocaría crear ───────────
 // La auto-generación SOLO puebla el rango de la temporada activa. Si esa
 // temporada ya terminó, generar produce 86 sesiones en el pasado y un
@@ -123,6 +180,21 @@ export function expandirTemporada(temporada, slots, periodos = []) {
   return out;
 }
 
+/**
+ * La temporada recortada al tramo que se quiere generar. Permite generar «solo
+ * octubre» o «las próximas cuatro semanas» SIN tocar expandirTemporada: se le
+ * pasa una temporada más corta y ya. Nunca se sale de los límites reales de la
+ * temporada, así que no se puede generar fuera de ella por error.
+ * @returns temporada recortada, o null si el tramo no la roza siquiera
+ */
+export function recortarTemporada(temporada, desde = null, hasta = null) {
+  if (!temporada || !temporada.start_date || !temporada.end_date) return null;
+  const ini = desde && desde > temporada.start_date ? desde : temporada.start_date;
+  const fin = hasta && hasta < temporada.end_date ? hasta : temporada.end_date;
+  if (ini > fin) return null;
+  return { ...temporada, start_date: ini, end_date: fin };
+}
+
 const key = (slotId, slotDate) => slotId + '|' + slotDate;
 /** Sesión auto que nadie ha tocado: sigue preliminar y en su fecha teórica. */
 const intacta = (s) => s.origen === 'auto' && s.estado === 'preliminar' && s.fecha === s.slot_date;
@@ -134,10 +206,25 @@ const intacta = (s) => s.origen === 'auto' && s.estado === 'preliminar' && s.fec
  * @param ocurrencias  salida de expandirTemporada()
  * @param existentes   sesiones de la BD (origen, estado, slot_id, slot_date,
  *                     fecha, hora_inicio, hora_fin, lugar, id)
- * @returns { aInsertar: [ocurrencia], aActualizar: [{id, patch}], aBorrar: [id] }
+ * @param opciones.exclusiones  ocurrencias descartadas a mano (018):
+ *   [{slot_id, slot_date}]. Sin esto, borrar una preliminar la resucita en la
+ *   siguiente regeneración, porque la única memoria de que una ocurrencia está
+ *   resuelta es que exista su fila.
+ * @param opciones.desde/hasta  límites del rango que se está regenerando.
+ *   IMPRESCINDIBLES al generar un tramo parcial: sin ellos, las teóricas solo
+ *   cubren ese tramo y TODA preliminar intacta de fuera se leería como
+ *   andamiaje muerto y se borraría. Con null (por defecto) la poda es global,
+ *   que es el comportamiento de siempre para la temporada entera.
+ * @returns { aInsertar: [ocurrencia], aActualizar: [{id, patch}], aBorrar: [{id, slot_date}] }
  */
-export function planRegeneracion(ocurrencias, existentes) {
+export function planRegeneracion(ocurrencias, existentes, opciones = {}) {
+  const { exclusiones = [], desde = null, hasta = null } = opciones || {};
+  const enRango = (fecha) => (!desde || fecha >= desde) && (!hasta || fecha <= hasta);
   const teoricas = new Map(ocurrencias.map((o) => [key(o.slot_id, o.slot_date), o]));
+  const descartadas = new Set(
+    (exclusiones || []).filter((e) => e && e.slot_id && e.slot_date)
+      .map((e) => key(e.slot_id, e.slot_date))
+  );
   const vivas = new Map(); // ocurrencias ya representadas en BD (cualquier estado)
   for (const s of existentes || []) {
     if (s.origen === 'auto' && s.slot_id && s.slot_date) {
@@ -147,17 +234,28 @@ export function planRegeneracion(ocurrencias, existentes) {
 
   const aInsertar = [];
   for (const [k, o] of teoricas) {
+    if (descartadas.has(k)) continue;      // descartada a mano: no vuelve nunca
     if (!vivas.has(k)) aInsertar.push(o);
   }
 
   const aActualizar = [];
   const aBorrar = [];
   for (const [k, s] of vivas) {
+    // una excluida que aun así tiene fila (p. ej. se descartó y luego se creó a
+    // mano): no se toca ni para parchear ni para podar. Menos sorpresas.
+    if (descartadas.has(k)) continue;
     const o = teoricas.get(k);
     if (!o) {
       // la ocurrencia ya no existe (slot borrado/desactivado o periodo nuevo):
       // se poda SOLO el andamiaje intacto; lo tocado se respeta.
-      if (intacta(s)) aBorrar.push(s.id);
+      // Y SOLO dentro del rango que se está regenerando: fuera de él no hay
+      // ocurrencias teóricas con las que comparar, así que "no está en las
+      // teóricas" no significa "sobra", significa "no lo hemos mirado".
+      // se devuelve la fecha teórica además del id: aplicarPlan la usa como
+      // guarda anti-carrera, igual que en el camino de actualización. Si entre
+      // la vista previa y el "crear" alguien reprograma esa sesión a mano, deja
+      // de estar intacta y NO se borra.
+      if (intacta(s) && enRango(s.slot_date)) aBorrar.push({ id: s.id, slot_date: s.slot_date });
       continue;
     }
     // slot editado (hora/lugar): propagar SOLO a preliminares intactas.

@@ -17,6 +17,7 @@
 
 import { posicionesDe, aroExacto } from '../../../taller/js/canvas/anclas.js';
 import { metrosEntre } from '../../../taller/js/canvas/escala.js';
+import { soloPrimeraRonda } from '../../../taller/js/ia/rondas.js';
 
 /* ── Nombres de zona ──────────────────────────────────────────
    Se escriben ENTEROS (con artículo y género ya resueltos) en vez de
@@ -217,7 +218,12 @@ function conosSorteados(path, conos) {
  * }}
  */
 export function guionDeAnimacion(anim) {
-  const a = anim || {};
+  /* De un ejercicio de seis en fila se narra UNA ronda (Tramo 2.8). Las
+     seis son la misma, y un guion que repita seis veces «sale el
+     siguiente, bota, entra y vuelve» no se lee: se salta. */
+  const a = (anim && anim.rondas > 1)
+    ? { ...anim, fases: soloPrimeraRonda(anim.fases) }
+    : (anim || {});
   const jugadores = a.jugadores || [];
   const balones = a.balones || [];
   const conos = a.conos || [];
