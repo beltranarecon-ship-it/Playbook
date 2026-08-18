@@ -1,0 +1,268 @@
+/* ============================================================
+   eval-medidas.mjs — banco Node de la pista en metros
+   (taller/js/canvas/medidas.js y lo que se deriva de ella:
+   anclas.js, escala.js y el registro de court.js). Sin red, sin DOM.
+
+     node taller/tools/eval-medidas.mjs
+
+   Lo que vigila este banco no es una función: es una PROMESA. Que un
+   metro mida lo mismo en los dos ejes, en las cuatro pistas y en las
+   tres vistas. Antes del Tramo 2.1 no se cumplía —la media pista
+   estaba estirada 1,7× en un eje respecto al otro— y el precio fue
+   que las distancias había que estimarlas a ojo y que trece fichas
+   soltaban el balón a metros del aro creyendo que lo dejaban dentro.
+   ============================================================ */
+
+import {
+  REGLAS, PISTAS_M, TRIPLE_LATERAL, TRIPLE_CORTE,
+  marcoDe, pistaAMarco, pistaANorm, limitesCancha, escalaDe, radioPx, pasoNorm,
+  escalaTrazo, pxPorMetro, TAMANOS, MATERIAL,
+} from '../js/canvas/medidas.js';
+import { ANCLAS, posicionesDe, aroExacto } from '../js/canvas/anclas.js';
+import { metrosEntre, puntoADistanciaDe } from '../js/canvas/escala.js';
+import { PISTAS } from '../js/canvas/court.js';
+
+let pasan = 0, fallan = 0;
+function test(nombre, fn) {
+  try { fn(); pasan++; console.log(`  ✓ ${nombre}`); }
+  catch (e) { fallan++; console.error(`  ✗ ${nombre}\n      ${e.message}`); }
+}
+function aprox(real, esperado, tol = 1e-6, msg = '') {
+  if (!(Math.abs(real - esperado) <= tol)) {
+    throw new Error(`${msg} esperado≈${esperado} real=${real} (tolerancia ${tol})`);
+  }
+}
+
+const TODAS = Object.keys(PISTAS_M);
+
+/* Las anclas se guardan con cuatro decimales, que sobre el eje largo de
+   la pista entera son 3,2 mm. Las comprobaciones de distancia toleran
+   ese redondeo (y no más): 5 mm en metros, una diezmilésima en
+   coordenada normalizada. */
+const MM = 5e-3;
+const REDONDEO = 1e-4;
+
+console.log('· el reglamento cuadra consigo mismo');
+
+test('el tramo recto del triple corta el arco a 2,99 m del fondo', () => {
+  // Número publicado por FIBA. Si alguien toca el radio del triple o su
+  // separación de la banda, este cálculo deja de dar 2,99 y salta aquí.
+  aprox(TRIPLE_CORTE, 2.99, 0.005);
+});
+
+test('el tramo recto va a 6,60 m del eje largo', () => {
+  aprox(TRIPLE_LATERAL, 6.60, 1e-9);
+});
+
+console.log('\n· el metro es cuadrado');
+
+for (const pista of TODAS) {
+  test(`${pista}: el marco en metros y el lienzo tienen la misma proporción`, () => {
+    const m = marcoDe(pista);
+    aprox(m.aspect, m.ancho / m.alto, 1e-12);
+  });
+
+  test(`${pista}: 15 m a lo ancho miden 15 m`, () => {
+    const a = pistaAMarco(pista, 0, -REGLAS.ancho / 2);
+    const b = pistaAMarco(pista, 0, REGLAS.ancho / 2);
+    aprox(Math.hypot(b[0] - a[0], b[1] - a[1]), REGLAS.ancho, 1e-9);
+  });
+
+  test(`${pista}: un metro mide lo mismo vaya en la dirección que vaya`, () => {
+    // Se toman dos puntos separados 5 m en diagonal y se comprueba que
+    // metrosEntre() —que es lo que usa el compilador para decidir dónde
+    // se suelta el balón— devuelve 5. Con los ejes a escalas distintas
+    // esto daba entre 4 y 7 según hacia dónde apuntara la diagonal.
+    const lado = 3, fondo = 4;                      // 3-4-5
+    const a = pistaANorm(pista, 5, 0);
+    const b = pistaANorm(pista, 5 + fondo, lado);
+    aprox(metrosEntre(pista, a, b), 5, 1e-9);
+  });
+}
+
+console.log('\n· las anclas caen donde dice el reglamento');
+
+for (const pista of TODAS) {
+  const pos = posicionesDe(pista, 'norte');
+  const d = (n) => metrosEntre(pista, pos.aro, pos[n]);
+
+  test(`${pista}: del aro a la línea de tiros libres, 4,225 m`, () => {
+    aprox(d('tiro_libre'), REGLAS.zonaFondo - REGLAS.aroRetranqueo, MM);
+  });
+
+  test(`${pista}: de codo a codo, el ancho de la zona (4,90 m)`, () => {
+    aprox(metrosEntre(pista, pos.codo_izq, pos.codo_der), REGLAS.zonaAncho, MM);
+  });
+
+  test(`${pista}: la esquina está a 6,6 m del aro`, () => {
+    // Criterio de aceptación del Tramo 2.2. Sobre el dibujo anterior
+    // salía a 8,9 m, y esa era la prueba de que la escala solo valía
+    // junto al aro.
+    aprox(d('esquina_der'), 6.60, MM);
+    aprox(d('esquina_izq'), 6.60, MM);
+  });
+
+  test(`${pista}: los cuatro puestos de perímetro, a la misma distancia`, () => {
+    for (const n of ['alero_der', 'escolta_der', 'base']) aprox(d(n), 7.00, MM);
+  });
+
+  test(`${pista}: izquierda y derecha son simétricas`, () => {
+    for (const base of ['poste_bajo', 'poste_alto', 'codo', 'esquina', 'alero', 'escolta']) {
+      aprox(d(`${base}_izq`), d(`${base}_der`), 1e-6, base);
+    }
+  });
+}
+
+test('las cuatro pistas colocan cada ancla en el mismo sitio REAL', () => {
+  // El dibujo anterior las medía una por una sobre cada SVG y no
+  // coincidían: la media ponía el tiro libre a 3,9 m del fondo y la
+  // entera, a 6,3. Ahora salen todas de la misma tabla.
+  const ref = posicionesDe('entera', 'norte');
+  for (const pista of TODAS) {
+    const pos = posicionesDe(pista, 'norte');
+    for (const nombre of Object.keys(ref)) {
+      const a = metrosEntre('entera', ref.aro, ref[nombre]);
+      const b = metrosEntre(pista, pos.aro, pos[nombre]);
+      aprox(b, a, MM, `${pista}/${nombre}`);
+    }
+  }
+});
+
+test('la pista entera reconstruye sus 28 m de aro a aro', () => {
+  const n = posicionesDe('entera', 'norte'), s = posicionesDe('entera', 'sur');
+  aprox(metrosEntre('entera', n.aro, s.aro) + 2 * REGLAS.aroRetranqueo, REGLAS.largo, MM);
+});
+
+test('el aro de court.js y el de anclas.js son el mismo punto', () => {
+  // Vivieron años separados —uno medido sobre el arte, otro estimado— y
+  // en las medias diferían 3 centésimas, que caían entre tablero y aro.
+  for (const pista of TODAS) {
+    for (const canasta of marcoDe(pista).canastas) {
+      const a = aroExacto(pista, canasta);
+      const b = PISTAS[pista].baskets[canasta];
+      aprox(a[0], b[0], 1e-9, `${pista}/${canasta}.x`);
+      aprox(a[1], b[1], 1e-9, `${pista}/${canasta}.y`);
+    }
+  }
+});
+
+console.log('\n· la banda de 2 m');
+
+for (const pista of TODAS) {
+  test(`${pista}: la cancha deja 2 m de banda por cada lado`, () => {
+    const lim = limitesCancha(pista);
+    const e = escalaDe(pista);
+    aprox(lim.x[0] * e.x, REGLAS.banda, 1e-9, 'izquierda');
+    aprox((1 - lim.x[1]) * e.x, REGLAS.banda, 1e-9, 'derecha');
+    aprox(lim.y[0] * e.y, REGLAS.banda, 1e-9, 'arriba');
+    aprox((1 - lim.y[1]) * e.y, REGLAS.banda, 1e-9, 'abajo');
+  });
+
+  test(`${pista}: todas las anclas caen dentro de la cancha`, () => {
+    // `centro` cae JUSTO sobre la línea: en la entera es el círculo
+    // central y en la media, el borde de medio campo. Está dentro por
+    // definición, y solo se sale por el redondeo a cuatro decimales.
+    const lim = limitesCancha(pista);
+    for (const canasta of marcoDe(pista).canastas) {
+      for (const [nombre, [x, y]] of Object.entries(posicionesDe(pista, canasta))) {
+        if (x < lim.x[0] - REDONDEO || x > lim.x[1] + REDONDEO || y < lim.y[0] - REDONDEO || y > lim.y[1] + REDONDEO) {
+          throw new Error(`${pista}/${canasta}/${nombre} en (${x}, ${y}) fuera de la cancha`);
+        }
+      }
+    }
+  });
+}
+
+console.log('\n· elementos en metros');
+
+test('un jugador mide 1,30 m en las cuatro pistas', () => {
+  // Lo que se comprueba no es el radio en píxeles —depende del tamaño
+  // del lienzo— sino que ese radio, traducido a metros, sea el mismo.
+  for (const pista of TODAS) {
+    const W = 800;
+    const r = radioPx(pista, 'jugador', W);
+    const metros = (r * 2) / (W / marcoDe(pista).ancho);
+    aprox(metros, TAMANOS.jugador, 1e-9, pista);
+  }
+});
+
+test('el grosor de las flechas también es el mismo tamaño real', () => {
+  // arrows.js está escrito en píxeles sueltos y los multiplica por `scale`.
+  // Ese factor iba con el ancho del LIENZO, así que una flecha era más
+  // gruesa en metros en la media que en la entera. Ahora va con el jugador.
+  const W = 800;
+  const anchura = TODAS.map((p) => escalaTrazo(p, W) / pxPorMetro(p, W));
+  for (const a of anchura) aprox(a, anchura[0], 1e-9);
+});
+
+test('en la entera a 600 px el factor de trazo vale 1', () => {
+  // La referencia con la que se eligieron los números de arrows.js: si
+  // cambia, todas las flechas del sistema engordan o adelgazan a la vez.
+  aprox(escalaTrazo('entera', 600), 1, 1e-9);
+});
+
+test('la escalera mide 4,00 × 0,50 m y la pelota es menor que el balón', () => {
+  aprox(MATERIAL.escalera.largo, 4.00, 1e-9);
+  aprox(MATERIAL.escalera.ancho, 0.50, 1e-9);
+  if (!(TAMANOS.pelota < TAMANOS.balon)) throw new Error('la pelota de tenis no puede ser mayor que el balón');
+});
+
+test('la cola de una fila avanza en metros, no en unidades de lienzo', () => {
+  // El paso de la cola SE DIBUJA en píxeles (symbols.js#drawFila) y se
+  // CALCULA en normalizado (compilador#sintetizarJugadores). Con un
+  // paso normalizado fijo los dos no coincidían y el jugador volvía a
+  // un sitio que no era el final de su cola: con tres en la fila, la
+  // diferencia llegaba a varios metros y el destino acababa recortado
+  // contra el borde del lienzo.
+  for (const pista of TODAS) {
+    for (const grados of [0, 45, 90, 180, 270]) {
+      const p = pasoNorm(pista, grados, 3);
+      const e = escalaDe(pista);
+      aprox(Math.hypot(p.dx * e.x, p.dy * e.y), 3, 1e-9, `${pista}@${grados}°`);
+    }
+  }
+});
+
+console.log('\n· la operación que decide dónde muere el balón');
+
+test('puntoADistanciaDe deja al jugador a la distancia pedida', () => {
+  for (const pista of TODAS) {
+    const aro = aroExacto(pista, 'norte');
+    const desde = posicionesDe(pista, 'norte').base;
+    const p = puntoADistanciaDe(pista, desde, aro, 1.2);
+    aprox(metrosEntre(pista, p, aro), 1.2, 1e-6, pista);
+  }
+});
+
+test('si ya está más cerca, no le hace retroceder', () => {
+  const aro = aroExacto('media', 'norte');
+  const cerca = posicionesDe('media', 'norte').poste_bajo_der;
+  const p = puntoADistanciaDe('media', cerca, aro, 8);
+  aprox(p.x, cerca[0], 1e-12); aprox(p.y, cerca[1], 1e-12);
+});
+
+console.log('\n· forma pública');
+
+test('ANCLAS tiene las cuatro pistas con sus canastas', () => {
+  for (const pista of TODAS) {
+    const canastas = Object.keys(ANCLAS[pista].pos);
+    const esperadas = marcoDe(pista).canastas;
+    if (canastas.join(',') !== esperadas.join(',')) {
+      throw new Error(`${pista}: canastas ${canastas.join(',')} ≠ ${esperadas.join(',')}`);
+    }
+  }
+});
+
+test('posicionesDe con una canasta que no existe cae a la que hay', () => {
+  const a = posicionesDe('media', 'sur');
+  const b = posicionesDe('media', 'norte');
+  aprox(a.aro[0], b.aro[0], 1e-12); aprox(a.aro[1], b.aro[1], 1e-12);
+});
+
+test('una pista desconocida no revienta: devuelve null', () => {
+  if (posicionesDe('pista_que_no_existe', 'norte') !== null) throw new Error('debería ser null');
+  if (aroExacto('pista_que_no_existe', 'norte') !== null) throw new Error('debería ser null');
+});
+
+console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
+process.exit(fallan ? 1 : 0);

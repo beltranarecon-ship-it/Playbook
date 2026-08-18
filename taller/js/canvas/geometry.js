@@ -3,6 +3,47 @@
    lineales y Bézier (§9.3 / §10). Todo en coordenadas normalizadas.
    ============================================================ */
 
+/**
+ * Manejadores de curva de un nodo, TANGENTES al camino (Tramo 2.10).
+ *
+ * Antes salían siempre en horizontal (`n.x ± 0.06`), así que en una
+ * flecha que bajaba salían atravesados: curvar un nodo pegaba un tirón
+ * lateral que nadie había pedido y había que recolocar los dos
+ * manejadores para volver a donde estabas. Tangentes, curvar no cambia
+ * el trazo — solo lo deja listo para curvarlo, que es lo que se quería.
+ *
+ * La dirección es la del segmento que ENTRA y el que SALE juntos
+ * (`siguiente − anterior`), que es lo que hace que la curva pase suave
+ * por el nodo; en los extremos, la del único segmento que hay. El largo
+ * es un tercio del segmento vecino —la regla de siempre para que una
+ * cúbica siga de cerca a la polilínea— con un mínimo para que el
+ * cuadradito se pueda agarrar.
+ *
+ * Función pura y sin DOM: la usa el editor de flechas y la comprueba el
+ * banco de Node.
+ *
+ * @returns { handle_in, handle_out }
+ */
+export function manejadoresTangentes(path, i, minimo = 0.02) {
+  const n = path[i];
+  const antes = path[i - 1] || null;
+  const despues = path[i + 1] || null;
+  let dx, dy;
+  if (antes && despues) { dx = despues.x - antes.x; dy = despues.y - antes.y; }
+  else if (antes) { dx = n.x - antes.x; dy = n.y - antes.y; }
+  else if (despues) { dx = despues.x - n.x; dy = despues.y - n.y; }
+  else { dx = 1; dy = 0; }
+  const norma = Math.hypot(dx, dy) || 1;
+  dx /= norma; dy /= norma;
+  const tercio = (a, b) => (a && b ? Math.hypot(b.x - a.x, b.y - a.y) / 3 : 0);
+  const dentro = Math.max(tercio(antes, n), minimo);
+  const fuera = Math.max(tercio(n, despues), minimo);
+  return {
+    handle_in: { x: n.x - dx * dentro, y: n.y - dy * dentro },
+    handle_out: { x: n.x + dx * fuera, y: n.y + dy * fuera },
+  };
+}
+
 /** Cúbica ease-in-out estándar (§9.4). */
 export const easeInOut = (t) =>
   t <= 0 ? 0 : t >= 1 ? 1 : (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);

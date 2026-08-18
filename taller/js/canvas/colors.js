@@ -11,6 +11,7 @@ export const COLORS = {
   D: '#001938',          // azul marino
   ball: '#EA580C',       // balón / conos / pases
   cono: '#EA580C',
+  tenis: '#C7E82F',      // pelota de tenis — el único verde lima del sistema
   accent: '#006F94',     // selección
   favorite: '#D18347',
   ink: '#001938',

@@ -17,7 +17,7 @@
         restStart); si vuelve a moverse, ese arranque lo fija la INTENCIÓN
         (op 'destino', que recompila la cadena). Un 'ruta' no re-reacciona.
 
-   Es el MISMO compilado que ia/client.js (defensaReactiva → compilar),
+   Es el MISMO compilado que usa el paso 2 (defensaReactiva → compilar),
    para que lo editado a mano y lo generado salgan de un único camino.
    ============================================================ */
 
@@ -29,6 +29,28 @@ const clon = (o) => JSON.parse(JSON.stringify(o));
 // eventos con ranura `hacia` que un override 'destino' puede fijar (bote/corte
 // avanzan a un punto; defiende — Tramo 5 — acepta destino explícito).
 const CON_HACIA = new Set(['bote', 'corte', 'defiende']);
+
+/**
+ * Fija a mano el punto al que va un evento, en CUALQUIERA de los dos
+ * dialectos (Tramo 2.9: el paso 2 nuevo escribe { jugador, accion,
+ * args }, la biblioteca trae los nueve eventos de siempre).
+ *
+ * En los dos hace falta decir además que se LLEGA hasta ahí: un bote
+ * avanza de suyo un trozo del camino, y arrastrar su flecha a un punto
+ * concreto para que se quede a medias no lo espera nadie. Es la misma
+ * regla que aplica ia/intencion.js cuando el destino es un punto.
+ *
+ * @returns true si el evento admitía el retoque.
+ */
+function fijarDestino(ev, punto) {
+  if (!ev) return false;
+  if (typeof ev.accion === 'string') {
+    ev.args = { ...(ev.args || {}), destino: { x: punto.x, y: punto.y }, alcance: 'completo' };
+    return true;
+  }
+  if (CON_HACIA.has(ev.tipo)) { ev.hacia = { x: punto.x, y: punto.y }; return true; }
+  return false;
+}
 
 /**
  * @param base      { intent, posiciones? } — intent = el `_intent` que dejó el
@@ -49,12 +71,16 @@ export function resolverAnimacion(base, ediciones = [], elementos = [], pista = 
   for (const e of ediciones) {
     if (!e || e.op !== 'destino' || !e.valor) continue;
     const fase = intent.fases && intent.fases[e.fase];
-    const ev = fase && (fase.eventos || []).find((x) => x && x.jugador === e.elemento && CON_HACIA.has(x.tipo));
-    if (ev) ev.hacia = { x: e.valor.x, y: e.valor.y };
-    else descartadas.push({ ...e, motivo: 'sin evento con destino editable en esa fase' });
+    const suyos = fase ? (fase.eventos || []).filter((x) => x && x.jugador === e.elemento) : [];
+    // Con dos eventos del mismo jugador en la fase (el defensor que
+    // sigue defendiendo y además corta), manda el que lo DESPLAZA: es
+    // el que dibuja la flecha que se acaba de arrastrar.
+    const ev = suyos.find((x) => x.tipo === 'bote' || x.tipo === 'corte'
+      || (typeof x.accion === 'string' && !x._sigueDefendiendo)) || suyos[0];
+    if (!fijarDestino(ev, e.valor)) descartadas.push({ ...e, motivo: 'sin evento con destino editable en esa fase' });
   }
 
-  // 2) compilar (defensa reactiva incluida — idéntico a ia/client.js)
+  // 2) compilar (defensa reactiva incluida — el mismo camino del paso 2)
   const geo = compilarAnimacion(defensaReactiva(intent, elementos, pista), elementos, pista, { posiciones });
 
   // 3) capa GEOMETRÍA — 'ruta' reemplaza el trazo compilado del movimiento o

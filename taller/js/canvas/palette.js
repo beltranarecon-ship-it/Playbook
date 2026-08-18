@@ -15,11 +15,22 @@ const ITEMS = [
   { kind: 'jugador', equipo: 'D', label: 'Equipo 4', color: COLORS.D },
   { kind: 'balon', label: 'Balón', color: COLORS.ball },
   { kind: 'cono', label: 'Cono', color: COLORS.cono },
+  // Material: no participa en la animación (nadie le pasa ni lo rodea), pero
+  // ocupa sitio en el suelo y se dibuja a su medida real.
+  { kind: 'pelota', label: 'Pelota de tenis', color: COLORS.tenis },
+  { kind: 'escalera', label: 'Escalera', color: '#FFFFFF' },
+  // Zonas (Tramo 2.7). No se colocan con un clic: se arrastran, porque
+  // hacen falta dos puntos para decir de dónde a dónde.
+  { kind: 'zona', tipo: 'rect', label: 'Zona · rectángulo' },
+  { kind: 'zona', tipo: 'circulo', label: 'Zona · círculo' },
+  { kind: 'zona', tipo: 'linea', label: 'Zona · línea' },
 ];
 
 function swatch(it) {
+  if (it.kind === 'zona') return h('span', { class: `pal-swatch pal-swatch--zona pal-swatch--zona-${it.tipo}` });
   if (it.kind === 'cono') return h('span', { class: 'pal-swatch pal-swatch--cono', style: { '--c': it.color } });
-  if (it.kind === 'balon') return h('span', { class: 'pal-swatch pal-swatch--ball', style: { background: it.color } });
+  if (it.kind === 'escalera') return h('span', { class: 'pal-swatch pal-swatch--escalera' });
+  if (it.kind === 'balon' || it.kind === 'pelota') return h('span', { class: 'pal-swatch pal-swatch--ball', style: { background: it.color } });
   return h('span', { class: 'pal-swatch pal-swatch--player', style: { background: it.color } });
 }
 
@@ -50,9 +61,15 @@ export function requisitos(board) {
   const j = h('b', { class: 'mono' }, '0');
   const b = h('b', { class: 'mono' }, '0');
   const c = h('b', { class: 'mono' }, '0');
+  const m = h('b', { class: 'mono' }, '0');
+  const z = h('b', { class: 'mono' }, '0');
   const root = h('div', { class: 'reqs' },
-    stat('Jugadores', j), stat('Balones', b), stat('Conos', c));
-  const update = ({ counts }) => { j.textContent = counts.jugadores; b.textContent = counts.balones; c.textContent = counts.conos; };
+    stat('Jugadores', j), stat('Balones', b), stat('Conos', c), stat('Material', m), stat('Zonas', z));
+  const update = ({ counts }) => {
+    j.textContent = counts.jugadores; b.textContent = counts.balones;
+    c.textContent = counts.conos; m.textContent = counts.material ?? 0;
+    z.textContent = counts.zonas ?? 0;
+  };
   board.on('change', update);
   update({ counts: board.counts() });
   return root;

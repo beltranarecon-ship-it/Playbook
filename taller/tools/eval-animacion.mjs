@@ -6,65 +6,90 @@
    (funciona desde cualquier cwd: los imports son relativos a este
    archivo; no requiere servidor ni red)
 
-   Qué mide: llama a generarAnimacion() con ~30 escenarios reales
-   (texto + elementos del tablero + pista) y valida el JSON devuelto
-   contra el comportamiento DESEADO. Los casos marcados con
-   `falloEsperadoHoy: true` codifican bugs conocidos del mock: el
-   check exige el comportamiento correcto y HOY falla a propósito —
-   ese es el baseline. Cuando se arregle el motor, deberían pasar.
+   Qué mide: compila intents contra tableros reales y valida el JSON
+   §10 devuelto contra el comportamiento DESEADO — dónde muere un
+   tiro, quién se mueve y quién no, qué arrastra una edición manual.
+   Los casos marcados con `falloEsperadoHoy: true` codifican bugs
+   conocidos: el check exige lo correcto y hoy falla a propósito.
 
    Salida: PASS/FAIL por caso + resumen X/Y. Exit code 0 solo si
-   pasan todos (hoy NO pasan todos: es lo esperado).
+   pasan todos.
 
-   ------------------------------------------------------------------
-   PUNTO DE EXTENSIÓN (futuro, NO implementado a propósito):
-   hoy runGenerator() llama a generarAnimacion() de client.js, que en
-   Node siempre cae al mock local determinista (el fetch usa una URL
-   relativa que en Node rechaza sin llegar a la red). Para medir la
-   calidad del modelo real (Claude Haiku vía la Netlify Function),
-   basta con sustituir el cuerpo de runGenerator() por una llamada
-   HTTP absoluta al endpoint desplegado (o a `netlify dev` local):
+   ── CÓMO ENTRA CADA CASO ────────────────────────────────────
+     esCompiladorDirecto  intent escrito a mano → compilarAnimacion
+     esIntentIA           intent AJENO (una ficha guardada, el
+                          simulador) → validador → compilador
+     run()                caso a medida (motor, editor, resolver…)
 
-     const res = await fetch('https://<sitio>/.netlify/functions/generar-animacion', {
-       method: 'POST', headers: { 'Content-Type': 'application/json' },
-       body: JSON.stringify({ texto: caso.texto, posiciones: caso.elementos,
-                              pista: caso.pista, respuestas: caso.respuestas ?? null }),
-     });
-     return await res.json();
+   ── LO QUE YA NO MIDE (Tramo 2.11) ──────────────────────────
+   Este banco nació midiendo la calidad de un modelo de pago que leía
+   el texto del paso 2, con un lector por regex de respaldo. Los dos
+   se han retirado: el paso 2 lee la jugada él solo contra dos listas
+   cerradas de palabras, y de eso se ocupa eval-frase.mjs.
 
-   Los casos y sus checks NO cambian: validan el JSON resultante,
-   venga del mock o del modelo real.
+   Con ellos se fueron los casos que probaban la resolución de la
+   canasta desde el texto, el equipo que defiende por regex, el flujo
+   de preguntas y el payload que viajaba a Anthropic. Lo que medían
+   del COMPILADOR —el arco alrededor de un cono, el eslalon, que un
+   jugador al que nadie ha nombrado no se mueva— se ha reescrito con
+   el intent puesto a mano y sigue aquí.
    ============================================================ */
 
-import { generarAnimacion, compilarIntentIA, recompilarConCanasta, filtrarPreguntasIA } from '../js/ia/client.js';
 import { compilarAnimacion } from '../js/ia/compilador.js';
+import { validarIntent } from '../js/ia/validador.js';
+import { defensaReactiva } from '../js/ia/simulador.js';
 import { PISTAS } from '../js/canvas/court.js';
 import { metrosEntre } from '../js/canvas/escala.js';
+import { posicionesDe } from '../js/canvas/anclas.js';
+
+/**
+ * Coordenada de un ancla, por NOMBRE. Varios casos comprobaban el
+ * destino contra el par de números literal («debía terminar en (0.206,
+ * 0.893)»), y al redibujar las pistas a escala real (Tramo 2.1) los
+ * cuatro se cayeron a la vez sin que el motor hiciera nada mal: lo que
+ * cambió fue dónde está el codo, no si el jugador va al codo. Preguntar
+ * por el nombre comprueba lo que de verdad interesa y no vuelve a
+ * caducar cuando cambie la geometría.
+ */
+const ancla = (pista, nombre, canasta = 'norte') => posicionesDe(pista, canasta)[nombre];
 
 // ---- punto de extensión: generador bajo prueba --------------------
-// Los casos normales pasan por texto+regex (generarAnimacion). Los marcados
-// `esCompiladorDirecto` saltan el extractor de texto por completo y llaman
-// a compilarAnimacion() con un Intent escrito a mano — prueban el
-// COMPILADOR en sí, independientemente de qué tan lista esté la heurística
-// regex de hoy (o el LLM real de mañana) para producir ese Intent.
+// Todo caso dice CÓMO se genera: con el intent puesto a mano
+// (esCompiladorDirecto), pasando antes por el validador (esIntentIA) o
+// con su propia función (run). No hay camino por texto: leerlo es cosa
+// de ia/frase.js y lo mide eval-frase.mjs.
+/**
+ * Compila un intent AJENO —uno que no ha escrito este banco: el que
+ * traen las 204 fichas, el que devuelve el simulador, el que llega de
+ * un `_intent` guardado— pasándolo primero por el validador.
+ *
+ * Era `compilarIntentIA` de `ia/client.js`, la puerta por la que
+ * entraba lo que devolvía el modelo de pago. Al retirarlo (Tramo 2.11)
+ * la composición se ha quedado aquí, que es donde vive su único
+ * llamador: validar y compilar es exactamente lo que estos casos
+ * comprueban, y sacarlo a un módulo de producción sin nadie que lo
+ * usase sería dejar código vivo solo para las pruebas.
+ */
+function compilarIntentValidado(dataIA, elementos, pista, posicionesCustom = null) {
+  const v = validarIntent(dataIA && dataIA.intent, elementos, pista, { posiciones: posicionesCustom });
+  if (v.error) return v;
+  if (v.preguntas) return { preguntas: v.preguntas };
+  const anim = compilarAnimacion(defensaReactiva(v.intent, elementos, pista), elementos, pista, { posiciones: posicionesCustom });
+  const warningsIA = (Array.isArray(dataIA.warnings) ? dataIA.warnings : [])
+    .filter((w) => w && typeof w === 'object' && typeof w.texto_original === 'string' && typeof w.interpretacion === 'string');
+  anim.warnings = [...v.warnings, ...warningsIA];
+  anim._mock = false;
+  return anim;
+}
+
 async function runGenerator(caso) {
   if (caso.run) return caso.run(); // caso a medida (p.ej. lógica de Board sin DOM)
   if (caso.esCompiladorDirecto) return compilarAnimacion(caso.intent, caso.elementos, caso.pista);
-  // Los marcados `esIntentIA` simulan el camino de RED de la Fase 2b sin red:
-  // `dataIA` hace de respuesta de la Netlify Function ({ intent, warnings? })
-  // y se procesa con compilarIntentIA (validador + canasta del cliente +
-  // compilador) — el mismo código exacto que ejecuta el navegador al recibir
-  // la respuesta real de la IA.
-  // `posicionesCustom` (Tramo 2): stub del diccionario de Supabase — el banco
-  // NUNCA toca la red; las posiciones custom se inyectan como objeto plano.
-  if (caso.esIntentIA) return compilarIntentIA(caso.dataIA, caso.elementos, caso.pista, caso.texto || '', caso.respuestas ?? null, caso.posicionesCustom ?? null);
-  return generarAnimacion({
-    texto: caso.texto,
-    elementos: caso.elementos,
-    pista: caso.pista,
-    respuestas: caso.respuestas ?? null,
-    posicionesCustom: caso.posicionesCustom ?? null,
-  });
+  // Los marcados `esIntentIA` entran por el validador, como cualquier
+  // intent que no haya escrito el paso 2. `posicionesCustom` (Tramo 2):
+  // stub del diccionario de Supabase — el banco NUNCA toca la red.
+  if (caso.esIntentIA) return compilarIntentValidado(caso.dataIA, caso.elementos, caso.pista, caso.posicionesCustom ?? null);
+  throw new Error(`el caso «${caso.nombre}» no dice cómo generarse (run / esCompiladorDirecto / esIntentIA)`);
 }
 
 /* ---- constructores de elementos del tablero ---------------------- */
@@ -89,6 +114,10 @@ const todosTiros = (r) => (r.fases || []).flatMap((f) => f.tiros || []);
 const todosPases = (r) => (r.fases || []).flatMap((f) => f.pases || []);
 const jugadorPorId = (r, id) => (r.jugadores || []).find((j) => j.id === id);
 const dxy = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+
+/* Un evento del dialecto de siempre (los nueve del motor anterior), con
+   todos sus campos a null salvo los que se den. */
+const evIA = (jugador, tipo, extra = {}) => ({ jugador, tipo, hacia: null, a: null, cono_id: null, marca: null, bloqueado_id: null, ...extra });
 
 // nº de veces que un id participa activamente en cualquier fase
 // (movimientos, pases, tiros o bloqueos). 0 => queda quieto/inerte.
@@ -185,524 +214,61 @@ const casos = [];
 
 /* ------------------------- 1. CANASTA ----------------------------- */
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_media_pista_un_solo_aro',
-  // Media pista: solo existe la canasta 'norte'; imposible equivocarse.
-  texto: 'A1 bota hacia el aro y tira.',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.6, 0.5), balon(0.61, 0.5)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const tiros = todosTiros(res);
-    if (!tiros.length) return ko('no hay ningún tiro en la animación');
-    if (!tiros.every((t) => t.canasta === 'norte')) return ko(`tiro a canasta '${tiros[0].canasta}', en media pista solo existe 'norte'`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_entera_sin_pista_textual_pregunta',
-  // Dos aros y el texto NO dice a cuál: decidir por cercanía era el
-  // comportamiento antiguo. Decisión de producto actual: el sistema DEBE
-  // devolver la pregunta fija 'q_canasta' — nunca inferir en silencio.
-  texto: 'Pase al ala y tiro.',
-  pista: 'entera',
-  elementos: [jugador('A', 1, 0.5, 0.75), jugador('A', 2, 0.35, 0.68), balon(0.51, 0.75)],
-  check(res) {
-    if (!esPreguntas(res)) return ko(`con dos aros y sin mención textual se esperaba una pregunta de canasta; llegó ${forma(res)}`);
-    const q = res.preguntas.find((p) => p.id === 'q_canasta');
-    if (!q) return ko(`ninguna pregunta tiene id 'q_canasta': ${JSON.stringify(res.preguntas.map((p) => p.id))}`);
-    if (q.tipo !== 'B' || !Array.isArray(q.opciones) || q.opciones.length < 2) return ko(`pregunta de canasta mal formada: ${JSON.stringify(q)}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_numero_1_explicita_no_pregunta',
-  // "canasta 1" (convención numerada: Canasta 1 = 'norte') con el juego en
-  // la mitad SUR: el texto manda sobre la cercanía y no se pregunta.
-  texto: 'Subida rápida de balón y tiro en la canasta 1.',
-  pista: 'entera',
-  elementos: [jugador('A', 1, 0.5, 0.7), jugador('A', 2, 0.38, 0.62), balon(0.51, 0.7)],
-  check(res) {
-    if (esPreguntas(res)) return ko('el texto ya nombra la canasta 1: no debería preguntar');
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const tiros = todosTiros(res);
-    if (!tiros.length) return ko('no hay ningún tiro');
-    if (!tiros.every((t) => t.canasta === 'norte')) return ko(`"canasta 1" = 'norte', pero el tiro va a '${tiros[0].canasta}'`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_numero_2_explicita_no_pregunta',
-  // "canasta 2" = 'sur' aunque los jugadores estén junto al aro norte.
-  texto: 'A1 cruza toda la pista botando y tira en la canasta 2.',
-  pista: 'entera',
-  elementos: [jugador('A', 1, 0.4, 0.3), jugador('A', 2, 0.6, 0.35), balon(0.41, 0.3)],
-  check(res) {
-    if (esPreguntas(res)) return ko('el texto ya nombra la canasta 2: no debería preguntar');
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const tiros = todosTiros(res);
-    if (!tiros.length) return ko('no hay ningún tiro');
-    if (!tiros.every((t) => t.canasta === 'sur')) return ko(`"canasta 2" = 'sur', pero el tiro va a '${tiros[0].canasta}'`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_respuesta_previa_resuelve_sin_repreguntar',
-  // Dos aros, sin mención textual, pero 'q_canasta' ya respondida con
-  // "Canasta 2": genera usando 'sur' (la respuesta manda sobre la cercanía,
-  // los jugadores están junto al aro norte) y no vuelve a preguntar.
-  texto: 'Pase al ala y tiro.',
-  pista: 'entera',
-  respuestas: [{ id: 'q_canasta', tipo: 'B', respuesta: 'Canasta 2' }],
-  elementos: [jugador('A', 1, 0.45, 0.25), jugador('A', 2, 0.3, 0.3), balon(0.46, 0.25)],
-  check(res) {
-    if (esPreguntas(res)) return ko('q_canasta ya está respondida: no debería volver a preguntar');
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const tiros = todosTiros(res);
-    if (!tiros.length) return ko('no hay ningún tiro');
-    if (!tiros.every((t) => t.canasta === 'sur')) return ko(`la respuesta "Canasta 2" = 'sur', pero el tiro va a '${tiros[0].canasta}'`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_media_un_aro_sin_mencion_no_pregunta',
-  // Control de no-regresión: con UN solo aro no hay ambigüedad, así que
-  // nunca se pregunta por la canasta aunque el texto no la mencione.
-  texto: 'Pase al ala y tiro.',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.6, 0.5), jugador('A', 2, 0.45, 0.4), balon(0.61, 0.5)],
-  check(res) {
-    if (esPreguntas(res)) return ko(`en media pista (un aro) no debe preguntarse por la canasta; llegó ${forma(res)}`);
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    if (!todosTiros(res).every((t) => t.canasta === 'norte')) return ko('en media pista todos los tiros van a la única canasta (norte)');
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_texto_pide_sur_jugadores_al_norte',
-  // Jugadores junto a la canasta norte, pero el texto pide la sur: la
-  // mención explícita del texto manda sobre la cercanía.
-  texto: 'Subida de balón y tiro en la canasta sur.',
-  pista: 'entera',
-  elementos: [jugador('A', 1, 0.5, 0.2), jugador('A', 2, 0.35, 0.28), balon(0.5, 0.21)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const tiros = todosTiros(res);
-    if (!tiros.length) return ko('no hay ningún tiro');
-    if (!tiros.every((t) => t.canasta === 'sur')) return ko(`el texto pide explícitamente la canasta SUR pero el tiro va a '${tiros[0].canasta}' (bug conocido: se ignora la canasta del texto y se usa la más cercana)`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_texto_pide_norte_contraataque_desde_sur',
-  // Contraataque desde la mitad sur hacia la canasta norte: el texto
-  // nombra la canasta y el tiro debe ir a la pista contraria.
-  texto: 'Contraataque hacia la canasta norte y tiro.',
-  pista: 'entera',
-  elementos: [jugador('A', 1, 0.5, 0.8), jugador('A', 2, 0.6, 0.72), balon(0.5, 0.81)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const tiros = todosTiros(res);
-    if (!tiros.length) return ko('no hay ningún tiro');
-    if (!tiros.every((t) => t.canasta === 'norte')) return ko(`el texto pide la canasta NORTE (contraataque a pista contraria) pero el tiro va a '${tiros[0].canasta}' (bug conocido: canasta por cercanía, no por texto)`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_texto_coincide_con_cercania_control',
-  // Control: cuando texto y posición coinciden, el resultado es
-  // correcto (el bug solo aflora cuando discrepan).
-  texto: 'Pase y tiro a la canasta norte.',
-  pista: 'entera',
-  elementos: [jugador('A', 1, 0.45, 0.25), jugador('A', 2, 0.3, 0.3), balon(0.46, 0.25)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const tiros = todosTiros(res);
-    if (!tiros.length) return ko('no hay ningún tiro');
-    if (!tiros.every((t) => t.canasta === 'norte')) return ko(`texto y posición apuntan a 'norte' pero el tiro va a '${tiros[0].canasta}'`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Canasta',
-  nombre: 'canasta_entera_fiba_texto_explicito',
-  // Variante de pista entera_fiba (dos aros: aplica la regla de canasta
-  // explícita): la clave debe seguir siendo válida y la nombrada en el texto.
-  texto: 'Pase y tiro hacia la canasta 1.',
-  pista: 'entera_fiba',
-  elementos: [jugador('A', 1, 0.5, 0.3), jugador('A', 2, 0.4, 0.35), balon(0.51, 0.3)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const tiros = todosTiros(res);
-    if (!tiros.length) return ko('no hay ningún tiro');
-    if (res.pista !== 'entera_fiba') return ko(`la pista del resultado ('${res.pista}') no es la del caso`);
-    if (tiros[0].canasta !== 'norte') return ko(`el texto pide la canasta 1 ('norte'); llegó '${tiros[0].canasta}'`);
-    return ok();
-  },
-});
+
+
+
+
+
+
+
+
+
+
 
 /* ---------------------- 2. ROLES Y DEFENSA ------------------------ */
 
-casos.push({
-  categoria: 'Roles y defensa',
-  nombre: 'defensa_equipo2_defiende_orden_normal',
-  texto: 'El equipo 2 defiende. A1 penetra, pasa fuera y A2 tira.',
-  pista: 'media',
-  elementos: [
-    jugador('A', 1, 0.7, 0.5), jugador('A', 2, 0.5, 0.3),
-    jugador('B', 1, 0.6, 0.45), jugador('B', 2, 0.45, 0.35),
-    balon(0.71, 0.5),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const mal = (res.jugadores || []).filter((j) => (j.equipo === 'B') !== (j.tipo === 'defensor'));
-    if (mal.length) return ko(`roles mal asignados: ${mal.map((j) => `${j.id}=${j.tipo}`).join(', ')} (el equipo 2/B debía defender)`);
-    if (!res.fases.every((f) => mismoConjunto(f.defensores || [], ['B1', 'B2']))) return ko(`fase.defensores no es {B1,B2} en todas las fases: ${JSON.stringify(res.fases.map((f) => f.defensores))}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Roles y defensa',
-  nombre: 'defensa_orden_inverso_defiende_el_equipo3',
-  texto: 'Defiende el equipo 3 mientras el equipo 1 mueve el balón hasta el tiro.',
-  pista: 'media',
-  elementos: [
-    jugador('A', 1, 0.6, 0.55), jugador('A', 2, 0.4, 0.45),
-    jugador('C', 1, 0.55, 0.5), jugador('C', 2, 0.35, 0.4),
-    balon(0.61, 0.55),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const mal = (res.jugadores || []).filter((j) => (j.equipo === 'C') !== (j.tipo === 'defensor'));
-    if (mal.length) return ko(`roles mal asignados con orden inverso ("Defiende el equipo 3"): ${mal.map((j) => `${j.id}=${j.tipo}`).join(', ')}`);
-    if (!res.fases.every((f) => mismoConjunto(f.defensores || [], ['C1', 'C2']))) return ko('fase.defensores no es {C1,C2} en todas las fases');
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Roles y defensa',
-  nombre: 'defensa_sin_mencion_todos_atacan',
-  // Sin mención de defensa, los equipos son neutrales: todos atacan
-  // (los roles no dependen del color de equipo). Comportamiento deseado.
-  texto: 'A1 pasa a B1 y B1 tira.',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.6, 0.5), jugador('B', 1, 0.4, 0.4), balon(0.61, 0.5)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const defs = (res.jugadores || []).filter((j) => j.tipo === 'defensor');
-    if (defs.length) return ko(`sin mención de defensa nadie debería defender; defienden: ${defs.map((j) => j.id).join(', ')}`);
-    if (!res.fases.every((f) => (f.defensores || []).length === 0)) return ko('hay fases con defensores pese a no mencionarse defensa');
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Roles y defensa',
-  nombre: 'defensa_por_letra_equipo_B',
-  // La mención por letra ("equipo B") también debe funcionar.
-  texto: 'El equipo B defiende la salida del contraataque.',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.6, 0.5), jugador('A', 2, 0.45, 0.4), jugador('B', 1, 0.55, 0.45), balon(0.61, 0.5)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const b1 = jugadorPorId(res, 'B1');
-    if (!b1) return ko('falta el jugador B1 en el resultado');
-    if (b1.tipo !== 'defensor') return ko(`"el equipo B defiende" no asignó rol defensor a B1 (tipo='${b1.tipo}')`);
-    if ((res.jugadores || []).some((j) => j.equipo === 'A' && j.tipo !== 'atacante')) return ko('algún jugador A quedó como defensor');
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Roles y defensa',
-  nombre: 'defensa_mencion_lejos_del_verbo',
-  // "equipo 2 … (≈60 caracteres) … defiende": la asociación equipo↔verbo
-  // es por cercanía SIN techo de distancia (antes había un límite de 30
-  // caracteres que hacía fallar este caso; se eliminó).
-  texto: 'El equipo 2 quiere trabajar la salida de contraataque mientras defiende la primera línea de pase.',
-  pista: 'media',
-  elementos: [
-    jugador('A', 1, 0.6, 0.5), jugador('A', 2, 0.45, 0.4),
-    jugador('B', 1, 0.55, 0.45), jugador('B', 2, 0.4, 0.35),
-    balon(0.61, 0.5),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const b = (res.jugadores || []).filter((j) => j.equipo === 'B');
-    if (!b.length) return ko('faltan jugadores del equipo B');
-    if (!b.every((j) => j.tipo === 'defensor')) return ko(`el texto dice que el equipo 2 defiende, pero: ${b.map((j) => `${j.id}=${j.tipo}`).join(', ')} (la mención "equipo N" y el verbo de defensa deben asociarse aunque estén lejos)`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Roles y defensa',
-  nombre: 'defensa_solo_equipo_defensor_fallback_ataque',
-  // Solo hay jugadores del equipo al que el texto manda defender: la
-  // salvaguarda actual hace que todos ataquen (sin ataque no hay
-  // ejercicio). Se documenta como comportamiento aceptado.
-  texto: 'El equipo 1 defiende el rebote.',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.5, 0.6), jugador('A', 2, 0.4, 0.5), balon(0.51, 0.6)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    if (!(res.jugadores || []).every((j) => j.tipo === 'atacante')) return ko('con todos los jugadores en el equipo "defensor" debería aplicarse la salvaguarda: todos atacan');
-    if (!res.fases.every((f) => (f.defensores || []).length === 0)) return ko('quedaron defensores en alguna fase pese a la salvaguarda');
-    if (!todosTiros(res).length) return ko('la animación de la salvaguarda no llega a ningún tiro');
-    return ok();
-  },
-});
+
+
+
+
+
+
 
 /* ---------------------------- 3. FILA ------------------------------ */
 
-casos.push({
-  categoria: 'Fila',
-  nombre: 'fila_con_jugadores_sin_balon_cerca_queda_inerte',
-  // Arreglado en la Fase 2a (extraerIntentoLocal): el texto pone a trabajar
-  // al primero de la fila aunque el balón esté lejos del cono (junto a A1) —
-  // "primero de la fila" en el texto basta para elegirlo como protagonista
-  // directamente, sin depender de la cercanía al balón. Antes quedaba inerte
-  // (bug conocido, ya corregido).
-  texto: 'El primero de la fila sale botando hacia el aro y tira.',
-  pista: 'media',
-  elementos: [
-    jugador('A', 1, 0.3, 0.6), jugador('A', 2, 0.45, 0.7),
-    balon(0.31, 0.6),
-    cono(0.85, 0.25, 'fila', { n_jugadores: 3, direccion_grados: 90, equipo: 'A' }, 'cono_fila'),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const fila = (res.jugadores || []).find((j) => /^fila/.test(j.id));
-    if (!fila) return ko('no se sintetizó ningún jugador de la fila (id fila*)');
-    if (!fila.tiene_balon) return ko(`el primero de la fila ('${fila.id}') debería ser el protagonista con el balón (tiene_balon=false)`);
-    if (apariciones(res, fila.id) < 2) return ko(`'${fila.id}' debería botar y tirar (≥2 apariciones); tiene ${apariciones(res, fila.id)}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Fila',
-  nombre: 'fila_con_balon_cerca_sale_el_primero',
-  // Con el balón junto al cono de fila, el primero de la fila SÍ sale a
-  // trabajar: lleva el balón, avanza y asiste. La cola baja de 4 a 3.
-  texto: 'El primero de la fila sale con bote, pase a A1 y tiro de A1.',
-  pista: 'media',
-  elementos: [
-    jugador('A', 1, 0.45, 0.6),
-    balon(0.81, 0.31),
-    cono(0.8, 0.3, 'fila', { n_jugadores: 4, direccion_grados: 90, equipo: 'A' }, 'cono_fila'),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const fila = (res.jugadores || []).find((j) => /^fila/.test(j.id));
-    if (!fila) return ko('no se sintetizó ningún jugador de la fila');
-    if (fila.tiene_balon !== true) return ko(`el primero de la fila ('${fila.id}') debería salir con el balón (tiene_balon=false)`);
-    const mueveConBalon = (res.fases[0].movimientos || []).some((m) => m.elemento_id === fila.id && /balon/.test(m.tipo_movimiento || ''));
-    if (!mueveConBalon) return ko(`'${fila.id}' no tiene movimiento con balón en la primera fase`);
-    const pase = todosPases(res).find((p) => p.de_id === fila.id && p.a_id === 'A1');
-    if (!pase) return ko(`no hay pase de '${fila.id}' a A1`);
-    if (!todosTiros(res).some((t) => t.jugador_id === 'A1')) return ko('A1 no llega a tirar');
-    const conoFila = (res.conos || []).find((c) => c.id === 'cono_fila');
-    if (!conoFila || !conoFila.fila_config) return ko('el cono de fila no vuelve en el resultado con su fila_config');
-    if (conoFila.fila_config.n_jugadores !== 3) return ko(`la cola debería bajar de 4 a 3 al salir el primero; queda en ${conoFila.fila_config.n_jugadores}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Fila',
-  nombre: 'fila_vuelve_a_la_fila_fase_final',
-  // "…y vuelve a la fila": tras el tiro debe haber una fase final en la
-  // que el jugador salido de la fila corre (sin balón) hasta el final
-  // de su cola (cerca del cono).
-  texto: 'El primero de la fila sale con bote, pase a A1, tiro de A1 y vuelve a la fila.',
-  pista: 'media',
-  elementos: [
-    jugador('A', 1, 0.45, 0.6),
-    balon(0.81, 0.31),
-    cono(0.8, 0.3, 'fila', { n_jugadores: 4, direccion_grados: 90, equipo: 'A' }, 'cono_fila'),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const fila = (res.jugadores || []).find((j) => /^fila/.test(j.id));
-    if (!fila) return ko('no se sintetizó ningún jugador de la fila');
-    if (res.fases.length < 3) return ko(`se esperaban al menos 3 fases (jugada + vuelta); hay ${res.fases.length}`);
-    const ultima = res.fases[res.fases.length - 1];
-    const vuelta = (ultima.movimientos || []).find((m) => m.elemento_id === fila.id && m.tipo_movimiento === 'carrera_sin_balon');
-    if (!vuelta) return ko(`la última fase no contiene la vuelta a la fila de '${fila.id}' (carrera_sin_balon)`);
-    const fin = (vuelta.path || [])[vuelta.path.length - 1];
-    if (!fin) return ko('la vuelta a la fila no tiene path');
-    if (dxy(fin.x, fin.y, 0.8, 0.3) > 0.3) return ko(`la vuelta termina en (${fin.x.toFixed(2)}, ${fin.y.toFixed(2)}), lejos de la cola del cono (0.80, 0.30)`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Fila',
-  nombre: 'fila_al_borde_clamp_de_cola',
-  // Cola que se sale del lienzo: cono en (0.9, 0.9) mirando hacia abajo
-  // con 5 jugadores (la cola teórica acaba en y=1.2). La vuelta debe
-  // quedar dentro de [0,1] (clamp) y aun así llegar a la zona de la cola.
-  // (El texto nombra la canasta 2: la pista entera tiene dos aros y sin
-  // mención el sistema preguntaría en vez de generar.)
-  texto: 'Sale el primero botando, tira a la canasta 2 y vuelve a la fila.',
-  pista: 'entera',
-  elementos: [
-    balon(0.89, 0.89),
-    cono(0.9, 0.9, 'fila', { n_jugadores: 5, direccion_grados: 90, equipo: 'A' }, 'cono_fila'),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const fila = (res.jugadores || []).find((j) => /^fila/.test(j.id));
-    if (!fila) return ko('no se sintetizó el jugador de la fila (único "jugador" del tablero)');
-    const ultima = res.fases[res.fases.length - 1];
-    const vuelta = (ultima.movimientos || []).find((m) => m.elemento_id === fila.id && m.tipo_movimiento === 'carrera_sin_balon');
-    if (!vuelta) return ko('no hay fase final de vuelta a la fila');
-    const fin = (vuelta.path || [])[vuelta.path.length - 1];
-    if (!fin) return ko('la vuelta no tiene path');
-    // la genérica ya exige [0,1]; aquí, además, que llegue al borde donde vive la cola
-    if (fin.y < 0.95) return ko(`la cola apunta al borde inferior (y→1) pero la vuelta termina en y=${fin.y.toFixed(3)}`);
-    return ok();
-  },
-});
+
+
+
+
 
 /* ------------------------ 4. RODEAR CONOS -------------------------- */
 
-casos.push({
-  categoria: 'Rodear conos',
-  nombre: 'rodear_un_solo_cono_arco_limpio',
-  // Rodear UN cono produce un contorno curvo: ≥2 puntos de paso pegados
-  // al cono y/o nodos Bézier (handle_in/handle_out). Antes el mock metía
-  // un único punto lateral con nodos lineales (pico anguloso); arreglado.
-  texto: 'A1 sale botando, rodea el cono y entra a canasta con tiro.',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.8, 0.5), balon(0.81, 0.5), cono(0.5, 0.5, 'rodear', null, 'cono_r1')],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const mv = (res.fases[0].movimientos || []).find((m) => m.elemento_id === 'A1' && /balon/.test(m.tipo_movimiento || ''));
-    if (!mv) return ko('A1 no tiene movimiento con balón en la primera fase');
-    const path = mv.path || [];
-    const intermedios = path.slice(1, -1).filter((n) => dxy(n.x, n.y, 0.5, 0.5) <= 0.12).length;
-    const hayCurva = path.some((n) => n.tipo_nodo && n.tipo_nodo !== 'lineal');
-    if (intermedios >= 2 || hayCurva) return ok();
-    return ko(`el path no RODEA el cono: ${intermedios} nodo(s) intermedio(s) junto al cono y todos los nodos lineales (bug conocido: desvío anguloso de un solo punto en vez de un arco)`);
-  },
-});
 
-casos.push({
-  categoria: 'Rodear conos',
-  nombre: 'rodear_tres_conos_slalom',
-  // Tres conos en línea hacia el aro: el bote debe zigzaguear
-  // alternando el lado de cada cono (slalom), en orden de avance.
-  texto: 'Slalom de bote entre los conos y tiro al final.',
-  pista: 'media',
-  elementos: [
-    jugador('A', 1, 0.85, 0.5), balon(0.86, 0.5),
-    cono(0.65, 0.5, 'rodear', null, 'cono_r1'),
-    cono(0.5, 0.5, 'rodear', null, 'cono_r2'),
-    cono(0.35, 0.5, 'rodear', null, 'cono_r3'),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    const mv = (res.fases[0].movimientos || []).find((m) => m.elemento_id === 'A1' && /balon/.test(m.tipo_movimiento || ''));
-    if (!mv) return ko('A1 no tiene movimiento con balón en la primera fase');
-    const path = mv.path || [];
-    if (path.length < 5) return ko(`path de ${path.length} nodos; un slalom de 3 conos necesita al menos 5 (inicio + 3 pasos + final)`);
-    // para cada cono (en orden de avance), el nodo INTERMEDIO más cercano
-    // del path debe estar pegado a él y alternar de lado (arriba/abajo de
-    // y=0.5). Se excluyen el primer y el último nodo: son el arranque del
-    // jugador y el final de la penetración, no pasos de slalom (el final
-    // puede caer casualmente al lado de un cono sin estar sorteándolo).
-    const conosX = [0.65, 0.5, 0.35];
-    const lados = [];
-    const intermedios = path.slice(1, -1);
-    for (const cx of conosX) {
-      let mejor = null, mejorD = Infinity;
-      for (const n of intermedios) { const d = dxy(n.x, n.y, cx, 0.5); if (d < mejorD) { mejorD = d; mejor = n; } }
-      if (mejorD > 0.12) return ko(`ningún nodo del path pasa junto al cono en x=${cx} (mínimo ${mejorD.toFixed(3)})`);
-      const off = mejor.y - 0.5;
-      if (Math.abs(off) < 0.02) return ko(`el paso por el cono en x=${cx} no se separa lateralmente (offset ${off.toFixed(3)})`);
-      lados.push(Math.sign(off));
-    }
-    for (let i = 1; i < lados.length; i++) {
-      if (lados[i] === lados[i - 1]) return ko(`el slalom no alterna de lado entre el cono ${i} y el ${i + 1} (lados: ${lados.join(', ')})`);
-    }
-    return ok();
-  },
-});
+
+
 
 /* --------------------- 5. MOVIMIENTO PARCIAL ----------------------- */
 
-casos.push({
-  categoria: 'Movimiento parcial',
-  nombre: 'parcial_seis_jugadores_solo_dos_implicados',
-  // 6 jugadores en pista pero el texto solo implica a A1 y A2: el resto
-  // NO debe recibir movimientos/pases/tiros en ninguna fase (se quedan
-  // en su posicion_inicial). (Canasta 2 nombrada: dos aros sin mención
-  // dispararían la pregunta obligatoria de canasta.)
-  texto: 'A1 penetra y dobla el pase a A2 para el tiro en la canasta 2.',
-  pista: 'entera',
-  elementos: [
-    jugador('A', 1, 0.5, 0.72), jugador('A', 2, 0.38, 0.66),
-    jugador('A', 3, 0.62, 0.66), jugador('A', 4, 0.3, 0.5),
-    jugador('A', 5, 0.7, 0.5), jugador('B', 1, 0.5, 0.4),
-    balon(0.51, 0.72),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    if (!apariciones(res, 'A1')) return ko('A1 (el protagonista) no participa en ninguna fase');
-    if (!todosPases(res).some((p) => p.de_id === 'A1' && p.a_id === 'A2')) return ko('no hay pase de A1 a A2');
-    if (!todosTiros(res).some((t) => t.jugador_id === 'A2')) return ko('A2 no llega a tirar');
-    const quietos = ['A3', 'A4', 'A5', 'B1'];
-    const movidos = quietos.filter((id) => apariciones(res, id) > 0);
-    if (movidos.length) return ko(`jugadores no implicados en el texto reciben acciones: ${movidos.join(', ')}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Movimiento parcial',
-  nombre: 'parcial_defensores_del_hombre_quieto_no_se_mueven',
-  // Con defensa: B1 marca al portador (activo) y debe moverse; B2 marca
-  // a A3 (quieto) y NO debe moverse. Los atacantes no implicados (A3,
-  // A4) tampoco. (Canasta 2 nombrada para no disparar la pregunta.)
-  texto: 'El equipo 2 defiende. A1 penetra y asiste a A2 para el tiro en la canasta 2.',
-  pista: 'entera',
-  elementos: [
-    jugador('A', 1, 0.5, 0.75), jugador('A', 2, 0.3, 0.7),
-    jugador('A', 3, 0.72, 0.5), jugador('A', 4, 0.2, 0.4),
-    jugador('B', 1, 0.5, 0.7), jugador('B', 2, 0.75, 0.55),
-    balon(0.51, 0.76),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    if (!res.fases.every((f) => mismoConjunto(f.defensores || [], ['B1', 'B2']))) return ko('fase.defensores no es {B1,B2} en todas las fases');
-    if (!(res.fases[0].movimientos || []).some((m) => m.elemento_id === 'B1')) return ko('B1 marca al portador (activo) y debería moverse en la fase 1');
-    const quietos = ['A3', 'A4', 'B2'].filter((id) => apariciones(res, id) > 0);
-    if (quietos.length) return ko(`deberían quedarse quietos (marcan/son jugadores no implicados) pero actúan: ${quietos.join(', ')}`);
-    return ok();
-  },
-});
+
+
 
 /* --------------------------- 6. COMPILADOR -------------------------- */
 
@@ -751,170 +317,38 @@ casos.push({
 
 /* -------------------------- 7. PREGUNTAS --------------------------- */
 
-casos.push({
-  categoria: 'Preguntas',
-  nombre: 'pregunta_texto_vacio',
-  texto: '',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.5, 0.5), balon(0.51, 0.5)],
-  check(res) {
-    if (!esPreguntas(res)) return ko(`con texto vacío se esperaban preguntas de aclaración; llegó ${forma(res)}`);
-    const q = res.preguntas[0];
-    if (!q.id || !q.texto || !/^[AB]$/.test(q.tipo || '')) return ko(`pregunta mal formada: ${JSON.stringify(q)}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Preguntas',
-  nombre: 'pregunta_texto_largo_sin_accion',
-  // Texto largo pero sin ningún verbo/sustantivo de acción reconocible:
-  // también debe pedir aclaración.
-  texto: 'Los jugadores se colocan por parejas en media pista.',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.5, 0.5), jugador('A', 2, 0.4, 0.4), balon(0.51, 0.5)],
-  check(res) {
-    if (!esPreguntas(res)) return ko(`texto sin acción reconocible: se esperaban preguntas; llegó ${forma(res)}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Preguntas',
-  nombre: 'pregunta_texto_corto_con_accion',
-  // "tiro" contiene una acción pero con <8 caracteres sigue siendo
-  // demasiado escueto: debe preguntar.
-  texto: 'tiro',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.5, 0.5), balon(0.51, 0.5)],
-  check(res) {
-    if (!esPreguntas(res)) return ko(`texto de 4 caracteres: se esperaban preguntas; llegó ${forma(res)}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Preguntas',
-  nombre: 'respuestas_previas_desbloquean_generacion',
-  // Mismo texto breve pero CON respuestas del usuario a la pregunta
-  // previa: ya no debe volver a preguntar, sino generar.
-  texto: 'jugada',
-  pista: 'media',
-  respuestas: [{ id: 'q1', tipo: 'B', respuesta: 'Ataque' }],
-  elementos: [jugador('A', 1, 0.6, 0.5), jugador('A', 2, 0.45, 0.4), balon(0.61, 0.5)],
-  check(res) {
-    if (esPreguntas(res)) return ko('con respuestas ya dadas no debería volver a preguntar');
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    if (res.fases.length < 2) return ko(`animación demasiado corta (${res.fases.length} fase)`);
-    return ok();
-  },
-});
+
+
+
+
 
 /* ----------------------- 8. LÍMITES Y VARIOS ----------------------- */
 
-casos.push({
-  categoria: 'Límites y varios',
-  nombre: 'error_tablero_sin_jugadores',
-  // Balón y cono decorativo pero ni un jugador ni una fila con gente:
-  // error claro, no animación ni pregunta.
-  texto: 'Pase y tiro.',
-  pista: 'media',
-  elementos: [balon(0.5, 0.5), cono(0.4, 0.4, 'decorativo')],
-  check(res) {
-    if (!esError(res)) return ko(`sin jugadores se esperaba { error }; llegó ${forma(res)}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Límites y varios',
-  nombre: 'error_fila_con_cero_jugadores',
-  // Una fila vacía (n_jugadores: 0) no cuenta como jugadores.
-  texto: 'Pase y tiro.',
-  pista: 'media',
-  elementos: [balon(0.5, 0.5), cono(0.7, 0.3, 'fila', { n_jugadores: 0, direccion_grados: 90, equipo: 'A' }, 'cono_fila')],
-  check(res) {
-    if (!esError(res)) return ko(`con la fila vacía se esperaba { error }; llegó ${forma(res)}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Límites y varios',
-  nombre: 'jugador_unico_sin_balon_tiro_directo',
-  // Un único jugador y ningún balón en el tablero: el generador debe
-  // sintetizar un balón en manos del jugador y resolver con tiro directo.
-  texto: 'A1 bota hasta el aro y tira.',
-  pista: 'media',
-  elementos: [jugador('A', 1, 0.5, 0.5)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    if (!Array.isArray(res.balones) || res.balones.length !== 1) return ko(`se esperaba exactamente 1 balón sintetizado; hay ${(res.balones || []).length}`);
-    if (res.balones[0].portador_id !== 'A1') return ko(`el balón sintetizado no está en manos de A1 (portador_id='${res.balones[0].portador_id}')`);
-    const tiros = todosTiros(res);
-    if (tiros.length !== 1 || tiros[0].jugador_id !== 'A1') return ko(`se esperaba un único tiro de A1; hay ${tiros.length} (${tiros.map((t) => t.jugador_id).join(', ')})`);
-    if (res.fases.length < 2) return ko(`animación demasiado corta (${res.fases.length} fase)`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Límites y varios',
-  nombre: 'passthrough_id_de_balon_y_dorsal',
-  // Los datos del tablero deben sobrevivir el viaje: id del balón en
-  // pases/tiros y dorsal/nombre del jugador.
-  texto: 'Pase y tiro tras el corte.',
-  pista: 'media',
-  elementos: [
-    jugador('A', 1, 0.7, 0.5, { dorsal: 7, nombre: 'Ana' }),
-    jugador('A', 2, 0.5, 0.35),
-    balon(0.71, 0.5, 'balon_7'),
-  ],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    if (!res.balones.some((b) => b.id === 'balon_7')) return ko(`el balón del tablero ('balon_7') no conserva su id: ${res.balones.map((b) => b.id).join(', ')}`);
-    const pase = todosPases(res)[0];
-    if (!pase) return ko('no hay ningún pase');
-    if (pase.balon_id !== 'balon_7') return ko(`el pase usa balon_id '${pase.balon_id}' en vez de 'balon_7'`);
-    if (pase.de_id === pase.a_id) return ko('pase de un jugador a sí mismo');
-    if (!todosTiros(res).every((t) => t.balon_id === 'balon_7')) return ko('el tiro no usa el balón del tablero');
-    const a1 = jugadorPorId(res, 'A1');
-    if (!a1 || a1.dorsal !== 7 || a1.nombre !== 'Ana') return ko(`A1 pierde dorsal/nombre por el camino: ${JSON.stringify({ dorsal: a1 && a1.dorsal, nombre: a1 && a1.nombre })}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Límites y varios',
-  nombre: 'warning_interpretacion_lateral',
-  // Términos espaciales vagos ("el lateral") deben producir un warning
-  // con la interpretación tomada, no fallar en silencio. (Canasta 1
-  // nombrada para no disparar la pregunta de canasta en pista entera.)
-  texto: 'A1 sube por el lateral hasta la canasta 1 y tira.',
-  pista: 'entera',
-  elementos: [jugador('A', 1, 0.2, 0.6), jugador('A', 2, 0.4, 0.5), balon(0.21, 0.6)],
-  check(res) {
-    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    if (!Array.isArray(res.warnings) || !res.warnings.length) return ko('el término vago "el lateral" debería generar un warning de interpretación');
-    const w = res.warnings[0];
-    if (!w.texto_original || !w.campo) return ko(`warning mal formado: ${JSON.stringify(w)}`);
-    return ok();
-  },
-});
+
+
+
+
+
 
 /* -------------- 8. IA (camino de red, Fase 2b) ---------------------
    Simulan la respuesta { intent } de la Netlify Function y prueban el
    pipeline real del navegador: validador (repara/descarta) → canasta
    del cliente (manda sobre el modelo) → compilador. Sin red. */
-const evIA = (jugador, tipo, extra = {}) => ({ jugador, tipo, hacia: null, a: null, cono_id: null, marca: null, bloqueado_id: null, ...extra });
 
 casos.push({
-  categoria: 'IA (camino de red)',
-  nombre: 'ia_intent_valido_se_compila',
-  // Respuesta bien formada del modelo: bote → pase → tiro. Debe compilar
-  // a una animación completa marcada como venida de la IA (_ia, no _mock).
+  categoria: 'Intent ajeno (validado)',
+  nombre: 'intent_ajeno_valido_se_compila',
+  // Un intent que no ha escrito el paso 2 —el de una ficha guardada, el
+  // del simulador— pasa por el validador y compila entero: bote → pase →
+  // tiro.
   esIntentIA: true,
-  texto: 'A1 penetra y dobla a A2 para el tiro.',
   pista: 'media',
   elementos: [jugador('A', 1, 0.7, 0.55), jugador('A', 2, 0.45, 0.3), balon(0.71, 0.55)],
   dataIA: {
@@ -930,7 +364,6 @@ casos.push({
   },
   check(res) {
     if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
-    if (res._ia !== true || res._mock !== false) return ko(`la animación del camino de red debe marcarse _ia:true/_mock:false (llegó _ia=${res._ia}, _mock=${res._mock})`);
     if (!todosPases(res).some((p) => p.de_id === 'A1' && p.a_id === 'A2')) return ko('no hay pase de A1 a A2');
     if (!todosTiros(res).some((t) => t.jugador_id === 'A2' && t.canasta === 'norte')) return ko('A2 no tira a la canasta norte');
     const a1 = jugadorPorId(res, 'A1');
@@ -1031,17 +464,19 @@ casos.push({
 });
 
 casos.push({
-  categoria: 'IA (camino de red)',
-  nombre: 'ia_intent_canasta_cliente_manda',
-  // El texto dice "canasta 2" (sur) pero el modelo devuelve "norte": la
-  // resolución del CLIENTE (la misma del preflight) manda sobre el modelo.
+  categoria: 'Intent ajeno (validado)',
+  nombre: 'intent_ajeno_ataca_la_canasta_que_declara',
+  // En una pista de dos aros, el intent dice a cuál se ataca y el
+  // compilador lo respeta: aquí el jugador está más cerca del norte y el
+  // tiro tiene que ir igualmente al sur, que es lo declarado. Sin esto,
+  // una ficha guardada con la canasta 2 se animaría hacia la 1 en cuanto
+  // alguien moviera las fichas.
   esIntentIA: true,
-  texto: 'Penetración y tiro hacia la canasta 2.',
   pista: 'entera',
   elementos: [jugador('A', 1, 0.5, 0.6), balon(0.51, 0.6)],
   dataIA: {
     intent: {
-      canasta: 'norte',
+      canasta: 'sur',
       fases: [
         { eventos: [evIA('A1', 'bote', { hacia: 'canasta' })] },
         { eventos: [evIA('A1', 'tiro')] },
@@ -1051,7 +486,7 @@ casos.push({
   check(res) {
     if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
     if (!todosTiros(res).length) return ko('no hay tiro'); // .every() con lista vacía es true: sin esto el caso pasaría sin tiros
-    if (!todosTiros(res).every((t) => t.canasta === 'sur')) return ko(`el texto pide la canasta 2 ('sur') y debe mandar sobre el modelo; el tiro va a '${todosTiros(res)[0]?.canasta}'`);
+    if (!todosTiros(res).every((t) => t.canasta === 'sur')) return ko(`el intent declara la canasta 'sur' y el tiro va a '${todosTiros(res)[0]?.canasta}'`);
     return ok();
   },
 });
@@ -1105,28 +540,7 @@ casos.push({
   },
 });
 
-casos.push({
-  categoria: 'IA (camino de red)',
-  nombre: 'ia_fallo_procesando_respuesta_real_no_cae_al_mock',
-  // Blindaje del fallback silencioso de generarAnimacion(): si la function
-  // responde con un intent que no compila a nada, el resultado debe ser un
-  // { error } (o éxito _ia) — NUNCA un éxito _mock:true que disfrace el fallo.
-  sinGenerica: true,
-  async run() {
-    const fetchPrevio = globalThis.fetch;
-    globalThis.fetch = async () => ({ text: async () => JSON.stringify({ intent: { canasta: 'norte', fases: [{ eventos: {} }] } }) });
-    try {
-      return await generarAnimacion({ texto: 'A1 penetra, pase y tiro.', elementos: [jugador('A', 1, 0.6, 0.5), balon(0.61, 0.5)], pista: 'media', respuestas: null });
-    } finally {
-      if (fetchPrevio) globalThis.fetch = fetchPrevio; else delete globalThis.fetch;
-    }
-  },
-  check(res) {
-    if (res && res._mock === true) return ko('el fallo procesando la respuesta REAL de la IA se disfrazó de éxito del mock local');
-    if (!esError(res)) return ko(`se esperaba { error } honesto; llegó ${forma(res)}`);
-    return ok();
-  },
-});
+
 
 casos.push({
   categoria: 'IA (camino de red)',
@@ -1308,6 +722,318 @@ casos.push({
 });
 
 casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_los_dos_dialectos_dan_la_misma_animacion',
+  // La garantía que necesita el paso 2 nuevo (Tramo 2.9): puede dejar de
+  // escribir los nueve eventos de siempre y empezar a escribir acciones
+  // del catálogo sin que nada cambie por debajo. Se compila la MISMA
+  // jugada en los dos dialectos y se comparan las dos animaciones
+  // enteras, no una muestra.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    jugador('A', 1, 0.75, 0.42), jugador('A', 2, 0.62, 0.72),
+    jugador('B', 1, 0.68, 0.45), balon(0.76, 0.42, 'balon_1'),
+  ],
+  intent: {
+    canasta: 'norte',
+    fases: [
+      { eventos: [evIA('A1', 'bote', { hacia: 'canasta' }), evIA('B1', 'defiende', { marca: 'A1' })] },
+      { eventos: [evIA('A1', 'pase', { a: 'A2' })] },
+      { eventos: [evIA('A2', 'bote', { hacia: 'aro' })] },
+      { eventos: [evIA('A2', 'tiro')] },
+      { eventos: [evIA('A2', 'recoge')] },
+    ],
+  },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    const nuevo = compilarAnimacion({
+      canasta: 'norte',
+      fases: [
+        { eventos: [
+          { jugador: 'A1', accion: 'bota' },
+          { jugador: 'B1', accion: 'defiende', args: { companero: 'A1' } },
+        ] },
+        { eventos: [{ jugador: 'A1', accion: 'pasa', args: { destino: 'A2' } }] },
+        { eventos: [{ jugador: 'A2', accion: 'entra' }] },
+        { eventos: [{ jugador: 'A2', accion: 'tira' }] },
+        { eventos: [{ jugador: 'A2', accion: 'recoge' }] },
+      ],
+    }, this.elementos, 'media');
+
+    // `_intent` guarda el dialecto con el que se escribió, así que se
+    // compara todo lo demás: es la geometría lo que tiene que coincidir.
+    const sinIntent = (a) => { const { _intent, ...resto } = a; return JSON.stringify(resto); };
+    if (sinIntent(res) !== sinIntent(nuevo)) {
+      const A = JSON.parse(sinIntent(res)), B = JSON.parse(sinIntent(nuevo));
+      for (const k of Object.keys(A)) {
+        if (JSON.stringify(A[k]) !== JSON.stringify(B[k])) {
+          return ko(`los dos dialectos difieren en "${k}"`);
+        }
+      }
+      return ko('los dos dialectos dan animaciones distintas');
+    }
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_seis_en_fila_dan_seis_rondas',
+  // El criterio de aceptación del Tramo 2.8, tal cual: «un ejercicio de
+  // 6 en fila enseña las 6 rondas con contador». Se describe UNA salida
+  // y el motor la repite hasta que han salido los seis.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    // la cola apunta hacia la izquierda: seis a paso de 1,27 m son casi
+    // ocho metros, y hacia la derecha no cabrían
+    { id: 'cf', kind: 'cono', x: 0.85, y: 0.30, funcion: 'fila',
+      fila_config: { n_jugadores: 6, direccion_grados: 180, equipo: 'A', rondas: true, cadencia_s: null } },
+    balon(0.86, 0.30, 'balon_1'),
+  ],
+  intent: {
+    canasta: 'norte',
+    fases: [
+      { eventos: [evIA('fila1', 'bote', { hacia: 'aro' })] },
+      { eventos: [evIA('fila1', 'tiro')] },
+      { eventos: [evIA('fila1', 'recoge')] },
+      { eventos: [evIA('fila1', 'vuelve_a_fila')] },
+    ],
+  },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    if (res.rondas !== 6) return ko(`se esperaban 6 rondas; hay ${res.rondas}`);
+    if (res.fases.length !== 24) return ko(`6 rondas × 4 fases = 24; hay ${res.fases.length}`);
+
+    // cada ronda la corre quien le toca
+    const esperado = ['fila1', 'fila1_2', 'fila1_3', 'fila1_4', 'fila1_5', 'fila1_6'];
+    for (const f of res.fases) {
+      const suyos = new Set([
+        ...f.movimientos.filter((m) => m.tipo_elemento === 'jugador').map((m) => m.elemento_id),
+        ...f.tiros.map((t) => t.jugador_id),
+      ]);
+      for (const a of suyos) {
+        if (a !== esperado[f.ronda - 1]) return ko(`en la ronda ${f.ronda} debería correr ${esperado[f.ronda - 1]}, y corre ${a}`);
+      }
+    }
+
+    // los seis existen como jugadores de verdad, cada uno en su sitio
+    if (res.jugadores.length !== 6) return ko(`la cola debería dar 6 jugadores; da ${res.jugadores.length}`);
+    const ys = res.jugadores.map((j) => j.posicion_inicial[0]);
+    if (new Set(ys.map((v) => v.toFixed(4))).size !== 6) {
+      return ko(`los seis deberían empezar en sitios distintos de la cola: ${JSON.stringify(ys)}`);
+    }
+
+    // y la cola dibujada se queda vacía: ya no hay fichas anónimas
+    const cono = res.conos.find((c) => c.funcion === 'fila');
+    if (cono.fila_config.n_jugadores !== 0) {
+      return ko(`la cola dibujada debería estar vacía (todos son jugadores); quedan ${cono.fila_config.n_jugadores}`);
+    }
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_cadencia_solapa_las_rondas',
+  // Con cadencia, el siguiente sale antes de que termine el anterior:
+  // la animación se acorta y hay dos en pista a la vez.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    { id: 'cf', kind: 'cono', x: 0.80, y: 0.30, funcion: 'fila',
+      fila_config: { n_jugadores: 4, direccion_grados: 0, equipo: 'A', rondas: true, cadencia_s: 1.5 } },
+    balon(0.81, 0.30, 'balon_1'),
+  ],
+  intent: {
+    canasta: 'norte',
+    fases: [
+      { eventos: [evIA('fila1', 'bote', { hacia: 'aro' })] },
+      { eventos: [evIA('fila1', 'tiro')] },
+      { eventos: [evIA('fila1', 'vuelve_a_fila')] },
+    ],
+  },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    if (res.rondas !== 4) return ko(`se esperaban 4 rondas; hay ${res.rondas}`);
+    if (res.fases.length >= 12) return ko(`con cadencia la animación se acorta; sigue con ${res.fases.length} fases`);
+    const conDos = res.fases.some((f) => {
+      const actores = new Set(f.movimientos.filter((m) => m.tipo_elemento === 'jugador').map((m) => m.elemento_id));
+      return actores.size > 1;
+    });
+    if (!conDos) return ko('con cadencia tiene que haber alguna fase con dos jugadores dentro');
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_fila_de_defensores',
+  // El rol lo da de qué cola sale, no lo que haga ese turno: un
+  // defensor que en su ronda no llega a marcar a nadie sigue siendo
+  // defensor y se dibuja con su arco.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    { id: 'cf', kind: 'cono', x: 0.80, y: 0.30, funcion: 'fila',
+      fila_config: { n_jugadores: 3, direccion_grados: 0, equipo: 'B', rondas: true, rol: 'defensor' } },
+  ],
+  intent: { canasta: 'norte', fases: [{ eventos: [evIA('fila1', 'corte', { hacia: 'canasta' })] }] },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    const noDefensores = res.jugadores.filter((j) => j.tipo !== 'defensor').map((j) => j.id);
+    if (noDefensores.length) return ko(`salen de una fila de defensores y no lo son: ${noDefensores.join(', ')}`);
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_sin_rondas_todo_sigue_igual',
+  // Las 204 fichas de la biblioteca no piden rondas. Sin la marca, la
+  // cola se comporta exactamente como siempre: sale el primero, los
+  // demás siguen siendo fichas anónimas dibujadas.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    { id: 'cf', kind: 'cono', x: 0.80, y: 0.30, funcion: 'fila',
+      fila_config: { n_jugadores: 6, direccion_grados: 0, equipo: 'A' } },
+    balon(0.81, 0.30, 'balon_1'),
+  ],
+  intent: { canasta: 'norte', fases: [{ eventos: [evIA('fila1', 'bote', { hacia: 'aro' })] }] },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    if ('rondas' in res) return ko('sin la marca de rondas, la clave no debe existir');
+    if (res.fases.length !== 1) return ko(`debería haber 1 fase; hay ${res.fases.length}`);
+    if (res.jugadores.length !== 1) return ko(`solo sale el primero; hay ${res.jugadores.length} jugadores`);
+    const cono = res.conos.find((c) => c.funcion === 'fila');
+    if (cono.fila_config.n_jugadores !== 5) return ko(`la cola dibujada debería bajar a 5; está en ${cono.fila_config.n_jugadores}`);
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_una_zona_es_un_sitio_con_nombre',
+  // Lo que hace que una zona valga para algo más que decorar: su nombre es
+  // un destino, igual que «el codo derecho». Y va ANTES que las anclas: si
+  // el entrenador ha dibujado una zona y la ha llamado así en ESTE
+  // ejercicio, manda sobre cualquier ancla que se llamara parecido.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    jugador('A', 1, 0.75, 0.30), balon(0.76, 0.30),
+    { id: 'z1', kind: 'zona', tipo: 'rect', nombre: 'Zona de tiro', visible: true, x: 0.40, y: 0.60, x2: 0.60, y2: 0.80 },
+  ],
+  intent: { canasta: 'norte', fases: [{ eventos: [evIA('A1', 'corte', { hacia: 'Zona de tiro' })] }] },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    const z = (res.zonas || [])[0];
+    if (!z) return ko('la zona no ha llegado a la animación');
+    if (z.nombre !== 'Zona de tiro' || z.tipo !== 'rect') return ko(`zona mal guardada: ${JSON.stringify(z)}`);
+    const mv = (res.fases[0].movimientos || []).find((m) => m.elemento_id === 'A1');
+    if (!mv) return ko('A1 no se mueve');
+    const fin = mv.path[mv.path.length - 1];
+    // el centro del rectángulo (0.40,0.60)-(0.60,0.80)
+    if (dxy(fin.x, fin.y, 0.5, 0.7) > 1e-9) return ko(`el corte debía morir en el centro de la zona (0.5, 0.7); murió en (${fin.x}, ${fin.y})`);
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_zona_invisible_sigue_siendo_un_sitio',
+  // El interruptor de invisible apaga el DIBUJO, no la zona. Se sigue
+  // pudiendo mandar gente a ella: es lo que se usa para las zonas que son
+  // una regla del ejercicio y no un decorado.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    jugador('A', 1, 0.75, 0.30), balon(0.76, 0.30),
+    { id: 'z1', kind: 'zona', tipo: 'circulo', nombre: 'El refugio', visible: false, x: 0.45, y: 0.65, x2: 0.55, y2: 0.65 },
+  ],
+  intent: { canasta: 'norte', fases: [{ eventos: [evIA('A1', 'corte', { hacia: 'el refugio' })] }] },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    const z = (res.zonas || [])[0];
+    if (!z || z.visible !== false) return ko('la zona invisible tiene que guardarse, con su marca de invisible');
+    const mv = (res.fases[0].movimientos || []).find((m) => m.elemento_id === 'A1');
+    const fin = mv.path[mv.path.length - 1];
+    // mayúsculas y artículos dan igual: resuelve al centro del círculo
+    if (dxy(fin.x, fin.y, 0.45, 0.65) > 1e-9) return ko(`no resolvió el nombre de la zona invisible; murió en (${fin.x}, ${fin.y})`);
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_sin_zonas_no_anade_la_clave',
+  // Igual que con el material: las 204 fichas de la biblioteca no llevan
+  // zonas, y emitir `zonas: []` en todas haría que el diff de la
+  // reconstrucción dijera que han cambiado las 204.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [jugador('A', 1, 0.8, 0.5), balon(0.81, 0.5)],
+  intent: { canasta: 'norte', fases: [{ eventos: [evIA('A1', 'tiro')] }] },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    if ('zonas' in res) return ko('sin zonas, la clave `zonas` no debe existir');
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_material_de_suelo_pasa_intacto',
+  // Escaleras y pelotas de tenis (Tramo 2.4) son material: ocupan sitio y se
+  // dibujan a su medida real, pero NO son direccionables —nadie las pasa, las
+  // rodea ni las recoge—. El compilador tiene que copiarlas tal cual sin
+  // meterlas en la síntesis de jugadores: una escalera contada como ficha
+  // rompería los ids y el reparto de roles.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    jugador('A', 1, 0.8, 0.5), balon(0.81, 0.5),
+    { id: 'esc_1', kind: 'escalera', x: 0.45, y: 0.7, rot: 90 },
+    { id: 'pel_1', kind: 'pelota', x: 0.6, y: 0.3 },
+  ],
+  intent: { canasta: 'norte', fases: [{ eventos: [evIA('A1', 'bote', { hacia: 'aro' })] }] },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    const m = res.materiales || [];
+    if (m.length !== 2) return ko(`se esperaban 2 materiales; hay ${m.length}`);
+    const esc = m.find((x) => x.tipo === 'escalera');
+    const pel = m.find((x) => x.tipo === 'pelota');
+    if (!esc || !pel) return ko(`falta escalera o pelota: ${JSON.stringify(m)}`);
+    if (esc.rot !== 90) return ko(`la escalera perdió su orientación: rot=${esc.rot}`);
+    if (dxy(esc.posicion[0], esc.posicion[1], 0.45, 0.7) > 1e-9) return ko('la escalera se movió de sitio');
+    if ('rot' in pel) return ko('una pelota no tiene orientación: sobra el campo rot');
+    // y sobre todo: no se ha colado entre los jugadores
+    const ids = (res.jugadores || []).map((j) => j.id);
+    if (ids.length !== 1 || ids[0] !== 'A1') return ko(`el material se coló en los jugadores: ${ids.join(', ')}`);
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Compilador',
+  nombre: 'compilador_sin_material_no_añade_la_clave',
+  // Las 204 fichas de la biblioteca no llevan material. Si el compilador
+  // emitiera `materiales: []` en todas, el diff de la reconstrucción diría
+  // que han cambiado las 204 y no habría forma de ver qué cambió de verdad.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [jugador('A', 1, 0.8, 0.5), balon(0.81, 0.5)],
+  intent: { canasta: 'norte', fases: [{ eventos: [evIA('A1', 'bote', { hacia: 'aro' })] }] },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    if ('materiales' in res) return ko('sin material, la clave `materiales` no debe existir');
+    return ok();
+  },
+});
+
+casos.push({
   categoria: 'IA (camino de red)',
   nombre: 'ia_tiro_sin_posesion_avisa',
   // A1 bota, A2 tira sin ningún pase entre medias: geometría intacta (el
@@ -1358,8 +1084,8 @@ casos.push({
     const mv = (res.fases[0].movimientos || []).find((m) => m.elemento_id === 'A1');
     if (!mv) return ko('A1 no tiene movimiento en la fase 1');
     const fin = mv.path[mv.path.length - 1];
-    // ancla medida de esquina_der en la media: (0.206, 0.893)
-    if (dxy(fin.x, fin.y, 0.206, 0.893) > 1e-9) return ko(`el bote debía terminar en el ancla esquina_der (0.206, 0.893); termina en (${fin.x}, ${fin.y})`);
+    const esq = ancla('media', 'esquina_der');
+    if (dxy(fin.x, fin.y, esq[0], esq[1]) > 1e-9) return ko(`el bote debía terminar en el ancla esquina_der (${esq.join(', ')}); termina en (${fin.x}, ${fin.y})`);
     return ok();
   },
 });
@@ -1446,7 +1172,14 @@ casos.push({
   async run() {
     const { AnimationEngine } = await import('../js/canvas/engine.js');
     const elementos = [jugador('A', 1, 0.7, 0.55), jugador('A', 2, 0.45, 0.3), balon(0.71, 0.55)];
-    const data = await generarAnimacion({ texto: 'A1 penetra y dobla a A2 para el tiro.', elementos, pista: 'media', respuestas: null });
+    const data = compilarAnimacion({
+      canasta: 'norte',
+      fases: [
+        { eventos: [evIA('A1', 'bote', { hacia: 'canasta' })] },
+        { eventos: [evIA('A1', 'pase', { a: 'A2' })] },
+        { eventos: [evIA('A2', 'tiro')] },
+      ],
+    }, elementos, 'media');
     const view = { w: 0, basket: (k) => PISTAS.media.baskets[k] || PISTAS.media.baskets.norte };
     const engine = new AnimationEngine(view, data, { autoplay: false, loop: false, paused: true });
     return { data, frame0: engine._computePositions(), generica: validacionGenerica(data, 'media') };
@@ -1468,82 +1201,9 @@ casos.push({
   },
 });
 
-casos.push({
-  categoria: 'Tramo 1 (confirmación visual)',
-  nombre: 'chip_editar_canasta_recompila',
-  // El chip de canasta del readback: recompilar con la OTRA canasta remapea
-  // bote y tiro al aro nuevo SIN reinterpretar el texto (reusa data._intent)
-  // y sin mover el planteamiento inicial (mismas posiciones de salida).
-  sinGenerica: true, // dos resultados: la genérica se aplica a ambos a mano
-  async run() {
-    const elementos = [jugador('A', 1, 0.5, 0.7), jugador('A', 2, 0.38, 0.62), balon(0.51, 0.7)];
-    const data = await generarAnimacion({ texto: 'A1 penetra y dobla a A2 para el tiro en la canasta 1.', elementos, pista: 'entera', respuestas: null });
-    const cambiado = recompilarConCanasta(data, 'sur', elementos, 'entera');
-    return { data, cambiado, generica: [...validacionGenerica(data, 'entera'), ...validacionGenerica(cambiado, 'entera')] };
-  },
-  check({ data, cambiado, generica }) {
-    if (!esExito(data)) return ko(`se esperaba animación, llegó ${forma(data)}`);
-    if (generica.length) return ko(`[genérica] ${generica.join(' | ')}`);
-    if (data.canasta !== 'norte' || !todosTiros(data).every((t) => t.canasta === 'norte')) return ko(`el original debía atacar 'norte' (canasta 1); data.canasta='${data.canasta}'`);
-    if (!esExito(cambiado)) return ko(`la recompilación no devolvió animación: ${forma(cambiado)}`);
-    if (cambiado.canasta !== 'sur') return ko(`tras el chip, data.canasta debería ser 'sur'; es '${cambiado.canasta}'`);
-    const tiros = todosTiros(cambiado);
-    if (!tiros.length || !tiros.every((t) => t.canasta === 'sur')) return ko(`el tiro debía remapearse a la canasta 'sur'; va a '${tiros[0] && tiros[0].canasta}'`);
-    // el planteamiento inicial no cambia: mismas posiciones de salida
-    for (const j of data.jugadores) {
-      const j2 = jugadorPorId(cambiado, j.id);
-      if (!j2 || dxy(j.posicion_inicial[0], j.posicion_inicial[1], j2.posicion_inicial[0], j2.posicion_inicial[1]) > 1e-9) {
-        return ko(`cambiar de canasta movió la posición inicial de ${j.id}`);
-      }
-    }
-    // y se puede volver a cambiar: el intent recompilado guarda la canasta nueva
-    if (!cambiado._intent || cambiado._intent.canasta !== 'sur') return ko('el resultado recompilado no conserva _intent con la canasta nueva');
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Tramo 1 (confirmación visual)',
-  nombre: 'pregunta_solo_si_ambiguedad_real',
-  // §Tramo 1.3: una pregunta GENÉRICA del modelo (fuera de la lista fija
-  // canasta / posición desconocida / nº de jugadores) se DESCARTA y no
-  // bloquea: el sistema genera igualmente. Las q_pos_* de posiciones
-  // CONOCIDAS ('esquina' está en las ANCLAS) degradan a warning — gancho
-  // del Tramo 2 ya activo: solo las DESCONOCIDAS preguntan (ver el caso
-  // q_pos_desconocida_del_modelo_pasa_como_tipo_A). Y el filtro en sí
-  // conserva SOLO las ambigüedades reales cuando siguen vivas.
-  sinGenerica: true,
-  async run() {
-    const elementos = [jugador('A', 1, 0.6, 0.5), jugador('A', 2, 0.45, 0.4), balon(0.61, 0.5)];
-    const fetchPrevio = globalThis.fetch;
-    globalThis.fetch = async () => ({ text: async () => JSON.stringify({ preguntas: [
-      { id: 'q_estilo', tipo: 'B', texto: '¿Qué sistema táctico prefieres trabajar?', opciones: ['Flex', 'Princeton'] },
-      { id: 'q_pos_esquina', tipo: 'B', texto: '¿Dónde queda "la esquina fuerte"?', opciones: ['Derecha', 'Izquierda'] },
-    ] }) });
-    let res;
-    try {
-      res = await generarAnimacion({ texto: 'A1 penetra, pasa a A2 y tiro.', elementos, pista: 'media', respuestas: null });
-    } finally {
-      if (fetchPrevio) globalThis.fetch = fetchPrevio; else delete globalThis.fetch;
-    }
-    // el filtro puro: con la ambigüedad de canasta VIVA (pista de dos aros,
-    // texto sin mención), q_canasta y q_jugadores pasan; la genérica cae.
-    const filtro = filtrarPreguntasIA([
-      { id: 'q_canasta', tipo: 'B', texto: '¿Hacia qué canasta?', opciones: ['Canasta 1', 'Canasta 2'] },
-      { id: 'q_jugadores', tipo: 'B', texto: 'Mencionas 3 jugadores pero hay 2 en el tablero.', opciones: ['Añadir', 'Seguir con 2'] },
-      { id: 'q_libre', tipo: 'B', texto: '¿Nivel del equipo?', opciones: ['Alto', 'Bajo'] },
-    ], { texto: 'Pase y tiro.', pista: 'entera', respuestas: null });
-    return { res, filtro, generica: validacionGenerica(res, 'media') };
-  },
-  check({ res, filtro, generica }) {
-    if (esPreguntas(res)) return ko(`las preguntas genéricas del modelo deberían descartarse, no llegar al entrenador: ${JSON.stringify(res.preguntas.map((q) => q.id))}`);
-    if (!esExito(res)) return ko(`descartadas las genéricas, debía generarse la animación; llegó ${forma(res)}`);
-    if (generica.length) return ko(`[genérica] ${generica.join(' | ')}`);
-    if (!(res.warnings || []).some((w) => w.campo === 'posicion' && /conocida/.test(w.interpretacion || ''))) return ko('la q_pos_* de posición CONOCIDA debía degradar a warning de posición (no bloqueante), no desaparecer en silencio');
-    if (!mismoConjunto(filtro.preguntas.map((q) => q.id), ['q_canasta', 'q_jugadores'])) return ko(`el filtro debía conservar SOLO q_canasta y q_jugadores (lista fija); quedó ${JSON.stringify(filtro.preguntas.map((q) => q.id))}`);
-    return ok();
-  },
-});
+
+
 
 /* ------------- 11. Tramo 2: posiciones con nombre -------------------
    Anclas medidas (canvas/anclas.js), diccionario de nombres
@@ -1553,10 +1213,13 @@ casos.push({
 casos.push({
   categoria: 'Tramo 2 (posiciones con nombre)',
   nombre: 'tiro_va_al_centro_exacto_del_aro',
-  // El endpoint del tiro es el centro MEDIDO del aro (anclas.js), por pista
-  // y por canasta — en las medias difiere de court.js baskets (x≈0.172 vs
-  // 0.143). El compilador emite el path explícito; el último nodo debe
-  // clavar el ancla en las 5 combinaciones pista/canasta.
+  // El endpoint del tiro es el centro del aro (anclas.js), por pista y por
+  // canasta. Desde el Tramo 2.1 anclas.js y court.js baskets salen los dos
+  // de medidas.js y coinciden al decimal; antes diferían porque cada uno se
+  // había medido por su cuenta sobre el dibujo (en las medias, 0.172 frente
+  // a 0.143, que caía entre el tablero y el aro). El compilador emite el
+  // path explícito; el último nodo debe clavar el ancla en las 5
+  // combinaciones pista/canasta.
   sinGenerica: true, // varios resultados: la genérica se aplica a cada uno a mano
   async run() {
     const { ANCLAS } = await import('../js/canvas/anclas.js');
@@ -1613,8 +1276,8 @@ casos.push({
     const mv = (res.fases[0].movimientos || []).find((m) => m.elemento_id === 'A2');
     if (!mv) return ko('A2 no tiene movimiento en la fase 1');
     const fin = mv.path[mv.path.length - 1];
-    // ancla medida de poste_bajo_izq en la media: (0.192, 0.386)
-    if (dxy(fin.x, fin.y, 0.192, 0.386) > 1e-9) return ko(`el corte debía terminar en poste_bajo_izq (0.192, 0.386); termina en (${fin.x}, ${fin.y})`);
+    const pb = ancla('media', 'poste_bajo_izq');
+    if (dxy(fin.x, fin.y, pb[0], pb[1]) > 1e-9) return ko(`el corte debía terminar en poste_bajo_izq (${pb.join(', ')}); termina en (${fin.x}, ${fin.y})`);
     if ((res.warnings || []).some((w) => /sin lado/.test(w.interpretacion || ''))) return ko('con el lado explícito no debe avisarse de lado por defecto');
     return ok();
   },
@@ -1653,15 +1316,12 @@ casos.push({
 casos.push({
   categoria: 'Tramo 2 (posiciones con nombre)',
   nombre: 'posicion_desconocida_respondida_se_usa_y_no_repregunta',
-  // El clic del entrenador a q_pos_refugio ([x,y] en `respuestas`) actúa
-  // como diccionario custom inmediato: en la siguiente vuelta el mismo
-  // intent resuelve a ESE punto, sin volver a preguntar. (En producción
-  // paso2 además lo persiste vía guardarPosicion; aquí, sin red, el stub
-  // es la propia respuesta.)
+  // Una posición marcada por el entrenador (el clic en la pista del paso
+  // 2, que se guarda en el diccionario de la pista) resuelve el nombre
+  // sin preguntar nada: el bote termina EXACTAMENTE en ese punto.
   esIntentIA: true,
-  texto: 'A1 bota hasta el refugio y tira.',
   pista: 'media',
-  respuestas: [{ id: 'q_pos_refugio', tipo: 'A', respuesta: [0.25, 0.4] }],
+  posicionesCustom: { refugio: [0.25, 0.4] },
   elementos: [jugador('A', 1, 0.7, 0.55), balon(0.71, 0.55)],
   dataIA: {
     intent: {
@@ -1673,7 +1333,7 @@ casos.push({
     },
   },
   check(res) {
-    if (esPreguntas(res)) return ko('q_pos_refugio ya está respondida: no debía volver a preguntar');
+    if (esPreguntas(res)) return ko('«el refugio» está en el diccionario de la pista: no debía preguntar por él');
     if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
     const mv = (res.fases[0].movimientos || []).find((m) => m.elemento_id === 'A1');
     if (!mv) return ko('A1 no tiene movimiento en la fase 1');
@@ -1717,218 +1377,27 @@ casos.push({
   },
 });
 
-casos.push({
-  categoria: 'Tramo 2 (posiciones con nombre)',
-  nombre: 'q_pos_desconocida_del_modelo_pasa_como_tipo_A',
-  // Contraparte del degradado: cuando el MODELO pregunta por una posición
-  // que tampoco nosotros conocemos, la pregunta sobrevive al filtro — pero
-  // CONVERTIDA a tipo A (clic en pista) con el slug en `nombre`. Con un
-  // custom inyectado que SÍ la conoce, degrada a warning y no bloquea.
-  sinGenerica: true,
-  async run() {
-    const qModelo = [{ id: 'q_pos_refugio', tipo: 'B', texto: '¿Dónde está "el refugio"?', opciones: ['Izquierda', 'Derecha'] }];
-    return {
-      sinDato: filtrarPreguntasIA(qModelo, { texto: 'Bote al refugio y tiro.', pista: 'media', respuestas: null }),
-      conCustom: filtrarPreguntasIA(qModelo, { texto: 'Bote al refugio y tiro.', pista: 'media', respuestas: null, posiciones: { refugio: [0.3, 0.3] } }),
-    };
-  },
-  check({ sinDato, conCustom }) {
-    const q = sinDato.preguntas.find((p) => p.id === 'q_pos_refugio');
-    if (!q) return ko(`sin dato custom, q_pos_refugio debía sobrevivir al filtro; quedó ${JSON.stringify(sinDato.preguntas.map((p) => p.id))}`);
-    if (q.tipo !== 'A' || q.nombre !== 'refugio') return ko(`debía convertirse a tipo 'A' con nombre 'refugio'; llegó ${JSON.stringify({ tipo: q.tipo, nombre: q.nombre })}`);
-    if (conCustom.preguntas.some((p) => /^q_pos_/.test(p.id))) return ko('con la posición ya definida en el custom, la pregunta del modelo es redundante y debía degradar a warning');
-    if (!conCustom.warnings.some((w) => w.campo === 'posicion')) return ko('falta el warning de posición conocida en el caso con custom');
-    return ok();
-  },
-});
+
 
 /* ------------- 12. Tramo 3: vista del modelo -------------------------
    (a) El payload hacia Claude incluye balón(es) con su poseedor y los
    dorsales/nombres visibles; (b) balones múltiples con posesión en
    paralelo; (c) truncado por max_tokens → error accionable, nunca un JSON
    a medias; (d) bloqueo directo como eventos encadenados (aproximación +
-   bloqueo + roll/pop); (e) rotación de filas en serie. Los casos que
-   ejercitan la Netlify Function REAL la importan (CJS→ESM interop) y
-   stubbean fetch + API key: cero red, y se valida el payload EXACTO que
-   viajaría a Anthropic. */
+   bloqueo + roll/pop); (e) rotación de filas en serie.
 
-// Ejecuta el handler real de la Netlify Function con la respuesta de
-// Anthropic simulada. Devuelve { res: cuerpo parseado de la function,
-// capturado: cuerpo EXACTO del request que habría ido a Anthropic }.
-async function llamarFunction(payload, respuestaAnthropic) {
-  const mod = await import('../../netlify/functions/generar-animacion.js');
-  const handler = mod.handler || (mod.default && mod.default.handler);
-  if (!handler) throw new Error('no se pudo importar el handler de la Netlify Function');
-  const keyPrevia = process.env.ANTHROPIC_API_KEY;
-  process.env.ANTHROPIC_API_KEY = 'test-key-banco';
-  const fetchPrevio = globalThis.fetch;
-  let capturado = null;
-  globalThis.fetch = async (url, opts) => {
-    capturado = JSON.parse(opts.body);
-    return { ok: true, status: 200, json: async () => respuestaAnthropic, text: async () => JSON.stringify(respuestaAnthropic) };
-  };
-  try {
-    const out = await handler({ httpMethod: 'POST', body: JSON.stringify(payload) });
-    return { res: JSON.parse(out.body), capturado };
-  } finally {
-    if (fetchPrevio) globalThis.fetch = fetchPrevio; else delete globalThis.fetch;
-    if (keyPrevia === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = keyPrevia;
-  }
-}
+   Los dos casos que ejercitaban la Netlify Function real —el payload que
+   viajaba a Anthropic y el JSON truncado por max_tokens— se han ido con
+   ella (Tramo 2.11). */
 
-casos.push({
-  categoria: 'Tramo 3 (vista del modelo)',
-  nombre: 'sin_api_key_la_function_avisa_para_caer_al_lector_local',
-  // Un despliegue SIN ANTHROPIC_API_KEY no puede generar con IA, pero eso
-  // no es culpa del entrenador ni se arregla desde su pantalla. La
-  // function responde 503 con `sin_configurar: true`, que es la bandera
-  // que ia/client.js mira para caer al extractor local en vez de enseñar
-  // un error y dejar el paso 2 muerto. Antes era un 500 con `error`, y el
-  // cliente enseña los `error` tal cual: en producción sin key el paso se
-  // quedaba bloqueado, cuando en local —sin function ninguna— funcionaba.
-  sinGenerica: true,
-  async run() {
-    const mod = await import('../../netlify/functions/generar-animacion.js');
-    const handler = mod.handler || (mod.default && mod.default.handler);
-    const keyPrevia = process.env.ANTHROPIC_API_KEY;
-    delete process.env.ANTHROPIC_API_KEY;
-    let out;
-    try {
-      out = await handler({ httpMethod: 'POST', body: JSON.stringify({ texto: 'algo', posiciones: [], pista: 'media' }) });
-    } finally {
-      if (keyPrevia !== undefined) process.env.ANTHROPIC_API_KEY = keyPrevia;
-    }
-    return { estado: out.statusCode, cuerpo: JSON.parse(out.body) };
-  },
-  check: ({ estado, cuerpo }) => {
-    if (estado !== 503) return ko(`sin key el estado debería ser 503 (no disponible), y es ${estado}`);
-    if (cuerpo.sin_configurar !== true) return ko('falta la bandera sin_configurar, que es la que dispara el lector local');
-    // El reparto importa: `error` es lo que se le enseña al entrenador y por
-    // eso NO lleva instrucciones de despliegue; `detalle` es para quien
-    // administra, y va a la consola.
-    if (!/ANTHROPIC_API_KEY/.test(cuerpo.detalle || '')) return ko('el detalle técnico tiene que nombrar la variable que falta');
-    if (!/Netlify|netlify dev/.test(cuerpo.detalle || '')) return ko('el detalle tiene que decir DÓNDE se pone, o no sirve de nada');
-    if (/ANTHROPIC_API_KEY|Netlify/.test(cuerpo.error || '')) return ko('el mensaje del entrenador no debe llevar instrucciones de servidor: no puede hacer nada con ellas');
-    return { pass: true };
-  },
-});
 
-casos.push({
-  categoria: 'IA (camino de red)',
-  nombre: 'servidor_sin_configurar_genera_con_lector_local_y_avisa',
-  /* La otra mitad del arreglo, y la que de verdad falló en producción: el
-     503 lo tiene que atender el CLIENTE. Antes devolvía el { error } tal
-     cual y paso2.js pinta los error en rojo, así que el paso quedaba muerto
-     — con la function desplegada y sin key se estaba peor que en local sin
-     function ninguna, donde el lector de regex ya salvaba la papeleta.
 
-     Se comprueba por ESTADO y no solo por la bandera: es lo que hace que
-     el cliente siga cayendo bien aunque el servidor sea de otra versión. */
-  sinGenerica: true,
-  async run() {
-    const fetchPrevio = globalThis.fetch;
-    globalThis.fetch = async () => ({
-      status: 503,
-      text: async () => JSON.stringify({ sin_configurar: true, error: 'El generador con IA no está configurado en el servidor.', detalle: 'Falta ANTHROPIC_API_KEY…' }),
-    });
-    try {
-      return await generarAnimacion({
-        texto: 'A1 bota hacia la canasta y tira.',
-        elementos: [jugador('A', 1, 0.6, 0.5), balon(0.61, 0.5)],
-        pista: 'media', respuestas: null,
-      });
-    } finally {
-      if (fetchPrevio) globalThis.fetch = fetchPrevio; else delete globalThis.fetch;
-    }
-  },
-  check(res) {
-    if (esError(res)) return ko(`un servidor sin configurar no puede dejar el paso 2 muerto; llegó { error: "${res.error}" }`);
-    if (!esExito(res)) return ko(`se esperaba una animación del lector local; llegó ${forma(res)}`);
-    if (res.sin_ia !== true) return ko('falta la marca sin_ia: sin ella el entrenador no sabe que la lectura es la basta');
-    if (res._mock !== true) return ko('la animación tendría que venir del lector local (_mock:true)');
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Tramo 3 (vista del modelo)',
-  nombre: 'balon_y_poseedor_se_envian_al_modelo',
-  // El payload que construye la Function incluye los balones (posición +
-  // en_manos_de por cercanía), el dorsal VISIBLE y el nombre de cada
-  // jugador, y los SIGUIENTES de cada fila (fila1_2…). El SYSTEM documenta
-  // la convención id = equipo+número / dorsal.
-  sinGenerica: true,
-  async run() {
-    const elementos = [
-      jugador('A', 1, 0.7, 0.55, { dorsal: 7, nombre: 'Ana' }),
-      jugador('A', 2, 0.45, 0.3),
-      balon(0.71, 0.55, 'balon_7'),
-      cono(0.85, 0.25, 'fila', { n_jugadores: 3, direccion_grados: 90, equipo: 'A' }, 'cono_fila'),
-    ];
-    const respuesta = {
-      stop_reason: 'end_turn',
-      content: [{ type: 'text', text: JSON.stringify({
-        intent: { canasta: 'norte', fases: [
-          { eventos: [evIA('A1', 'bote', { hacia: 'canasta' })] },
-          { eventos: [evIA('A1', 'tiro')] },
-        ] },
-        warnings: [],
-      }) }],
-    };
-    return llamarFunction({ texto: 'A1 penetra y tira.', posiciones: elementos, pista: 'media' }, respuesta);
-  },
-  check({ res, capturado }) {
-    if (!capturado) return ko('la Function no llegó a llamar a Anthropic');
-    if (!(capturado.max_tokens >= 4096)) return ko(`max_tokens debería ser ≥4096 (5v5 multifase medido); es ${capturado.max_tokens}`);
-    let userMsg;
-    try { userMsg = JSON.parse(capturado.messages[capturado.messages.length - 1].content); }
-    catch { return ko('el último mensaje de usuario no es JSON parseable'); }
-    // balones con poseedor
-    if (!Array.isArray(userMsg.balones) || userMsg.balones.length !== 1) return ko(`el payload debería llevar 1 balón; lleva ${JSON.stringify(userMsg.balones)}`);
-    const b = userMsg.balones[0];
-    if (b.id !== 'balon_7') return ko(`el balón no conserva su id ('${b.id}')`);
-    if (b.en_manos_de !== 'A1') return ko(`en_manos_de debería ser 'A1' (balón pegado a él); es '${b.en_manos_de}'`);
-    // dorsal visible y nombre
-    const a1 = (userMsg.jugadores || []).find((j) => j.id === 'A1');
-    if (!a1 || a1.dorsal !== 7) return ko(`A1 debería viajar con dorsal 7 (el visible); llegó ${JSON.stringify(a1)}`);
-    if (a1.nombre !== 'Ana') return ko(`A1 debería viajar con su nombre; llegó '${a1.nombre}'`);
-    const a2 = (userMsg.jugadores || []).find((j) => j.id === 'A2');
-    if (!a2 || a2.dorsal !== 2) return ko(`A2 sin dorsal custom debería viajar con dorsal 2 (su label); llegó ${JSON.stringify(a2)}`);
-    // siguientes de la fila (rotación)
-    const idsFila = (userMsg.jugadores || []).filter((j) => /^fila/.test(j.id)).map((j) => j.id);
-    if (!mismoConjunto(idsFila, ['fila1', 'fila1_2', 'fila1_3'])) return ko(`con una fila de 3 deberían viajar fila1, fila1_2 y fila1_3; viajan ${JSON.stringify(idsFila)}`);
-    // el SYSTEM documenta la convención y el vocabulario nuevo
-    if (!/en_manos_de/.test(capturado.system)) return ko('el SYSTEM no documenta en_manos_de');
-    if (!/dorsal/.test(capturado.system)) return ko('el SYSTEM no documenta el dorsal↔id');
-    if (!/BLOQUEO DIRECTO/.test(capturado.system)) return ko('el SYSTEM no documenta el bloqueo directo');
-    if (!/fila1_2/.test(capturado.system)) return ko('el SYSTEM no documenta los siguientes de la fila (fila1_2…)');
-    // y la respuesta bien formada pasa tal cual
-    if (!res || !res.intent) return ko(`la respuesta válida del modelo debería devolverse ({intent}); llegó ${JSON.stringify(res).slice(0, 120)}`);
-    return ok();
-  },
-});
 
-casos.push({
-  categoria: 'Tramo 3 (vista del modelo)',
-  nombre: 'intent_truncado_no_se_parsea_como_valido',
-  // stop_reason === 'max_tokens': el JSON viene cortado. La Function debe
-  // devolver { error } accionable SIN intentar rescatar el JSON a medias.
-  sinGenerica: true,
-  async run() {
-    const elementos = [jugador('A', 1, 0.7, 0.55), balon(0.71, 0.55)];
-    const respuesta = {
-      stop_reason: 'max_tokens',
-      content: [{ type: 'text', text: '{"intent":{"canasta":"norte","fases":[{"eventos":[{"jugador":"A1","tipo":"bote"' }],
-    };
-    return llamarFunction({ texto: 'Jugada 5c5 muy larga.', posiciones: elementos, pista: 'media' }, respuesta);
-  },
-  check({ res }) {
-    if (res && res.intent) return ko('un JSON truncado se dio por válido (llegó { intent })');
-    if (!res || typeof res.error !== 'string' || !res.error) return ko(`se esperaba { error } accionable; llegó ${JSON.stringify(res).slice(0, 160)}`);
-    if (!/larga|divid|simplifica/i.test(res.error)) return ko(`el error no es accionable (debería sugerir dividir/simplificar): "${res.error}"`);
-    return ok();
-  },
-});
+
+
+
+
 
 casos.push({
   categoria: 'Tramo 3 (vista del modelo)',
@@ -1977,7 +1446,7 @@ casos.push({
 casos.push({
   categoria: 'Tramo 3 (vista del modelo)',
   nombre: 'poseedor_declarado_se_respeta_o_avisa',
-  // El modelo puede DECLARAR el poseedor inicial (intent.balones): si es
+  // Un intent puede DECLARAR el poseedor inicial (intent.balones): si es
   // válido, manda sobre la cadena de eventos; si es inválido, warning y
   // la inferencia determinista de siempre decide.
   sinGenerica: true,
@@ -1989,14 +1458,10 @@ casos.push({
       { eventos: [evIA('A1', 'bote', { hacia: { x: 0.6, y: 0.5 } }), evIA('A2', 'bote', { hacia: 'canasta' })] },
       { eventos: [evIA('A2', 'tiro')] },
     ];
-    const conDecl = compilarIntentIA(
-      { intent: { canasta: 'norte', balones: [{ id: 'balon_1', portador: 'A2' }], fases } },
-      elementos, 'media', 'A2 sale con balón.', null, null,
-    );
-    const invalida = compilarIntentIA(
-      { intent: { canasta: 'norte', balones: [{ id: 'balon_1', portador: 'Z9' }], fases } },
-      elementos, 'media', 'Jugada.', null, null,
-    );
+    const conDecl = compilarIntentValidado(
+      { intent: { canasta: 'norte', balones: [{ id: 'balon_1', portador: 'A2' }], fases } }, elementos, 'media');
+    const invalida = compilarIntentValidado(
+      { intent: { canasta: 'norte', balones: [{ id: 'balon_1', portador: 'Z9' }], fases } }, elementos, 'media');
     return { conDecl, invalida, generica: [...validacionGenerica(conDecl, 'media'), ...validacionGenerica(invalida, 'media')] };
   },
   check({ conDecl, invalida, generica }) {
@@ -2061,14 +1526,14 @@ casos.push({
     if (!roll) return ko('A2 no continúa en la fase 2');
     const finRoll = roll.path[roll.path.length - 1];
     /* El roll termina PEGADO al aro, no encima. Este caso exigía antes el
-       centro medido exacto (0.172, 0.5) porque 'aro' se resolvía como
+       centro exacto del aro porque 'aro' se resolvía como
        ancla con nombre; desde la auditoría de agosto de 2026 'aro' es una
        INTENCIÓN de finalización y el compilador para al jugador a poco
        más de un metro (canvas/escala.js#puntoADistanciaDe). Dos motivos:
        clavar el centro dibuja la ficha encima de la canasta y la tapa, y
        la misma palabra tiene que significar lo mismo en un roll que en
        una entrada. Se comprueba la distancia real, no la coordenada. */
-    const mRoll = metrosEntre('media', finRoll, [0.172, 0.5]);
+    const mRoll = metrosEntre('media', finRoll, ancla('media', 'aro'));
     if (mRoll > 1.6) return ko(`el roll debía terminar pegado al aro (≤1,6 m); termina a ${mRoll.toFixed(2)} m`);
     // continuación completa: pase al que rueda y su tiro
     if (!todosPases(res).some((p) => p.de_id === 'A1' && p.a_id === 'A2')) return ko('falta el pase de A1 al que rueda');
@@ -2112,8 +1577,8 @@ casos.push({
     const pop = (res.fases[1].movimientos || []).find((m) => m.elemento_id === 'A2');
     if (!pop) return ko('A2 no hace el pop en la fase 2');
     const fin = pop.path[pop.path.length - 1];
-    // ancla medida de codo_der en la media: (0.336, 0.606)
-    if (dxy(fin.x, fin.y, 0.336, 0.606) > 1e-9) return ko(`el pop debía terminar en codo_der (0.336, 0.606); termina en (${fin.x}, ${fin.y})`);
+    const codo = ancla('media', 'codo_der');
+    if (dxy(fin.x, fin.y, codo[0], codo[1]) > 1e-9) return ko(`el pop debía terminar en codo_der (${codo.join(', ')}); termina en (${fin.x}, ${fin.y})`);
     if ((res.warnings || []).some((w) => /sin lado/.test(w.interpretacion || ''))) return ko('el lado venía explícito: no debe avisarse de lado por defecto');
     if (!todosTiros(res).some((t) => t.jugador_id === 'A2')) return ko('A2 no llega a tirar tras el pop');
     return ok();
@@ -2172,7 +1637,7 @@ casos.push({
    14. Simulación ataque-defensa (Tramo 5b) — simularJugada es un
    generador de intent determinista (PRNG sembrado) que compila por la
    tubería de siempre. Tablero base 2v2 en media pista (aro medido en
-   [0.172, 0.5]); portador por cercanía al balón (≤ RADIO_CAPTURA).
+   el centro del aro); portador por cercanía al balón (≤ RADIO_CAPTURA).
    ==================================================================== */
 
 // tablero 2v2 estándar de los casos de simulación (portador: A1). El id del
@@ -2284,7 +1749,8 @@ casos.push({
     if (tiros.length !== 1) return ko(`debería haber exactamente 1 tiro; hay ${tiros.length}`);
     if (!(res.fases[res.fases.length - 1].tiros || []).length) return ko('el tiro debería cerrar la jugada (última fase)');
     const fin = tiros[0].path[tiros[0].path.length - 1];
-    if (dxy(fin.x, fin.y, 0.172, 0.5) > 1e-9) return ko(`el tiro debería morir en el aro medido (0.172, 0.5); muere en (${fin.x}, ${fin.y})`);
+    const aro = ancla('media', 'aro');
+    if (dxy(fin.x, fin.y, aro[0], aro[1]) > 1e-9) return ko(`el tiro debería morir en el centro del aro (${aro.join(', ')}); muere en (${fin.x}, ${fin.y})`);
     return ok();
   },
 });
@@ -2393,7 +1859,8 @@ casos.push({
     if (!movB1) return ko('el par del portador (B1) debería recolocarse en la fase 1');
     const finB1 = movB1.path[movB1.path.length - 1];
     if (dxy(finB1.x, finB1.y, finA1.x, finA1.y) > 0.075) return ko(`B1 debería acabar pegado al portador (presión); queda a ${dxy(finB1.x, finB1.y, finA1.x, finA1.y).toFixed(3)}`);
-    if (dxy(finB1.x, finB1.y, 0.172, 0.5) >= dxy(finA1.x, finA1.y, 0.172, 0.5)) return ko('B1 debería quedar entre el portador y el aro (goal-side)');
+    const aroM = ancla('media', 'aro');
+    if (dxy(finB1.x, finB1.y, aroM[0], aroM[1]) >= dxy(finA1.x, finA1.y, aroM[0], aroM[1])) return ko('B1 debería quedar entre el portador y el aro (goal-side)');
     return ok();
   },
 });
@@ -2631,6 +2098,69 @@ casos.push({
   check({ antes, despues }) {
     if (dxy(antes.x, antes.y, 0.5, 0.5) > 1e-9) return ko(`la fase 2 debía arrancar en el final original (0.5,0.5); arrancaba en (${antes.x}, ${antes.y})`);
     if (dxy(despues.x, despues.y, 0.7, 0.4) > 1e-9) return ko(`tras editar el final de la fase 1, la fase 2 debía arrancar en (0.7,0.4); arranca en (${despues.x}, ${despues.y})`);
+    return ok();
+  },
+});
+
+/* ---- Tramo 2.10: los nodos salen EN LA DIRECCIÓN DE LA FLECHA ----
+   Antes salían siempre en horizontal, así que en una flecha que bajaba
+   salían atravesados: curvar un nodo pegaba un tirón lateral que nadie
+   había pedido. Tangentes, curvar no cambia el trazo. */
+
+casos.push({
+  categoria: 'Edición manual (Tramo 6)',
+  nombre: 'nodo_curva_en_la_direccion_de_la_flecha',
+  pista: 'entera',
+  sinGenerica: true,
+  async run() {
+    const { manejadoresTangentes } = await import('../js/canvas/geometry.js');
+    // flecha que BAJA en vertical: los manejadores tienen que bajar con ella
+    const vertical = [{ x: 0.5, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.5, y: 0.8 }];
+    // y una en diagonal, para que no valga con acertar en un eje
+    const diagonal = [{ x: 0.2, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.8, y: 0.8 }];
+    return {
+      v: manejadoresTangentes(vertical, 1, 0.02),
+      d: manejadoresTangentes(diagonal, 1, 0.02),
+      extremo: manejadoresTangentes(vertical, 2, 0.02),
+    };
+  },
+  check({ v, d, extremo }) {
+    if (Math.abs(v.handle_in.x - 0.5) > 1e-9 || Math.abs(v.handle_out.x - 0.5) > 1e-9) {
+      return ko(`en una flecha vertical los manejadores no deben salirse de la vertical: ${JSON.stringify(v)}`);
+    }
+    if (!(v.handle_in.y < 0.5 && v.handle_out.y > 0.5)) return ko('uno tiene que ir hacia atrás y el otro hacia delante');
+    if (Math.abs(v.handle_out.y - 0.6) > 1e-9) return ko(`el largo es un tercio del segmento (0,1): ${v.handle_out.y}`);
+    // diagonal: la tangente mantiene la pendiente 1
+    const dx = d.handle_out.x - 0.5, dy = d.handle_out.y - 0.5;
+    if (Math.abs(dx - dy) > 1e-9) return ko(`en diagonal la tangente debe conservar la pendiente: ${JSON.stringify(d)}`);
+    // último nodo: solo hay segmento por detrás, y sigue en su dirección
+    if (Math.abs(extremo.handle_out.x - 0.5) > 1e-9) return ko('en el extremo la dirección la da el único segmento que hay');
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Edición manual (Tramo 6)',
+  nombre: 'nodo_curvado_no_mueve_el_trazo',
+  pista: 'entera',
+  sinGenerica: true,
+  // La prueba de que salen tangentes: curvar un nodo y aplanar el path
+  // tiene que dar (casi) la misma polilínea. Con los manejadores en
+  // horizontal, el trazo se iba de sitio al curvar.
+  async run() {
+    const { manejadoresTangentes, flattenPath } = await import('../js/canvas/geometry.js');
+    // recta en diagonal: todos sus puntos cumplen x = y
+    const curvo = [{ x: 0.2, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.8, y: 0.8 }];
+    Object.assign(curvo[1], manejadoresTangentes(curvo, 1, 0.02), { tipo_nodo: 'bezier' });
+    const puntos = flattenPath(curvo);
+    let peor = 0;
+    for (const p of puntos) peor = Math.max(peor, Math.abs(p.x - p.y));
+    return { peor, primero: puntos[0], ultimo: puntos[puntos.length - 1] };
+  },
+  check({ peor, primero, ultimo }) {
+    if (peor > 1e-9) return ko(`curvar un nodo tangente no debe torcer una flecha recta; se ha ido ${peor.toFixed(5)}`);
+    if (dxy(primero.x, primero.y, 0.2, 0.2) > 1e-9) return ko('y los extremos no se mueven');
+    if (dxy(ultimo.x, ultimo.y, 0.8, 0.8) > 1e-9) return ko('y los extremos no se mueven');
     return ok();
   },
 });
@@ -3044,13 +2574,230 @@ casos.push({
 });
 
 /* ====================================================================
+   Geometría que probaba el lector de texto (Tramo 2.11)
+
+   Estos seis casos entraban por el extractor por regex, que se ha
+   retirado con el camino de IA. Lo que comprobaban NO era el extractor
+   sino el COMPILADOR —el arco alrededor de un cono, el eslalon, que un
+   jugador al que nadie ha nombrado no se mueva—, así que se han
+   reescrito con el intent puesto a mano. La cobertura es la misma; lo
+   que ha desaparecido es el intermediario que adivinaba.
+   ==================================================================== */
+
+casos.push({
+  categoria: 'Rodear conos',
+  nombre: 'rodear_un_solo_cono_arco_limpio',
+  // Rodear UN cono produce un contorno curvo: ≥2 puntos de paso pegados
+  // al cono y/o nodos Bézier. Antes se metía un único punto lateral con
+  // nodos lineales (pico anguloso); arreglado.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [jugador('A', 1, 0.8, 0.5), balon(0.81, 0.5), cono(0.5, 0.5, 'rodear', null, 'cono_r1')],
+  intent: {
+    canasta: 'norte',
+    fases: [
+      { eventos: [evIA('A1', 'bote', { hacia: 'canasta' }), evIA('A1', 'rodea_cono', { cono_id: 'cono_r1' })] },
+      { eventos: [evIA('A1', 'tiro')] },
+    ],
+  },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    const mv = (res.fases[0].movimientos || []).find((m) => m.elemento_id === 'A1' && /balon/.test(m.tipo_movimiento || ''));
+    if (!mv) return ko('A1 no tiene movimiento con balón en la primera fase');
+    const path = mv.path || [];
+    const intermedios = path.slice(1, -1).filter((n) => dxy(n.x, n.y, 0.5, 0.5) <= 0.12).length;
+    const hayCurva = path.some((n) => n.tipo_nodo && n.tipo_nodo !== 'lineal');
+    if (intermedios >= 2 || hayCurva) return ok();
+    return ko(`el path no RODEA el cono: ${intermedios} nodo(s) intermedio(s) junto al cono y todos lineales (desvío anguloso de un solo punto en vez de un arco)`);
+  },
+});
+
+casos.push({
+  categoria: 'Rodear conos',
+  nombre: 'rodear_tres_conos_slalom',
+  // Tres conos en línea hacia el aro: el bote debe zigzaguear
+  // alternando el lado de cada cono, en orden de avance.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    jugador('A', 1, 0.85, 0.5), balon(0.86, 0.5),
+    cono(0.65, 0.5, 'rodear', null, 'cono_r1'),
+    cono(0.5, 0.5, 'rodear', null, 'cono_r2'),
+    cono(0.35, 0.5, 'rodear', null, 'cono_r3'),
+  ],
+  intent: {
+    canasta: 'norte',
+    fases: [
+      { eventos: [
+        evIA('A1', 'bote', { hacia: 'canasta' }),
+        evIA('A1', 'rodea_cono', { cono_id: 'cono_r1' }),
+        evIA('A1', 'rodea_cono', { cono_id: 'cono_r2' }),
+        evIA('A1', 'rodea_cono', { cono_id: 'cono_r3' }),
+      ] },
+      { eventos: [evIA('A1', 'tiro')] },
+    ],
+  },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    const mv = (res.fases[0].movimientos || []).find((m) => m.elemento_id === 'A1' && /balon/.test(m.tipo_movimiento || ''));
+    if (!mv) return ko('A1 no tiene movimiento con balón en la primera fase');
+    const path = mv.path || [];
+    if (path.length < 5) return ko(`path de ${path.length} nodos; un slalom de 3 conos necesita al menos 5`);
+    // para cada cono (en orden de avance), el nodo INTERMEDIO más cercano
+    // debe estar pegado a él y alternar de lado. Se excluyen el primer y
+    // el último nodo: son el arranque y el final, no pasos de slalom.
+    const conosX = [0.65, 0.5, 0.35];
+    const lados = [];
+    const intermedios = path.slice(1, -1);
+    for (const cx of conosX) {
+      let mejor = null, mejorD = Infinity;
+      for (const n of intermedios) { const d = dxy(n.x, n.y, cx, 0.5); if (d < mejorD) { mejorD = d; mejor = n; } }
+      if (mejorD > 0.12) return ko(`ningún nodo del path pasa junto al cono en x=${cx} (mínimo ${mejorD.toFixed(3)})`);
+      const off = mejor.y - 0.5;
+      if (Math.abs(off) < 0.02) return ko(`el paso por el cono en x=${cx} no se separa lateralmente (offset ${off.toFixed(3)})`);
+      lados.push(Math.sign(off));
+    }
+    for (let i = 1; i < lados.length; i++) {
+      if (lados[i] === lados[i - 1]) return ko(`el slalom no alterna de lado entre el cono ${i} y el ${i + 1} (lados: ${lados.join(', ')})`);
+    }
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Movimiento parcial',
+  nombre: 'parcial_seis_jugadores_solo_dos_implicados',
+  // 6 jugadores en pista y solo dos nombrados: el resto NO debe recibir
+  // movimientos, pases ni tiros en ninguna fase.
+  esCompiladorDirecto: true,
+  pista: 'entera',
+  elementos: [
+    jugador('A', 1, 0.5, 0.72), jugador('A', 2, 0.38, 0.66),
+    jugador('A', 3, 0.62, 0.66), jugador('A', 4, 0.3, 0.5),
+    jugador('A', 5, 0.7, 0.5), jugador('B', 1, 0.5, 0.4),
+    balon(0.51, 0.72),
+  ],
+  intent: {
+    canasta: 'sur',
+    fases: [
+      { eventos: [evIA('A1', 'bote', { hacia: 'canasta' }), evIA('A2', 'corte', { hacia: 'canasta' })] },
+      { eventos: [evIA('A1', 'pase', { a: 'A2' })] },
+      { eventos: [evIA('A2', 'tiro')] },
+    ],
+  },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    if (!apariciones(res, 'A1')) return ko('A1 (el protagonista) no participa en ninguna fase');
+    if (!todosPases(res).some((p) => p.de_id === 'A1' && p.a_id === 'A2')) return ko('no hay pase de A1 a A2');
+    if (!todosTiros(res).some((t) => t.jugador_id === 'A2')) return ko('A2 no llega a tirar');
+    const quietos = ['A3', 'A4', 'A5', 'B1'];
+    const movidos = quietos.filter((id) => apariciones(res, id) > 0);
+    if (movidos.length) return ko(`jugadores a los que nadie ha nombrado reciben acciones: ${movidos.join(', ')}`);
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Movimiento parcial',
+  nombre: 'parcial_defensores_del_hombre_quieto_no_se_mueven',
+  // B1 marca al portador (que se mueve) y debe recolocarse; B2 marca a
+  // nadie y NO debe moverse, pero sigue contando como defensor.
+  esCompiladorDirecto: true,
+  pista: 'entera',
+  elementos: [
+    jugador('A', 1, 0.5, 0.75), jugador('A', 2, 0.3, 0.7),
+    jugador('A', 3, 0.72, 0.5), jugador('A', 4, 0.2, 0.4),
+    jugador('B', 1, 0.5, 0.7), jugador('B', 2, 0.75, 0.55),
+    balon(0.51, 0.76),
+  ],
+  intent: {
+    canasta: 'sur',
+    fases: [
+      { eventos: [
+        evIA('A1', 'bote', { hacia: 'canasta' }), evIA('A2', 'corte', { hacia: 'canasta' }),
+        evIA('B1', 'defiende', { marca: 'A1' }), evIA('B2', 'defiende', { marca: null }),
+      ] },
+      { eventos: [evIA('A1', 'pase', { a: 'A2' }), evIA('B1', 'defiende', { marca: null }), evIA('B2', 'defiende', { marca: null })] },
+      { eventos: [evIA('A2', 'tiro'), evIA('B1', 'defiende', { marca: null }), evIA('B2', 'defiende', { marca: null })] },
+    ],
+  },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    if (!res.fases.every((f) => mismoConjunto(f.defensores || [], ['B1', 'B2']))) return ko('fase.defensores no es {B1,B2} en todas las fases');
+    if (!(res.fases[0].movimientos || []).some((m) => m.elemento_id === 'B1')) return ko('B1 marca al portador y debería recolocarse en la fase 1');
+    const quietos = ['A3', 'A4', 'B2'].filter((id) => apariciones(res, id) > 0);
+    if (quietos.length) return ko(`deberían quedarse quietos y actúan: ${quietos.join(', ')}`);
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Límites y varios',
+  nombre: 'jugador_unico_sin_balon_tiro_directo',
+  // Un único jugador y ningún balón en el tablero: el compilador
+  // sintetiza un balón en sus manos y resuelve con tiro directo.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [jugador('A', 1, 0.5, 0.5)],
+  intent: {
+    canasta: 'norte',
+    fases: [
+      { eventos: [evIA('A1', 'bote', { hacia: 'aro' })] },
+      { eventos: [evIA('A1', 'tiro')] },
+    ],
+  },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    if (!Array.isArray(res.balones) || res.balones.length !== 1) return ko(`se esperaba exactamente 1 balón sintetizado; hay ${(res.balones || []).length}`);
+    if (res.balones[0].portador_id !== 'A1') return ko(`el balón sintetizado no está en manos de A1 (portador_id='${res.balones[0].portador_id}')`);
+    const tiros = todosTiros(res);
+    if (tiros.length !== 1 || tiros[0].jugador_id !== 'A1') return ko(`se esperaba un único tiro de A1; hay ${tiros.length} (${tiros.map((t) => t.jugador_id).join(', ')})`);
+    if (res.fases.length < 2) return ko(`animación demasiado corta (${res.fases.length} fase)`);
+    return ok();
+  },
+});
+
+casos.push({
+  categoria: 'Límites y varios',
+  nombre: 'passthrough_id_de_balon_y_dorsal',
+  // Los datos del tablero deben sobrevivir el viaje: id del balón en
+  // pases/tiros y dorsal/nombre del jugador.
+  esCompiladorDirecto: true,
+  pista: 'media',
+  elementos: [
+    jugador('A', 1, 0.7, 0.5, { dorsal: 7, nombre: 'Ana' }),
+    jugador('A', 2, 0.5, 0.35),
+    balon(0.71, 0.5, 'balon_7'),
+  ],
+  intent: {
+    canasta: 'norte',
+    fases: [
+      { eventos: [evIA('A2', 'corte', { hacia: 'canasta' })] },
+      { eventos: [evIA('A1', 'pase', { a: 'A2' })] },
+      { eventos: [evIA('A2', 'tiro')] },
+    ],
+  },
+  check(res) {
+    if (!esExito(res)) return ko(`se esperaba animación, llegó ${forma(res)}`);
+    if (!res.balones.some((b) => b.id === 'balon_7')) return ko(`el balón del tablero ('balon_7') no conserva su id: ${res.balones.map((b) => b.id).join(', ')}`);
+    const pase = todosPases(res)[0];
+    if (!pase) return ko('no hay ningún pase');
+    if (pase.balon_id !== 'balon_7') return ko(`el pase usa balon_id '${pase.balon_id}' en vez de 'balon_7'`);
+    if (pase.de_id === pase.a_id) return ko('pase de un jugador a sí mismo');
+    if (!todosTiros(res).every((t) => t.balon_id === 'balon_7')) return ko('el tiro no usa el balón del tablero');
+    const a1 = jugadorPorId(res, 'A1');
+    if (!a1 || a1.dorsal !== 7 || a1.nombre !== 'Ana') return ko(`A1 pierde dorsal/nombre por el camino: ${JSON.stringify({ dorsal: a1 && a1.dorsal, nombre: a1 && a1.nombre })}`);
+    return ok();
+  },
+});
+
+/* ====================================================================
    RUNNER
    ==================================================================== */
 console.log(`eval-animacion — ${casos.length} casos · Node ${process.version}`);
 
 let pasan = 0;
 const fallidos = [];
-const sinMock = [];
 let categoriaActual = '';
 
 for (const caso of casos) {
@@ -3061,8 +2808,6 @@ for (const caso of casos) {
   let veredicto;
   try {
     const res = await runGenerator(caso);
-    // (los casos esIntentIA producen _mock:false a propósito: simulan la IA real)
-    if (!caso.esIntentIA && esExito(res) && res._mock !== true) sinMock.push(caso.nombre);
     const genericos = caso.sinGenerica ? [] : validacionGenerica(res, caso.pista);
     const especifico = caso.check(res);
     const pass = genericos.length === 0 && especifico.pass;
@@ -3091,6 +2836,5 @@ console.log(sorpresas.length
   ? `Fallos NO previstos (investigar): ${sorpresas.length}\n${sorpresas.map((c) => `  - ${c.nombre}`).join('\n')}`
   : 'Fallos NO previstos: ninguno');
 if (curados.length) console.log(`Casos de bug conocido que ahora PASAN (¿arreglado? actualizar el caso): ${curados.map((c) => c.nombre).join(', ')}`);
-if (sinMock.length) console.log(`AVISO: ${sinMock.length} resultado(s) no vinieron del mock local (${sinMock.join(', ')}) — ¿hay un endpoint respondiendo?`);
 
 process.exitCode = fallidos.length ? 1 : 0;

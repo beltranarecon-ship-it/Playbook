@@ -12,7 +12,7 @@ import { AnimationEngine } from './engine.js';
 import { EditorCanvas } from './editor-canvas.js';
 import { controls } from './controls.js';
 
-// Nombre de cada aro de cara al entrenador (misma convención que ia/client.js:
+// Nombre de cada aro de cara al entrenador (misma convención que el paso 2:
 // Canasta 1 = clave 'norte', Canasta 2 = clave 'sur').
 const CANASTA_LABEL = { norte: 'Canasta 1', sur: 'Canasta 2' };
 
@@ -97,6 +97,8 @@ export class Stage {
    *  editor devuelto (this.editor). `onChange`/`onSelect` se propagan. */
   showEditor(anim, { onChange, onSelect } = {}) {
     this._tearDownEditor();
+    // señalar y editar flechas se pelearían por el mismo clic
+    this._tearDownSenalar();
     this.mode = 'editando';
     this._hideBasketTip();
     this.engine?.pause();
@@ -126,11 +128,70 @@ export class Stage {
     this.controlsSlot.replaceChildren();
   }
 
+  /* ---- Señalar sobre la pista (Tramo 2.9) ------------------------
+     En el paso 2 la pista deja de ser un sitio donde colocar y pasa a
+     ser un sitio al que SEÑALAR: cada clic escribe en la descripción
+     el nombre de lo que hay debajo, o crea una posición si no hay nada.
+
+     Va en el Stage y no en el Board a propósito: mientras se describe,
+     lo que se ve suele ser la VISTA PREVIA de la animación (el Board
+     está desactivado), y señalar tiene que funcionar igual en los dos
+     casos. Por eso el acierto no se busca contra los elementos del
+     tablero sino contra la lista de sujetos, que es la misma que se
+     escribe y que se lee (ia/sujetos.js).
+
+     @param onPick  (sujeto|null, {x,y}) — sujeto null = sitio vacío
+     @param onHover (sujeto|null) — para resaltar lo que se va a insertar
+     @returns una función que lo desmonta
+  */
+  senalar({ onPick, onHover, buscar } = {}) {
+    this._tearDownSenalar();
+    const cursor = h('div', { class: 'court-senalar' });
+    this.view.root.append(cursor);
+    this.view.root.classList.add('is-senalando');
+
+    const bajo = (ev) => {
+      const [x, y] = this.view.pointerNorm(ev);
+      return { xy: { x, y }, sujeto: typeof buscar === 'function' ? buscar(x, y) : null };
+    };
+    const mover = (ev) => {
+      const { xy, sujeto } = bajo(ev);
+      const [px, py] = this.view.toPx(sujeto && sujeto.x != null ? sujeto.x : xy.x, sujeto && sujeto.y != null ? sujeto.y : xy.y);
+      cursor.style.left = `${px}px`;
+      cursor.style.top = `${py}px`;
+      cursor.textContent = sujeto ? sujeto.nombre : 'Posición nueva';
+      cursor.classList.toggle('is-sujeto', !!sujeto);
+      cursor.classList.add('is-on');
+      onHover?.(sujeto);
+    };
+    const salir = () => { cursor.classList.remove('is-on'); onHover?.(null); };
+    const pinchar = (ev) => {
+      ev.preventDefault();
+      const { xy, sujeto } = bajo(ev);
+      onPick?.(sujeto, xy);
+    };
+
+    const c = this.view.canvas;
+    c.addEventListener('pointermove', mover);
+    c.addEventListener('pointerleave', salir);
+    c.addEventListener('pointerdown', pinchar);
+    this._senalar = () => {
+      c.removeEventListener('pointermove', mover);
+      c.removeEventListener('pointerleave', salir);
+      c.removeEventListener('pointerdown', pinchar);
+      cursor.remove();
+      this.view.root.classList.remove('is-senalando');
+      this._senalar = null;
+    };
+    return this._senalar;
+  }
+  _tearDownSenalar() { if (this._senalar) this._senalar(); }
+
   setPista(key) {
     this.view.setPista(key);
     this._hideBasketTip();
     (this.mode === 'play' ? this.engine : this.board)?.render();
   }
 
-  destroy() { this.engine?.destroy(); this.board.destroy(); this.view.destroy(); }
+  destroy() { this._tearDownSenalar(); this.engine?.destroy(); this.board.destroy(); this.view.destroy(); }
 }

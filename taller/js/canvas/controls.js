@@ -53,6 +53,10 @@ export function controls(engine) {
       btn('', 'Fase anterior', svg(ICON.prev), () => engine.prevPhase()),
       playBtn,
       btn('', 'Fase siguiente', svg(ICON.next), () => engine.nextPhase()),
+      // Salto de RONDA (Tramo 2.8). Solo aparece si el ejercicio de
+      // verdad tiene varias: en los demás sería un botón que no hace
+      // nada, y eso es peor que no tenerlo.
+      ...(engine.rondas > 1 ? [btn('btn--sm', 'Ronda siguiente', '»', () => engine.siguienteRonda())] : []),
       loopBtn,
       h('div', { class: 'ac-speed' }, ...pills),
       phase,
@@ -60,13 +64,19 @@ export function controls(engine) {
     progress,
   );
 
+  // Con rondas manda el contador de RONDA: en un ejercicio de seis en
+  // fila, «fase 14 de 24» no le dice nada a nadie, y «ronda 4 de 6» sí.
+  const etiqueta = (k, n, ronda, rondas) => (rondas > 1
+    ? `Ronda ${ronda} / ${rondas}`
+    : `Fase ${Math.min(k + 1, n) || 0} / ${n}`);
+
   engine.on('frame', (f) => {
     if (!scrubbing) progress.value = Math.round(f.progress * 1000);
-    phase.textContent = `Fase ${f.phase}`;
+    if (engine.rondas <= 1) phase.textContent = `Fase ${f.phase}`;
     setPlayIcon(f.playing);
     setPill(engine.speed);
   });
-  engine.on('phase', (p) => { phase.textContent = `Fase ${Math.min(p.k + 1, p.n) || 0} / ${p.n}`; });
+  engine.on('phase', (p) => { phase.textContent = etiqueta(p.k, p.n, p.ronda, p.rondas); });
 
   setPlayIcon(engine.playing);
   return { el };

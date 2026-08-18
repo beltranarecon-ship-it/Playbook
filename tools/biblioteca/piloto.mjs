@@ -66,10 +66,10 @@ export const PILOTO = [
       criterio_exito: 'completar 60 segundos sin perder el balón ni chocar, acertando siempre el cuadrante indicado',
     },
     tablero: () => [
-      jug('A', 1, 0.30, 0.25), jug('A', 2, 0.30, 0.72),
-      jug('A', 3, 0.55, 0.25), jug('A', 4, 0.55, 0.72),
-      cono(0.42, 0.20), cono(0.42, 0.77), cono(0.22, 0.49), cono(0.62, 0.49),
-      balon(0.30, 0.25), balon(0.30, 0.72), balon(0.55, 0.25), balon(0.55, 0.72),
+      jug('A', 1, 0.2865, 0.2821), jug('A', 2, 0.2865, 0.6976),
+      jug('A', 3, 0.5712, 0.2821), jug('A', 4, 0.5712, 0.6976),
+      cono(0.4231, 0.2379), cono(0.4231, 0.7418), cono(0.1954, 0.4943), cono(0.6509, 0.4943),
+      balon(0.2865, 0.2821), balon(0.2865, 0.6976), balon(0.5712, 0.2821), balon(0.5712, 0.6976),
     ],
     /* El montaje solo enseñaba cuatro niños con balón dentro de cuatro
        cuadrantes: exactamente lo que NO es el ejercicio. Lo que hay que
@@ -84,16 +84,16 @@ export const PILOTO = [
         // balón a menos de un palmo se dibujan como una mancha, y lo
         // que hay que leer es que cada uno llega por su diagonal.
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.36, y: 0.41 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.49, y: 0.41 } },
-          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.49, y: 0.58 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.36, y: 0.58 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3548, y: 0.4235 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.5028, y: 0.4235 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.5028, y: 0.5738 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.3548, y: 0.5738 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.55, y: 0.25 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.55, y: 0.72 } },
-          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.30, y: 0.72 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.30, y: 0.25 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.5712, y: 0.2821 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.5712, y: 0.6976 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.2865, y: 0.6976 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.2865, y: 0.2821 } },
         ] },
       ],
     },
@@ -128,11 +128,11 @@ export const PILOTO = [
        0,06, el último cae en 0,82 — justo dentro del medio campo. A
        0,62 la cola se salía del campo. */
     tablero: () => [
-      fila(0.58, 0.50, 4, 0),
-      cono(0.50, 0.40, 'rodear', null, 'slalom_1'),
-      cono(0.40, 0.60, 'rodear', null, 'slalom_2'),
-      cono(0.30, 0.44, 'rodear', null, 'slalom_3'),
-      balon(0.58, 0.50),
+      fila(0.6053, 0.5031, 4, 0),
+      cono(0.5142, 0.4147, 'rodear', null, 'slalom_1'),
+      cono(0.4004, 0.5915, 'rodear', null, 'slalom_2'),
+      cono(0.2865, 0.4501, 'rodear', null, 'slalom_3'),
+      balon(0.6053, 0.5031),
     ],
     intent: {
       canasta: 'norte',
@@ -181,9 +181,9 @@ export const PILOTO = [
       criterio_exito: 'el atacante gana más puntos que el defensor en la serie; se cambia de pareja cada serie',
     },
     tablero: () => [
-      jug('A', 1, 0.62, 0.50), jug('B', 1, 0.50, 0.50),
-      cono(0.62, 0.36), cono(0.62, 0.64), cono(0.30, 0.36), cono(0.30, 0.64),
-      balon(0.62, 0.50),
+      jug('A', 1, 0.6509, 0.5031), jug('B', 1, 0.5142, 0.5031),
+      cono(0.6509, 0.3793), cono(0.6509, 0.6269), cono(0.2865, 0.3793), cono(0.2865, 0.6269),
+      balon(0.6509, 0.5031),
     ],
     intent: {
       canasta: 'norte',
@@ -227,7 +227,7 @@ export const PILOTO = [
       fila(M.escolta_der[0], M.escolta_der[1], 3, 0),
       fila(M.base[0], M.base[1], 3, 0),
       fila(M.escolta_izq[0], M.escolta_izq[1], 3, 0),
-      jug('B', 1, 0.37, 0.496),
+      jug('B', 1, 0.3662, 0.4996),
       balon(M.escolta_der[0], M.escolta_der[1]),
     ],
     intent: {
@@ -246,20 +246,20 @@ export const PILOTO = [
         {
           eventos: [
             { jugador: 'fila1', tipo: 'pase', a: 'fila2' },
-            { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.392, y: 0.575 } },
+            { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3912, y: 0.5694 } },
           ],
         },
         {
           eventos: [
             { jugador: 'fila1', tipo: 'corte', hacia: { x: COLA_PUNTA.x, y: COLA_PUNTA.y } },
             { jugador: 'fila2', tipo: 'pase', a: 'fila3' },
-            { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.392, y: 0.418 } },
+            { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3912, y: 0.4306 } },
           ],
         },
         {
           eventos: [
             { jugador: 'fila2', tipo: 'corte', hacia: { x: COLA_IZQ_TRI.x, y: COLA_IZQ_TRI.y } },
-            { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.375, y: 0.496 } },
+            { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3719, y: 0.4996 } },
           ],
         },
       ],
@@ -289,11 +289,11 @@ export const PILOTO = [
       criterio_exito: 'llegar a diez pases seguidos al menos dos veces por serie',
     },
     tablero: () => [
-      jug('A', 1, 0.30, 0.30), jug('A', 2, 0.30, 0.70),
-      jug('A', 3, 0.58, 0.30), jug('A', 4, 0.58, 0.70),
-      jug('B', 1, 0.40, 0.44), jug('B', 2, 0.48, 0.56),
-      cono(0.30, 0.30), cono(0.30, 0.70), cono(0.58, 0.30), cono(0.58, 0.70),
-      balon(0.30, 0.30),
+      jug('A', 1, 0.2865, 0.3263), jug('A', 2, 0.2865, 0.6799),
+      jug('A', 3, 0.6053, 0.3263), jug('A', 4, 0.6053, 0.6799),
+      jug('B', 1, 0.4004, 0.4501), jug('B', 2, 0.4915, 0.5561),
+      cono(0.2865, 0.3263), cono(0.2865, 0.6799), cono(0.6053, 0.3263), cono(0.6053, 0.6799),
+      balon(0.2865, 0.3263),
     ],
     /* Tres pases que respetan las dos reglas del ejercicio: no se
        devuelve a quien te la pasó y no se cruza el cuadrado. Lado
@@ -304,18 +304,18 @@ export const PILOTO = [
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.37, y: 0.52 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.45, y: 0.44 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3662, y: 0.5208 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.4573, y: 0.4501 } },
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
         ] },
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.35, y: 0.62 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.45, y: 0.50 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3434, y: 0.6092 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.4573, y: 0.5031 } },
           { jugador: 'A2', tipo: 'pase', a: 'A3' },
         ] },
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.47, y: 0.38 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.44, y: 0.52 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4801, y: 0.397 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.4459, y: 0.5208 } },
           { jugador: 'A3', tipo: 'pase', a: 'A4' },
         ] },
       ],
@@ -353,9 +353,9 @@ export const PILOTO = [
        deja de tener sentido, porque a esa distancia ya hay que empujar
        el balón, que es justo lo que viene a corregir. */
     tablero: () => [
-      jug('A', 1, 0.192, 0.545),
+      jug('A', 1, 0.1635, 0.5429),
       jug('A', 2, M.poste_bajo_izq[0] + 0.03, M.poste_bajo_izq[1]),
-      balon(0.192, 0.545),
+      balon(0.1635, 0.5429),
     ],
     intent: {
       canasta: 'norte',
@@ -396,7 +396,7 @@ export const PILOTO = [
     tablero: () => [
       jug('A', 1, M.base[0], M.base[1]),
       jug('A', 2, M.codo_der[0], M.codo_der[1]),
-      jug('B', 1, 0.22, 0.55),
+      jug('B', 1, 0.1954, 0.5473),
       balon(M.base[0], M.base[1]),
     ],
     intent: {
@@ -533,10 +533,10 @@ export const PILOTO = [
        0,06, el último caía en 0,90 y el medio campo acaba en 0,829 — el
        que volvía a la fila se salía de la pista. */
     tablero: () => [
-      fila(0.58, 0.50, 4, 0),
+      fila(0.6053, 0.5031, 4, 0),
       jug('B', 1, M.tiro_libre[0] - 0.03, M.tiro_libre[1]),
       cono(M.tiro_libre[0], M.tiro_libre[1]),
-      balon(0.58, 0.50),
+      balon(0.6053, 0.5031),
     ],
     intent: {
       canasta: 'norte',
@@ -751,9 +751,9 @@ export const PILOTO = [
       criterio_exito: 'llegar a la canasta por delante del atacante en tres de cada cuatro recorridos, sin tocar',
     },
     tablero: () => [
-      jug('A', 1, 0.66, 0.50), jug('B', 1, 0.56, 0.50),
-      cono(0.66, 0.36), cono(0.66, 0.64), cono(0.28, 0.36), cono(0.28, 0.64),
-      balon(0.66, 0.50),
+      jug('A', 1, 0.6964, 0.5031), jug('B', 1, 0.5826, 0.5031),
+      cono(0.6964, 0.3793), cono(0.6964, 0.6269), cono(0.2637, 0.3793), cono(0.2637, 0.6269),
+      balon(0.6964, 0.5031),
     ],
     intent: {
       canasta: 'norte',
@@ -789,9 +789,9 @@ export const PILOTO = [
       criterio_exito: 'anotar en tres de cada cuatro superioridades, y que la mitad de las canastas nazcan de pase y no de entrada directa',
     },
     tablero: () => [
-      jug('A', 1, E.escolta_izq[0], 0.72), jug('A', 2, E.escolta_der[0], 0.72),
+      jug('A', 1, E.escolta_izq[0], 0.7005), jug('A', 2, E.escolta_der[0], 0.7005),
       jug('B', 1, E.tiro_libre[0], E.tiro_libre[1]),
-      balon(E.escolta_izq[0], 0.72),
+      balon(E.escolta_izq[0], 0.7005),
     ],
     intent: {
       canasta: 'norte',
@@ -860,9 +860,9 @@ export const PILOTO = [
       criterio_exito: 'aguantar noventa segundos sin ser tocado ni perder el balón',
     },
     tablero: () => [
-      jug('A', 1, 0.30, 0.25), jug('A', 2, 0.30, 0.72), jug('A', 3, 0.55, 0.30),
-      jug('A', 4, 0.60, 0.68), jug('B', 1, 0.42, 0.42), jug('B', 2, 0.48, 0.60),
-      balon(0.30, 0.25), balon(0.30, 0.72), balon(0.55, 0.30), balon(0.60, 0.68),
+      jug('A', 1, 0.2865, 0.2821), jug('A', 2, 0.2865, 0.6976), jug('A', 3, 0.5712, 0.3263),
+      jug('A', 4, 0.6281, 0.6622), jug('B', 1, 0.4231, 0.4324), jug('B', 2, 0.4915, 0.5915),
+      balon(0.2865, 0.2821), balon(0.2865, 0.6976), balon(0.5712, 0.3263), balon(0.6281, 0.6622),
     ],
     intent: null,
   },
@@ -893,9 +893,9 @@ export const PILOTO = [
       aplicacion: 'los cuatro cuadrantes, donde la misma respuesta al estímulo ya se hace en espacio compartido',
     },
     tablero: () => [
-      jug('A', 1, 0.30, 0.25), jug('A', 2, 0.30, 0.72), jug('A', 3, 0.58, 0.30), jug('A', 4, 0.58, 0.70),
-      cono(0.44, 0.50),
-      balon(0.30, 0.25), balon(0.30, 0.72), balon(0.58, 0.30), balon(0.58, 0.70),
+      jug('A', 1, 0.2865, 0.2821), jug('A', 2, 0.2865, 0.6976), jug('A', 3, 0.6053, 0.3263), jug('A', 4, 0.6053, 0.6799),
+      cono(0.4459, 0.5031),
+      balon(0.2865, 0.2821), balon(0.2865, 0.6976), balon(0.6053, 0.3263), balon(0.6053, 0.6799),
     ],
     intent: null,
   },

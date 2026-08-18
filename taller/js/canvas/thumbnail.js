@@ -7,6 +7,7 @@
 
 import { PISTAS } from './court.js';
 import { AnimationEngine } from './engine.js';
+import { soloPrimeraRonda } from '../ia/rondas.js';
 
 const GIFJS = 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js';
 const GIFWORKER = 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js';
@@ -71,6 +72,12 @@ export async function generarThumbnail(animacion, {
   width = 260, frames = 28, fps = 12, soloPoster = false,
   gifWidth = null, gifQuality = 14,
 } = {}) {
+  /* De un ejercicio de seis en fila, la miniatura enseña UNA ronda: las
+     seis son la misma y el gif saldría seis veces más largo para
+     enseñar seis veces lo mismo (Tramo 2.8). */
+  if (animacion.rondas > 1) {
+    animacion = { ...animacion, fases: soloPrimeraRonda(animacion.fases) };
+  }
   const pistaKey = animacion.pista || 'entera';
   const pista = PISTAS[pistaKey] || PISTAS.entera;
   /* APAISADA, como el proyector y como el visor del planificador. Las

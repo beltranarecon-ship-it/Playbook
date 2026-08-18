@@ -1,256 +1,745 @@
 /* ============================================================
-   paso2.js — Descripción de acciones e IA (§8).
-   Textarea collapsible + "Generar animación" -> Netlify Function
-   (con mock local). Flujo de preguntas tipo A (posición en pista)
-   y tipo B (opciones), y banner de warnings.
+   paso2.js — DESCRIBIR LA JUGADA, FASE A FASE (Tramo 2.9).
+
+   ── LO QUE ERA ──────────────────────────────────────────────
+   Un cuadro de texto grande, un botón «Generar animación» y un
+   modelo de pago al otro lado que adivinaba la jugada. Cuando no
+   había clave —o no había red— entraba un puñado de regex que
+   siempre montaba el mismo ejercicio: bota, pasa, tira. Las dos
+   cosas fallaban por lo mismo: adivinaban sobre un vocabulario
+   abierto, y cuando no entendían algo se inventaban lo plausible.
+
+   ── LO QUE ES ───────────────────────────────────────────────
+   Una lista de FASES. Cada una con su cabecera —duración y pausa—
+   y una línea que se escribe con tres ayudas:
+
+     · la barra de acciones escribe la acción por ti;
+     · pinchar una ficha de la pista escribe su nombre;
+     · pinchar un sitio vacío crea «Posición 1», que se renombra y
+       se guarda para el próximo ejercicio.
+
+   Y todo se puede escribir a mano, porque leerlo es buscar palabras
+   de dos listas cerradas (ia/frase.js). Debajo del campo se ve, en
+   cada tecla, QUÉ se ha entendido y qué no: lo reconocido va
+   marcado y lo que no, subrayado. Un modelo, cuando no entendía,
+   callaba.
+
+   Determinista y sin red: la animación se rehace sola al dar intro
+   o al cambiar de fase. Coste 0 € (§2).
+
+   ── Y EL DESPLEGABLE «MANUALMENTE» (Tramo 2.10) ─────────────
+   La misma jugada acción por acción, con desplegables: quién · qué
+   hace · hacia qué. Se elige una fase o se crea una nueva y se
+   corrige UNA acción sin tocar nada más.
+
+   No guarda un estado propio: enseña lo que el lector ha entendido y,
+   al cambiar algo, vuelve a escribir la línea. Guardar aquí una
+   segunda verdad y esperar que no se separara de la primera es
+   exactamente lo que hacía confuso el paso 2 anterior.
+
+   ── SIN NINGUNA LLAMADA DE PAGO (Tramo 2.11) ────────────────
+   Ya no queda nada del camino anterior: ni el cuadro de texto, ni el
+   puente a la función de servidor, ni el lector de respaldo por
+   regex. Este paso funciona entero sin conexión.
    ============================================================ */
 
-import { h, mount, icon } from '../ui/dom.js';
+import { h, mount } from '../ui/dom.js';
 import { collapsible } from '../ui/components.js';
-import { generarAnimacion, necesitaPreguntaCanasta, recompilarConCanasta } from '../ia/client.js';
 import { simularJugada } from '../ia/simulador.js';
 import { resolverAnimacion, upsertEdicion } from '../ia/resolver.js';
 import { cargarPosiciones, guardarPosicion } from '../supabase/posiciones.js';
+import { cargarCatalogo } from '../supabase/acciones.js';
+import { CATALOGO_SISTEMA, FAMILIAS } from '../ia/acciones.js';
+import { sujetosDelTablero, siguientePosicion, nombreDeSlug } from '../ia/sujetos.js';
+import { crearLexico, leerFases, textoDeAccion, escribirFrase, huecosDe, actoresDe, anclarSujetos } from '../ia/frase.js';
 import { PISTAS } from '../canvas/court.js';
 import { TEAM_LABEL } from '../canvas/colors.js';
 import { History } from '../history.js';
 
-// Nombre de cada aro de cara al entrenador (misma convención que stage.js e
-// ia/client.js: Canasta 1 = clave 'norte', Canasta 2 = clave 'sur').
 const CANASTA_LABEL = { norte: 'Canasta 1', sur: 'Canasta 2' };
 
-const PLACEHOLDER = `Escríbelo como se lo explicarías a un compañero entrenador.
+/*
+   Lo que se puede señalar en la pista: las fichas puestas por el
+   entrenador y el aro. Las catorce anclas medidas NO, y no es un
+   olvido: pinchar cerca del codo tiene que crear una posición nueva
+   (§5.2), y si el codo respondiera al clic no habría forma de marcar
+   un sitio propio a dos palmos de él. Se escriben a mano —el lector
+   las conoce— o se dejan para lo que son, un vocabulario de apoyo.
+*/
+const SENALABLE = new Set(['jugador', 'fila', 'fila_miembro', 'cono', 'zona', 'balon', 'material', 'aro']);
 
-Ej: El base (1) parte desde el centro con balón. Bota hacia la derecha y pasa al alero (3) en el ala. El alero recibe, corta a canasta y entra. Mientras, el base corre al lado contrario para el rebote de ataque.`;
+const faseVacia = () => ({ texto: '', duracion_ms: null, pausa_post_ms: null });
+const seg = (ms) => (Number.isFinite(ms) ? String(Math.round(ms) / 1000) : '');
+const aMs = (v) => { const n = Number(String(v).replace(',', '.')); return Number.isFinite(n) && n > 0 ? Math.round(n * 1000) : null; };
 
 export function paso2(ctx) {
-  const { draft, stage } = ctx;
-  let generated = !!draft.animacion;
+  const { draft, stage, onDraftChange } = ctx;
 
-  const ta = h('textarea', {
-    class: 'textarea', rows: '8', placeholder: PLACEHOLDER, value: draft.descripcion_texto,
-    onInput: (e) => { draft.descripcion_texto = e.target.value; },
-  });
-  const statusHost = h('div', { class: 'ia-status' });
-  const btn = h('button', { class: 'btn btn--primary has-arrow', type: 'button', onClick: () => generar() },
-    generated ? 'Regenerar animación' : 'Generar animación');
-  // Tramo 5b: simulación completa — el equipo del portador ataca buscando
-  // tiro y el otro defiende (individual con ayudas). Sin texto ni preguntas.
-  const btnSimular = h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => simular() }, 'Simular ataque-defensa');
+  /* ---- estado del paso ------------------------------------------ */
+  if (!Array.isArray(draft.fases_texto) || !draft.fases_texto.length) draft.fases_texto = [faseVacia()];
+  if (!draft.posiciones || typeof draft.posiciones !== 'object') draft.posiciones = {};
+  draft.ediciones = draft.ediciones || [];
 
-  /* Simula con la colocación actual del tablero. Determinista: misma
-     colocación + misma semilla ⇒ misma jugada; "Otra variante" (en la
-     tarjeta de confirmación) incrementa la semilla. canastaForzada
-     permite al chip de canasta re-simular hacia el otro aro. */
-  function simular(canastaForzada = null) {
-    if (draft.semilla_sim == null) draft.semilla_sim = 1;
-    btnSimular.disabled = true;
-    mount(statusHost);
-    const data = simularJugada({ elementos: stage.board.getElementos(), pista: draft.tipo_pista, canasta: canastaForzada, semilla: draft.semilla_sim });
-    btnSimular.disabled = false;
-    if (data.error) { mount(statusHost, banner('error', data.error)); return; }
-    const shown = aplicarBaseConEdiciones(data);
-    generated = true;
-    btn.textContent = 'Regenerar animación';
-    mostrarConfirmacion(shown);
+  let catalogo = CATALOGO_SISTEMA;
+  let posGuardadas = {};        // las de Supabase para esta pista
+  let sujetos = [];
+  let lexico = crearLexico({ catalogo, sujetos });
+  let lectura = { fases: [], avisos: [], tramos: [] };
+  let activa = 0;               // la fase donde escriben los clics
+  let edit = null;              // modo «ajustar a mano» (Tramo 6)
+  const filas = [];             // { campo, marca, resumen } por fase
+
+  /* Diccionario EFECTIVO: lo guardado para esta pista, pisado por lo
+     que se haya marcado en este ejercicio. Mismo orden de prioridad
+     que ia/posiciones.js. */
+  const posiciones = () => ({ ...posGuardadas, ...draft.posiciones });
+
+  /* Canasta objetivo. Sin decisión previa, la más cercana a lo que hay
+     colocado: es la que acierta casi siempre, y el chip la cambia en un
+     clic. Preguntarlo antes de empezar, como hacía el flujo viejo, era
+     un trámite delante de una respuesta que se ve a simple vista. */
+  function canastaActual() {
+    const aros = (PISTAS[draft.tipo_pista] && PISTAS[draft.tipo_pista].baskets) || {};
+    const claves = Object.keys(aros);
+    if (!claves.length) return 'norte';
+    if (draft.canasta && aros[draft.canasta]) return draft.canasta;
+    if (claves.length === 1) return claves[0];
+    const fichas = stage.board.getElementos().filter((e) => e.kind === 'jugador' || e.kind === 'cono');
+    if (!fichas.length) return claves[0];
+    const cx = fichas.reduce((s, e) => s + e.x, 0) / fichas.length;
+    const cy = fichas.reduce((s, e) => s + e.y, 0) / fichas.length;
+    return claves.reduce((mejor, k) => (
+      Math.hypot(aros[k][0] - cx, aros[k][1] - cy) < Math.hypot(aros[mejor][0] - cx, aros[mejor][1] - cy) ? k : mejor
+    ), claves[0]);
   }
 
-  // Tope de rondas de preguntas: un modelo que pregunte algo nuevo en cada
-  // vuelta no puede tener al entrenador en un interrogatorio infinito.
-  const MAX_RONDAS = 3;
-
-  // Diccionario custom de posiciones con nombre (Tramo 2.3): se carga de
-  // Supabase UNA vez por pista (caché) al generar y se inyecta al motor.
-  // Los clics a preguntas q_pos_* lo actualizan en caliente (y se persisten).
-  let posCustom = null;
-  let posCustomPista = null;
-  async function posicionesDePista(pista) {
-    if (posCustomPista !== pista) {
-      posCustom = await cargarPosiciones(pista); // {} si no hay sesión/red
-      posCustomPista = pista;
-    }
-    return posCustom;
+  function refrescarVocabulario() {
+    sujetos = sujetosDelTablero({
+      elementos: stage.board.getElementos(),
+      pista: draft.tipo_pista,
+      canasta: canastaActual(),
+      posiciones: posiciones(),
+    });
+    lexico = crearLexico({ catalogo, sujetos });
   }
 
-  async function generar(respuestas = null, ronda = 0) {
-    // Pregunta obligatoria de canasta (pista de dos aros sin resolver): es
-    // determinista y local — se pregunta ANTES de llamar al generador, por el
-    // mismo flujo de preguntas de la IA. generarAnimacion() la re-comprueba
-    // igualmente por si otro llamador se salta este paso.
-    const qCanasta = necesitaPreguntaCanasta(draft.descripcion_texto, draft.tipo_pista, respuestas);
-    if (qCanasta) { runPreguntas([qCanasta], respuestas || [], ronda + 1); return; }
-    btn.disabled = true;
-    const prev = btn.textContent;
-    btn.textContent = 'Procesando…';
-    btn.classList.add('is-loading');
-    mount(statusHost);
-    const posicionesCustom = await posicionesDePista(draft.tipo_pista);
-    const data = await generarAnimacion({ texto: draft.descripcion_texto, elementos: stage.board.getElementos(), pista: draft.tipo_pista, respuestas, posicionesCustom });
-    btn.disabled = false;
-    btn.classList.remove('is-loading');
+  /* ---- el ciclo: leer, compilar, enseñar ------------------------- */
 
-    if (data.error) { mount(statusHost, banner('error', data.error)); btn.textContent = prev; return; }
-    if (Array.isArray(data.preguntas) && data.preguntas.length) {
-      btn.textContent = prev;
-      // dedupe: no repetir preguntas cuyo id ya fue respondido en rondas previas
-      const contestadas = new Set((respuestas || []).map((r) => r && r.id));
-      const nuevas = data.preguntas.filter((q) => q && q.id && !contestadas.has(q.id));
-      if (!nuevas.length || ronda >= MAX_RONDAS) {
-        // sin preguntas nuevas (todo repetido) o tope alcanzado: error
-        // accionable en vez de otra vuelta de interrogatorio.
-        mount(statusHost, banner('error', 'No se pudo concretar la jugada con estas respuestas. Amplía la descripción del ejercicio y vuelve a generar.'));
-        return;
-      }
-      runPreguntas(nuevas, respuestas || [], ronda + 1);
+  let temporizador = null;
+  const recompilarPronto = () => { clearTimeout(temporizador); temporizador = setTimeout(recompilar, 500); };
+
+  /* Releer es barato —dos listas de palabras y una pasada por la línea—
+     así que se hace en cada tecla: es lo que enseña, mientras se
+     escribe, qué palabras ha reconocido la app. Compilar la geometría y
+     repintar la pista se espera medio segundo, que es lo que cuesta
+     terminar de escribir una palabra. */
+  function releer() {
+    lectura = leerFases(draft.fases_texto, lexico);
+    pintarLineas();
+  }
+
+  function recompilar({ animar = false } = {}) {
+    clearTimeout(temporizador);
+    if (edit) return;             // ajustando flechas a mano: no se pisa
+    refrescarVocabulario();
+    releer();
+
+    /* Ojo con lo que NO se escribe aquí: `descripcion_texto` es el
+       DESARROLLO de la ficha —montaje, reglas, rotación— y lo escribe el
+       paso 3. Las líneas de las fases son otra cosa: son la fuente de la
+       animación, viven en `fases_texto` y viajan dentro de ella. Volcarlas
+       encima del desarrollo dejaba la ficha con cuatro órdenes
+       telegráficas donde tiene que haber un párrafo que se lee con los
+       niños ya en la pista. El paso 3 las ofrece como punto de partida,
+       que es distinto. */
+    const hayAlgo = lectura.fases.some((f) => f.eventos.length);
+    if (!hayAlgo) {
+      draft.animacion = null;
+      draft.baseGen = null;
+      mirarSinTocar();
+      pintarPanel();
+      pintarManual();
+      onDraftChange?.();
       return;
     }
 
-    // éxito: READBACK visual (§Tramo 1) — vista previa del planteamiento
-    // (fotograma 0 en pausa, canasta objetivo resaltada) + tarjeta de
-    // confirmación con chips. La animación solo arranca con "Animar".
-    // Tramo 6.2: si había retoques manuales, se re-resuelven sobre la nueva
-    // base y los que no encajan se avisan.
-    const shown = aplicarBaseConEdiciones(data);
-    generated = true;
-    btn.textContent = 'Regenerar animación';
-    mostrarConfirmacion(shown);
+    const elementos = stage.board.getElementos();
+    draft.baseGen = { intent: { canasta: canastaActual(), fases: lectura.fases }, posiciones: posiciones() };
+    const anim = resolverAnimacion(draft.baseGen, draft.ediciones, elementos, draft.tipo_pista, { posiciones: posiciones() });
+    // los avisos del lector se suman a los del compilador (la fila que no
+    // cabe, por ejemplo): los dos hablan de lo mismo y van en el mismo sitio
+    anim.warnings = [...lectura.avisos, ...(anim.warnings || [])];
+    /* El texto de las fases y las posiciones marcadas viajan DENTRO de la
+       animación. Es la única forma de que reabrir un ejercicio devuelva el
+       paso 2 tal como se dejó sin inventar una columna nueva, y el sitio
+       donde ya vive `_intent` por la misma razón. */
+    anim._fases_texto = draft.fases_texto.map((f) => ({ ...f }));
+    if (Object.keys(draft.posiciones).length) anim._posiciones = { ...draft.posiciones };
+    draft.animacion = anim;
+
+    if (animar) { stage.showAnimation(anim); desmontarSenalar(); }
+    else { stage.showPreview(anim); montarSenalar(); }
+    pintarPanel();
+    pintarManual();
+    onDraftChange?.();
   }
 
-  /* ---- confirmación visual (§Tramo 1.1) ----
-     Pinta la vista previa en la pista y, en statusHost, el warningsBanner de
-     siempre (si hay warnings) + aviso de retoques descartados (Tramo 6.2) +
-     la tarjeta con chips y "Animar"/"Corregir"/"Ajustar a mano". */
-  function mostrarConfirmacion(data) {
-    stage.showPreview(data);
-    mount(statusHost,
-      data.sin_ia ? bannerSinIA() : null,
-      (data.warnings && data.warnings.length) ? warningsBanner(data.warnings) : null,
-      (data._descartadas && data._descartadas.length) ? bannerDescartadas(data._descartadas.length) : null,
-      tarjetaPreview(data),
+  /** Sin nada escrito todavía: la pista se ve entera y no se toca. */
+  function mirarSinTocar() {
+    stage.showBoard();
+    stage.board.setSoloMirar(true);
+    montarSenalar();
+  }
+
+  /* ---- señalar en la pista -------------------------------------- */
+
+  let soltarSenalar = null;
+  function desmontarSenalar() { if (soltarSenalar) { soltarSenalar(); soltarSenalar = null; } }
+
+  function montarSenalar() {
+    if (soltarSenalar) return;    // ya está puesto: `sujetos` lo lee vivo
+    soltarSenalar = stage.senalar({
+      buscar: (x, y) => masCercano(x, y),
+      onPick: (sujeto, xy) => {
+        if (sujeto) { insertar(sujeto.nombre); return; }
+        // sitio vacío: una posición nueva con nombre, que se puede
+        // renombrar y guardar para el próximo ejercicio (§5.2)
+        const slug = siguientePosicion(posiciones());
+        draft.posiciones[slug] = [Number(xy.x.toFixed(4)), Number(xy.y.toFixed(4))];
+        refrescarVocabulario();
+        insertar(nombreDeSlug(slug));
+      },
+    });
+  }
+
+  /* El acierto se mide en PÍXELES, no en normalizado: en una media
+     pista, la misma distancia normalizada vale casi el doble por el eje
+     largo que por el corto, y el radio de agarre saldría ovalado. */
+  function masCercano(x, y) {
+    const { w, h: alto } = stage.view;
+    const radio = Math.max(18, w * 0.05);
+    let mejor = null, mejorD = Infinity;
+    for (const s of sujetos) {
+      if (!SENALABLE.has(s.tipo) || s.x == null) continue;
+      const d = Math.hypot((x - s.x) * w, (y - s.y) * alto);
+      if (d <= radio && d < mejorD) { mejorD = d; mejor = s; }
+    }
+    return mejor;
+  }
+
+  /* ---- escribir en la fase activa ------------------------------- */
+
+  /**
+   * Escribe en la fase activa, donde esté el cursor.
+   *
+   * `minuscula` distingue las dos cosas que se insertan y que NO son la
+   * misma: una acción es vocabulario y a media frase se lee mejor en
+   * minúscula; un NOMBRE —«Fila 1», «Posición 2»— es un nombre propio y
+   * se escribe tal cual. Cambiarle la caja no rompería la lectura (el
+   * lector no distingue mayúsculas), pero sí romper renombrar: buscar
+   * «Posición 1» en un texto que dice «posición 1» no encuentra nada.
+   */
+  function insertar(texto, { minuscula = false } = {}) {
+    const fila = filas[activa];
+    if (!fila) return;
+    const el = fila.campo;
+    const ini = el.selectionStart ?? el.value.length;
+    const fin = el.selectionEnd ?? ini;
+    const antes = el.value.slice(0, ini);
+    const despues = el.value.slice(fin);
+    const separa = antes && !/\s$/.test(antes) ? ' ' : '';
+    const trozo = (minuscula && antes.trim()) ? texto.charAt(0).toLowerCase() + texto.slice(1) : texto;
+    el.value = antes + separa + trozo + despues;
+    const cursor = (antes + separa + trozo).length;
+    draft.fases_texto[activa].texto = el.value;
+    el.focus();
+    el.setSelectionRange(cursor, cursor);
+    recompilar();
+  }
+
+  /* ---- la barra de acciones ------------------------------------- */
+
+  /* Una sola barra que se muda a la fase con el foco. Repetirla en cada
+     fase llenaría la columna de lo mismo cinco veces; ponerla fija
+     arriba obligaría a mirar a otro sitio para saber dónde va a
+     escribir. */
+  const barra = h('div', { class: 'acc-barra' });
+
+  function pintarBarra() {
+    const porFamilia = new Map();
+    for (const a of catalogo) {
+      if (!porFamilia.has(a.familia)) porFamilia.set(a.familia, []);
+      porFamilia.get(a.familia).push(a);
+    }
+    mount(barra, ...[...porFamilia].map(([fam, lista]) => h('div', { class: 'acc-barra__fila' },
+      h('span', { class: 'acc-barra__fam' }, FAMILIAS[fam]?.nombre || fam),
+      h('div', { class: 'acc-barra__chips' }, ...lista.map((a) => h('button', {
+        class: 'chip chip--accion', type: 'button',
+        title: `${a.descripcion || a.nombre}${a.origen === 'club' ? ' · acción del club' : ''}`,
+        onClick: () => insertar(textoDeAccion(a), { minuscula: true }),
+      }, a.nombre))),
+    )));
+  }
+
+  /* ---- las fases ------------------------------------------------- */
+
+  const listaFases = h('div', { class: 'fases' });
+
+  function pintarFases() {
+    filas.length = 0;
+    mount(listaFases, ...draft.fases_texto.map((f, i) => tarjetaFase(f, i)), h('button', {
+      class: 'btn btn--ghost fases__add', type: 'button',
+      onClick: () => { draft.fases_texto.push(faseVacia()); activa = draft.fases_texto.length - 1; pintarFases(); filas[activa].campo.focus(); recompilar(); },
+    }, '+ Agregar fase'));
+    colocarBarra();
+    pintarLineas();
+  }
+
+  function colocarBarra() {
+    const fila = filas[activa];
+    if (fila) fila.barraHost.append(barra);
+  }
+
+  function tarjetaFase(f, i) {
+    const campo = h('textarea', {
+      class: 'frase__campo', rows: '1', spellcheck: 'false',
+      placeholder: i === 0 ? 'Ej: la Fila 1 bota hacia el aro' : 'Qué pasa en esta fase',
+      value: f.texto,
+      onInput: (e) => { f.texto = e.target.value; releer(); recompilarPronto(); },
+      onFocus: () => { if (activa !== i) { activa = i; colocarBarra(); marcarActiva(); } montarSenalar(); },
+      onBlur: () => recompilar(),
+      onKeyDown: (e) => {
+        // Intro genera la animación de esa fase (§5.2). Mayús+Intro
+        // parte la línea, por si hace falta respirar dentro de una fase.
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); recompilar(); }
+      },
+    });
+    const marca = h('div', { class: 'frase__marca', 'aria-hidden': 'true' });
+    const resumen = h('p', { class: 'frase__resumen' });
+    const barraHost = h('div', { class: 'frase__barra' });
+
+    const num = h('input', {
+      class: 'input input--ms', type: 'number', min: '0.2', max: '20', step: '0.1',
+      value: seg(f.duracion_ms), placeholder: 'auto', 'aria-label': `Duración de la fase ${i + 1}`,
+      onChange: (e) => { f.duracion_ms = aMs(e.target.value); recompilar(); },
+    });
+    const pau = h('input', {
+      class: 'input input--ms', type: 'number', min: '0', max: '10', step: '0.1',
+      value: seg(f.pausa_post_ms), placeholder: 'auto', 'aria-label': `Pausa tras la fase ${i + 1}`,
+      onChange: (e) => { f.pausa_post_ms = aMs(e.target.value); recompilar(); },
+    });
+
+    const tarjeta = h('div', { class: 'fase' + (i === activa ? ' is-activa' : ''), dataset: { fase: String(i) } },
+      h('div', { class: 'fase__cab' },
+        h('span', { class: 'fase__n' }, `Fase ${i + 1}`),
+        h('label', { class: 'fase__ajuste' }, 'dura', num, 's'),
+        h('label', { class: 'fase__ajuste' }, 'pausa', pau, 's'),
+        draft.fases_texto.length > 1 ? h('button', {
+          class: 'fase__quitar', type: 'button', 'aria-label': `Quitar la fase ${i + 1}`, title: 'Quitar esta fase',
+          onClick: () => {
+            draft.fases_texto.splice(i, 1);
+            activa = Math.max(0, Math.min(activa, draft.fases_texto.length - 1));
+            pintarFases(); recompilar();
+          },
+        }, '×') : null,
+      ),
+      barraHost,
+      h('div', { class: 'frase' }, marca, campo),
+      resumen,
+    );
+    filas.push({ campo, marca, resumen, tarjeta, barraHost });
+    return tarjeta;
+  }
+
+  function marcarActiva() {
+    filas.forEach((fila, i) => fila.tarjeta.classList.toggle('is-activa', i === activa));
+  }
+
+  /* ---- lo que se ha entendido ------------------------------------ */
+
+  function pintarLineas() { filas.forEach((_, i) => pintarLinea(i)); }
+
+  /**
+   * Debajo de cada línea, dos cosas distintas y a propósito separadas:
+   * el RESALTADO de lo que se ha reconocido (encima del propio texto) y
+   * el RESUMEN de lo que va a pasar (en palabras). El primero dice qué
+   * palabras han valido; el segundo, si el ejercicio es el que se quería.
+   */
+  function pintarLinea(i) {
+    const fila = filas[i];
+    if (!fila) return;
+    const texto = draft.fases_texto[i]?.texto || '';
+    const tramos = (lectura.tramos && lectura.tramos[i]) || [];
+    const trozos = [];
+    let cursor = 0;
+    for (const t of tramos) {
+      if (t.ini > cursor) trozos.push(document.createTextNode(texto.slice(cursor, t.ini)));
+      trozos.push(h('span', { class: `mk mk--${t.clase}`, title: t.titulo }, texto.slice(t.ini, t.fin)));
+      cursor = t.fin;
+    }
+    // el salto final evita que el espejo se quede una línea corto cuando
+    // el texto acaba en intro (y con él, el campo que va encima)
+    trozos.push(document.createTextNode(`${texto.slice(cursor)}\n`));
+    mount(fila.marca, ...trozos);
+
+    const fase = lectura.fases && lectura.fases[i];
+    const eventos = (fase?.eventos || []).filter((e) => !e._sigueDefendiendo);
+    const míos = (lectura.avisos || []).filter((a) => a.fase === i + 1);
+    mount(fila.resumen,
+      eventos.length ? h('span', { class: 'frase__ok' }, eventos.map(enPalabras).join(' · ')) : null,
+      ...míos.map((a) => h('span', { class: 'frase__mal' }, `«${a.texto_original}»: ${a.interpretacion}`)),
     );
   }
 
-  /* ---- intención base + capa de overrides (Tramo 6.2) ---------------------
-     draft.baseGen = la intención con la que re-resolver (la dejan regex/IA/
-     simulador en _intent). draft.ediciones = los retoques manuales. Cada
-     generación nueva conserva las ediciones y las re-resuelve sobre la nueva
-     base; las que ya no encajan se avisan (data._descartadas). */
-  function setBase(data) {
-    draft.baseGen = (data && data._intent)
-      ? { intent: data._intent, posiciones: posCustom || null }
-      : null; // geometría legada sin intención: solo edición directa
+  /** Un evento contado como se lo dirías a alguien. */
+  function enPalabras(ev) {
+    const accion = lexico.porSlug?.get(ev.accion);
+    const quien = nombreDe(ev.jugador);
+    const partes = [quien, (accion?.nombre || ev.accion).toLowerCase()];
+    const a = ev.args || {};
+    if (a.destino && typeof a.destino === 'string') partes.push(`→ ${nombreDe(a.destino)}`);
+    if (a.companero) partes.push(`con ${nombreDe(a.companero)}`);
+    if (Array.isArray(a.sorteando) && a.sorteando.length) partes.push(`pasando por ${a.sorteando.map(nombreDe).join(' y ')}`);
+    return partes.join(' ');
   }
-  function aplicarBaseConEdiciones(data) {
-    setBase(data);
-    const eds = draft.ediciones || [];
-    if (draft.baseGen && eds.length) {
-      const resuelto = resolverAnimacion(draft.baseGen, eds, stage.board.getElementos(), data.pista, { posiciones: draft.baseGen.posiciones });
-      resuelto.warnings = data.warnings || [];
-      resuelto._mock = data._mock;
-      if ('_ia' in data) resuelto._ia = data._ia;
-      if (data._sim) resuelto._sim = data._sim;
-      draft.animacion = resuelto;
-      return resuelto;
-    }
-    draft.animacion = data;
-    return data;
+  const nombreDe = (ref) => (sujetos.find((s) => s.ref === ref) || {}).nombre || ref;
+
+  /* ---- posiciones marcadas --------------------------------------- */
+
+  const panelPos = h('div', { class: 'pos-panel' });
+
+  function pintarPosiciones() {
+    const slugs = Object.keys(draft.posiciones);
+    if (!slugs.length) { mount(panelPos); return; }
+    mount(panelPos,
+      h('p', { class: 'eyebrow' }, 'Posiciones marcadas en esta pista'),
+      ...slugs.map((slug) => {
+        const nombre = h('input', {
+          class: 'input', type: 'text', value: nombreDeSlug(slug), 'aria-label': 'Nombre de la posición',
+          onChange: (e) => renombrarPosicion(slug, e.target.value),
+        });
+        const guardar = h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: async (e) => {
+          const b = e.currentTarget;
+          const prev = b.textContent;
+          b.disabled = true; b.textContent = 'Guardando…';
+          try {
+            const [x, y] = draft.posiciones[slug];
+            await guardarPosicion(draft.tipo_pista, slug, x, y);
+            posGuardadas = { ...posGuardadas, [slug]: [x, y] };
+            b.textContent = 'Guardada ✓';
+          } catch {
+            // sin sesión o sin red: la posición sigue valiendo en ESTE
+            // ejercicio, que es lo que el entrenador está haciendo ahora
+            b.disabled = false; b.textContent = prev;
+            ctx.toast?.('No se ha podido guardar para otros ejercicios. En este sigue valiendo.', { type: 'warn' });
+          }
+        } }, 'Guardar para otros ejercicios');
+        return h('div', { class: 'pos-panel__fila' }, nombre, guardar, h('button', {
+          class: 'fase__quitar', type: 'button', title: 'Quitar esta posición', 'aria-label': `Quitar ${nombreDeSlug(slug)}`,
+          onClick: () => { delete draft.posiciones[slug]; recompilar(); },
+        }, '×'));
+      }),
+    );
   }
 
+  /* Renombrar cambia el nombre EN EL TEXTO también: si no, la línea que
+     dice «Posición 1» se quedaría hablando de algo que ya no existe. */
+  function renombrarPosicion(slug, nuevo) {
+    const limpio = String(nuevo || '').trim();
+    const destino = limpio.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9ñ]+/g, '_').replace(/^_|_$/g, '');
+    if (!destino || destino === slug) { pintarPosiciones(); return; }
+    if (posiciones()[destino]) { ctx.toast?.(`Ya hay una posición llamada «${nombreDeSlug(destino)}».`, { type: 'warn' }); pintarPosiciones(); return; }
+    const antes = nombreDeSlug(slug);
+    draft.posiciones[destino] = draft.posiciones[slug];
+    delete draft.posiciones[slug];
+    const busca = comoSeEscriba(antes);
+    for (const f of draft.fases_texto) {
+      f.texto = f.texto.replace(busca, limpio);
+    }
+    pintarFases();
+    recompilar();
+  }
+
+  /**
+   * Un nombre, escrito como cada cual lo escriba: da igual la caja, las
+   * tildes y cuántos espacios haya puesto entre palabra y palabra.
+   * Renombrar tiene que encontrar la posición aunque el entrenador la
+   * escribiera a mano de otra forma; si no, la línea se queda hablando
+   * de algo que ya no existe y nadie sabe por qué dejó de funcionar.
+   */
+  function comoSeEscriba(nombre) {
+    // El escapado va PRIMERO; las clases de vocales que se meten después
+    // no llevan ninguno de los caracteres que se escapan aquí, así que
+    // no se pisan entre ellas.
+    const flexible = String(nombre)
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/[aáàäâ]/gi, '[aáàäâ]')
+      .replace(/[eéèëê]/gi, '[eéèëê]')
+      .replace(/[iíìïî]/gi, '[iíìïî]')
+      .replace(/[oóòöô]/gi, '[oóòöô]')
+      .replace(/[uúùüû]/gi, '[uúùüû]')
+      .replace(/\s+/g, '\\s+');
+    return new RegExp(flexible, 'gi');
+  }
+
+  /* ---- el panel de abajo: chips, avisos y botones ----------------- */
+
+  const panel = h('div', { class: 'ia-status' });
+
+  function pintarPanel() {
+    pintarPosiciones();
+    const anim = draft.animacion;
+    if (!anim) {
+      mount(panel, h('p', { class: 'muted' },
+        'Escribe qué pasa en la fase 1. Pulsa una acción de la barra, o pincha una ficha de la pista para nombrarla.'));
+      return;
+    }
+    /* Dos listas separadas y no una: «no entiendo esta palabra» y «esta
+       fila no cabe en la pista» son averías distintas y se arreglan en
+       sitios distintos —una escribiendo, la otra volviendo al paso 1—.
+       Bajo un solo título, la segunda parece un fallo de redacción y el
+       entrenador se queda reescribiendo una frase que estaba bien. */
+    const avisos = anim.warnings || [];
+    const deLectura = avisos.filter((w) => w.campo === 'frase');
+    const deLaPista = avisos.filter((w) => w.campo !== 'frase');
+    mount(panel,
+      deLectura.length ? bannerAvisos('⚠ Esto se ha quedado sin entender:', deLectura) : null,
+      deLaPista.length ? bannerAvisos('⚠ Revisa la colocación:', deLaPista) : null,
+      (anim._descartadas && anim._descartadas.length) ? bannerDescartadas(anim._descartadas.length) : null,
+      tarjeta(anim),
+    );
+  }
+
+  function tarjeta(anim) {
+    const chips = [];
+    const aros = Object.keys((PISTAS[anim.pista] && PISTAS[anim.pista].baskets) || {});
+    if (anim.canasta) {
+      const editable = aros.length > 1;
+      chips.push(h('button', {
+        class: 'chip' + (editable ? '' : ' chip--info'), type: 'button', disabled: !editable,
+        title: editable ? 'Cambiar la canasta a la que se ataca' : null,
+        onClick: editable ? () => { draft.canasta = aros[(aros.indexOf(anim.canasta) + 1) % aros.length]; recompilar(); } : null,
+      }, (CANASTA_LABEL[anim.canasta] || anim.canasta) + (editable ? ' ▾' : '')));
+    }
+    const porEquipo = {};
+    for (const j of anim.jugadores || []) porEquipo[j.equipo] = (porEquipo[j.equipo] || 0) + 1;
+    const eq = Object.keys(porEquipo).sort().map((k) => `${porEquipo[k]} × ${TEAM_LABEL[k] || k}`).join(' · ');
+    if (eq) chips.push(h('button', { class: 'chip chip--info', type: 'button', disabled: true }, eq));
+    if (anim.rondas > 1) chips.push(h('button', { class: 'chip chip--info', type: 'button', disabled: true }, `${anim.rondas} rondas de fila`));
+    chips.push(h('button', { class: 'chip chip--info', type: 'button', disabled: true }, `${(anim.fases || []).length} fase${anim.fases.length === 1 ? '' : 's'}`));
+
+    return h('div', { class: 'q-card preview-card' },
+      h('div', { class: 'q-opts' }, ...chips),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn btn--primary', type: 'button', onClick: () => recompilar({ animar: true }) }, 'Animar'),
+        h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => { stage.showPreview(anim); montarSenalar(); } }, 'Ver el planteamiento'),
+      ),
+    );
+  }
+
+  function bannerAvisos(titulo, avisos) {
+    return h('div', { class: 'ia-banner ia-banner--warn' },
+      h('p', null, h('b', null, titulo)),
+      h('ul', null, ...avisos.map((w) => h('li', null, `${w.fase ? `Fase ${w.fase} · ` : ''}«${w.texto_original}» — ${w.interpretacion}`))),
+    );
+  }
   function bannerDescartadas(n) {
     return h('div', { class: 'ia-banner ia-banner--warn' },
       h('span', null, `${n} retoque${n > 1 ? 's' : ''} manual${n > 1 ? 'es' : ''} ya no encaja${n > 1 ? 'n' : ''} con esta jugada.`),
-      h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => descartarRetoques() }, 'Descartar retoques'),
+      h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => { draft.ediciones = []; recompilar(); } }, 'Descartar retoques'),
     );
   }
-  function descartarRetoques() {
-    draft.ediciones = [];
-    const base = draft.baseGen; const prev = draft.animacion;
-    if (base && base.intent) {
-      const limpio = resolverAnimacion(base, [], stage.board.getElementos(), prev.pista, { posiciones: base.posiciones });
-      limpio.warnings = (prev.warnings || []).filter((w) => w && w.campo !== 'canasta');
-      limpio._mock = prev._mock; if ('_ia' in prev) limpio._ia = prev._ia; if (prev._sim) limpio._sim = prev._sim;
-      draft.animacion = limpio;
-      mostrarConfirmacion(limpio);
-    }
+
+  /* ---- «Manualmente» (Tramo 2.10) --------------------------------
+     Seleccionar una fase —o crear una nueva— y corregir UNA acción sin
+     tocar nada más. Es la misma jugada vista de otra manera: los
+     desplegables enseñan lo que el lector ha entendido y, al cambiar
+     algo, vuelven a escribir la línea.
+
+     La línea sigue siendo la única verdad. Guardar aquí un estado
+     aparte daría dos, y en cuanto se separaran nadie sabría cuál manda
+     — que es lo que hacía confuso el paso 2 anterior. El banco de
+     pruebas exige que leer→escribir→leer dé los mismos eventos: si no,
+     tocar un desplegable cambiaría la jugada por su cuenta. */
+
+  const panelManual = h('div', { class: 'manual' });
+  let faseManual = 0;
+
+  const ACTOR = new Set(['jugador', 'fila', 'fila_miembro']);
+  const eventosDe = (i) => (lectura.fases?.[i]?.eventos || []).filter((e) => !e._sigueDefendiendo);
+
+  /* Reescribe la línea desde sus eventos. El sujeto se nombra SIEMPRE
+     en el primer evento: dejarlo implícito ataría esta fase a lo que
+     diga la anterior, y entonces corregir una fase sí tocaría otra. */
+  function aplicarEventos(i, eventos) {
+    /* Quién actuaba en cada fase ANTES de tocar nada. Cambiar la fase i
+       puede cambiar, por el arrastre del sujeto, quién actúa en las
+       siguientes; a las que se vieran afectadas se les escribe el
+       nombre delante para que se queden como estaban. Corregir una
+       acción de una fase no puede mover otra. */
+    const actores = actoresDe(lectura.fases || []);
+    draft.fases_texto[i].texto = escribirFrase(eventos, { lexico, nombreDe: (r) => nombreDe(r) });
+    draft.fases_texto = anclarSujetos(draft.fases_texto, lexico, { nombreDe: (r) => nombreDe(r), actores, desde: i });
+    pintarFases();
+    recompilar();
   }
 
-  /* ---- modo edición manual (Tramo 6) --------------------------------------
-     Monta el EditorCanvas sobre la pista para retocar flechas y trayectorias.
-     Con intención base los retoques se guardan como overrides (draft.ediciones)
-     y cada cambio RE-RESUELVE: la defensa reactiva vuelve a colocarse y las
-     fases siguientes arrancan de la nueva posición. Sin intención base
-     (geometría legada) se edita la geometría directa (restPositions propaga).
-     Undo/redo con la misma pila del editor grande. */
-  let edit = null; // { editor, hist, base, resolver, elementos, pista } al editar
-  function entrarEdicion(data) {
-    const base = draft.baseGen;
-    const resolver = !!(base && base.intent);
-    draft.ediciones = draft.ediciones || [];
+  function opciones(valor, lista, onChange, vacio = '—') {
+    const sel = h('select', { class: 'select select--sm', onChange: (e) => onChange(e.target.value || null) },
+      h('option', { value: '' }, vacio),
+      ...lista.map((o) => h('option', { value: o.valor, selected: o.valor === valor }, o.texto)),
+    );
+    sel.value = valor == null ? '' : String(valor);
+    return sel;
+  }
+
+  function filaAccion(i, k, ev) {
+    const accion = lexico.porSlug?.get(ev.accion);
+    if (!accion) return null;
+    const cambiar = (patch) => {
+      const lista = eventosDe(i).map((e, n) => (n === k ? { ...e, ...patch, args: { ...(patch.args ?? e.args) } } : e));
+      aplicarEventos(i, lista);
+    };
+
+    const quien = opciones(ev.jugador,
+      sujetos.filter((s) => ACTOR.has(s.tipo)).map((s) => ({ valor: s.ref, texto: s.nombre })),
+      (v) => v && cambiar({ jugador: v }), 'quién');
+
+    /* Al cambiar de acción, los complementos se sueltan: los huecos de
+       «bloquea» no son los de «tira», y arrastrarlos dejaría un dato
+       colgando de un sitio donde no cabe. */
+    const que = opciones(ev.accion,
+      catalogo.map((a) => ({ valor: a.slug, texto: a.nombre })),
+      (v) => v && cambiar({ accion: v, args: {} }), 'qué hace');
+
+    const complementos = huecosDe(accion).map((hu) => {
+      const cabe = sujetos.filter((s) => hu.tipos.includes(s.tipo));
+      if (!cabe.length) return null;
+      if (hu.lista) {
+        const puestos = Array.isArray(ev.args?.[hu.hueco]) ? ev.args[hu.hueco] : [];
+        return h('span', { class: 'manual__hueco' }, h('span', { class: 'manual__prep' }, hu.etiqueta),
+          h('span', { class: 'q-opts' }, ...cabe.map((s) => h('button', {
+            class: 'chip chip--sm' + (puestos.includes(s.ref) ? ' is-active' : ''), type: 'button',
+            onClick: () => {
+              const nuevo = puestos.includes(s.ref) ? puestos.filter((r) => r !== s.ref) : [...puestos, s.ref];
+              cambiar({ args: { ...ev.args, [hu.hueco]: nuevo } });
+            },
+          }, s.nombre))));
+      }
+      const actual = typeof ev.args?.[hu.hueco] === 'string' ? ev.args[hu.hueco] : null;
+      return h('span', { class: 'manual__hueco' }, h('span', { class: 'manual__prep' }, hu.etiqueta),
+        opciones(actual, cabe.map((s) => ({ valor: s.ref, texto: s.nombre })),
+          (v) => cambiar({ args: { ...ev.args, [hu.hueco]: v } }), hu.pedido ? '(falta)' : '—'));
+    }).filter(Boolean);
+
+    return h('div', { class: 'manual__accion' + (complementos.length ? '' : ' is-simple') },
+      quien, que, ...complementos,
+      h('button', {
+        class: 'fase__quitar', type: 'button', title: 'Quitar esta acción', 'aria-label': 'Quitar esta acción',
+        onClick: () => aplicarEventos(i, eventosDe(i).filter((_, n) => n !== k)),
+      }, '×'),
+    );
+  }
+
+  function pintarManual() {
+    if (edit) return;                     // ajustando flechas: manda su barra
+    const n = draft.fases_texto.length;
+    faseManual = Math.max(0, Math.min(faseManual, n - 1));
+    const eventos = eventosDe(faseManual);
+    const primerActor = sujetos.find((s) => ACTOR.has(s.tipo));
+
+    mount(panelManual,
+      h('div', { class: 'q-opts' },
+        ...draft.fases_texto.map((_, i) => h('button', {
+          class: 'chip' + (i === faseManual ? ' is-active' : ''), type: 'button',
+          onClick: () => { faseManual = i; activa = i; marcarActiva(); colocarBarra(); pintarManual(); },
+        }, `Fase ${i + 1}`)),
+        h('button', {
+          class: 'chip chip--otro', type: 'button',
+          onClick: () => {
+            draft.fases_texto.push(faseVacia());
+            faseManual = activa = draft.fases_texto.length - 1;
+            pintarFases(); recompilar();
+          },
+        }, '+ fase nueva'),
+      ),
+      eventos.length
+        ? h('div', { class: 'manual__lista' }, ...eventos.map((ev, k) => filaAccion(faseManual, k, ev)))
+        : h('p', { class: 'muted' }, 'Esta fase todavía no hace nada. Añade una acción o escríbela arriba.'),
+      h('div', { class: 'row' },
+        h('button', {
+          class: 'btn btn--ghost btn--sm', type: 'button', disabled: !primerActor,
+          onClick: () => {
+            const base = eventos[eventos.length - 1];
+            aplicarEventos(faseManual, [...eventos, {
+              jugador: base?.jugador || primerActor.ref, accion: 'corta', args: {},
+            }]);
+          },
+        }, '+ añadir acción'),
+        (draft.animacion && draft.animacion.fases?.length) ? h('button', {
+          class: 'btn btn--ghost btn--sm', type: 'button',
+          onClick: () => entrarEdicion(draft.animacion, faseManual),
+        }, 'Ajustar las flechas de esta fase') : null,
+      ),
+    );
+  }
+
+  const manual = collapsible({
+    label: 'Manualmente',
+    open: false,
+    content: h('div', { class: 'flow' },
+      h('p', { class: 'muted' }, 'Lo mismo que hay escrito arriba, acción por acción. Cambia una y la línea se reescribe sola.'),
+      panelManual,
+    ),
+  });
+
+  /* ---- ajustar las flechas a mano (Tramo 6, base del 2.10) -------- */
+
+  function entrarEdicion(data, fase = 0) {
+    desmontarSenalar();
     const elementos = stage.board.getElementos();
-    const work = resolver
-      ? resolverAnimacion(base, draft.ediciones, elementos, data.pista, { posiciones: base.posiciones })
-      : JSON.parse(JSON.stringify(data));
+    const work = resolverAnimacion(draft.baseGen, draft.ediciones, elementos, data.pista, { posiciones: posiciones() });
     work.warnings = data.warnings || [];
     draft.animacion = work;
-    generated = true;
-    const editor = stage.showEditor(work, { onChange: onEdit, onSelect: () => paintToolbar() });
-    const hist = new History(snapshotEdit, restoreEdit);
-    hist.onChange = () => paintToolbar();
-    edit = { editor, hist, base, resolver, elementos, pista: data.pista };
+    const editor = stage.showEditor(work, { onChange: onEdit, onSelect: () => pintarBarraEdicion() });
+    // se entra por la fase que se estaba corrigiendo, no por la primera
+    editor.setFase(Math.max(0, Math.min(fase, (work.fases || []).length - 1)));
+    const hist = new History(
+      () => ({ ediciones: JSON.parse(JSON.stringify(draft.ediciones)) }),
+      (s) => { draft.ediciones = JSON.parse(JSON.stringify(s.ediciones)); reresolver(); },
+    );
+    hist.onChange = () => pintarBarraEdicion();
+    edit = { editor, hist, elementos, pista: data.pista };
     hist.push();
-    paintToolbar();
+    pintarBarraEdicion();
   }
 
-  function snapshotEdit() {
-    return edit && edit.resolver
-      ? { ediciones: JSON.parse(JSON.stringify(draft.ediciones)) }
-      : { anim: JSON.parse(JSON.stringify(draft.animacion)) };
-  }
-  function restoreEdit(s) {
-    if (!edit) return;
-    if (edit.resolver) { draft.ediciones = JSON.parse(JSON.stringify(s.ediciones)); reresolver(); }
-    else {
-      const w = draft.animacion, a = s.anim;
-      w.jugadores = a.jugadores; w.balones = a.balones; w.conos = a.conos; w.fases = a.fases;
-      edit.editor.refresh();
-    }
-  }
-
-  // re-resuelve la geometría desde la base + las ediciones actuales y la vuelca
-  // al editor conservando la fase visible.
   function reresolver() {
-    const prevWarn = draft.animacion && draft.animacion.warnings;
-    const nuevo = resolverAnimacion(edit.base, draft.ediciones, edit.elementos, edit.pista, { posiciones: edit.base.posiciones });
-    nuevo.warnings = prevWarn || [];
+    const nuevo = resolverAnimacion(draft.baseGen, draft.ediciones, edit.elementos, edit.pista, { posiciones: posiciones() });
+    nuevo.warnings = draft.animacion?.warnings || [];
     draft.animacion = nuevo;
     edit.editor.setAnim(nuevo);
   }
 
-  // traduce la flecha recién editada a operaciones de override (Tramo 6.2):
-  // siempre 'ruta' (el trazo exacto) y, para bote/corte/defiende que EXISTAN en
-  // la intención base, también 'destino' (para que la defensa re-reaccione al
-  // nuevo punto). Un defensor reactivo inyectado no está en la base: solo 'ruta'
-  // (sin falso descartado).
-  function derivarOps(editor, base) {
+  /* Traduce la flecha recién arrastrada a retoques. Siempre el trazo
+     exacto ('ruta'); y además el DESTINO cuando el evento que la dibuja
+     lo declaró el entrenador, para que la defensa vuelva a reaccionar al
+     punto nuevo. Un defensor que solo sigue defendiendo (arrastrado por
+     el lector, no escrito) no fija destino: se conserva como trazo. */
+  function derivarOps(editor) {
     const sel = editor.sel;
     if (!sel || !sel.ref) return [];
     const ref = sel.ref;
-    const fase = editor.k;
     const elemento = ref.elemento_id || ref.de_id;
     if (!elemento) return [];
+    const fase = editor.k;
     const path = JSON.parse(JSON.stringify(sel.path));
-    // kind distingue el trazo cuando un jugador tiene movimiento Y pase en la
-    // MISMA fase (un pase trae de_id, no elemento_id): sin él el resolver
-    // localizaría por id y el movimiento ganaría siempre, pisando el pase.
     const kind = ref.elemento_id ? 'mov' : 'pase';
     const ops = [{ fase, elemento, op: 'ruta', kind, valor: path }];
     if (ref.elemento_id && ['carrera_con_balon', 'corte', 'carrera_sin_balon'].includes(ref.tipo_movimiento)) {
-      const evs = (base && base.intent && base.intent.fases && base.intent.fases[fase] && base.intent.fases[fase].eventos) || [];
-      // solo un evento DECLARADO por el entrenador fija su destino en la
-      // intención; un `defiende` inyectado por la defensa reactiva (_reactiva)
-      // NO — así el defensor reactivo arrastrado se conserva como trazo ('ruta')
-      // y sigue re-reaccionando (evita, además, un falso "retoque no encaja").
-      if (evs.some((e) => e && e.jugador === elemento && !e._reactiva && (e.tipo === 'bote' || e.tipo === 'corte' || e.tipo === 'defiende'))) {
+      const evs = draft.baseGen?.intent?.fases?.[fase]?.eventos || [];
+      const suyo = evs.find((e) => e && e.jugador === elemento && !e._sigueDefendiendo && !e._reactiva);
+      if (suyo) {
         const fin = path[path.length - 1];
         ops.push({ fase, elemento, op: 'destino', valor: { x: fin.x, y: fin.y } });
       }
@@ -260,235 +749,99 @@ export function paso2(ctx) {
 
   function onEdit() {
     if (!edit) return;
-    if (edit.resolver) {
-      for (const op of derivarOps(edit.editor, edit.base)) draft.ediciones = upsertEdicion(draft.ediciones, op);
-      reresolver();
-    }
+    for (const op of derivarOps(edit.editor)) draft.ediciones = upsertEdicion(draft.ediciones, op);
+    reresolver();
     edit.hist.push();
+    onDraftChange?.();
   }
 
-  function paintToolbar() {
+  function pintarBarraEdicion() {
     if (!edit) return;
     const { editor, hist } = edit;
     const work = draft.animacion;
     const k = editor.k, n = (work.fases || []).length;
-    const desc = (work._descartadas || []).length;
-    mount(statusHost, h('div', { class: 'q-card' },
-      h('p', { class: 'q-text' }, 'Ajusta las flechas: arrastra sus puntos, clic en la línea para añadir uno, clic en un punto para curvarlo, Supr para borrarlo. Mover a un atacante recoloca a su defensor y el arranque de las fases siguientes.'),
+    mount(panel, h('div', { class: 'q-card' },
+      h('p', { class: 'q-text' }, 'Arrastra los puntos de una flecha; pincha en la línea para añadir uno, DOBLE clic en un punto para curvarlo, Supr para borrarlo. Mover a un atacante recoloca a su defensor y el arranque de las fases siguientes.'),
       h('div', { class: 'row' },
-        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', disabled: k <= 0, onClick: () => { editor.setFase(k - 1); paintToolbar(); } }, '‹ Fase'),
+        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', disabled: k <= 0, onClick: () => { editor.setFase(k - 1); pintarBarraEdicion(); } }, '‹ Fase'),
         h('button', { class: 'chip chip--info', type: 'button', disabled: true }, `Fase ${k + 1} / ${n}`),
-        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', disabled: k >= n - 1, onClick: () => { editor.setFase(k + 1); paintToolbar(); } }, 'Fase ›'),
+        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', disabled: k >= n - 1, onClick: () => { editor.setFase(k + 1); pintarBarraEdicion(); } }, 'Fase ›'),
       ),
-      desc ? h('p', { class: 'muted' }, `${desc} retoque${desc > 1 ? 's' : ''} no encaja${desc > 1 ? 'n' : ''} con esta jugada.`) : null,
       h('div', { class: 'row' },
         h('button', { class: 'btn btn--ghost btn--sm', type: 'button', disabled: !hist.canUndo(), onClick: () => hist.undo() }, 'Deshacer'),
         h('button', { class: 'btn btn--ghost btn--sm', type: 'button', disabled: !hist.canRedo(), onClick: () => hist.redo() }, 'Rehacer'),
-        h('button', { class: 'btn btn--primary', type: 'button', onClick: () => salirEdicion() }, 'Hecho'),
+        h('button', { class: 'btn btn--primary', type: 'button', onClick: () => { edit = null; recompilar(); pintarManual(); } }, 'Hecho'),
       ),
     ));
   }
 
-  function salirEdicion() {
-    const work = draft.animacion;
-    edit = null;
-    mostrarConfirmacion(work); // showPreview desmonta el editor y repinta chips
+  /* ---- simulación ataque-defensa (Tramo 5b) ---------------------- */
+
+  function simular(canastaForzada = null) {
+    if (draft.semilla_sim == null) draft.semilla_sim = 1;
+    const data = simularJugada({ elementos: stage.board.getElementos(), pista: draft.tipo_pista, canasta: canastaForzada || canastaActual(), semilla: draft.semilla_sim });
+    if (data.error) { mount(panel, h('div', { class: 'ia-banner ia-banner--error' }, h('span', null, data.error))); return; }
+    draft.baseGen = { intent: data._intent, posiciones: posiciones() };
+    draft.animacion = data;
+    stage.showPreview(data);
+    montarSenalar();
+    pintarPanel();
   }
 
-  /* ---- tarjeta y chips de readback (§Tramo 1.2) ----
-     Los chips se derivan del resultado COMPILADO (data + data._intent), nunca
-     del texto crudo. En esta iteración solo el chip de CANASTA es editable
-     (clic → alterna de aro y recompila vía recompilarConCanasta, sin tocar el
-     prompt); jugadores, conos/filas y fases quedan INFORMATIVOS — editarlos
-     exige re-extraer la intención y llega con el Tramo 2. */
-  function tarjetaPreview(data) {
-    const chips = [];
-
-    if (data.canasta) {
-      const keys = Object.keys((PISTAS[data.pista] && PISTAS[data.pista].baskets) || {});
-      // editable solo con DOS aros y con el intent guardado para recompilar
-      // (o con datos de simulación: en ese caso cambiar de aro RE-SIMULA —
-      // recompilar el intent viejo dejaría la defensa calculada al aro viejo).
-      const editable = keys.length > 1 && !!(data._intent || data._sim);
-      chips.push(h('button', {
-        class: 'chip' + (editable ? '' : ' chip--info'), type: 'button', disabled: !editable,
-        title: editable ? 'Cambiar la canasta objetivo' : null,
-        onClick: editable ? () => {
-          const next = keys[(keys.indexOf(data.canasta) + 1) % keys.length];
-          if (data._sim) { simular(next); return; }
-          // Tramo 6.2: con intención base y retoques, cambiar de aro re-resuelve
-          // conservando los overrides (recompilarConCanasta los perdería).
-          if (draft.baseGen && draft.baseGen.intent) {
-            const baseN = { ...draft.baseGen, intent: { ...draft.baseGen.intent, canasta: next } };
-            const nuevo = resolverAnimacion(baseN, draft.ediciones || [], stage.board.getElementos(), data.pista, { posiciones: draft.baseGen.posiciones });
-            nuevo.warnings = (data.warnings || []).filter((w) => w && w.campo !== 'canasta');
-            nuevo._mock = data._mock; if ('_ia' in data) nuevo._ia = data._ia;
-            draft.baseGen = baseN;
-            draft.animacion = nuevo;
-            mostrarConfirmacion(nuevo);
-            return;
-          }
-          const nuevo = recompilarConCanasta(data, next, stage.board.getElementos(), data.pista);
-          draft.animacion = nuevo;
-          mostrarConfirmacion(nuevo); // refresca vista previa + chips
-        } : null,
-      }, (CANASTA_LABEL[data.canasta] || data.canasta) + (editable ? ' ▾' : '')));
-    }
-
-    // datos de simulación (Tramo 5b): chip informativo de la variante
-    if (data._sim) chips.push(h('button', { class: 'chip chip--info', type: 'button', disabled: true }, `Simulación · variante ${data._sim.semilla}`));
-
-    // jugadores por equipo (incluye los sintetizados de fila) — informativo
-    const porEquipo = {};
-    for (const j of data.jugadores || []) porEquipo[j.equipo] = (porEquipo[j.equipo] || 0) + 1;
-    const eqTxt = Object.keys(porEquipo).sort().map((eq) => `${porEquipo[eq]} × ${TEAM_LABEL[eq] || eq}`).join(' · ');
-    if (eqTxt) chips.push(h('button', { class: 'chip chip--info', type: 'button', disabled: true }, eqTxt));
-
-    // conos: filas con su cola visible y conos a rodear — informativos
-    for (const c of data.conos || []) {
-      if (c.funcion === 'fila' && c.fila_config) chips.push(h('button', { class: 'chip chip--info', type: 'button', disabled: true }, `cono = fila (${c.fila_config.n_jugadores} en cola)`));
-    }
-    const nRodear = (data.conos || []).filter((c) => c.funcion === 'rodear').length;
-    if (nRodear) chips.push(h('button', { class: 'chip chip--info', type: 'button', disabled: true }, `${nRodear} cono${nRodear > 1 ? 's' : ''} a rodear`));
-
-    const nFases = (data.fases || []).length;
-    chips.push(h('button', { class: 'chip chip--info', type: 'button', disabled: true }, `${nFases} fase${nFases === 1 ? '' : 's'}`));
-
-    return h('div', { class: 'q-card preview-card' },
-      h('p', { class: 'q-text' }, 'Esto es lo que se ha entendido. Revisa el planteamiento dibujado en la pista:'),
-      h('div', { class: 'q-opts' }, ...chips),
+  /* ---- simular una jugada (Tramo 5b) -----------------------------
+     No tiene nada que ver con el camino de IA que se ha retirado: es
+     el simulador determinista de ataque-defensa, que juega la
+     colocación que hay en la pista y sale siempre igual con la misma
+     semilla. Estaba metido en la sección del generador viejo, y al
+     borrarla se ha quedado en la suya. */
+  const simulacion = collapsible({
+    label: 'Simular una jugada',
+    open: false,
+    content: h('div', { class: 'flow' },
+      h('p', { class: 'muted' }, 'Con la colocación que hay en la pista, el equipo del que lleva el balón ataca buscando tiro y el otro defiende. Sale siempre igual; «otra variante» prueba otra.'),
       h('div', { class: 'row' },
-        h('button', { class: 'btn btn--primary', type: 'button', onClick: () => {
-          stage.showAnimation(data);
-          mount(statusHost,
-            data.sin_ia ? bannerSinIA() : null,
-            (data.warnings && data.warnings.length) ? warningsBanner(data.warnings)
-              : (data.sin_ia ? null : banner('ok', 'Animación generada. Se reproduce en la pista.')));
-        } }, 'Animar'),
-        h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => {
-          // corregir: la pista vuelve al modo edición y el textarea queda
-          // abierto y con foco para retocar la descripción y regenerar.
-          stage.showBoard();
-          mount(statusHost);
-          abrirDescripcion();
-          ta.focus();
-        } }, 'Corregir'),
-        // Tramo 6: retoque manual de flechas/trayectorias sobre la pista.
-        (data.fases && data.fases.length) ? h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => entrarEdicion(data) }, 'Ajustar a mano') : null,
-        // Tramo 5b: variante de la simulación — misma colocación y mismo aro,
-        // semilla siguiente (determinista: se puede volver bajando la semilla).
-        data._sim ? h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => {
-          draft.semilla_sim = (data._sim.semilla || 1) + 1;
-          simular(data.canasta);
-        } }, 'Otra variante') : null,
+        h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => simular() }, 'Simular ataque-defensa'),
+        h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => { draft.semilla_sim = (draft.semilla_sim || 1) + 1; simular(); } }, 'Otra variante'),
       ),
-    );
-  }
+    ),
+  });
 
-  /* ---- flujo de preguntas §8.3 (una a una) ---- */
-  async function runPreguntas(preguntas, prev, ronda = 1) {
-    const answers = [...prev];
-    for (let i = 0; i < preguntas.length; i++) {
-      const q = preguntas[i];
-      const r = await askOne(q, i + 1, preguntas.length);
-      answers.push({ id: q.id, tipo: q.tipo, respuesta: r });
-      // q_pos_* tipo A (Tramo 2.3): el clic define una posición con nombre
-      // NUEVA de ESTA pista — se guarda en Supabase (guardarPosicion, upsert)
-      // para reutilizarla en próximos ejercicios, y en el caché local para
-      // que resuelva YA en la regeneración de esta misma ronda. El guardado
-      // remoto es no-fatal (dev sin sesión / sin red: la respuesta viaja
-      // igualmente en `respuestas` y la generación no se bloquea).
-      if (q.tipo === 'A' && /^q_pos_/.test(String(q.id)) && Array.isArray(r) && r.length >= 2) {
-        const nombre = q.nombre || String(q.id).slice('q_pos_'.length);
-        posCustom = { ...(posCustom || {}), [nombre]: [r[0], r[1]] };
-        posCustomPista = draft.tipo_pista;
-        guardarPosicion(draft.tipo_pista, nombre, r[0], r[1]).catch(() => { /* sin sesión/offline */ });
-      }
-    }
-    generar(answers, ronda);
-  }
-
-  function askOne(q, idx, total) {
-    return new Promise((resolve) => {
-      const head = h('div', { class: 'q-head' }, h('span', { class: 'q-progress mono' }, `Pregunta ${idx} de ${total}`), h('p', { class: 'q-text' }, q.texto));
-      if (q.tipo === 'A') {
-        // posición en la pista
-        const overlay = h('div', { class: 'court-ask' }, h('span', null, 'Haz clic en la pista'));
-        stage.view.root.append(overlay);
-        let dot = null; let pos = null;
-        const onDown = (ev) => {
-          const [x, y] = stage.view.pointerNorm(ev);
-          pos = [x, y];
-          if (!dot) { dot = h('div', { class: 'court-dot' }); stage.view.root.append(dot); }
-          dot.style.left = `${x * 100}%`; dot.style.top = `${y * 100}%`;
-          confirm.disabled = false;
-        };
-        stage.view.canvas.addEventListener('pointerdown', onDown);
-        const confirm = h('button', { class: 'btn btn--primary', type: 'button', disabled: true, onClick: () => {
-          stage.view.canvas.removeEventListener('pointerdown', onDown);
-          overlay.remove(); if (dot) dot.remove();
-          resolve(pos);
-        } }, 'Confirmar posición');
-        mount(statusHost, h('div', { class: 'q-card' }, head, confirm));
-      } else {
-        // opciones (tipo B) + "Otro…"
-        let chosen = null;
-        const otroInput = h('input', { class: 'input', placeholder: 'Otra respuesta…', oninput: () => { chosen = otroInput.value; confirm.disabled = !chosen; } });
-        const opts = h('div', { class: 'q-opts' },
-          ...(q.opciones || []).map((o) => h('button', { class: 'chip', type: 'button', onClick: (e) => {
-            opts.querySelectorAll('.is-active').forEach((x) => x.classList.remove('is-active'));
-            e.currentTarget.classList.add('is-active'); chosen = o; otroInput.value = ''; confirm.disabled = false;
-          } }, o)),
-          h('button', { class: 'chip chip--otro', type: 'button', onClick: () => otroInput.focus() }, 'Otro…'),
-        );
-        const confirm = h('button', { class: 'btn btn--primary', type: 'button', disabled: true, onClick: () => resolve(chosen) }, 'Confirmar');
-        mount(statusHost, h('div', { class: 'q-card' }, head, opts, otroInput, confirm));
-      }
-    });
-  }
-
-  const desc = collapsible({ label: 'Describir acciones con texto', open: !!draft.descripcion_texto,
-    content: h('div', { class: 'flow' }, h('label', { class: 'field__label' }, 'Describe el ejercicio'), ta) });
-
-  // Despliega la sección de descripción si está plegada (botón "Corregir").
-  function abrirDescripcion() {
-    const body = desc.querySelector('.collapsible__body');
-    if (body && body.hidden) desc.querySelector('.collapsible__toggle')?.click();
-  }
+  /* ---- montaje ---------------------------------------------------- */
 
   const el = h('div', { class: 'card flow' },
     h('p', { class: 'eyebrow' }, 'Paso 2'),
     h('h2', { class: 'section-title' }, 'Describe las acciones'),
-    desc,
-    h('div', { class: 'row' }, btn, btnSimular),
-    statusHost,
+    h('p', { class: 'muted' }, 'Una línea por fase. Pincha en la pista para nombrar una ficha o marcar un sitio; los elementos no se mueven aquí.'),
+    listaFases,
+    panelPos,
+    panel,
+    manual,
+    simulacion,
   );
 
-  return { el };
-}
+  pintarBarra();
+  pintarFases();
+  /* Rehacer la animación al entrar cubre lo que pide §5.2 —cambiar una
+     posición inicial en el paso 1 rehace la fase— y lo cubre entero: se
+     rehacen TODAS las fases, no solo la primera, porque mover una ficha
+     puede cambiar cualquiera de ellas. */
+  recompilar();
 
-function banner(type, text) {
-  return h('div', { class: `ia-banner ia-banner--${type}` }, h('span', null, text));
-}
+  // el vocabulario del club y las posiciones guardadas llegan por red y
+  // se suman cuando llegan: el paso funciona entero sin ellos
+  (async () => {
+    const [cat, pos] = await Promise.all([
+      cargarCatalogo().catch(() => null),
+      cargarPosiciones(draft.tipo_pista).catch(() => ({})),
+    ]);
+    if (cat && cat.acciones && cat.acciones.length) catalogo = cat.acciones;
+    posGuardadas = pos || {};
+    pintarBarra();
+    recompilar();
+  })();
 
-/* Generado sin IA porque el servidor no tiene clave. NO es un error: la
-   animación está hecha y se puede seguir. Se le dice al entrenador lo único
-   que le sirve —que la lectura del texto es más basta y que avise a quien
-   lleva la web—; el cómo se configura vive en la consola y en .env.example,
-   que es donde lo va a buscar quien pueda arreglarlo. */
-function bannerSinIA() {
-  return h('div', { class: 'ia-banner ia-banner--warn' },
-    h('p', null, h('b', null, '⚠ Animación generada sin IA.')),
-    h('p', null, 'El generador con IA no está disponible ahora mismo, así que el texto se ha '
-      + 'leído aquí, en el navegador: entiende las acciones básicas pero se pierde los matices. '
-      + 'Revisa la pista antes de animar, y avisa a quien administre la web.'),
-  );
-}
-
-function warningsBanner(warnings) {
-  return h('div', { class: 'ia-banner ia-banner--warn' },
-    h('p', null, h('b', null, '⚠ Algunas partes se interpretaron automáticamente:')),
-    h('ul', null, ...warnings.map((w) => h('li', null, `"${w.texto_original}" — ${w.interpretacion}`))),
-    h('p', { class: 'muted' }, 'Ajusta la descripción y pulsa "Regenerar" para actualizar.'),
-  );
+  return {
+    el,
+    destroy() { clearTimeout(temporizador); desmontarSenalar(); stage.board.setSoloMirar(false); },
+  };
 }

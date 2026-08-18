@@ -50,13 +50,13 @@ export const TANDA_05 = [
       // desplaza para que haya algo que mirar, pero no disputa nada.
       // Estaba pintado de equipo B, y el equipo B se dibuja como
       // defensa: la pizarra prometía una oposición que no existe.
-      jug('A', 1, 0.34, 0.30), jug('A', 3, 0.48, 0.30),
-      jug('A', 2, 0.34, 0.70), jug('A', 4, 0.48, 0.70),
+      jug('A', 1, 0.332, 0.3263), jug('A', 3, 0.4915, 0.3263),
+      jug('A', 2, 0.332, 0.6799), jug('A', 4, 0.4915, 0.6799),
       // los dos balones de cada botador, separados: puestos en la MISMA
       // coordenada se dibujaban uno encima del otro y parecía uno solo,
       // en el ejercicio que se llama precisamente "dos balones"
-      balon(0.325, 0.285), balon(0.325, 0.315),
-      balon(0.325, 0.685), balon(0.325, 0.715),
+      balon(0.315, 0.313), balon(0.315, 0.3395),
+      balon(0.315, 0.6666), balon(0.315, 0.6932),
     ],
     intent: null,
   },
@@ -84,13 +84,13 @@ export const TANDA_05 = [
       criterio_exito: 'quien coge el balón lo conserva los tres segundos en tres de cada cuatro duelos',
     },
     tablero: () => [
-      jug('A', 1, 0.52, 0.42), jug('B', 1, 0.52, 0.58),
-      balon(0.46, 0.50),
+      jug('A', 1, 0.537, 0.4324), jug('B', 1, 0.537, 0.5738),
+      balon(0.4687, 0.5031),
     ],
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: { x: 0.46, y: 0.50 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: { x: 0.4687, y: 0.5031 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }] },
       ],
@@ -120,10 +120,10 @@ export const TANDA_05 = [
       criterio_exito: 'llegar al espacio más pequeño sin haber chocado ni perdido el balón',
     },
     tablero: () => [
-      jug('A', 1, 0.34, 0.32), jug('A', 2, 0.34, 0.66), jug('A', 3, 0.50, 0.32),
-      jug('A', 4, 0.50, 0.66), jug('A', 5, 0.42, 0.50),
-      cono(0.28, 0.24), cono(0.28, 0.76), cono(0.58, 0.24), cono(0.58, 0.76),
-      balon(0.34, 0.32), balon(0.34, 0.66), balon(0.50, 0.32), balon(0.50, 0.66), balon(0.42, 0.50),
+      jug('A', 1, 0.332, 0.344), jug('A', 2, 0.332, 0.6445), jug('A', 3, 0.5142, 0.344),
+      jug('A', 4, 0.5142, 0.6445), jug('A', 5, 0.4231, 0.5031),
+      cono(0.2637, 0.2732), cono(0.2637, 0.733), cono(0.6053, 0.2732), cono(0.6053, 0.733),
+      balon(0.332, 0.344), balon(0.332, 0.6445), balon(0.5142, 0.344), balon(0.5142, 0.6445), balon(0.4231, 0.5031),
     ],
     /* Los conos no se pueden mover en una animación, así que el
        estrechamiento se cuenta con los jugadores: dos fases cruzándose
@@ -134,25 +134,25 @@ export const TANDA_05 = [
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.48, y: 0.42 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.48, y: 0.58 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.36, y: 0.42 } },
-          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.36, y: 0.58 } },
-          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.42, y: 0.30 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4915, y: 0.4324 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4915, y: 0.5738 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.3548, y: 0.4324 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.3548, y: 0.5738 } },
+          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.4231, y: 0.3263 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.34, y: 0.66 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.34, y: 0.32 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.52, y: 0.68 } },
-          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.52, y: 0.34 } },
-          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.42, y: 0.70 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.332, y: 0.6445 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.332, y: 0.344 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.537, y: 0.6622 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.537, y: 0.3616 } },
+          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.4231, y: 0.6799 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.39, y: 0.55 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.39, y: 0.45 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.47, y: 0.56 } },
-          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.47, y: 0.44 } },
-          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.43, y: 0.50 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.389, y: 0.5473 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.389, y: 0.4589 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.4801, y: 0.5561 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.4801, y: 0.4501 } },
+          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.4345, y: 0.5031 } },
         ] },
       ],
     },
@@ -261,9 +261,9 @@ export const TANDA_05 = [
       criterio_exito: 'llegar a diez pases seguidos sin pérdida al menos dos veces por serie',
     },
     tablero: () => [
-      jug('A', 1, 0.34, 0.32), jug('A', 2, 0.34, 0.68), jug('A', 3, 0.56, 0.50),
-      jug('B', 1, 0.38, 0.36),
-      balon(0.34, 0.32),
+      jug('A', 1, 0.332, 0.344), jug('A', 2, 0.332, 0.6622), jug('A', 3, 0.5826, 0.5031),
+      jug('B', 1, 0.3776, 0.3793),
+      balon(0.332, 0.344),
     ],
     /* El triángulo da la vuelta entera con un solo defensor que
        persigue siempre al balón: eso es lo que obliga a pivotar antes
@@ -275,15 +275,15 @@ export const TANDA_05 = [
       // justo el jugador que tiene que pivotar.
       fases: [
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.50, y: 0.43 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.5142, y: 0.4412 } },
           { jugador: 'A1', tipo: 'pase', a: 'A3' },
         ] },
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.41, y: 0.60 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4117, y: 0.5915 } },
           { jugador: 'A3', tipo: 'pase', a: 'A2' },
         ] },
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.41, y: 0.37 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4117, y: 0.3882 } },
           { jugador: 'A2', tipo: 'pase', a: 'A1' },
         ] },
       ],
@@ -392,7 +392,7 @@ export const TANDA_05 = [
       // El balón sale del aro, no de la base: el tiro del entrenador ya
       // está hecho cuando empieza lo que este ejercicio entrena. Con el
       // balón en la base parecía que alguien iba a atacar desde ahí.
-      balon(0.235, 0.50),
+      balon(0.2125, 0.5031),
     ],
     /* Primero encontrar al par, después el balón — que es justo el
        orden que las notas dicen que cuesta instalar. Fase 1: los tres
@@ -447,8 +447,8 @@ export const TANDA_05 = [
       aplicacion: 'todo el bloque de manejo: es el mismo control de balón, aquí sin exigencia',
     },
     tablero: () => [
-      jug('A', 1, 0.62, 0.25), jug('A', 2, 0.62, 0.45), jug('A', 3, 0.62, 0.65), jug('A', 4, 0.62, 0.85),
-      balon(0.62, 0.25), balon(0.62, 0.45), balon(0.62, 0.65), balon(0.62, 0.85),
+      jug('A', 1, 0.6509, 0.2821), jug('A', 2, 0.6509, 0.4589), jug('A', 3, 0.6509, 0.6357), jug('A', 4, 0.6509, 0.8125),
+      balon(0.6509, 0.2821), balon(0.6509, 0.4589), balon(0.6509, 0.6357), balon(0.6509, 0.8125),
     ],
     intent: null,
   },
@@ -481,14 +481,14 @@ export const TANDA_05 = [
        detrás de la línea de medio campo, que en esta pista está en
        0.829. Lo cazó el linter comprobando los límites MEDIDOS. */
     tablero: () => [
-      fila(0.54, 0.30, 4, 0), fila(0.54, 0.50, 4, 0), fila(0.54, 0.70, 4, 0),
-      cono(0.24, 0.30), cono(0.24, 0.50), cono(0.24, 0.70),
-      balon(0.54, 0.30), balon(0.54, 0.50), balon(0.54, 0.70),
+      fila(0.5598, 0.3263, 4, 0), fila(0.5598, 0.5031, 4, 0), fila(0.5598, 0.6799, 4, 0),
+      cono(0.2182, 0.3263), cono(0.2182, 0.5031), cono(0.2182, 0.6799),
+      balon(0.5598, 0.3263), balon(0.5598, 0.5031), balon(0.5598, 0.6799),
     ],
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.24, y: 0.30 } }, { jugador: 'fila2', tipo: 'bote', hacia: { x: 0.24, y: 0.50 } }, { jugador: 'fila3', tipo: 'bote', hacia: { x: 0.24, y: 0.70 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2182, y: 0.3263 } }, { jugador: 'fila2', tipo: 'bote', hacia: { x: 0.2182, y: 0.5031 } }, { jugador: 'fila3', tipo: 'bote', hacia: { x: 0.2182, y: 0.6799 } }] },
         { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }, { jugador: 'fila2', tipo: 'vuelve_a_fila' }, { jugador: 'fila3', tipo: 'vuelve_a_fila' }] },
       ],
     },
@@ -522,11 +522,11 @@ export const TANDA_05 = [
       aplicacion: 'los cuatro cuadrantes, que es la misma respuesta a un estímulo pero ya con espacio compartido',
     },
     tablero: () => [
-      jug('A', 1, 0.34, 0.30), jug('A', 2, 0.34, 0.70), jug('A', 3, 0.58, 0.30), jug('A', 4, 0.58, 0.70),
-      cono(0.28, 0.20), cono(0.28, 0.50), cono(0.28, 0.80),
-      cono(0.46, 0.20), cono(0.46, 0.50), cono(0.46, 0.80),
-      cono(0.64, 0.20), cono(0.64, 0.50), cono(0.64, 0.80),
-      balon(0.34, 0.30), balon(0.34, 0.70), balon(0.58, 0.30), balon(0.58, 0.70),
+      jug('A', 1, 0.332, 0.3263), jug('A', 2, 0.332, 0.6799), jug('A', 3, 0.6053, 0.3263), jug('A', 4, 0.6053, 0.6799),
+      cono(0.2637, 0.2379), cono(0.2637, 0.5031), cono(0.2637, 0.7683),
+      cono(0.4687, 0.2379), cono(0.4687, 0.5031), cono(0.4687, 0.7683),
+      cono(0.6737, 0.2379), cono(0.6737, 0.5031), cono(0.6737, 0.7683),
+      balon(0.332, 0.3263), balon(0.332, 0.6799), balon(0.6053, 0.3263), balon(0.6053, 0.6799),
     ],
     intent: null,
   },
@@ -555,9 +555,9 @@ export const TANDA_05 = [
     },
     tablero: () => [
       // Pareja, no rival: el que copia el gesto está en el mismo bando.
-      jug('A', 1, 0.36, 0.30), jug('A', 3, 0.50, 0.30),
-      jug('A', 2, 0.36, 0.70), jug('A', 4, 0.50, 0.70),
-      balon(0.36, 0.30), balon(0.36, 0.70),
+      jug('A', 1, 0.3548, 0.3263), jug('A', 3, 0.5142, 0.3263),
+      jug('A', 2, 0.3548, 0.6799), jug('A', 4, 0.5142, 0.6799),
+      balon(0.3548, 0.3263), balon(0.3548, 0.6799),
     ],
     intent: null,
   },

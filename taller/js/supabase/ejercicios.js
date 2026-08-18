@@ -41,12 +41,12 @@ export async function guardarEjercicio(draft, elementos = []) {
   const row = {
     name: r.nombre,
     type: r.tipo,
-    category: r.categoria_rama,           // compatibilidad con la biblioteca de cbp-v2
+    category: r.category,                 // BLOQUE de contenido (bote, tiro, defensa…)
     difficulty: r.dificultad_valor,
     intensidad: r.intensidad,             // intensidad física 1-5 (curva de carga · Sesiones)
     duration_min: r.duracion_min,
     duration_max: r.duracion_max,
-    description: r.objetivos || r.descripcion_texto || null,
+    description: r.description || null,    // la frase de la tarjeta, no el desarrollo
     tags: r.tags,
     created_by: user.id,
     animacion,
@@ -55,9 +55,7 @@ export async function guardarEjercicio(draft, elementos = []) {
     categoria_nivel: r.categoria_nivel,
     dificultad_label: r.dificultad_label,
     autor_nombre: r.autor_nombre || null,
-    objetivo_temporada_id: r.objetivo_temporada_id,
     objetivos: r.objetivos || null,
-    variantes: r.variantes || null,
     notas: r.notas || null,
     descripcion_texto: r.descripcion_texto || null,
     requisitos: r.requisitos,

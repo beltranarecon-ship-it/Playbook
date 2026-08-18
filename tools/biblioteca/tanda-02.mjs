@@ -169,9 +169,9 @@ export const TANDA_02 = [
       criterio_exito: 'el porcentaje de la cuarta ida y vuelta no baja más de un tiro respecto a la primera',
     },
     tablero: () => [
-      jug('A', 1, E.escolta_der[0], 0.80),
+      jug('A', 1, E.escolta_der[0], 0.7734),
       jug('A', 2, E.codo_der[0], E.codo_der[1]),
-      balon(E.escolta_der[0], 0.80),
+      balon(E.escolta_der[0], 0.7734),
     ],
     intent: {
       canasta: 'norte',
@@ -298,9 +298,9 @@ export const TANDA_02 = [
       aplicacion: 'el túnel, donde la cabeza levantada sirve para ver por dónde no viene nadie',
     },
     tablero: () => [
-      jug('A', 1, 0.30, 0.30), jug('A', 2, 0.55, 0.30),
-      jug('A', 3, 0.30, 0.70), jug('A', 4, 0.55, 0.70),
-      balon(0.30, 0.30), balon(0.30, 0.70),
+      jug('A', 1, 0.2865, 0.3263), jug('A', 2, 0.5712, 0.3263),
+      jug('A', 3, 0.2865, 0.6799), jug('A', 4, 0.5712, 0.6799),
+      balon(0.2865, 0.3263), balon(0.2865, 0.6799),
     ],
     intent: null,
   },
@@ -332,9 +332,9 @@ export const TANDA_02 = [
       aplicacion: 'dos contra uno continuo, donde ese bote de avance es el que sube el balón al contraataque',
     },
     tablero: () => [
-      fila(E.escolta_izq[0], 0.86, 4, 270),
-      fila(E.escolta_der[0], 0.86, 4, 270),
-      balon(E.escolta_izq[0], 0.86), balon(E.escolta_der[0], 0.86),
+      fila(E.escolta_izq[0], 0.8281, 4, 270),
+      fila(E.escolta_der[0], 0.8281, 4, 270),
+      balon(E.escolta_izq[0], 0.8281), balon(E.escolta_der[0], 0.8281),
     ],
     intent: {
       canasta: 'norte',
@@ -368,15 +368,15 @@ export const TANDA_02 = [
       criterio_exito: 'conservar el balón los veinte segundos completos en tres de cada cuatro intentos',
     },
     tablero: () => [
-      jug('A', 1, 0.42, 0.50), jug('B', 1, 0.48, 0.50),
-      cono(0.34, 0.50), cono(0.50, 0.50), cono(0.42, 0.40), cono(0.42, 0.60),
-      balon(0.42, 0.50),
+      jug('A', 1, 0.4231, 0.5031), jug('B', 1, 0.4915, 0.5031),
+      cono(0.332, 0.5031), cono(0.5142, 0.5031), cono(0.4231, 0.4147), cono(0.4231, 0.5915),
+      balon(0.4231, 0.5031),
     ],
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.38, y: 0.44 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.44, y: 0.58 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.3776, y: 0.4501 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.4459, y: 0.5738 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
       ],
     },
@@ -444,10 +444,10 @@ export const TANDA_02 = [
       criterio_exito: 'cruzar tres de cada cuatro veces sin que le toquen el balón',
     },
     tablero: () => [
-      jug('A', 1, 0.72, 0.35), jug('A', 2, 0.72, 0.65),
-      jug('B', 1, 0.58, 0.50), jug('B', 2, 0.44, 0.32), jug('B', 3, 0.30, 0.62),
-      cono(0.58, 0.10), cono(0.58, 0.90), cono(0.44, 0.10), cono(0.44, 0.90), cono(0.30, 0.10), cono(0.30, 0.90),
-      balon(0.72, 0.35), balon(0.72, 0.65),
+      jug('A', 1, 0.7648, 0.3705), jug('A', 2, 0.7648, 0.6357),
+      jug('B', 1, 0.6053, 0.5031), jug('B', 2, 0.4459, 0.344), jug('B', 3, 0.2865, 0.6092),
+      cono(0.6053, 0.1495), cono(0.6053, 0.8567), cono(0.4459, 0.1495), cono(0.4459, 0.8567), cono(0.2865, 0.1495), cono(0.2865, 0.8567),
+      balon(0.7648, 0.3705), balon(0.7648, 0.6357),
     ],
     /* Una fase por franja, y el hueco lo dice el defensor: en la
        primera está en el medio y los dos salen por fuera; en la
@@ -458,19 +458,19 @@ export const TANDA_02 = [
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.52, y: 0.26 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.52, y: 0.78 } },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.58, y: 0.38 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.537, y: 0.2909 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.537, y: 0.7506 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.6053, y: 0.397 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.38, y: 0.58 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.38, y: 0.76 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.44, y: 0.44 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3776, y: 0.5738 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.3776, y: 0.733 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.4459, y: 0.4501 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.22, y: 0.34 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.22, y: 0.20 } },
-          { jugador: 'B3', tipo: 'defiende', hacia: { x: 0.30, y: 0.50 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.1954, y: 0.3616 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.1954, y: 0.2379 } },
+          { jugador: 'B3', tipo: 'defiende', hacia: { x: 0.2865, y: 0.5031 } },
         ] },
       ],
     },
@@ -539,9 +539,9 @@ export const TANDA_02 = [
       criterio_exito: 'anotar en tres de cada cuatro superioridades dentro de los seis segundos',
     },
     tablero: () => [
-      jug('A', 1, E.escolta_izq[0], 0.72), jug('A', 2, E.base[0], 0.76), jug('A', 3, E.escolta_der[0], 0.72),
+      jug('A', 1, E.escolta_izq[0], 0.7005), jug('A', 2, E.base[0], 0.737), jug('A', 3, E.escolta_der[0], 0.7005),
       jug('B', 1, E.tiro_libre[0], E.tiro_libre[1]), jug('B', 2, E.poste_bajo_der[0], E.poste_bajo_der[1]),
-      balon(E.base[0], 0.76),
+      balon(E.base[0], 0.737),
     ],
     intent: null,
   },

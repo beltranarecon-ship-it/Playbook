@@ -2,6 +2,8 @@
    config.js — constantes del taller (§5, §6, §12).
    ============================================================ */
 
+import { PISTAS } from './canvas/court.js';
+
 // Claves PÚBLICAS de Supabase. Mismas que cbp-v2: un único backend para todo
 // Playbook CBP, así los ejercicios del Taller salen también en la biblioteca.
 // La anon/publishable key es pública (la protege RLS); la service_role NUNCA va aquí.
@@ -14,12 +16,16 @@ export const TIPOS_EJERCICIO = [
   'Contraataque', 'Defensa', 'Calentamiento', 'Físico', 'Situaciones especiales', 'Otro',
 ];
 
+// El selector de pista del paso 0. `src` y la relación de aspecto se leen
+// del registro de canvas/court.js en vez de repetirse aquí: esta lista tenía
+// su propia copia de las cuatro rutas y se quedó apuntando a ficheros que ya
+// no existen en cuanto se redibujaron las pistas.
 export const PISTA_OPCIONES = [
-  { key: 'entera', label: 'Pista entera', sub: 'Minibasket', src: '/taller/assets/pistas/pista-mini-entera.svg' },
-  { key: 'media', label: 'Media pista', sub: 'Minibasket', src: '/taller/assets/pistas/pista-mini-mitad.svg' },
-  { key: 'entera_fiba', label: 'Pista entera', sub: 'Triple FIBA', src: '/taller/assets/pistas/pista-fiba-entera.svg' },
-  { key: 'media_fiba', label: 'Media pista', sub: 'Triple FIBA', src: '/taller/assets/pistas/pista-fiba-mitad.svg' },
-];
+  { key: 'entera', label: 'Pista entera', sub: 'Sin triple' },
+  { key: 'media', label: 'Media pista', sub: 'Sin triple' },
+  { key: 'entera_fiba', label: 'Pista entera', sub: 'Triple FIBA' },
+  { key: 'media_fiba', label: 'Media pista', sub: 'Triple FIBA' },
+].map((o) => ({ ...o, src: PISTAS[o.key].src, aspect: PISTAS[o.key].aspect }));
 
 export const CATEGORIAS = {
   Minibasket: ['Escuela', 'Benjamín', 'Alevín'],
@@ -37,4 +43,7 @@ export function dificultadDe(v) {
 export const OBJETIVOS_TEMPORADA = [];
 
 // Tags ya usados en la biblioteca (autocompletado §12); se llenará desde Supabase.
-export const TAGS_SUGERIDOS = ['transición', 'pick and roll', 'tiro exterior', 'defensa individual', 'contraataque', '2x1', 'bloqueo directo'];
+/* Las etiquetas se sugieren desde el VOCABULARIO compartido
+   (ia/vocabulario.js#TAGS), no desde aquí. La lista que había en este
+   sitio tenía siete y tres no existían en el vocabulario: la app
+   sugería etiquetas que su propio linter rechaza (Tramo 2.12). */

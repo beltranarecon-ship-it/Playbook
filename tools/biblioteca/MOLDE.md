@@ -70,7 +70,6 @@ texto de la ficha y el texto generado hablan igual.
     oposicion: 'real',                  // nula | pasiva | semiactiva | real
     presion: 'marcador',                // ninguna | espacio | tiempo | marcador
     requisito_previo: 'saber hacer X',  // NUNCA una edad ni una categoría (D9)
-    dosis: { series: 3, cantidad: 6, unidad: 'repeticiones', descanso: 45 },
     organizacion: 'Con 12: …',          // OBLIGATORIO decir «12» y el reparto concreto
     niveles: {                          // los tres, distintos entre sí (D8)
       base: '…', intermedio: '…', avanzado: '…',
@@ -91,11 +90,22 @@ texto de la ficha y el texto generado hablan igual.
 |---|---|
 | `organizacion` | Tiene que **contener el número 12** y un reparto concreto: «Con 12: dos estaciones, una por canasta, seis por estación en dos filas de tres». «Se puede adaptar al grupo» es un error del linter, no un aviso. |
 | `requisito_previo` | Es un **saber hacer**, no una edad. «botar en carrera sin mirar el balón», no «a partir de alevín». |
-| `dosis.unidad` | En un juego continuo, `cantidad: 240` son **240 segundos**, no 240 repeticiones. Confundirlo multiplica el trabajo por cuatro. |
 | `niveles` | Tres escalones **distintos** que cambian la exigencia de verdad, no el mismo texto con otras palabras. Sustituyen a la etiqueta de edad. |
 | `canastas` | Es por estación. `estaciones: 2, canastas: 1` = hacen falta dos aros. |
 | `tags` | Solo los de `TAGS`. Un tag inventado saca el ejercicio de las sugerencias del planificador. |
 | `oposicion` vs `presion` | Ver §5. |
+
+---
+
+### La dosis se retiró
+
+`requisitos.dosis` **ya no se pide** (Tramo 2.12, decisión del entrenador): prescribir
+series y repeticiones desde la ficha es decidir por quien tiene el grupo delante, y lo que
+de verdad manda es la duración del bloque y el criterio de éxito.
+
+Las 204 fichas la conservan y se sigue viendo en la ficha y en el proyector; el linter
+sigue comprobando su coherencia si aparece. Lo que cambia es que un ejercicio nuevo pasa
+sin ella.
 
 ---
 

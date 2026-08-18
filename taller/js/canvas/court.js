@@ -5,36 +5,55 @@
    ============================================================ */
 
 import { h } from '../ui/dom.js';
+import { REGLAS, PISTAS_M, marcoDe, pistaANorm } from './medidas.js';
 
 export const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-// Registro de pistas. baskets en coordenadas normalizadas (§10 tiros norte/sur).
-// Coordenadas de aro medidas sobre el arte real de cada SVG (línea de fondo +
-// 1.575 m de retranqueo reglamentario), no estimadas a ojo — ver commit que
-// introdujo este comentario para la metodología (escaneo de píxeles del PNG
-// incrustado). "entera"/"entera_fiba" tienen los aros arriba/abajo (retrato);
-// "media"/"media_fiba" están dibujadas en paisaje dentro del lienzo retrato,
-// con el aro a la IZQUIERDA (no arriba) — el motor lee x e y del registro sin
-// asumir orientación, así que el valor es correcto aunque el nombre "norte"
-// ya no describa una posición cardinal real para estas dos pistas.
-// escalaJugador: factor de tamaño de las fichas por pista ("entera" = 1 de
-// referencia). Las medias pistas dibujan MEDIO campo dentro del MISMO marco
-// 210×297 que la entera dibuja el campo COMPLETO: el mismo rasgo físico (p.ej.
-// el ancho de la llave) ocupa más unidades de ese marco en la media que en la
-// entera — medido sobre el arte real de los SVG (llave y líneas de límites),
-// ese zoom lineal es ~1.4× (no 2×: 2× es la lectura "en área" — media pista =
-// mitad de superficie real en el mismo lienzo — y zoom lineal = √2 ≈ 1.41,
-// que es justo lo medido). Con radio de ficha CONSTANTE en px, esa ficha
-// representaría un tamaño real ~1.4× más pequeño en la media que en la
-// entera (más unidades de lienzo por metro real ⇒ los mismos px cubren menos
-// metros) — así que las fichas se AGRANDAN ×1.4 en la media para representar
-// el mismo tamaño real y quedar proporcionadas a la llave/círculos del SVG.
-export const PISTAS = {
-  entera:      { src: '/taller/assets/pistas/pista-mini-entera.svg', aspect: 210 / 297, label: 'Pista entera',         baskets: { norte: [0.5, 0.098], sur: [0.5, 0.894] }, escalaJugador: 1 },
-  media:       { src: '/taller/assets/pistas/pista-mini-mitad.svg',  aspect: 210 / 297, label: 'Media pista',           baskets: { norte: [0.143, 0.497] }, escalaJugador: 1.4 },
-  entera_fiba: { src: '/taller/assets/pistas/pista-fiba-entera.svg', aspect: 210 / 297, label: 'Entera · triple FIBA',  baskets: { norte: [0.5, 0.100], sur: [0.5, 0.889] }, escalaJugador: 1 },
-  media_fiba:  { src: '/taller/assets/pistas/pista-fiba-mitad.svg',  aspect: 210 / 297, label: 'Media · triple FIBA',   baskets: { norte: [0.141, 0.501] }, escalaJugador: 1.4 },
+/*
+   Registro de pistas. Todo lo geométrico —relación de aspecto y posición
+   de los aros— sale ahora de canvas/medidas.js, que es también de donde
+   salen los SVG de fondo y las anclas: una sola tabla de medidas, tres
+   consumidores. Antes cada cosa se medía por su cuenta sobre el dibujo y
+   no coincidían entre sí.
+
+   `baskets` sigue siendo lo que era: coordenadas normalizadas del centro
+   del aro, por canasta (§10 tiros norte/sur). Media docena de módulos las
+   leen (compilador, validador, simulador, cliente, paso 2, stage), así
+   que la forma no cambia; solo el número, que ahora es exacto.
+
+   "entera"/"entera_fiba" llevan los aros arriba y abajo (retrato);
+   "media"/"media_fiba" van en paisaje con el aro a la IZQUIERDA — el
+   motor lee x e y sin asumir orientación, así que el nombre "norte" es
+   solo una etiqueta, no una posición cardinal.
+
+   Ya no hay `escalaJugador`: era un parche para que las fichas no se
+   vieran enanas en la media, que estaba dibujada a otro zoom que la
+   entera. Ahora las cuatro pistas están a escala y los elementos se
+   dimensionan en METROS (medidas.js → TAMANOS), así que un jugador
+   ocupa lo mismo en las cuatro.
+*/
+const SRC = {
+  entera:      '/taller/assets/pistas/pista-entera.svg',
+  media:       '/taller/assets/pistas/pista-media.svg',
+  entera_fiba: '/taller/assets/pistas/pista-entera-fiba.svg',
+  media_fiba:  '/taller/assets/pistas/pista-media-fiba.svg',
 };
+const LABEL = {
+  entera:      'Pista entera',
+  media:       'Media pista',
+  entera_fiba: 'Entera · triple FIBA',
+  media_fiba:  'Media · triple FIBA',
+};
+
+export const PISTAS = Object.fromEntries(Object.keys(PISTAS_M).map((k) => {
+  const m = marcoDe(k);
+  const baskets = {};
+  for (const c of m.canastas) {
+    const [x, y] = pistaANorm(k, REGLAS.aroRetranqueo, 0, c);
+    baskets[c] = [Number(x.toFixed(4)), Number(y.toFixed(4))];
+  }
+  return [k, { src: SRC[k], aspect: m.aspect, label: LABEL[k], baskets, metros: { ancho: m.ancho, alto: m.alto } }];
+}));
 
 export class CourtView {
   // rotate=90 dibuja la pista en paisaje (modo proyector §14): se gira solo la
@@ -61,6 +80,11 @@ export class CourtView {
     // en paisaje el lienzo invierte la relación de aspecto (apaisado).
     const aspect = this.rot ? (1 / this.pista.aspect) : this.pista.aspect;
     this.root.style.setProperty('--court-aspect', String(aspect));
+    // El fondo girado 90° se dimensiona con la relación SIN invertir (el
+    // CSS lo necesita para rellenar la caja apaisada). Antes iba con dos
+    // porcentajes fijos —70.71 % y 141.42 %— que solo valen si todas las
+    // pistas son A4; ahora cada una tiene la suya.
+    this.root.style.setProperty('--court-bg-aspect', String(this.pista.aspect));
     this._resize();
   }
 

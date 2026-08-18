@@ -28,11 +28,16 @@
 
 /* Modo paisaje (proyector §14): el lienzo es apaisado y los símbolos se dibujan
    ya rotados vía CourtView.toPx (quedan derechos). Solo hay que girar la imagen
-   de fondo 90°: se dimensiona como retrato (70.71% × 141.42% del contenedor
-   apaisado) y se rota sobre su centro para rellenar exactamente la caja. */
+   de fondo 90°: se dimensiona en retrato y se rota sobre su centro para
+   rellenar exactamente la caja. Los porcentajes salen de la relación de aspecto
+   SIN invertir (--court-bg-aspect, que pone CourtView): ancho = aspect × 100 %
+   del contenedor y alto = 100 % / aspect. Estaban escritos a fuego como 70.71 %
+   y 141.42 %, que es esa cuenta para el A4 de las pistas antiguas y falla en
+   cuanto una pista tiene otra proporción. */
 .court--landscape .court__bg {
   inset: auto; top: 50%; left: 50%;
-  width: 70.71%; height: 141.42%;
+  width: calc(var(--court-bg-aspect, .7071) * 100%);
+  height: calc(100% / var(--court-bg-aspect, .7071));
   transform: translate(-50%, -50%) rotate(90deg);
 }
 
@@ -69,6 +74,16 @@
   flex: none;
 }
 .pal-swatch--ball { width: 14px; height: 14px; }
+/* Escalera: un rectángulo tumbado con dos peldaños, que es lo que se ve
+   en la pista a tamaño de muestra. */
+.pal-swatch--escalera {
+  width: 22px; height: 11px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.85);
+  background:
+    linear-gradient(to right, transparent 6px, rgba(255,255,255,.85) 6px 7.5px, transparent 7.5px 14px, rgba(255,255,255,.85) 14px 15.5px, transparent 15.5px),
+    var(--color-deep);
+}
 .pal-swatch--cono {
   width: 0; height: 0;
   border-radius: 0;
@@ -127,3 +142,38 @@
 
 /* ---- Hueco para los controles de animación (Bloque 3) ------ */
 .court-controls-slot { width: 100%; }
+
+/* Muestras de zona en la paleta: la forma sola, difuminada, igual que se
+   dibuja sobre la pista. */
+.pal-swatch--zona {
+  width: 22px; height: 16px;
+  border-radius: 3px;
+  box-shadow: none;
+  border: 1.5px dashed rgba(0, 25, 56, .45);
+  background: var(--accent-tint);
+}
+.pal-swatch--zona-circulo { border-radius: 50%; width: 18px; height: 18px; }
+.pal-swatch--zona-linea {
+  height: 0; border: 0; border-radius: 0; background: none;
+  border-top: 2px dashed rgba(0, 25, 56, .45);
+  align-self: center;
+}
+
+/* ---- Señalar en la pista (paso 2, Tramo 2.9) --------------------
+   La etiqueta que sigue al cursor y dice QUÉ se va a insertar. Es un
+   overlay sin eventos: no le roba el clic al lienzo. */
+.court.is-senalando .court__layer { cursor: crosshair; }
+.court-senalar {
+  position: absolute; z-index: 6;
+  transform: translate(-50%, -170%);
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--color-text); color: #fff;
+  font-size: var(--fs-300); font-weight: 600; white-space: nowrap;
+  opacity: 0; transition: opacity var(--dur-1) var(--ease);
+  pointer-events: none;
+}
+.court-senalar.is-on { opacity: .95; }
+.court-senalar.is-sujeto { background: var(--color-accent); }
+/* En «solo mirar» el lienzo no invita a arrastrar: colocar es del paso 1. */
+.court.is-solo-mirar .court__layer { cursor: crosshair; }

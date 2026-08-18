@@ -51,7 +51,14 @@ export function pistaPicker(options, value, onChange) {
     class: 'pista-card' + (o.key === val ? ' is-active' : ''), type: 'button', 'aria-pressed': String(o.key === val),
     onClick: () => { onChange(o.key); paint(o.key); },
   },
-    h('span', { class: 'pista-card__img', style: { backgroundImage: `url("${o.src}")` } }),
+    // la miniatura toma la proporción REAL de esa pista: desde que las
+    // cuatro están a escala ya no comparten una (la entera es 19×32 m y la
+    // media, 18×19), y con una relación fija la media salía flotando en
+    // medio de una tarjeta vertical vacía
+    h('span', {
+      class: 'pista-card__img',
+      style: { backgroundImage: `url("${o.src}")`, '--pista-aspect': String(o.aspect ?? 210 / 297) },
+    }),
     h('span', { class: 'pista-card__label' }, h('b', null, o.label), h('small', null, o.sub)),
   )));
   paint(value);

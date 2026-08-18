@@ -3,14 +3,14 @@
    Dibuja la fase con sus fichas y flechas, y permite editar las
    flechas como paths vectoriales con nodos lineales/Bézier (§9.3):
    arrastrar nodos y handles, insertar nodo en un segmento, borrar
-   nodo (Supr) y alternar lineal/Bézier (clic en el nodo).
+   nodo (Supr) y curvar/enderezar con DOBLE clic (§5.2).
    ============================================================ */
 
 import { h } from '../ui/dom.js';
 import { CourtView, clamp01 } from './court.js';
 import { drawArrow } from './arrows.js';
 import { drawPlayer, drawBall, drawCone, radii } from './symbols.js';
-import { flattenPath } from './geometry.js';
+import { flattenPath, manejadoresTangentes } from './geometry.js';
 import { COLORS, TAU } from './colors.js';
 import { restPositions, reanclarPaths, nodosFijos } from './rest-positions.js';
 
@@ -51,7 +51,7 @@ export class EditorCanvas {
   on(ev, cb) { (this._listeners[ev] ||= []).push(cb); return this; }
   _emit(ev, d) { (this._listeners[ev] || []).forEach((f) => f(d)); }
 
-  setFase(k) { this.k = k; this.sel = null; this.selNode = -1; this.render(); }
+  setFase(k) { this.k = k; this.sel = null; this.selNode = -1; this._ultimoClic = null; this.render(); }
 
   /* Reanclar ANTES de recolocar las fichas es lo que hace que mover una
      flecha arrastre a las fases siguientes: si no, el jugador aparecía
@@ -66,12 +66,27 @@ export class EditorCanvas {
    *  re-resolución tras cada edición). Suelta la selección y recalcula los
    *  inicios de fase; no re-vincula listeners. */
   setAnim(anim) {
+    /* La flecha que se estaba retocando se conserva. Cada arrastre
+       re-resuelve la animación entera y trae objetos nuevos, así que
+       soltar la selección aquí obligaba a volver a pinchar la flecha
+       después de mover CADA punto — y eso, en una trayectoria de cuatro
+       nodos, son tres clics de más por curva. Se busca la misma flecha
+       por su elemento y su tipo, que es lo que la identifica. */
+    const antes = this.sel ? { id: this.sel.ref.elemento_id || this.sel.ref.de_id, tipo: this.sel.type } : null;
+    const nodo = this.selNode;
     this.anim = anim;
     this.usesPhaseRoles = (anim.fases || []).some((f) => Array.isArray(f.defensores));
-    this.sel = null; this.selNode = -1;
+    this.sel = null; this.selNode = -1; this._ultimoClic = null;
     reanclarPaths(anim);
     this.starts = restPositions(anim);
     this.k = Math.max(0, Math.min(this.k, (anim.fases || []).length - 1));
+    if (antes) {
+      const igual = this._arrows().find((a) => (a.ref.elemento_id || a.ref.de_id) === antes.id && a.type === antes.tipo);
+      if (igual) {
+        this.sel = igual;
+        this.selNode = nodo >= 0 ? Math.min(nodo, igual.path.length - 1) : -1;
+      }
+    }
     this.render();
   }
 
@@ -101,6 +116,9 @@ export class EditorCanvas {
       }
       // 2) seleccionar otra flecha
       const a = this._hitArrow(pt);
+      // cambiar de flecha corta el doble clic: dos clics en nodos de
+      // flechas distintas no son un doble clic
+      this._ultimoClic = null;
       this.sel = a; this.selNode = -1; this.render();
       this._emit('select', a);
     };
@@ -112,7 +130,23 @@ export class EditorCanvas {
       else if (d.kind === 'handle') { const n = this.sel.path[d.i]; n[d.which] = { x: pt.x, y: pt.y }; }
       this.refresh();
     };
-    this._onUp = () => { if (this._drag) { const d = this._drag; this._drag = null; if (d.kind === 'node' && !d.moved) this._toggleNode(d.i); this._emit('change'); } };
+    /* Un clic SELECCIONA el nodo; el DOBLE clic lo curva o lo endereza
+       (§5.2). Antes curvaba el clic simple, y eso dejaba sin manera de
+       seleccionar un nodo para borrarlo: había que curvarlo primero,
+       sin querer, y enderezarlo después. */
+    this._onUp = () => {
+      if (!this._drag) return;
+      const d = this._drag;
+      this._drag = null;
+      if (d.kind === 'node' && !d.moved) {
+        const ahora = Date.now();
+        const doble = this._ultimoClic && this._ultimoClic.i === d.i && (ahora - this._ultimoClic.t) < 400;
+        this._ultimoClic = doble ? null : { i: d.i, t: ahora };
+        if (doble) this._toggleNode(d.i);
+        else return;   // solo seleccionar: nada que registrar en el historial
+      }
+      this._emit('change');
+    };
     this._onKey = (ev) => {
       if ((ev.key === 'Delete' || ev.key === 'Backspace') && this.sel && this.selNode >= 0 && this.sel.path.length > 2) {
         ev.preventDefault(); this.sel.path.splice(this.selNode, 1); this.selNode = -1; this.refresh(); this._emit('change');
@@ -177,10 +211,34 @@ export class EditorCanvas {
     return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
   }
   _insertNode(seg, pt) { this.sel.path.splice(seg + 1, 0, { x: clamp01(pt.x), y: clamp01(pt.y), tipo_nodo: 'lineal', handle_in: null, handle_out: null }); }
+
+  /**
+   * Curva o endereza un nodo (doble clic, §5.2).
+   *
+   * Los manejadores salen EN LA DIRECCIÓN DE LA FLECHA, tangentes al
+   * camino, no en horizontal. Antes salían siempre a izquierda y
+   * derecha (`n.x ± 0.06`), así que en una flecha que bajaba salían
+   * atravesados: curvar un nodo pegaba un tirón lateral que nadie había
+   * pedido, y había que recolocar los dos manejadores para volver a
+   * donde estabas. Tangentes, curvar no cambia el trazo — solo lo deja
+   * listo para curvarlo, que es lo que se quería.
+   *
+   * El largo sale de los segmentos vecinos (un tercio, la regla de
+   * siempre para que una Bézier pase suave por el nodo), con un mínimo
+   * para que el cuadradito se pueda agarrar con el dedo.
+   */
   _toggleNode(i) {
-    const n = this.sel.path[i];
-    if (n.handle_in || n.handle_out) { n.handle_in = null; n.handle_out = null; n.tipo_nodo = 'lineal'; }
-    else { const off = 0.06; n.handle_in = { x: n.x - off, y: n.y }; n.handle_out = { x: n.x + off, y: n.y }; n.tipo_nodo = 'bezier'; }
+    const path = this.sel.path;
+    const n = path[i];
+    if (n.handle_in || n.handle_out) {
+      n.handle_in = null; n.handle_out = null; n.tipo_nodo = 'lineal';
+      this.refresh();
+      return;
+    }
+    const { handle_in, handle_out } = manejadoresTangentes(path, i, this._r() * 1.8);
+    n.handle_in = { x: clamp01(handle_in.x), y: clamp01(handle_in.y) };
+    n.handle_out = { x: clamp01(handle_out.x), y: clamp01(handle_out.y) };
+    n.tipo_nodo = 'bezier';
     this.refresh(); // el 'change' lo emite pointerup (evita doble registro en el historial)
   }
 

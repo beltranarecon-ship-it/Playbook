@@ -7,6 +7,7 @@
 import { h, mount } from '../ui/dom.js';
 import { palette, requisitos } from '../canvas/palette.js';
 import { spinner } from '../ui/components.js';
+import { repartirSobre, largoMetros, TIPOS_ZONA } from '../canvas/zonas.js';
 import { TEAM_LABEL, COLORS } from '../canvas/colors.js';
 
 // 8 direcciones alrededor del cono. 0° = derecha, sentido horario (90 = abajo).
@@ -59,6 +60,41 @@ export function paso1(ctx) {
           equipoFilaChips(elm.fila_config?.equipo ?? 'A', (t) => { ensureFila(elm); elm.fila_config.equipo = t; board.render(); })),
         h('div', { class: 'field' }, h('label', { class: 'field__label' }, 'Dirección de la cola'),
           direccionPad(elm.fila_config?.direccion_grados ?? 0, (a) => { ensureFila(elm); elm.fila_config.direccion_grados = a; board.render(); })),
+
+        /* Rondas (Tramo 2.8). Se describe UNA salida y el motor la repite
+           con el siguiente hasta que han salido todos. Es lo que convierte
+           un turno suelto en la rueda que de verdad se hace en pista. */
+        h('div', { class: 'field' }, h('label', { class: 'field__label' }, 'Repetición'),
+          h('div', { class: 'q-opts' },
+            h('button', {
+              class: 'chip' + (elm.fila_config?.rondas ? ' is-active' : ''), type: 'button',
+              'aria-pressed': String(Boolean(elm.fila_config?.rondas)),
+              onClick: () => { ensureFila(elm); elm.fila_config.rondas = !elm.fila_config.rondas; board.render(); renderSel(elm); },
+            }, elm.fila_config?.rondas
+              ? `Salen los ${elm.fila_config?.n_jugadores ?? 3}, uno detrás de otro`
+              : 'Solo sale el primero'))),
+
+        elm.fila_config?.rondas ? h('div', { class: 'field' },
+          h('label', { class: 'field__label' }, 'Cadencia de salida (segundos)'),
+          h('input', {
+            class: 'input', type: 'number', min: '0', max: '30', step: '0.5',
+            placeholder: 'en blanco: sale cuando vuelve el anterior',
+            value: elm.fila_config?.cadencia_s ?? '',
+            onInput: (e) => {
+              ensureFila(elm);
+              const v = e.target.value === '' ? null : Number(e.target.value);
+              elm.fila_config.cadencia_s = Number.isFinite(v) && v > 0 ? v : null;
+            },
+          })) : null,
+
+        // Fila de defensores: el rol lo da de qué cola sale, no lo que
+        // haga ese turno.
+        h('div', { class: 'field' }, h('label', { class: 'field__label' }, 'Qué son'),
+          h('div', { class: 'q-opts' }, ...[['atacante', 'Atacantes'], ['defensor', 'Defensores']].map(([val, txt]) => h('button', {
+            class: 'chip' + ((elm.fila_config?.rol || 'atacante') === val ? ' is-active' : ''),
+            type: 'button',
+            onClick: () => { ensureFila(elm); elm.fila_config.rol = val; board.render(); renderSel(elm); },
+          }, txt)))),
       ) : null;
       const ayudaRodear = elm.funcion === 'rodear'
         ? h('p', { class: 'muted' }, 'El jugador que trabaje este cono lo rodeará en zigzag al generar la animación.')
@@ -70,12 +106,71 @@ export function paso1(ctx) {
         ayudaRodear,
         h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => board.remove(elm.id) }, 'Quitar ficha'),
       );
+    } else if (elm.kind === 'zona') {
+      const ETIQ = { rect: 'Rectángulo', circulo: 'Círculo', linea: 'Línea' };
+      const nombre = h('input', {
+        class: 'input', type: 'text', maxlength: '32', value: elm.nombre ?? '',
+        'aria-label': 'Nombre de la zona',
+        onInput: (e) => { elm.nombre = e.target.value; board.render(); },
+      });
+      const forma = h('div', { class: 'q-opts' }, ...TIPOS_ZONA.map((t) => h('button', {
+        class: 'chip' + (elm.tipo === t ? ' is-active' : ''), type: 'button',
+        onClick: () => { elm.tipo = t; board.render(); renderSel(elm); },
+      }, ETIQ[t])));
+
+      // Interruptor de zona invisible: sigue existiendo como sitio al que
+      // referirse y sobre el que repartir conos, pero no se dibuja en la
+      // animación. Es para las zonas que son una regla y no un decorado.
+      const visible = h('button', {
+        class: 'chip' + (elm.visible !== false ? ' is-active' : ''), type: 'button',
+        'aria-pressed': String(elm.visible !== false),
+        onClick: () => { elm.visible = elm.visible === false; board.render(); renderSel(elm); },
+      }, elm.visible !== false ? 'Se ve en la animación' : 'Invisible');
+
+      // Repartir conos por el contorno, a distancia regular EN METROS.
+      // Colocarlos a ojo uno a uno es lo que hace que un pasillo de conos
+      // salga torcido y que el ejercicio no se pueda repetir igual.
+      let cuantos = 4;
+      const largo = largoMetros(board.view.pistaKey, elm);
+      const repartir = () => {
+        for (const p of repartirSobre(board.view.pistaKey, elm, cuantos)) {
+          board.add({ kind: 'cono' }, p.x, p.y);
+        }
+        board.select(elm.id);
+      };
+      mount(selHost,
+        h('p', { class: 'eyebrow' }, 'Zona'),
+        h('div', { class: 'field' }, h('label', { class: 'field__label' }, 'Nombre'), nombre),
+        h('div', { class: 'field' }, h('label', { class: 'field__label' }, 'Forma'), forma),
+        h('div', { class: 'field' }, h('label', { class: 'field__label' }, 'En la animación'), visible),
+        h('p', { class: 'muted' }, `Contorno: ${largo.toFixed(1)} m.`),
+        h('div', { class: 'field' },
+          h('label', { class: 'field__label' }, 'Repartir conos por el contorno'),
+          h('div', { class: 'fila-ctrls' },
+            spinner({ min: 1, max: 20, value: cuantos, onChange: (v) => { cuantos = v; } }),
+            h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: repartir }, 'Repartir'))),
+        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => board.remove(elm.id) }, 'Quitar zona'),
+      );
+    } else if (elm.kind === 'escalera') {
+      // La escalera mide 4 m: cómo esté puesta cambia por dónde pasa la fila,
+      // así que la orientación es lo único que hay que poder tocar.
+      mount(selHost,
+        h('p', { class: 'eyebrow' }, 'Escalera de coordinación'),
+        h('p', { class: 'muted' }, '4,00 × 0,50 m, a escala.'),
+        h('div', { class: 'field' }, h('label', { class: 'field__label' }, 'Orientación'),
+          direccionPad(elm.rot ?? 0, (a) => { elm.rot = a; board.render(); })),
+        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => board.remove(elm.id) }, 'Quitar ficha'),
+      );
+    } else if (elm.kind === 'pelota') {
+      mount(selHost,
+        h('p', { class: 'eyebrow' }, 'Pelota de tenis'),
+        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => board.remove(elm.id) }, 'Quitar ficha'));
     } else {
       mount(selHost, h('p', { class: 'eyebrow' }, 'Balón'), h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => board.remove(elm.id) }, 'Quitar ficha'));
     }
   }
   function ensureFila(elm) {
-    if (!elm.fila_config) elm.fila_config = { n_jugadores: 3, direccion_grados: 0, equipo: 'A' };
+    if (!elm.fila_config) elm.fila_config = { n_jugadores: 3, direccion_grados: 0, equipo: 'A', rondas: false, cadencia_s: null, rol: 'atacante' };
     if (elm.fila_config.direccion_grados == null) elm.fila_config.direccion_grados = 0;
     if (!elm.fila_config.equipo) elm.fila_config.equipo = 'A';
     elm.funcion = 'fila';

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harness manual · Tramo 2.12 (la ficha completa) — solo desarrollo</title>
+  <link rel="stylesheet" href="/taller/css/tokens.css">
+  <link rel="stylesheet" href="/taller/css/base.css">
+  <link rel="stylesheet" href="/taller/css/canvas.css">
+  <link rel="stylesheet" href="/taller/css/anim.css">
+  <link rel="stylesheet" href="/taller/css/wizard.css">
+  <style>
+    body { font-family: 'Hanken Grotesk', system-ui, sans-serif; padding: 16px; background: #DFE8F0; }
+    .harness { display: grid; grid-template-columns: 560px 1fr; gap: 24px; align-items: start; }
+    .harness .court-wrap { max-width: 460px; }
+  </style>
+</head>
+<body>
+  <div class="harness">
+    <div id="panel"></div>
+    <div id="courtHost"></div>
+  </div>
+  <script type="module">
+    /* Harness manual del Tramo 2.12: monta el paso 3 REAL sin el guard de
+       sesión, con un borrador que ya ha pasado por los pasos 0 a 2. */
+    import { Stage } from '/taller/js/canvas/stage.js';
+    import { paso3 } from '/taller/js/wizard/paso3.js';
+    import { nuevoDraft } from '/taller/js/wizard/draft.js';
+
+    const stage = new Stage({ pista: 'media' });
+    document.getElementById('courtHost').append(stage.el);
+
+    const cono = stage.board.add({ kind: 'cono' }, 0.86, 0.30);
+    cono.funcion = 'fila';
+    cono.fila_config = { n_jugadores: 6, direccion_grados: 180, equipo: 'A', rondas: true, cadencia_s: null, rol: 'atacante' };
+    stage.board.add({ kind: 'balon' }, 0.84, 0.30);
+
+    const draft = nuevoDraft();
+    draft.tipo_pista = 'media';
+    draft.nombre = 'Entradas desde la fila';
+    draft.tipo = 'Entrada';
+    draft.fases_texto = [
+      { texto: 'la Fila 1 bota hasta el aro', duracion_ms: null, pausa_post_ms: null },
+      { texto: 'tira', duracion_ms: null, pausa_post_ms: null },
+      { texto: 'recoge', duracion_ms: null, pausa_post_ms: null },
+      { texto: 'vuelve a la fila', duracion_ms: null, pausa_post_ms: null },
+    ];
+
+    const paso = paso3({ draft, stage, goTo: () => {}, onDraftChange: () => {}, toast: (m) => console.log('[toast]', m) });
+    document.getElementById('panel').append(paso.el);
+
+    window.__stage = stage;
+    window.__draft = draft;
+    window.__paso = paso;
+  </script>
+</body>
+</html>

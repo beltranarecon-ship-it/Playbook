@@ -1,84 +1,47 @@
 /* ============================================================
-   canvas/escala.js — cuántos METROS mide una unidad normalizada, en
-   cada eje y en cada pista. Módulo puro (sin DOM): lo usan el
+   canvas/escala.js — cuántos METROS mide una unidad normalizada, y
+   las dos operaciones que hacen falta para pensar en metros dentro
+   de un sistema que dibuja en [0,1]. Módulo puro: lo usan el
    compilador, el linter de la biblioteca y el banco de pruebas.
 
    POR QUÉ HACE FALTA
-   El sistema entero trabaja en coordenadas [0,1] sobre el lienzo. Eso
-   está bien para dibujar y fatal para decidir baloncesto: "termina la
-   entrada a 0,08 del aro" no significa nada, mientras que "termina a
-   1,2 m del aro" es exactamente la instrucción que un entrenador da.
-   Sin esta traducción, las distancias se eligen a ojo — y así acabaron
-   trece finalizaciones de la biblioteca saliendo a 2, 4 y hasta 8
-   metros del aro.
+   El sistema entero trabaja en coordenadas [0,1] sobre el lienzo.
+   Eso está bien para dibujar y fatal para decidir baloncesto:
+   "termina la entrada a 0,08 del aro" no significa nada, mientras
+   que "termina a 1,2 m del aro" es exactamente la instrucción que
+   un entrenador da. Sin esta traducción las distancias se eligen a
+   ojo — y así acabaron trece finalizaciones de la biblioteca
+   saliendo a 2, 4 y hasta 8 metros del aro.
 
-   POR QUÉ NO SE DEDUCE DEL TAMAÑO DE LA PISTA
-   Sería lo natural (28 × 15 m repartidos sobre el marco) y da mal:
-   los SVG de pista son dibujos ESTILIZADOS, no planos a escala. Se
-   dibujan con margen de sobra alrededor para que las fichas quepan sin
-   salirse, así que el marco no mide lo que dice medir, y los dos ejes
-   ni siquiera están estirados igual.
+   QUÉ HA CAMBIADO
+   Este módulo DEDUCÍA la escala midiendo dos rasgos del dibujo (aro
+   → tiros libres para un eje, codo a codo para el otro), porque los
+   SVG eran ilustraciones estilizadas y no había forma de saber
+   cuánto medía el marco. Aquello solo acertaba junto al aro; lejos,
+   el dibujo se estiraba y la esquina salía a 8,9 m cuando son 6,6.
 
-   DE DÓNDE SALE ENTONCES
-   De dos distancias que sí son un hecho del juego y que además están
-   MEDIDAS sobre el render (anclas.js), una por eje:
-
-     · aro → línea de tiros libres = 4,225 m
-       (la línea está a 5,80 m del fondo; el centro del aro, a 1,575 m)
-     · codo a codo = ancho de la zona = 4,90 m
-
-   Cada una cae limpia sobre un eje distinto en las cuatro pistas, así
-   que dan la escala de los dos ejes sin suponer nada. Se calculan al
-   cargar el módulo: si mañana se regeneran las anclas, la escala se
-   corrige sola.
-
-   Comprobación que da confianza: con la escala así derivada, el largo
-   de la pista entera (marco baseline 0,02→0,98) sale 27,97 m. Son los
-   28 m de una pista de verdad.
-
-   HASTA DÓNDE LLEGA LA PRECISIÓN
-   Las dos referencias están JUNTO AL ARO, así que ahí la escala es
-   exacta — que es justo donde se decide si una finalización termina
-   donde debe. Lejos del aro el dibujo se estira (en la media, la
-   esquina sale a 8,9 m del aro cuando de verdad son 6,6), porque el
-   SVG deja margen alrededor. Se acepta: el error va del lado seguro,
-   nunca hará pasar por cercano un tiro que está lejos.
+   Ahora el marco ES la pista más dos metros de banda por cada lado,
+   así que la escala se lee directamente de medidas.js y es exacta
+   en toda la pista. Y como los dos ejes están a la misma escala —el
+   marco en metros tiene la misma proporción que el lienzo en
+   píxeles— un metro son los mismos píxeles vaya en la dirección que
+   vaya, y un círculo se dibuja redondo.
    ============================================================ */
 
-import { ANCLAS, posicionesDe } from './anclas.js';
+import { REGLAS, PISTAS_M, marcoDe, escalaDe as escalaDeMarco } from './medidas.js';
 
-/** Distancias reales, en metros, de las dos referencias medidas. */
-export const ARO_A_TIRO_LIBRE = 4.225;
-export const ANCHO_ZONA = 4.90;
+/** Distancias reales que antes servían de referencia para deducir la escala. */
+export const ARO_A_TIRO_LIBRE = REGLAS.zonaFondo - REGLAS.aroRetranqueo;   // 4,225
+export const ANCHO_ZONA = REGLAS.zonaAncho;                                // 4,90
 
 /** Metros por unidad normalizada en cada eje, por pista. */
-export const ESCALA = {};
+export const ESCALA = Object.fromEntries(
+  Object.keys(PISTAS_M).map((p) => [p, escalaDeMarco(p)]),
+);
 
-for (const pista of Object.keys(ANCLAS)) {
-  const pos = posicionesDe(pista, 'norte');
-  if (!pos?.aro || !pos?.tiro_libre || !pos?.codo_izq || !pos?.codo_der) continue;
-
-  // Cada referencia se proyecta sobre el eje en el que de verdad se
-  // extiende. En las enteras el aro y el tiro libre están alineados en
-  // vertical y los codos en horizontal; en las medias, al revés
-  // (van dibujadas en paisaje). Se mira cuál de los dos deltas manda en
-  // vez de asumirlo, así una pista nueva no rompe nada.
-  const eje = (a, b) => (Math.abs(a[0] - b[0]) >= Math.abs(a[1] - b[1]) ? 'x' : 'y');
-  const delta = (a, b, e) => Math.abs(e === 'x' ? a[0] - b[0] : a[1] - b[1]);
-
-  const ejeTL = eje(pos.aro, pos.tiro_libre);
-  const ejeZona = eje(pos.codo_izq, pos.codo_der);
-  if (ejeTL === ejeZona) continue;   // referencias degeneradas: mejor sin escala que con una inventada
-
-  const e = {};
-  e[ejeTL] = ARO_A_TIRO_LIBRE / delta(pos.aro, pos.tiro_libre, ejeTL);
-  e[ejeZona] = ANCHO_ZONA / delta(pos.codo_izq, pos.codo_der, ejeZona);
-  ESCALA[pista] = e;
-}
-
-/** Escala de una pista, con la de media como red de seguridad. */
+/** Escala de una pista, con la entera como red de seguridad. */
 export function escalaDe(pista) {
-  return ESCALA[pista] || ESCALA.media || { x: 25.8, y: 22.3 };
+  return ESCALA[pista] || ESCALA.entera || { x: marcoDe('entera').ancho, y: marcoDe('entera').alto };
 }
 
 /** Distancia REAL en metros entre dos puntos normalizados de esa pista. */

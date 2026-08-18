@@ -7,7 +7,8 @@
 
 import { makeSampler, easeInOut } from './geometry.js';
 import { drawArrow, drawBloqueo } from './arrows.js';
-import { drawPlayer, drawBall, drawCone, drawFila, radii } from './symbols.js';
+import { drawPlayer, drawBall, drawCone, drawFila, drawPelotaTenis, drawEscalera, drawZona, radii } from './symbols.js';
+import { zonaDesdeGuardada, contornoDe, centroDe as centroZona } from './zonas.js';
 import { COLORS, TAU } from './colors.js';
 
 const MOV_TO_ARROW = { carrera_con_balon: 'run', carrera_sin_balon: 'cut', corte: 'cut' };
@@ -50,7 +51,7 @@ export class AnimationEngine {
     this.cumDur = []; let acc = 0;
     for (const f of this.fases) { this.cumDur.push(acc); acc += (f.duracion_ms || 1000); }
     this.totalDuration = acc || 1;
-    this._emit('phase', { k: this.k, n: this.fases.length });
+    this._emit('phase', this._infoFase(this.k));
     if (!opts.paused && this.autoplay && this.fases.length) this.play();
     else if (this.playing) this.pause(); // venía reproduciendo: parar el rAF y pintar el fotograma 0
     else { this.render(); this._emitFrame(); }
@@ -137,10 +138,29 @@ export class AnimationEngine {
   play() { if (this.playing || !this.fases.length) return; this.playing = true; this._last = performance.now(); this._schedule(); this._emit('play'); this._emitFrame(); }
   pause() { this.playing = false; if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } this.render(); this._emit('pause'); this._emitFrame(); }
   toggle() { this.playing ? this.pause() : this.play(); }
-  restart() { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this._emit('phase', { k: 0, n: this.phaseCount }); this.play(); }
+  restart() { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this._emit('phase', this._infoFase(0)); this.play(); }
   nextPhase() { this._goPhase(Math.min(this.k + 1, this.phaseCount - 1)); }
   prevPhase() { this._goPhase(Math.max(this.k - 1, 0)); }
-  _goPhase(k) { this.k = k; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this.render(); this._emit('phase', { k, n: this.phaseCount }); this._emitFrame(); }
+
+  /* ---- rondas de fila (Tramo 2.8) ----------------------------------
+     Un ejercicio de seis en fila son seis rondas de las mismas fases.
+     El proyector enseña «2 de 6» y salta de una a otra: ver las seis
+     seguidas fase a fase no aporta nada, porque son la misma. */
+  get rondas() { return this.anim?.rondas || 1; }
+  rondaActual() { return this.fases[this.k]?.ronda || 1; }
+  /** Primera fase de una ronda; -1 si esa ronda no existe. */
+  _inicioDeRonda(r) { return this.fases.findIndex((f) => (f.ronda || 1) === r); }
+  siguienteRonda() {
+    const i = this._inicioDeRonda(this.rondaActual() + 1);
+    if (i >= 0) this._goPhase(i);
+  }
+  rondaAnterior() {
+    const i = this._inicioDeRonda(Math.max(1, this.rondaActual() - 1));
+    if (i >= 0) this._goPhase(i);
+  }
+
+  _goPhase(k) { this.k = k; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this.render(); this._emit('phase', this._infoFase(k)); this._emitFrame(); }
+  _infoFase(k) { return { k, n: this.phaseCount, ronda: this.fases[k]?.ronda || 1, rondas: this.rondas }; }
   setSpeed(s) { this.speed = s; this._emitFrame(); }
   setLoop(b) { this.loop = b; this._emitFrame(); }
   seek(u) {
@@ -148,7 +168,7 @@ export class AnimationEngine {
     let k = 0;
     while (k < this.phaseCount - 1 && (this.cumDur[k + 1] || Infinity) <= ms) k++;
     this.k = k; this.phaseElapsed = ms - (this.cumDur[k] || 0); this.mode = 'play'; this.pauseElapsed = 0;
-    this.render(); this._emit('phase', { k, n: this.phaseCount }); this._emitFrame();
+    this.render(); this._emit('phase', this._infoFase(k)); this._emitFrame();
   }
 
   _schedule() { this._raf = requestAnimationFrame((t) => this._tick(t)); }
@@ -168,8 +188,8 @@ export class AnimationEngine {
     if (this.playing) this._schedule(); else this._raf = null;
   }
   _advance() {
-    if (this.k < this.phaseCount - 1) { this.k++; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', { k: this.k, n: this.phaseCount }); }
-    else if (this.loop) { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', { k: 0, n: this.phaseCount }); }
+    if (this.k < this.phaseCount - 1) { this.k++; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', this._infoFase(this.k)); }
+    else if (this.loop) { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', this._infoFase(0)); }
     else { this.playing = false; this.phaseElapsed = this._dur(); this.mode = 'play'; this._emit('ended'); this._emit('pause'); }
   }
 
@@ -202,10 +222,43 @@ export class AnimationEngine {
     const R = radii(this.view.w, this.anim.pista);
     const toPx = (p) => { const [x, y] = this.view.toPx(p.x, p.y); return { x, y }; };
 
+    /* Los símbolos se dibujan DERECHOS (para que los dorsales se lean),
+       así que el giro del proyector no les llega solo: toPx rota las
+       posiciones, no las orientaciones. Lo que tiene dirección —la cola de
+       una fila, una escalera tumbada— hay que girarlo a mano los mismos
+       90°, o en el proyector apuntaría a otro sitio de la pista que en la
+       ficha. (La cola ya arrastraba este fallo antes de que existieran las
+       escaleras.) */
+    const giro = this.view.rot || 0;
+
+    /* Zonas: el suelo del dibujo. Aquí sí manda `visible`, al contrario
+       que en el paso 1: una zona invisible sigue existiendo como sitio al
+       que referirse, pero no se pinta. Son las zonas que son una REGLA
+       («no salirse del pasillo») y no un decorado. */
+    for (const g of this.anim.zonas || []) {
+      if (g.visible === false) continue;
+      const z = zonaDesdeGuardada(g);
+      const { puntos, cerrado } = contornoDe(this.anim.pista, z);
+      const c = centroZona(this.anim.pista, z);
+      drawZona(ctx, {
+        puntos: puntos.map((p) => { const [px, py] = this.view.toPx(p.x, p.y); return { x: px, y: py }; }),
+        cerrado,
+        centro: (([px, py]) => ({ x: px, y: py }))(this.view.toPx(c.x, c.y)),
+        nombre: z.nombre,
+      }, { trazo: R.metro * 0.08, texto: Math.max(11, R.metro * 0.9) });
+    }
+
+    // material del suelo, debajo de todo: se pisa, no se esquiva
+    for (const m of this.anim.materiales || []) {
+      const [px, py] = this.view.toPx(m.posicion[0], m.posicion[1]);
+      if (m.tipo === 'escalera') drawEscalera(ctx, px, py, R.metro, (m.rot ?? 0) + giro, {});
+      else drawPelotaTenis(ctx, px, py, R.pelota, {});
+    }
+
     // conos (estáticos)
     for (const c of this.conos) {
       const [px, py] = this.view.toPx(c.posicion[0], c.posicion[1]);
-      if (c.funcion === 'fila' && c.fila_config) drawFila(ctx, px, py, R.cono, c.fila_config.direccion_grados ?? 0, c.fila_config.n_jugadores ?? 0, R.jugador, COLORS[c.fila_config.equipo] || COLORS.A);
+      if (c.funcion === 'fila' && c.fila_config) drawFila(ctx, px, py, R.cono, (c.fila_config.direccion_grados ?? 0) + giro, c.fila_config.n_jugadores ?? 0, R.jugador, COLORS[c.fila_config.equipo] || COLORS.A);
       drawCone(ctx, px, py, R.cono, {});
     }
 

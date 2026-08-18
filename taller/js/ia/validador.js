@@ -25,7 +25,9 @@ export function validarIntent(intent, elementos = [], pista = 'entera', opts = {
   if (!intent || !Array.isArray(intent.fases) || !intent.fases.length) {
     return { error: 'La IA no devolvió una interpretación utilizable. Detalla más el ejercicio y regenera.' };
   }
-  const ids = new Set(sintetizarJugadores(elementos).map((j) => j.id));
+  // la pista importa aunque aquí solo se usen los ids: sintetizarJugadores
+  // calcula además el final de cada cola, y ese sí depende del marco
+  const ids = new Set(sintetizarJugadores(elementos, pista).map((j) => j.id));
   const conos = elementos.filter((e) => e.kind === 'cono');
   // id → función del cono, con el MISMO fallback de id (`cono_${i+1}`) que usan
   // la function y el compilador — así un cono sin id sigue siendo direccionable.

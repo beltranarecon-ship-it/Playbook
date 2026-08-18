@@ -20,7 +20,7 @@ import { paso3 } from '../wizard/paso3.js';
 const STEPS = [
   { n: 0, label: 'Identificación' },
   { n: 1, label: 'Elementos' },
-  { n: 2, label: 'Acciones · IA' },
+  { n: 2, label: 'Acciones' },
   { n: 3, label: 'Metadatos' },
 ];
 const STEP_FNS = [paso0, paso1, paso2, paso3];
@@ -45,6 +45,9 @@ export function render(root) {
   stage.board.on('change', scheduleSave);
 
   function paint() {
+    // cada paso puede tener que soltar lo suyo al salir (el paso 2
+    // deja la pista en modo «señalar» y con un temporizador vivo)
+    current?.destroy?.();
     current = STEP_FNS[state.step](ctx);
     mount(navHost, stepNav(STEPS, state.step, { onJump: goTo }));
     mount(stepHost, current.el);
@@ -134,5 +137,5 @@ export function render(root) {
   }
 
   if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') { window.__stage = stage; window.__draft = draft; window.__wizard = { guardar, aplicarBorrador }; }
-  return { destroy() { clearTimeout(saveTimer); stage.destroy(); view.remove(); } };
+  return { destroy() { clearTimeout(saveTimer); current?.destroy?.(); stage.destroy(); view.remove(); } };
 }

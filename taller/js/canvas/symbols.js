@@ -6,23 +6,35 @@
    ============================================================ */
 
 import { COLORS, TAU } from './colors.js';
-import { PISTAS } from './court.js';
+import { radioPx, escalaTrazo, pxPorMetro, MATERIAL } from './medidas.js';
 
 const OSWALD = "'Oswald','Arial Narrow',sans-serif";
 
-/** Radios y escala de trazo en función del ancho del lienzo (px) y de la
- *  pista: las medias pistas están zoomadas ~1.4× respecto a la entera (el
- *  mismo metro real ocupa ~1.4× más lienzo), así que sus fichas se agrandan
- *  (PISTAS[k].escalaJugador) para representar el mismo tamaño real de
- *  jugador — proporcionado a la llave/círculos del SVG — en todas las vistas. */
+/**
+ * Radios de los elementos, en píxeles, a partir del ancho del lienzo.
+ *
+ * Los tamaños se declaran en METROS (medidas.js → TAMANOS) y se convierten
+ * aquí. Antes eran fracciones del lienzo ("el 4,2 % del ancho") corregidas
+ * por un factor por pista, porque la media estaba dibujada a otro zoom que
+ * la entera; con las cuatro pistas a escala eso sobra y, sobre todo, deja de
+ * ser verdad a medias: un jugador mide 1,30 m en la ficha, en el gif y en el
+ * proyector, y en las cuatro pistas.
+ *
+ * El suelo en píxeles es lo único que rompe la promesa, y a propósito: en
+ * una miniatura de 300 px un jugador a escala sale de 10 px y no se le ve el
+ * dorsal. Por debajo de ese tamaño manda la legibilidad.
+ */
 export function radii(w, pistaKey) {
   const W = w || 600;
-  const esc = PISTAS[pistaKey]?.escalaJugador ?? 1;
   return {
-    jugador: Math.max(14, W * 0.042) * esc,
-    balon: Math.max(8, W * 0.022) * esc,
-    cono: Math.max(10, W * 0.030) * esc,
-    scale: Math.max(0.6, W / 600),
+    jugador: Math.max(11, radioPx(pistaKey, 'jugador', W)),
+    balon: Math.max(6, radioPx(pistaKey, 'balon', W)),
+    cono: Math.max(8, radioPx(pistaKey, 'cono', W)),
+    pelota: Math.max(4, radioPx(pistaKey, 'pelota', W)),
+    metro: pxPorMetro(pistaKey, W),
+    // grosor de flechas y aspas: atado al jugador, que está en metros, y
+    // no al ancho del lienzo (ver medidas.js#escalaTrazo)
+    scale: escalaTrazo(pistaKey, W),
   };
 }
 
@@ -59,14 +71,26 @@ export function drawPlayer(ctx, x, y, r, o = {}) {
   ctx.strokeStyle = 'rgba(255,255,255,.92)';
   ctx.stroke();
 
-  // arco de defensor: corona la parte superior, abre hacia los lados
+  /* Arco de defensor. Medido sobre el símbolo de referencia del club
+     (web/DEFENSOR (1).svg): no es un halo pegado a la ficha, es un arco
+     ANCHO y plano, con su centro por debajo del jugador —a 1,145 radios—
+     y radio 1,95, que corona la cabeza como una visera. El anterior
+     (radio 1,16 centrado en la ficha) se confundía con el anillo de
+     selección, que es exactamente igual salvo por que cierra.
+
+     Va en el color del equipo, como en la referencia, y encima de un
+     trazo blanco más grueso: sobre el azul de la pista un arco terracota
+     solo se pierde, y el borde blanco es lo que pidió la especificación. */
   if (defender) {
-    ctx.beginPath();
-    ctx.arc(x, y, r * 1.16, Math.PI * 1.18, Math.PI * 1.82, false);
-    ctx.lineWidth = Math.max(3, r * 0.2);
-    ctx.strokeStyle = '#fff';
+    const cy = y + r * 1.145;
+    const arco = () => { ctx.beginPath(); ctx.arc(x, cy, r * 1.95, Math.PI * 1.142, Math.PI * 1.858, false); ctx.stroke(); };
     ctx.lineCap = 'round';
-    ctx.stroke();
+    ctx.lineWidth = Math.max(5, r * 0.62);
+    ctx.strokeStyle = 'rgba(255,255,255,.95)';
+    arco();
+    ctx.lineWidth = Math.max(3, r * 0.40);
+    ctx.strokeStyle = color;
+    arco();
   }
 
   // etiqueta (dorsal o número)
@@ -151,6 +175,108 @@ export function drawCone(ctx, x, y, r, o = {}) {
   ctx.stroke();
 
   if (o.selected) ring(ctx, x, y, r);
+  ctx.restore();
+}
+
+/**
+ * Una zona: relleno difuminado, borde suave y su nombre en el centro,
+ * también difuminado. No compite con las fichas — es el escenario, no
+ * los actores —, y por eso todo va a media tinta.
+ *
+ * `forma` viene ya en píxeles desde el llamador (canvas/zonas.js hace la
+ * geometría en metros y aquí solo se pinta):
+ *   { puntos: [{x,y}…], cerrado, centro: {x,y}, nombre }
+ */
+export function drawZona(ctx, forma, o = {}) {
+  const { puntos, cerrado, centro, nombre } = forma;
+  if (!puntos || puntos.length < 2) return;
+  const sel = o.selected;
+  ctx.save();
+
+  ctx.beginPath();
+  ctx.moveTo(puntos[0].x, puntos[0].y);
+  for (let i = 1; i < puntos.length; i++) ctx.lineTo(puntos[i].x, puntos[i].y);
+  if (cerrado) ctx.closePath();
+
+  if (cerrado) {
+    ctx.fillStyle = sel ? 'rgba(0,111,148,.22)' : 'rgba(255,255,255,.10)';
+    ctx.fill();
+  }
+  ctx.setLineDash(cerrado ? [] : [o.trazo * 2.2, o.trazo * 1.6]);
+  ctx.lineWidth = Math.max(1.5, o.trazo);
+  ctx.strokeStyle = sel ? 'rgba(120,220,255,.95)' : 'rgba(255,255,255,.42)';
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (nombre && centro) {
+    ctx.fillStyle = sel ? 'rgba(255,255,255,.85)' : 'rgba(255,255,255,.34)';
+    ctx.font = `600 ${Math.round(o.texto)}px ${OSWALD}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.letterSpacing = '0.08em';
+    ctx.fillText(String(nombre).toUpperCase(), centro.x, centro.y);
+  }
+  ctx.restore();
+}
+
+/**
+ * Pelota de tenis. Se distingue del balón por el color —verde lima, que
+ * no se usa para nada más— y por el tamaño: un tercio. Sin líneas de
+ * balón; a este tamaño solo serían ruido.
+ */
+export function drawPelotaTenis(ctx, x, y, r, o = {}) {
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,25,56,.30)';
+  ctx.shadowBlur = r * 0.6;
+  ctx.shadowOffsetY = r * 0.22;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, TAU);
+  ctx.fillStyle = COLORS.tenis;
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.lineWidth = Math.max(1, r * 0.2);
+  ctx.strokeStyle = 'rgba(255,255,255,.85)';
+  ctx.stroke();
+  // la costura, un solo arco: es lo que lee como "pelota de tenis"
+  ctx.beginPath();
+  ctx.arc(x - r * 0.55, y, r * 0.95, -Math.PI * 0.38, Math.PI * 0.38);
+  ctx.lineWidth = Math.max(1, r * 0.16);
+  ctx.strokeStyle = 'rgba(255,255,255,.75)';
+  ctx.stroke();
+  if (o.selected) ring(ctx, x, y, r);
+  ctx.restore();
+}
+
+/**
+ * Escalera de coordinación, a su tamaño real (4,00 × 0,50 m, un peldaño
+ * cada 40 cm — medidas.js#MATERIAL). No es un icono: es material que
+ * ocupa sitio en el suelo, y dibujarlo a su medida es lo que deja ver si
+ * caben dos escaleras en paralelo o si estorban a la fila de al lado.
+ *
+ * `metro` son los píxeles que mide un metro en este lienzo; `grados`, la
+ * orientación (0 = tumbada hacia la derecha).
+ */
+export function drawEscalera(ctx, x, y, metro, grados = 0, o = {}) {
+  const { largo, ancho, peldano } = MATERIAL.escalera;
+  const L = largo * metro, A = ancho * metro;
+  const n = Math.round(largo / peldano);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((grados * Math.PI) / 180);
+  ctx.translate(-L / 2, -A / 2);
+
+  ctx.fillStyle = 'rgba(255,255,255,.10)';
+  ctx.fillRect(0, 0, L, A);
+
+  ctx.lineWidth = Math.max(1.5, metro * 0.05);
+  ctx.strokeStyle = o.selected ? COLORS.accent : 'rgba(255,255,255,.88)';
+  ctx.lineCap = 'butt';
+  ctx.strokeRect(0, 0, L, A);
+  ctx.beginPath();
+  for (let i = 1; i < n; i++) { const px = (L * i) / n; ctx.moveTo(px, 0); ctx.lineTo(px, A); }
+  ctx.stroke();
   ctx.restore();
 }
 
