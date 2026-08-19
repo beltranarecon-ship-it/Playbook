@@ -1119,7 +1119,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.6 ✅ | Duración real por bloque → duración estimada del ejercicio | 3.5 | La segunda vez que se usa un ejercicio propone la duración real |
 | 3.7 ✅ | Rúbrica: filas de acciones y conductas, cuatro niveles, evaluación al cerrar | 2.5 | Se evalúa a cinco jugadores en menos de dos minutos |
 | 3.8 ✅ | Apartado Progresión dentro del equipo | 3.7 | Se elige un jugador y se ven sus datos y sus gráficas |
-| 3.9 | Objetivos: categorías propias, dianas de acción, medida por rúbrica, panel «qué vigilar» | 3.7 | Un objetivo dice «trabajado en 7 sesiones · 5 de 13 han subido» |
+| 3.9 ✅ | Objetivos: categorías propias, dianas de acción, medida por rúbrica, panel «qué vigilar» | 3.7 | Un objetivo dice «trabajado en 7 sesiones · 5 de 13 han subido» |
 | 3.10 | Objetivos individuales, visibles en sesión activa | 3.8 | Cada niño con uno o dos objetivos vivos |
 | 3.11 | Reflexión: esfuerzo obligatorio, preguntas individuales editables | 3.5 | Se valora a jugadores sueltos, no a todos |
 | 3.12 | Plantilla: filtros por asistencia, estado y rendimiento; archivados recuperables | 3.1 | Se recupera un jugador de baja |
@@ -1534,6 +1534,58 @@ que todo el módulo de sesiones junto.
 sale con **100 % de asistencia · 1 estrella · 1 fila mirada · ↑1**, su barra de «bote»
 llena tres de cuatro escalones con la flecha de subida, y al tocarla se abre «Cómo ha ido
 en «bote»» con **dos puntos** y los cuatro niveles en el eje.
+
+### Estado de 3.9 (hecha)
+
+`equipos/js/data/objetivos-medida.js` — módulo PURO con su banco (`eval-objetivos.mjs`,
+18 pruebas). Migración **025**.
+
+**La medida sustituye a una opinión.** Se retira la pregunta de cumplimiento
+autodeclarada de la reflexión (§7) y en su sitio queda (decisión #26):
+
+> trabajado en 7 sesiones · 5 de 13 han subido
+
+Los dos números dicen cosas distintas y hacen falta los dos. El primero es lo que **tú**
+has hecho: cuántas veces has puesto ese objetivo en un entrenamiento. El segundo es lo
+que ha **pasado**: cuántos jugadores han subido de nivel en las filas a las que apunta.
+Un objetivo trabajado siete sesiones con cero jugadores que suben no es un objetivo
+cumplido; es uno que hay que replantear. Y eso, autodeclarado, no se ve nunca.
+
+**«No se le ha mirado» no es «no ha subido».** El denominador es de cuántos se sabe algo,
+y los que faltan se dicen aparte. Meterlos abajo convertiría «no lo sé» en «va mal».
+
+**Solo cuentan las sesiones que ocurrieron**: una cancelada llevaba el objetivo puesto y
+no se trabajó, y una programada para el viernes tampoco — contarla haría que el número
+subiera por planificar en vez de por entrenar. Ocurrió = marcada como realizada **o** con
+la fecha ya pasada, porque cerrar la sesión es opcional y muchos entrenamientos se dan
+sin que nadie los marque.
+
+**Categorías propias** (§6): eran tres fijas y un entrenador que quisiera trabajar
+«actitud» no tenía dónde ponerlo. Ahora se escribe la suya al crear el objetivo y queda
+en el catálogo del club, para que la segunda vez salga sugerida en vez de convertirse en
+«Actitud», «actitud » y «ACTITUD».
+
+**La diana** es lo que hace medible el objetivo: a qué filas de la rúbrica apunta. Mismas
+claves que `rubrica_valores`, sin FK, por lo mismo que allí —las setenta filas base viven
+en código—. Con varias dianas manda el mejor movimiento del jugador: si el objetivo
+apunta a entrada **y** a autonomía, subir en una de las dos ya es subir.
+
+**«Qué vigilar hoy»** en el planificador: una o dos líneas por objetivo de la sesión, con
+**nombres**. No es un resumen del objetivo, es lo que hay que mirar en la pista — *«tiro:
+mira sobre todo a Jugador 4 y Jugador 2»* sirve; *«objetivo: mejorar el tiro»* no. Y si
+no se ha mirado a nadie en esa fila, lo dice en vez de callarse.
+
+**Un fallo que salió del banco, y que era de interfaz.** `nivelesEnPeriodo` espera
+`{desde, hasta}` y el objetivo lleva `fecha_inicio`/`fecha_fin`: pasarle el objetivo
+entero **no daba error**, medía sobre toda la historia y el número salía mal en silencio.
+Me pasó escribiendo las pruebas de esta misma fila. Ahora hay `rangoDe(objetivo)` y la
+conversión es explícita.
+
+**Comprobado** en el arnés: el objetivo con dianas dice *«trabajado en 2 sesiones · 2 de
+4 han subido»* y al pasar por encima *«2 han subido · 1 siguen igual · 1 han bajado · 10
+sin mirar»* — las tres sesiones que lo llevan son dos pasadas y una futura, y la futura
+no cuenta. El que no tiene diana dice *«sin diana, no se puede medir»* y explica cómo
+arreglarlo. El panel del planificador saca las dos líneas con nombres.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

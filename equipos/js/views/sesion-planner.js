@@ -39,6 +39,9 @@ import {
 } from '../data/plan.js';
 import { getSesionesRango } from '../data/sessions.js';
 import { esActiva } from '../data/estado-sesion.js';
+import { getRubricaEquipo } from '../data/rubrica.js';
+import { queVigilarHoy } from '../data/objetivos-medida.js';
+import { filasDeRubrica } from '../../../taller/js/rubrica.js';
 import { getDuracionesReales } from '../../../taller/js/supabase/duraciones.js';
 import { duracionPropuesta, textoDuracion } from '../../../taller/js/duracion.js';
 import { getVideosGuardados, guardarVideoBloque, borrarVideoBloque } from '../data/videos.js';
@@ -125,6 +128,11 @@ export function render(root, params) {
      Llega por red y se suma cuando llega: sin ello se propone lo que
      dice la ficha, que es lo que se hacía antes. */
   let reales = {};
+  /* Para el panel «qué vigilar hoy» (Tramo 3.9): la rúbrica del equipo
+     dice quién está más bajo en las dianas de los objetivos de la
+     sesión, que es lo único accionable de un objetivo en la pista. */
+  let rubrica = {};
+  let plantillaEq = [];
   let titulo = '';
   let soloLectura = false;
   let sucio = false;
@@ -1034,6 +1042,33 @@ export function render(root, params) {
   }
 
   // ── objetivos ──────────────────────────────────────────────
+  /* ---- «qué vigilar hoy» (Tramo 3.9, §6) --------------------------
+     Una o dos líneas por objetivo de la sesión. No es un resumen del
+     objetivo: es lo que hay que MIRAR en la pista, con nombres. «Vigila
+     la entrada, sobre todo en Ana y Bruno» sirve; «objetivo: mejorar la
+     entrada» no. */
+  const nodoVigilar = h('div', { class: 'eq-vigilar' });
+  function pintaVigilar() {
+    const elegidos = objetivosEquipo.filter((o) => objetivosSel.has(o.id));
+    if (!elegidos.length) { nodoVigilar.replaceChildren(); return; }
+
+    const filas = filasDeRubrica();
+    const nombreDe = (c) => filas.find((f) => f.clave === c)?.nombre || c.split(':')[1];
+    const panel = queVigilarHoy(elegidos, {
+      jugadores: plantillaEq.map((j) => ({ id: j.id, nombre: j.nombre })),
+      porJugador: rubrica,
+      nombreDe,
+    });
+
+    nodoVigilar.replaceChildren(
+      h('h3', { class: 'eq-vigilar-t' }, 'Qué vigilar hoy'),
+      ...panel.map(({ objetivo, lineas }) => h('div', { class: 'eq-vigilar-obj' },
+        h('strong', null, objetivo.titulo),
+        ...lineas.map((l) => h('p', { class: 'eq-vigilar-l' }, l)),
+      )),
+    );
+  }
+
   function seccionObjetivos() {
     const cubren = new Set(objetivosEnFecha(sesion.fecha, objetivosEquipo).map((o) => o.id));
     const activos = objetivosEquipo.filter((o) => o.estado !== 'archivado');
@@ -1049,7 +1084,7 @@ export function render(root, params) {
         return h('label', { class: 'eq-obj-check', for: id },
           h('input', {
             id, type: 'checkbox', checked: objetivosSel.has(o.id), disabled: soloLectura,
-            onChange: (e) => { e.target.checked ? objetivosSel.add(o.id) : objetivosSel.delete(o.id); marcaSucio(); },
+            onChange: (e) => { e.target.checked ? objetivosSel.add(o.id) : objetivosSel.delete(o.id); marcaSucio(); pintaVigilar(); },
           }),
           h('span', { class: 'eq-obj-check-txt' },
             o.titulo, ' ', badgeCategoria(o.categoria),
@@ -1098,6 +1133,7 @@ export function render(root, params) {
           h('section', { class: 'eq-planner-seccion' },
             h('h2', { class: 'eq-zona-titulo' }, 'Objetivos de la sesión'),
             seccionObjetivos(),
+            nodoVigilar,
           ),
 
           h('section', { class: 'eq-planner-seccion' },
@@ -1147,6 +1183,7 @@ export function render(root, params) {
     );
     pintaBloques();
     pintaEstadoGuardado();
+    pintaVigilar();
   }
 
   function barraAcciones() {
@@ -1260,6 +1297,12 @@ export function render(root, params) {
         getJugadores(sesion.team_id).catch(() => []),
       ]);
       jugadoresEquipo = plantilla.length || null;
+      plantillaEq = plantilla;
+
+      // la rúbrica llega suelta: sin ella el panel dice que no hay nada
+      getRubricaEquipo(plantilla.map((j) => j.id))
+        .then((r) => { rubrica = r || {}; pintaVigilar(); })
+        .catch(() => {});
 
       /* Lo que este equipo ha entrenado en las dos semanas anteriores,
          para el aviso «esto ya lo hiciste el martes» (Tramo 3.2). Va

@@ -6,17 +6,30 @@
 
 import { supabase } from './_client.js';
 
-const COLS = 'id, team_id, season_id, titulo, descripcion, categoria, fecha_inicio, fecha_fin, estado, created_at';
+const COLS_BASE = 'id, team_id, season_id, titulo, descripcion, categoria, fecha_inicio, fecha_fin, estado, created_at';
+
+/* `dianas` la añade la migración 025 (Tramo 3.9). Mismo criterio que en
+   `blocks.js`: se pide, y si la base de datos dice que no existe se
+   apunta y se sigue sin ella. Un equipo sin poder abrir sus objetivos
+   por una columna nueva sería mucho peor que no poder medirlos. */
+let sinDianas = false;
+const COLS = () => (sinDianas ? COLS_BASE : `${COLS_BASE}, dianas`);
+const faltaDianas = (error) => {
+  const m = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return error?.code === '42703' || error?.code === 'PGRST204' || (m.includes('column') && m.includes('dianas'));
+};
 
 /** Todos los objetivos del equipo en la temporada (incluye archivados). */
 export async function getObjetivos(teamId, seasonId) {
-  const { data, error } = await supabase
+  const pide = () => supabase
     .from('objectives')
-    .select(COLS)
+    .select(COLS())
     .eq('team_id', teamId)
     .eq('season_id', seasonId)
     .order('fecha_inicio')
     .order('created_at');
+  let { data, error } = await pide();
+  if (error && faltaDianas(error)) { sinDianas = true; ({ data, error } = await pide()); }
   if (error) throw error;
   return data ?? [];
 }
@@ -28,7 +41,7 @@ export async function getObjetivos(teamId, seasonId) {
 export async function getObjetivosRango({ desde, hasta, teamId = null, incluirArchivados = false }) {
   let q = supabase
     .from('objectives')
-    .select(COLS)
+    .select(COLS())
     .lte('fecha_inicio', hasta)
     .gte('fecha_fin', desde)
     .order('fecha_inicio')
@@ -40,26 +53,104 @@ export async function getObjetivosRango({ desde, hasta, teamId = null, incluirAr
   return data ?? [];
 }
 
-export async function crearObjetivo({ team_id, season_id, titulo, descripcion, categoria, fecha_inicio, fecha_fin }) {
+export async function crearObjetivo({ team_id, season_id, titulo, descripcion, categoria, fecha_inicio, fecha_fin, dianas = [] }) {
   const { data: { user } } = await supabase.auth.getUser();
-  const { data, error } = await supabase
-    .from('objectives')
-    .insert({
-      team_id, season_id,
-      titulo: titulo.trim(),
-      descripcion: descripcion?.trim() || null,
-      categoria, fecha_inicio, fecha_fin,
-      created_by: user.id,
-    })
-    .select()
-    .single();
+  const fila = {
+    team_id, season_id,
+    titulo: titulo.trim(),
+    descripcion: descripcion?.trim() || null,
+    categoria, fecha_inicio, fecha_fin,
+    created_by: user.id,
+    ...(sinDianas ? {} : { dianas: dianas || [] }),
+  };
+  let { data, error } = await supabase.from('objectives').insert(fila).select().single();
+  if (error && faltaDianas(error)) {
+    sinDianas = true;
+    const { dianas: _, ...sin } = fila;
+    ({ data, error } = await supabase.from('objectives').insert(sin).select().single());
+  }
   if (error) throw error;
   return data;
 }
 
+/* ── Las categorías que crea el club (Tramo 3.9) ──────────────
+   Eran tres fijas y un entrenador que quiera trabajar «actitud» no
+   tenía dónde ponerlo. El catálogo existe para que la segunda vez que
+   alguien escriba «actitud» salga sugerida, en vez de convertirse en
+   «Actitud», «actitud » y «ACTITUD». */
+
+/** Nunca lanza: sin la 025 devuelve las tres de siempre. */
+export async function getCategorias() {
+  try {
+    const { data, error } = await supabase.from('categorias_objetivo').select('nombre').order('nombre');
+    if (error || !data?.length) return ['técnico', 'táctico', 'físico'];
+    return data.map((r) => r.nombre);
+  } catch {
+    return ['técnico', 'táctico', 'físico'];
+  }
+}
+
+/** Da de alta una categoría nueva. Que ya exista no es un error. */
+export async function crearCategoria(nombre) {
+  const n = String(nombre || '').trim().toLowerCase();
+  if (!n) return null;
+  try {
+    await supabase.from('categorias_objetivo').insert({ nombre: n });
+  } catch { /* si no se puede guardar, el objetivo se crea igual */ }
+  return n;
+}
+
 export async function actualizarObjetivo(id, patch) {
-  const { error } = await supabase.from('objectives').update(patch).eq('id', id);
+  const p = sinDianas ? (({ dianas, ...r }) => r)(patch) : patch;
+  let { error } = await supabase.from('objectives').update(p).eq('id', id);
+  if (error && faltaDianas(error)) {
+    sinDianas = true;
+    const { dianas: _, ...sin } = patch;
+    ({ error } = await supabase.from('objectives').update(sin).eq('id', id));
+  }
   if (error) throw error;
+}
+
+/**
+ * En cuántas sesiones se ha trabajado cada objetivo (Tramo 3.9).
+ *
+ * Es la mitad de «trabajado en 7 sesiones · 5 de 13 han subido»: lo que
+ * TÚ has hecho. La otra mitad —lo que ha pasado— sale de la rúbrica.
+ *
+ * Solo cuentan las sesiones que de verdad OCURRIERON. Una cancelada
+ * llevaba el objetivo puesto y no se trabajó; una programada para el
+ * viernes tampoco se ha trabajado todavía, y contarla haría que el
+ * número subiera por planificar en vez de por entrenar.
+ *
+ * Ocurrió = está marcada como realizada, o su fecha ya pasó. Lo
+ * segundo hace falta porque cerrar la sesión es opcional y muchos
+ * entrenamientos se dan sin que nadie los marque.
+ *
+ * @returns { [objective_id]: nº de sesiones }
+ */
+export async function getSesionesPorObjetivo(teamId, seasonId, { hoy = null } = {}) {
+  try {
+    const { data, error } = await supabase
+      .from('session_objectives')
+      .select('objective_id, sessions!inner(id, team_id, season_id, estado, fecha)')
+      .eq('sessions.team_id', teamId)
+      .eq('sessions.season_id', seasonId)
+      .neq('sessions.estado', 'cancelada');
+    if (error) return {};
+    const d = new Date();
+    const hoyISO = hoy || `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const out = {};
+    for (const r of data || []) {
+      const ses = r.sessions;
+      if (!ses) continue;
+      const ocurrio = ses.estado === 'realizada' || String(ses.fecha || '') <= hoyISO;
+      if (!ocurrio) continue;
+      out[r.objective_id] = (out[r.objective_id] || 0) + 1;
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 export async function borrarObjetivo(id) {

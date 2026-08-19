@@ -22,7 +22,9 @@ import {
   balancePartidos, mediasPorEje, resultadoPartido, mediaValoracion, ESTADOS_PARTIDO,
 } from '../data/partidos.js';
 import { getTemporadaActiva, aplicarPlan } from '../data/sessions.js';
-import { getObjetivos, actualizarObjetivo, borrarObjetivo } from '../data/objectives.js';
+import { getObjetivos, actualizarObjetivo, borrarObjetivo, getSesionesPorObjetivo } from '../data/objectives.js';
+import { getRubricaEquipo } from '../data/rubrica.js';
+import { medirObjetivo } from '../data/objetivos-medida.js';
 import { getAsistenciaEquipo } from '../data/attendance.js';
 import { estadisticasJugadores } from '../data/asistencia.js';
 import {
@@ -245,6 +247,17 @@ export function render(root, params) {
   // ── Pestaña OBJETIVOS ──────────────────────────────────────
   async function pintaObjetivos(zona) {
     const todos = await getObjetivos(teamId, temporada.id);
+    /* La medida de cada objetivo (Tramo 3.9). Las dos consultas van
+       sueltas y toleran el fallo: sin ellas la lista se pinta igual,
+       solo que sin el «5 de 13 han subido». */
+    const jugadoresEq = await getJugadores(teamId).catch(() => []);
+    const [porObjetivo, rubrica] = await Promise.all([
+      getSesionesPorObjetivo(teamId, temporada.id).catch(() => ({})),
+      getRubricaEquipo(jugadoresEq.map((j) => j.id)).catch(() => ({})),
+    ]);
+    const medidaDe = (o) => medirObjetivo(o, {
+      jugadores: jugadoresEq, porJugador: rubrica, sesiones: porObjetivo[o.id] || 0,
+    });
     const activos = todos.filter((o) => o.estado === 'activo');
     const conseguidos = todos.filter((o) => o.estado === 'conseguido');
     const archivados = todos.filter((o) => o.estado === 'archivado');
@@ -259,6 +272,7 @@ export function render(root, params) {
     };
 
     const fila = (o) => filaObjetivo(o, {
+      medida: medidaDe(o),
       acciones: [
         o.estado === 'activo'
           ? btn('✓ Conseguido', () => cambiar(o, { estado: 'conseguido' }, `«${o.titulo}» conseguido 🏀`))

@@ -1089,3 +1089,44 @@
 
 .eq-prog-vacio { padding: 1.5rem; background: var(--bone); border-radius: var(--radius); }
 .eq-prog-vacio p { margin: 0 0 0.5rem; }
+
+/* ============================================================
+   Objetivos medidos y «qué vigilar hoy» (Tramo 3.9)
+   ============================================================ */
+
+/* La medida sustituye a la pregunta de cumplimiento autodeclarada: es
+   un dato, no una opinión, y por eso va con el objetivo y no escondida. */
+.eq-obj-medida { font-size: 0.75rem; font-weight: 600; color: var(--papaya-deep); }
+.eq-obj-medida.es-sin-diana { color: var(--muted); font-weight: 400; }
+.eq-obj-dianas { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 2px; }
+.eq-obj-diana {
+  padding: 1px 8px; border-radius: 999px; font-size: 0.6875rem;
+  background: var(--bone); color: var(--muted); border: 1px solid var(--line);
+}
+
+/* Las categorías que crea el entrenador. */
+.eq-catchip-nueva { border-style: dashed; color: var(--muted); }
+
+/* La diana, en el formulario del objetivo. */
+.eq-diana-puestas { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.375rem; }
+.eq-diana-chip {
+  padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+  background: var(--papaya-soft); color: var(--papaya-deep);
+  border: 1px solid color-mix(in srgb, var(--papaya) 30%, var(--line));
+}
+.eq-diana-lista { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.375rem; max-height: 7rem; overflow-y: auto; }
+.eq-diana-add {
+  padding: 2px 10px; border-radius: 999px; font-size: 0.75rem;
+  border: 1px solid var(--line); background: var(--white); color: var(--muted);
+}
+.eq-diana-add:hover { border-color: var(--papaya); color: var(--papaya-deep); }
+
+/* «Qué vigilar hoy»: lo que se mira en la pista, con nombres. */
+.eq-vigilar { margin-top: 0.75rem; padding: 0.75rem; background: var(--bone); border-radius: var(--radius); }
+.eq-vigilar:empty { display: none; }
+.eq-vigilar-t {
+  font-family: var(--font-display); text-transform: uppercase;
+  font-size: 0.8125rem; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 0.5rem;
+}
+.eq-vigilar-obj + .eq-vigilar-obj { margin-top: 0.5rem; }
+.eq-vigilar-l { margin: 0; font-size: 0.8125rem; }

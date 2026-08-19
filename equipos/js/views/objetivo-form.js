@@ -12,6 +12,9 @@ import { puntoEquipo } from '../ui/components.js';
 import { crearObjetivo, actualizarObjetivo, getEjerciciosSugeribles } from '../data/objectives.js';
 import { sugerirEjercicios } from '../data/sugerencias.js';
 import { CATEGORIAS_OBJETIVO } from '../config.js';
+import { getCategorias, crearCategoria } from '../data/objectives.js';
+import { filasDeRubrica } from '../../../taller/js/rubrica.js';
+import { textoMedida, detalleMedida } from '../data/objetivos-medida.js';
 
 /**
  * @param equipos    lista de mis equipos [{id, name, color}] (para el select)
@@ -28,6 +31,7 @@ export function modalObjetivo({ equipos = [], teamId = null, temporada, fechas =
     titulo: objetivo?.titulo || '',
     descripcion: objetivo?.descripcion || '',
     categoria: objetivo?.categoria || '',
+    dianas: Array.isArray(objetivo?.dianas) ? [...objetivo.dianas] : [],
     fecha_inicio: objetivo?.fecha_inicio || fechas?.inicio || '',
     fecha_fin: objetivo?.fecha_fin || fechas?.fin || '',
   };
@@ -63,17 +67,73 @@ export function modalObjetivo({ equipos = [], teamId = null, temporada, fechas =
     );
   }
 
-  // ── chips de categoría ─────────────────────────────────────
+  /* ── chips de categoría (Tramo 3.9) ──────────────────────────
+     Eran tres fijas. Ahora el entrenador escribe la suya al crear el
+     objetivo y queda en el catálogo del club, para que la segunda vez
+     salga sugerida en vez de convertirse en «Actitud», «actitud » y
+     «ACTITUD». */
+  let categorias = [...CATEGORIAS_OBJETIVO];
   const chipsCat = h('div', { class: 'eq-catchips', role: 'radiogroup', 'aria-label': 'Categoría' });
   const pintaCats = () => {
-    chipsCat.replaceChildren(...CATEGORIAS_OBJETIVO.map((c) =>
-      h('button', {
+    chipsCat.replaceChildren(
+      ...categorias.map((c) => h('button', {
         class: 'eq-catchip' + (c === m0.categoria ? ' sel' : ''),
         type: 'button', role: 'radio', 'aria-checked': String(c === m0.categoria),
         onClick: () => { m0.categoria = c; pintaCats(); pintaSugerencias(); },
-      }, c)));
+      }, c)),
+      h('button', {
+        class: 'eq-catchip eq-catchip-nueva', type: 'button',
+        onClick: async () => {
+          const nueva = (prompt('¿Cómo se llama la categoría?') || '').trim().toLowerCase();
+          if (!nueva) return;
+          if (!categorias.includes(nueva)) categorias = [...categorias, nueva];
+          m0.categoria = nueva;
+          crearCategoria(nueva);
+          pintaCats(); pintaSugerencias();
+        },
+      }, '+ otra'),
+    );
   };
   pintaCats();
+  // las del club llegan por red y se suman cuando llegan
+  getCategorias().then((cs) => {
+    if (!cs?.length) return;
+    categorias = [...new Set([...cs, ...categorias, ...(m0.categoria ? [m0.categoria] : [])])];
+    pintaCats();
+  }).catch(() => {});
+
+  /* ── la diana (Tramo 3.9) ────────────────────────────────────
+     A qué filas de la rúbrica apunta. Es lo que convierte «trabajar la
+     entrada» en algo medible: desde la decisión #26 el cumplimiento no
+     lo declara el entrenador, lo dice cuántos jugadores han subido de
+     nivel en estas filas. Sin diana el objetivo se puede trabajar,
+     pero no medir — y se dice. */
+  const FILAS = filasDeRubrica();
+  const buscaDiana = h('input', {
+    class: 'field-input', type: 'search', placeholder: 'Busca una acción o una conducta…',
+    'aria-label': 'Buscar diana',
+    onInput: () => pintaDianas(),
+  });
+  const listaDiana = h('div', { class: 'eq-diana-lista' });
+  const puestas = h('div', { class: 'eq-diana-puestas' });
+
+  const pintaDianas = () => {
+    const q = buscaDiana.value.trim().toLowerCase();
+    const libres = FILAS.filter((f) => !m0.dianas.includes(f.clave)
+      && (!q || f.nombre.toLowerCase().includes(q)));
+    listaDiana.replaceChildren(...libres.slice(0, q ? 12 : 8).map((f) => h('button', {
+      class: 'eq-diana-add', type: 'button',
+      onClick: () => { m0.dianas = [...m0.dianas, f.clave]; buscaDiana.value = ''; pintaDianas(); },
+    }, f.nombre)));
+    puestas.replaceChildren(...(m0.dianas.length
+      ? m0.dianas.map((c) => h('button', {
+          class: 'eq-diana-chip', type: 'button', title: 'Quitar',
+          onClick: () => { m0.dianas = m0.dianas.filter((x) => x !== c); pintaDianas(); },
+        }, nombreDiana(c), ' ×'))
+      : [h('span', { class: 'eq-ayuda' }, 'Sin diana el objetivo se puede trabajar, pero no medir.')]));
+  };
+  const nombreDiana = (clave) => FILAS.find((f) => f.clave === clave)?.nombre || clave;
+  pintaDianas();
 
   // ── formulario ─────────────────────────────────────────────
   let inTitulo;
@@ -95,6 +155,15 @@ export function modalObjetivo({ equipos = [], teamId = null, temporada, fechas =
     h('div', { class: 'field-group' },
       h('label', { class: 'field-label' }, 'Categoría ', h('span', { class: 'required' }, '*')),
       chipsCat,
+    ),
+    h('div', { class: 'field-group' },
+      h('label', { class: 'field-label' }, 'Diana'),
+      h('p', { class: 'eq-ayuda' },
+        'A qué filas de la rúbrica apunta. Es lo que hace que el objetivo se mida solo: '
+        + '«trabajado en 7 sesiones · 5 de 13 han subido».'),
+      puestas,
+      buscaDiana,
+      listaDiana,
     ),
     h('div', { class: 'field-row' },
       h('div', { class: 'field-group' },
@@ -149,6 +218,7 @@ export function modalObjetivo({ equipos = [], teamId = null, temporada, fechas =
                 categoria: m0.categoria,
                 fecha_inicio: m0.fecha_inicio,
                 fecha_fin: m0.fecha_fin,
+                dianas: m0.dianas,
               });
             } else {
               await crearObjetivo({ ...m0, season_id: seasonId });
@@ -171,7 +241,12 @@ export const badgeCategoria = (categoria) =>
   h('span', { class: 'eq-obj-badge' }, categoria);
 
 /** Fila compacta de objetivo (panel de día y listados). */
-export function filaObjetivo(o, { color = null, nombreEquipo = null, acciones = null } = {}) {
+/**
+ * @param opts.medida  la de `medirObjetivo` (Tramo 3.9). Si viene, se
+ *   enseña «trabajado en 7 sesiones · 5 de 13 han subido», que es lo
+ *   que sustituye a la pregunta de cumplimiento autodeclarada (§7).
+ */
+export function filaObjetivo(o, { color = null, nombreEquipo = null, acciones = null, medida = null } = {}) {
   return h('div', { class: 'eq-obj' + (o.estado !== 'activo' ? ` eq-obj-${o.estado}` : '') },
     h('div', { class: 'eq-obj-info' },
       h('span', { class: 'eq-obj-titulo' },
@@ -185,6 +260,15 @@ export function filaObjetivo(o, { color = null, nombreEquipo = null, acciones = 
       h('span', { class: 'eq-obj-fechas' },
         o.fecha_inicio === o.fecha_fin ? o.fecha_inicio : `${o.fecha_inicio} → ${o.fecha_fin}`),
       o.descripcion ? h('span', { class: 'eq-obj-desc' }, o.descripcion) : null,
+      medida
+        ? h('span', {
+            class: 'eq-obj-medida' + (medida.conDiana ? '' : ' es-sin-diana'),
+            title: detalleMedida(medida),
+          }, textoMedida(medida))
+        : null,
+      (o.dianas || []).length
+        ? h('span', { class: 'eq-obj-dianas' }, ...o.dianas.map((c) => h('span', { class: 'eq-obj-diana' }, c.split(':')[1])))
+        : null,
     ),
     acciones ? h('div', { class: 'eq-obj-acciones' }, acciones) : null,
   );
