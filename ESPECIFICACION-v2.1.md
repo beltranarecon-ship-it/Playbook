@@ -1117,7 +1117,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.4 ✅ | Estado `activa` deducido del reloj + cinco estados en el calendario | — | Los cinco se distinguen a la vista |
 | 3.5 ✅ | Pantalla de sesión activa: cronómetro, pasar lista, finalizado/+5, anotación en caliente | 3.4 | Un entrenamiento entero se da sin apuntar nada después |
 | 3.6 ✅ | Duración real por bloque → duración estimada del ejercicio | 3.5 | La segunda vez que se usa un ejercicio propone la duración real |
-| 3.7 | Rúbrica: filas de acciones y conductas, cuatro niveles, evaluación al cerrar | 2.5 | Se evalúa a cinco jugadores en menos de dos minutos |
+| 3.7 ✅ | Rúbrica: filas de acciones y conductas, cuatro niveles, evaluación al cerrar | 2.5 | Se evalúa a cinco jugadores en menos de dos minutos |
 | 3.8 | Apartado Progresión dentro del equipo | 3.7 | Se elige un jugador y se ven sus datos y sus gráficas |
 | 3.9 | Objetivos: categorías propias, dianas de acción, medida por rúbrica, panel «qué vigilar» | 3.7 | Un objetivo dice «trabajado en 7 sesiones · 5 de 13 han subido» |
 | 3.10 | Objetivos individuales, visibles en sesión activa | 3.8 | Cada niño con uno o dos objetivos vivos |
@@ -1445,6 +1445,58 @@ de ficha y sin marca.
 
 Y el arnés aprendió a resolver **embebidos** (`sessions!inner(...)`): sin eso la consulta
 devolvía cero filas y la propuesta parecía rota cuando lo que fallaba era el arnés.
+
+### Estado de 3.7 (hecha)
+
+`taller/js/rubrica.js` — módulo PURO con su banco (`eval-rubrica.mjs`, 21 pruebas).
+Migración **024**. La evaluación vive en el cierre de la sesión.
+
+**Las filas salen de dos sitios**, que es la salvedad declarada en §3: las **acciones**
+son el vocabulario común —la misma palabra que es pieza del catálogo del paso 2, etiqueta
+de un ejercicio y diana de un objetivo— y las **conductas** son las cuatro familias de la
+decisión #25, que no se enlazan con ningún ejercicio porque no las entrena uno. Setenta
+filas en total, y ninguna copiada: las acciones se leen de `TAGS`.
+
+**Los cuatro niveles** son los de §3 —no lo hace · con ayuda · solo · con oposición—, la
+misma escala de exigencia con la que están clasificados los 204 ejercicios. Por eso
+«subir de nivel» y «subir de ejercicio» significan lo mismo.
+
+**`rubrica_valores` no se sobrescribe.** Cada valoración es una fila con su fecha: el
+nivel de hoy es la última y la de hace tres meses sigue estando. Sin eso no hay
+progresión que enseñar —solo un número que cambia sin dejar rastro— y el cumplimiento de
+un objetivo, que desde la decisión #26 se mide por **movimiento** de rúbrica, no se
+podría calcular. La RLS lo respalda: se puede borrar una valoración, pero no cambiarla —
+corregir un nivel es valorar otra vez.
+
+**La clave es texto** (`accion:bote`, `conducta:actitud`) y no un uuid, por lo mismo que
+en el catálogo de acciones: las setenta filas base viven en código y tienen que existir
+sin una llamada de red. `rubrica_filas` guarda solo lo que añade el club.
+
+#### Veinticuatro segundos por crío
+
+El criterio es «cinco jugadores en menos de dos minutos». Eso decide toda la pantalla: se
+abre **un** jugador, salen **seis** filas y cada fila es un toque entre cuatro botones.
+Los toques se acumulan y se mandan **de una tacada** —una petición por toque haría el
+pabellón insoportable— y cerrar un jugador guarda lo suyo, porque si hay que acordarse de
+pulsar guardar, con doce críos delante no se pulsa.
+
+**La app no elige a quién mirar** (§5.7: lo dispara el entrenador, sin tope). Solo
+**ordena**: delante el que lleva más tiempo sin mirarse y, antes que nadie, el que no se
+ha mirado nunca. Es lo único que evita que se evalúe siempre a los mismos cinco.
+
+**Un fallo que salió al verlo funcionando**: las seis filas propuestas eran siempre las
+mismas. Con setenta filas sin mirar, «lo más bajo primero» daba las cuatro conductas y
+las dos primeras acciones de la lista, sesión tras sesión — la rúbrica habría dejado de
+servir a la segunda semana. Ahora van en tres capas: las conductas, **lo que se ha
+entrenado hoy** (de las etiquetas de los ejercicios del plan) y el resto para completar.
+Eso es el eslabón del vocabulario único hecho pantalla: al cerrar se pregunta por lo que
+se acaba de ver, que es lo único que se puede juzgar con la sesión fresca.
+
+**Comprobado** en el arnés: con el plan de hoy —flecha de tiro, defensa del bloqueo
+directo, contraataque— las filas que salen son las cuatro conductas y **tiro**, **entrada**
+y **bloqueo directo**, que son sus etiquetas. Cinco jugadores con dos valoraciones cada
+uno: 15 toques, un guardado, y los cinco pasan a «mirado hoy». El movimiento «↑» aparece
+en cuanto hay dos valoraciones de la misma fila.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

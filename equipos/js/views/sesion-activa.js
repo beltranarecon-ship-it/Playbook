@@ -277,8 +277,8 @@ export function render(root, params) {
       nota,
       b ? h('label', { class: 'eq-act-nofunciono' },
         h('input', {
-          type: 'checkbox', checked: !!b.no_funciono,
-          onChange: (ev) => { b.no_funciono = ev.target.checked; guardaBloques(); pintaResto(); },
+          type: 'checkbox', checked: !!b.fallido,
+          onChange: (ev) => { b.fallido = ev.target.checked; guardaBloques(); pintaResto(); },
         }),
         h('span', null, 'Este ejercicio no ha funcionado'),
       ) : null,
@@ -319,7 +319,7 @@ export function render(root, params) {
         return h('div', { class: `eq-act-item${hecho ? ' is-hecho' : ''}${enCurso ? ' is-curso' : ''}` },
           h('span', { class: 'eq-act-item-n' }, String(i + 1)),
           h('span', { class: 'eq-act-item-t' }, b.titulo || 'Bloque'),
-          b.no_funciono ? h('span', { class: 'eq-act-item-mal' }, 'no funcionó') : null,
+          b.fallido ? h('span', { class: 'eq-act-item-mal' }, 'no funcionó') : null,
           h('span', { class: 'eq-act-item-min' }, hecho ? `${b.duracion_real_min}′ reales` : `${b.duracion_min}′`),
         );
       }),

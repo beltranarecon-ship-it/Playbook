@@ -25,6 +25,12 @@ import {
 } from '../data/reflexion.js';
 import { curvaCarga, INTENSIDAD_MAX } from '../data/carga.js';
 import { minutosDeSesion, textoMinutos } from '../data/minutos.js';
+import { getRubricaEquipo, getFilasClub, valorar } from '../data/rubrica.js';
+import { claveAccion } from '../../../taller/js/rubrica.js';
+import {
+  NIVELES, filasDeRubrica, estadoDe, movimiento, ordenSugerido,
+  textoSinMirar, porDondeEmpezar,
+} from '../../../taller/js/rubrica.js';
 import { getEjerciciosSugeribles } from '../data/objectives.js';
 import { ESTADOS_SESION, WEEKDAYS } from '../config.js';
 import { router } from '../main.js';
@@ -57,6 +63,16 @@ export function render(root, params) {
      sitios donde aparece. La consulta es la lista ligera de la
      biblioteca, que ya viene cacheada del planificador. */
   let requisitosPorEjercicio = new Map();
+  let tagsPorEjercicio = new Map();
+
+  /* La rúbrica al cerrar (Tramo 3.7). `porGuardar` son los toques que
+     todavía no han salido: se mandan de una tacada, porque una petición
+     por toque haría el pabellón insoportable. */
+  let rubricaEquipo = {};      // player_id → serie
+  let filasClub = [];          // las que ha añadido el club
+  let rubAbierto = null;       // qué jugador está desplegado
+  let rubExtra = new Set();    // filas añadidas a mano a la lista corta
+  let porGuardar = {};         // `player|clave` → nivel
   let soloLectura = false;      // cancelada = no se cierra ni se pasa lista
   let sucio = false;
   const marcaSucio = () => { sucio = true; };
@@ -337,6 +353,146 @@ export function render(root, params) {
   }
 
   // ── Pintado ────────────────────────────────────────────────
+  /* ---- la rúbrica, al cerrar (Tramo 3.7) --------------------------
+     El criterio de la fila es «se evalúa a cinco jugadores en menos de
+     dos minutos»: veinticuatro segundos por crío. Eso decide toda la
+     pantalla — se abre UN jugador, salen las seis filas por las que
+     conviene empezar, y cada fila es un toque entre cuatro botones.
+
+     La app NO elige a quién mirar (§5.7: lo dispara el entrenador y
+     elige a quien quiera, sin tope). Lo único que hace es ORDENAR:
+     delante el que lleva más tiempo sin mirarse, que es lo que evita
+     que se evalúe siempre a los mismos cinco. */
+  function seccionRubrica() {
+    const filas = filasDeRubrica(filasClub);
+    const orden = ordenSugerido(
+      densas.filter((f) => !f.esBaja).map((f) => ({ id: f.player_id, nombre: f.nombre })),
+      rubricaEquipo,
+    );
+
+    const pendientes = Object.keys(porGuardar).length;
+
+    return h('div', { class: 'eq-rub' },
+      h('div', { class: 'eq-zona-head' },
+        h('h2', { class: 'eq-zona-titulo' }, 'Rúbrica'),
+        pendientes
+          ? h('button', {
+              class: 'btn btn-primary eq-btn-mini', type: 'button', onClick: guardaRubrica,
+            }, `Guardar ${pendientes} ${pendientes === 1 ? 'valoración' : 'valoraciones'}`)
+          : h('span', { class: 'eq-ayuda' }, 'Elige a quien quieras: no hay que evaluar a todos.'),
+      ),
+      ...orden.map(({ jugador, dias }) => filaJugador(jugador, dias, filas)),
+    );
+  }
+
+  function filaJugador(jugador, dias, filas) {
+    const abierto = rubAbierto === jugador.id;
+    const estado = estadoDe(rubricaEquipo[jugador.id]);
+    const tocadas = Object.keys(porGuardar).filter((k) => k.startsWith(`${jugador.id}|`)).length;
+
+    const cab = h('button', {
+      class: 'eq-rub-jug' + (abierto ? ' is-abierto' : ''), type: 'button',
+      'aria-expanded': String(abierto),
+      onClick: () => {
+        // al cerrar un jugador se guarda lo suyo: si hay que acordarse
+        // de pulsar guardar, con doce críos delante no se pulsa
+        if (abierto && tocadas) guardaRubrica();
+        rubAbierto = abierto ? null : jugador.id;
+        pintaRubrica();
+      },
+    },
+      h('span', { class: 'eq-rub-nombre' }, jugador.nombre),
+      tocadas ? h('span', { class: 'eq-rub-tocadas' }, `${tocadas} sin guardar`) : null,
+      h('span', { class: 'eq-rub-dias' + (dias == null ? ' is-nunca' : '') }, textoSinMirar(dias)),
+    );
+
+    if (!abierto) return h('div', { class: 'eq-rub-item' }, cab);
+
+    const sugeridas = porDondeEmpezar(estado, filas, { cuantas: 6, preferidas: entrenadoHoy() });
+    const extra = filas.filter((f) => rubExtra.has(f.clave) && !sugeridas.includes(f));
+
+    return h('div', { class: 'eq-rub-item is-abierto' }, cab,
+      h('div', { class: 'eq-rub-filas' },
+        ...[...sugeridas, ...extra].map((f) => filaRubrica(jugador, f, estado)),
+        h('details', { class: 'eq-rub-mas' },
+          h('summary', {}, 'Otra fila'),
+          h('div', { class: 'eq-rub-catalogo' },
+            ...filas.filter((f) => !sugeridas.includes(f) && !rubExtra.has(f.clave)).map((f) => h('button', {
+              class: 'eq-rub-add', type: 'button',
+              onClick: () => { rubExtra.add(f.clave); pintaRubrica(); },
+            }, f.nombre)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  function filaRubrica(jugador, fila, estado) {
+    const clave = `${jugador.id}|${fila.clave}`;
+    const puesto = porGuardar[clave];
+    const actual = puesto != null ? puesto : estado[fila.clave]?.nivel;
+    const mov = movimiento(estado, fila.clave);
+
+    return h('div', { class: 'eq-rub-fila' },
+      h('span', { class: 'eq-rub-fila-t' + (fila.tipo === 'conducta' ? ' es-conducta' : '') }, fila.nombre),
+      mov ? h('span', { class: 'eq-rub-mov' + (mov > 0 ? ' es-sube' : ' es-baja') }, mov > 0 ? '↑' : '↓') : null,
+      h('div', { class: 'eq-rub-niveles' }, ...NIVELES.map((n) => h('button', {
+        class: 'eq-rub-nivel' + (actual === n.valor ? ' is-on' : ''),
+        type: 'button', title: `${n.nombre} — ${n.nota}`,
+        'aria-label': `${jugador.nombre}, ${fila.nombre}: ${n.nombre}`,
+        'aria-pressed': String(actual === n.valor),
+        onClick: () => {
+          // volver a tocar el mismo nivel lo quita: el toque que no era
+          if (porGuardar[clave] === n.valor) delete porGuardar[clave];
+          else porGuardar[clave] = n.valor;
+          pintaRubrica();
+        },
+      }, n.corto))),
+    );
+  }
+
+  /** Manda de una tacada lo que se haya tocado. Una petición por toque
+   *  haría el pabellón insoportable. */
+  async function guardaRubrica() {
+    const entradas = Object.entries(porGuardar);
+    if (!entradas.length) return;
+    const valores = entradas.map(([k, nivel]) => {
+      const [player_id, ...resto] = k.split('|');
+      return { player_id, clave: resto.join('|'), nivel };
+    });
+    try {
+      const nuevos = await valorar(valores, { sessionId });
+      // la serie en memoria se actualiza con lo que ha vuelto: así el
+      // «↑» y el «hace N días» se enteran sin volver a pedir nada
+      for (const v of nuevos) (rubricaEquipo[v.player_id] ||= []).unshift(v);
+      porGuardar = {};
+      toast(`${valores.length} ${valores.length === 1 ? 'valoración guardada' : 'valoraciones guardadas'}`);
+    } catch (e) {
+      toast(`No se han podido guardar: ${e.message}`, 'error');
+    }
+    pintaRubrica();
+  }
+
+  /**
+   * Las acciones que se han entrenado HOY, sacadas de las etiquetas de
+   * los ejercicios del plan.
+   *
+   * Es el eslabón del vocabulario único hecho pantalla: la misma
+   * palabra que etiqueta un ejercicio es una fila de la rúbrica, así
+   * que al cerrar se pregunta por lo que se acaba de ver — que es lo
+   * único que el entrenador puede juzgar con la sesión fresca.
+   */
+  function entrenadoHoy() {
+    const out = new Set();
+    for (const b of bloques) {
+      for (const t of tagsPorEjercicio.get(b.exercise_id) || []) out.add(claveAccion(t));
+    }
+    return out;
+  }
+
+  const nodoRubrica = h('section', { class: 'eq-cierre-seccion' });
+  const pintaRubrica = () => mount(nodoRubrica, seccionRubrica());
+
   function pinta() {
     const [, m, d] = sesion.fecha.split('-').map(Number);
     const fechaTxt = `${WEEKDAYS[isoWeekday(sesion.fecha) - 1].nombre} ${d} de ${MESES[m - 1]}`;
@@ -363,6 +519,8 @@ export function render(root, params) {
         ? h('section', { class: 'eq-cierre-seccion' }, seccionAsistencia())
         : null,
 
+      nodoRubrica,
+
       ajustes.reflexion_activa
         ? h('section', { class: 'eq-cierre-seccion' },
             h('div', { class: 'eq-zona-head' },
@@ -386,6 +544,7 @@ export function render(root, params) {
       barraAcciones(),
     );
     if (ajustes.asistencia_activa && jugadores.length) pintaLista();
+    pintaRubrica();
   }
 
   // ── Carga inicial ──────────────────────────────────────────
@@ -419,6 +578,19 @@ export function render(root, params) {
       ]);
       jugadores = js; filasBD = fbd; preguntas = qs; bloques = blks;
       requisitosPorEjercicio = new Map((bib || []).map((e) => [e.id, e.requisitos || null]));
+      tagsPorEjercicio = new Map((bib || []).map((e) => [e.id, e.tags || []]));
+
+      /* La rúbrica llega suelta y no bloquea el pintado (Tramo 3.7): si
+         falta la migración 024, el cierre se hace igual y la sección
+         dice que todavía no hay nada. */
+      Promise.all([
+        getRubricaEquipo(js.map((j) => j.id)),
+        getFilasClub(),
+      ]).then(([serie, club]) => {
+        rubricaEquipo = serie || {};
+        filasClub = club || [];
+        pintaRubrica();
+      }).catch(() => {});
       densas = filasDensas(jugadores, filasBD);
       items = plantillaEfectiva(preguntas, rs);
 

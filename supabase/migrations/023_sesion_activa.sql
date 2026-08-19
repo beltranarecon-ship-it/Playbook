@@ -10,7 +10,7 @@
 --   1. `session_blocks.duracion_real_min` — lo que de verdad duró el
 --      bloque, no lo que se planificó. De ahí sale la duración
 --      estimada del ejercicio la próxima vez (fila 3.6).
---   2. `session_blocks.no_funciono` — «este ejercicio no ha
+--   2. `session_blocks.fallido` — «este ejercicio no ha
 --      funcionado». Se marca en el momento, que es cuando se sabe;
 --      dos días después ya nadie se acuerda de cuál era.
 --   3. `session_stars` — la estrella rápida a un jugador. Es la capa
@@ -39,7 +39,7 @@
 -- ── 1. Lo que de verdad duró, y lo que no funcionó ──────────
 ALTER TABLE public.session_blocks
   ADD COLUMN IF NOT EXISTS duracion_real_min smallint,
-  ADD COLUMN IF NOT EXISTS no_funciono boolean NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS fallido boolean NOT NULL DEFAULT false;
 
 DO $$
 BEGIN
@@ -52,7 +52,7 @@ END $$;
 
 COMMENT ON COLUMN public.session_blocks.duracion_real_min IS
   'Minutos que de verdad duró el bloque (Tramo 3.5). Alimenta la duración estimada del ejercicio (3.6).';
-COMMENT ON COLUMN public.session_blocks.no_funciono IS
+COMMENT ON COLUMN public.session_blocks.fallido IS
   'Marcado en caliente: este ejercicio no ha funcionado (Tramo 3.5).';
 
 -- ── 2. La estrella rápida ───────────────────────────────────

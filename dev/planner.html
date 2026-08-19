@@ -220,6 +220,17 @@
       // comprobar que se reutiliza sin pegar el enlace otra vez.
       attendance: [],
       session_stars: [],
+      rubrica_filas: [],
+      /* Algo de historia para ver el «↑» y el «hace N días» (3.7): al
+         3 se le miró el bote hace dos meses y hace una semana. */
+      rubrica_valores: [
+        { id: 'rv1', player_id: 'p3', clave: 'accion:bote', nivel: 1, session_id: null, nota: null,
+          created_at: new Date(Date.now() - 60 * 86400000).toISOString() },
+        { id: 'rv2', player_id: 'p3', clave: 'accion:bote', nivel: 2, session_id: null, nota: null,
+          created_at: new Date(Date.now() - 7 * 86400000).toISOString() },
+        { id: 'rv3', player_id: 'p1', clave: 'conducta:actitud', nivel: 3, session_id: null, nota: null,
+          created_at: new Date(Date.now() - 21 * 86400000).toISOString() },
+      ],
       videos_bloque: [
         { id: 'vb1', titulo: 'La jugada del sábado', duracion_min: 6, created_by: 'u1',
           video: { tipo: 'youtube', id: 'dQw4w9WgXcQ', desde: 12, hasta: 19 } },
@@ -254,7 +265,9 @@
       if (metodo === 'POST' && TABLAS[tabla]) {
         const cuerpoTxt = (opciones && opciones.body) || '';
         const nuevas = [].concat(JSON.parse(cuerpoTxt || '[]'))
-          .map((r, i) => ({ id: `${tabla}_${Date.now()}_${i}`, created_by: 'u1', ...r }));
+          // `created_at` lo pone la base de datos de verdad; sin él, todo
+          // lo que dependa de «cuándo» se cree que no ha pasado nunca
+          .map((r, i) => ({ id: `${tabla}_${Date.now()}_${i}`, created_by: 'u1', created_at: new Date().toISOString(), ...r }));
         TABLAS[tabla].push(...nuevas);
         console.log('[arnés] POST', tabla, '→', nuevas.length, 'filas');
         return Promise.resolve(new Response(JSON.stringify(nuevas.length === 1 ? nuevas[0] : nuevas), {

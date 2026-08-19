@@ -11,7 +11,7 @@ const COLS_BASE = 'id, session_id, exercise_id, orden, titulo, duracion_min, int
 
 /* ---- Las columnas nuevas y las migraciones que pueden no estar -----
    `video` la añade la 022 (Tramo 3.3); `duracion_real_min` y
-   `no_funciono`, la 023 (Tramo 3.5). Si esas migraciones todavía no se
+   `fallido`, la 023 (Tramo 3.5). Si esas migraciones todavía no se
    han aplicado, pedirlas haría fallar TODA la consulta y el
    planificador no abriría ninguna sesión: un plan entero perdido por
    funciones que el entrenador ni siquiera está usando.
@@ -19,7 +19,7 @@ const COLS_BASE = 'id, session_id, exercise_id, orden, titulo, duracion_min, int
    Así que se piden y, si la base de datos dice que no existen, se
    apunta y se sigue sin ellas. Mismo criterio que el resto del módulo
    de sesiones: cada pieza degrada sola. */
-const COLS_NUEVAS = ['video', 'duracion_real_min', 'no_funciono'];
+const COLS_NUEVAS = ['video', 'duracion_real_min', 'fallido'];
 let sinNuevas = false;
 const cols = () => (sinNuevas ? COLS_BASE : `${COLS_BASE}, ${COLS_NUEVAS.join(', ')}`);
 /** ¿El error es «esa columna no existe»? (PostgREST: 42703 / PGRST204) */
@@ -74,7 +74,7 @@ export async function guardarBloques(sessionId, bloques) {
       ...(sinNuevas ? {} : {
         video: b.video ?? null,
         duracion_real_min: b.duracion_real_min ?? null,
-        no_funciono: !!b.no_funciono,
+        fallido: !!b.fallido,
       }),
     };
     // insert vs update se decide contra lo que HAY en BD, no contra b.id: si otra

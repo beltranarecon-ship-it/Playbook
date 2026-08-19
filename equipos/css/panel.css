@@ -966,3 +966,53 @@
 .eq-act-item.is-hecho { color: var(--muted); }
 .eq-act-item.is-hecho .eq-act-item-t { text-decoration: line-through; }
 .eq-act-item.is-curso { background: var(--papaya-soft); font-weight: 700; }
+
+/* ============================================================
+   Rúbrica al cerrar (Tramo 3.7)
+
+   Veinticuatro segundos por crío: un jugador abierto cada vez, seis
+   filas y cuatro botones grandes por fila. Nada más compite por sitio.
+   ============================================================ */
+.eq-rub { display: flex; flex-direction: column; gap: 0.375rem; }
+.eq-rub-item { border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); }
+.eq-rub-item.is-abierto { border-color: var(--papaya); }
+.eq-rub-jug {
+  display: flex; align-items: center; gap: 0.75rem; width: 100%;
+  padding: 0.625rem 0.75rem; text-align: left; font-weight: 600;
+}
+.eq-rub-jug.is-abierto { background: var(--papaya-soft); }
+.eq-rub-nombre { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Discreto a propósito (§5.7): marca por dónde empezar, no acusa. */
+.eq-rub-dias { font-size: 0.75rem; color: var(--muted); font-weight: 400; }
+.eq-rub-dias.is-nunca { color: var(--papaya-deep); font-weight: 700; }
+.eq-rub-tocadas {
+  font-size: 0.6875rem; font-weight: 700; color: var(--papaya-deep);
+  background: var(--papaya-soft); padding: 1px 8px; border-radius: 999px;
+}
+
+.eq-rub-filas { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.5rem 0.75rem 0.75rem; }
+.eq-rub-fila { display: flex; align-items: center; gap: 0.5rem; }
+.eq-rub-fila-t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.875rem; }
+/* Las conductas se distinguen de las acciones: no las entrena un
+   ejercicio, y conviene verlo al valorarlas. */
+.eq-rub-fila-t.es-conducta { font-style: italic; color: var(--carbon); }
+.eq-rub-mov { font-weight: 800; }
+.eq-rub-mov.es-sube { color: var(--success); }
+.eq-rub-mov.es-baja { color: var(--error); }
+.eq-rub-niveles { display: flex; gap: 2px; flex: none; }
+.eq-rub-nivel {
+  width: 2.25rem; height: 2.25rem; border-radius: var(--radius);
+  font-family: var(--font-display); font-weight: 800;
+  color: var(--muted); background: var(--bone);
+}
+.eq-rub-nivel:hover { background: var(--line); }
+.eq-rub-nivel.is-on { color: var(--white); background: var(--papaya); }
+
+.eq-rub-mas { font-size: 0.8125rem; margin-top: 0.25rem; }
+.eq-rub-mas summary { color: var(--muted); cursor: pointer; }
+.eq-rub-catalogo { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.5rem; max-height: 9rem; overflow-y: auto; }
+.eq-rub-add {
+  padding: 2px 10px; border-radius: 999px; font-size: 0.75rem;
+  border: 1px solid var(--line); background: var(--white); color: var(--muted);
+}
+.eq-rub-add:hover { border-color: var(--papaya); color: var(--papaya-deep); }
