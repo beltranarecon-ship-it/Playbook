@@ -22,6 +22,7 @@ import {
 } from '../data/asistencia.js';
 import {
   plantillaEfectiva, filasRespuesta, mediaEstrellas, ESTRELLAS_MAX, ESTRELLA_LABEL,
+  itemsDeJugador, faltaEsfuerzo, CLAVE_ESFUERZO,
 } from '../data/reflexion.js';
 import { curvaCarga, INTENSIDAD_MAX } from '../data/carga.js';
 import { minutosDeSesion, textoMinutos } from '../data/minutos.js';
@@ -57,6 +58,7 @@ export function render(root, params) {
   let jugadores = [], filasBD = [], densas = [];
   let preguntas = [], items = [];
   let bloques = [], objetivosSesion = [];
+  let itemsJug = [];   // preguntas de jugador (Tramo 3.11)
   /* Requisitos de las fichas del plan (Tramo 3.1). Aquí los minutos
      activos se calculan con la asistencia REAL —los que de verdad
      entrenaron—, así que este es el número más honesto de los tres
@@ -217,9 +219,13 @@ export function render(root, params) {
       );
     }
     return h('div', { class: 'eq-reflex' },
-      ...items.map((it) => h('div', { class: 'eq-reflex-item' },
+      ...items.map((it) => h('div', {
+        class: 'eq-reflex-item' + (it.clave === CLAVE_ESFUERZO ? ' es-obligatoria' : ''),
+        dataset: { clave: it.clave },
+      },
         h('label', { class: 'field-label eq-reflex-label' },
           it.etiqueta,
+          it.clave === CLAVE_ESFUERZO ? h('span', { class: 'required' }, ' *') : null,
           it.huerfana ? h('span', { class: 'eq-obj-badge' }, 'ya no se pregunta') : null,
         ),
         it.tipo === 'estrellas'
@@ -240,6 +246,47 @@ export function render(root, params) {
       )),
       enlaceGuardado(`/equipos/${sesion.team_id}?tab=ajustes`,
         'Editar las preguntas del equipo →', 'eq-ayuda eq-reflex-editar'),
+    );
+  }
+
+  /* ---- preguntas de jugador (Tramo 3.11) --------------------------
+     «Se valoran a jugadores sueltos, no a todos»: salen todos para
+     poder elegir, y lo que no se conteste sencillamente no se guarda.
+     Colapsadas por defecto — con catorce críos y dos preguntas, abrir
+     el cierre y encontrarse veintiocho campos es cerrar el cierre. */
+  function seccionJugadores() {
+    if (!itemsJug.length) return null;
+    const porPregunta = new Map();
+    for (const x of itemsJug) {
+      if (!porPregunta.has(x.pregunta.clave)) porPregunta.set(x.pregunta.clave, { pregunta: x.pregunta, filas: [] });
+      porPregunta.get(x.pregunta.clave).filas.push(x);
+    }
+
+    return h('section', { class: 'eq-cierre-seccion' },
+      h('h2', { class: 'eq-zona-titulo' }, 'De cada uno'),
+      ...[...porPregunta.values()].map(({ pregunta, filas }) => {
+        const contestadas = filas.filter((x) => x.item.valor_num != null || (x.item.valor_texto || '').trim()).length;
+        return h('details', { class: 'eq-reflexj', ...(contestadas ? { open: true } : {}) },
+          h('summary', {},
+            pregunta.etiqueta,
+            h('span', { class: 'eq-ayuda' }, contestadas
+              ? ` · ${contestadas} contestada${contestadas === 1 ? '' : 's'}`
+              : ' · de quien quieras'),
+          ),
+          h('div', { class: 'eq-reflexj-filas' }, ...filas.map(({ jugador, item }) => h('div', { class: 'eq-reflexj-fila' },
+            h('span', { class: 'eq-reflexj-n' }, jugador.dorsal != null ? String(jugador.dorsal) : '·'),
+            h('span', { class: 'eq-reflexj-nombre' }, jugador.nombre),
+            pregunta.tipo === 'estrellas'
+              ? estrellasSelector(item.valor_num, (v) => { item.valor_num = v; marcaSucio(); }, { soloLectura })
+              : h('input', {
+                  class: 'field-input', type: 'text', readOnly: soloLectura,
+                  placeholder: 'Solo si hay algo que decir',
+                  value: item.valor_texto || '',
+                  onInput: (e) => { item.valor_texto = e.target.value; marcaSucio(); },
+                }),
+          ))),
+        );
+      }),
     );
   }
 
@@ -285,13 +332,26 @@ export function render(root, params) {
       });
       if (!ok) return;
     }
+    /* El esfuerzo es OBLIGATORIO al cerrar (decisión #20). Se comprueba
+       aquí y no en la base de datos a propósito: rechazar el guardado
+       dejaría al entrenador con la lista pasada, la rúbrica puesta y
+       todo lo demás escrito, y sin poder guardarlo. */
+    if (cerrar && ajustes.reflexion_activa && faltaEsfuerzo(items)) {
+      toast('Falta decir cómo han trabajado hoy: es la única pregunta obligatoria.', 'error');
+      const el = cont.querySelector(`[data-clave="${CLAVE_ESFUERZO}"]`);
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el?.classList.add('animate-shake');
+      return;
+    }
     try {
       if (ajustes.asistencia_activa && densas.length) {
         await guardarAsistencia(filasParaGuardar(sessionId, densas));
         filasBD = densas.map((f) => ({ player_id: f.player_id, estado: f.estado, motivo: (f.motivo || '').trim() || null }));
       }
-      if (ajustes.reflexion_activa && items.length) {
-        await guardarRespuestas(sessionId, filasRespuesta(sessionId, items));
+      if (ajustes.reflexion_activa && (items.length || itemsJug.length)) {
+        // las del equipo y las de cada crío van en la misma tacada
+        const todas = [...items, ...itemsJug.map((x) => x.item)];
+        await guardarRespuestas(sessionId, filasRespuesta(sessionId, todas));
       }
       if (cerrar && sesion.estado !== 'realizada') {
         await marcarRealizada(sessionId);
@@ -519,6 +579,8 @@ export function render(root, params) {
         ? h('section', { class: 'eq-cierre-seccion' }, seccionAsistencia())
         : null,
 
+      seccionJugadores(),
+
       nodoRubrica,
 
       ajustes.reflexion_activa
@@ -593,6 +655,8 @@ export function render(root, params) {
       }).catch(() => {});
       densas = filasDensas(jugadores, filasBD);
       items = plantillaEfectiva(preguntas, rs);
+      // las de jugador (Tramo 3.11), una por pregunta y crío
+      itemsJug = itemsDeJugador(preguntas, rs, jugadores.filter((j) => j.estado !== 'baja'));
 
       if (objIds.length) {
         const todos = await getObjetivos(sesion.team_id, sesion.season_id).catch(() => []);

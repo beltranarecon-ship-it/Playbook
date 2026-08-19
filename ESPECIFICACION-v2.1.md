@@ -1121,7 +1121,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.8 ✅ | Apartado Progresión dentro del equipo | 3.7 | Se elige un jugador y se ven sus datos y sus gráficas |
 | 3.9 ✅ | Objetivos: categorías propias, dianas de acción, medida por rúbrica, panel «qué vigilar» | 3.7 | Un objetivo dice «trabajado en 7 sesiones · 5 de 13 han subido» |
 | 3.10 ✅ | Objetivos individuales, visibles en sesión activa | 3.8 | Cada niño con uno o dos objetivos vivos |
-| 3.11 | Reflexión: esfuerzo obligatorio, preguntas individuales editables | 3.5 | Se valora a jugadores sueltos, no a todos |
+| 3.11 ✅ | Reflexión: esfuerzo obligatorio, preguntas individuales editables | 3.5 | Se valora a jugadores sueltos, no a todos |
 | 3.12 | Plantilla: filtros por asistencia, estado y rendimiento; archivados recuperables | 3.1 | Se recupera un jugador de baja |
 | 3.13 | Borradores con recuperación en sesiones y en edición de ejercicios | — | Se sale a media sesión y al volver la ofrece |
 
@@ -1621,6 +1621,48 @@ dorsal, y en Progresión con sus botones de conseguido y archivar. Y los dos men
 «sin propuestas» se distinguen, que era un fallo real: al Jugador 3 le dice *«ya tiene
 objetivo en todo lo que se le ha mirado»* y al Jugador 1, que está en el tope de lo único
 mirado, *«hace falta haberle mirado alguna fila en la que no esté ya arriba del todo»*.
+
+### Estado de 3.11 (hecha)
+
+Migración **027**, y el motor puro de reflexión ampliado (29 pruebas).
+
+**El esfuerzo es obligatorio** (decisión #20): estrellas 1–5, la única que se pide
+siempre. Porque es la única que se puede contestar siempre —el entrenador acaba de ver el
+entrenamiento entero— y la que da la serie con la que después se compara todo lo demás.
+
+Se comprueba **en la pantalla y no en la base de datos**, a propósito: rechazar el
+guardado dejaría al entrenador con la lista pasada, la rúbrica puesta y todo lo demás
+escrito, y sin poder guardarlo. Lo que sí se hace en la base de datos es reservar la
+clave, para que nadie la use para otra cosa.
+
+**El cumplimiento autodeclarado se jubila** (§7). Las preguntas se **desactivan**, no se
+borran, y las respuestas ya dadas se quedan donde están: es histórico, y
+`v_session_cumplimiento` sigue en pie para lo que ya se contestó. Lo que deja de pasar es
+que se pregunte — desde 3.9 el cumplimiento se mide por movimiento de rúbrica.
+
+**Preguntas de jugador**, editables desde los ajustes del equipo. Una pregunta es del
+equipo (una respuesta por sesión) o de jugador, y entonces **se contesta de quien se
+quiera, no de todos** — que es el criterio de la fila. Salen todos para poder elegir, y
+lo que no se conteste sencillamente no se guarda.
+
+Van colapsadas por defecto: con catorce críos y dos preguntas, abrir el cierre y
+encontrarse veintiocho campos es cerrar el cierre.
+
+**Dos detalles del dato que había que resolver.** La clave primaria de
+`reflection_answers` era (sesión, clave) y eso impide dos respuestas de la misma pregunta
+para dos jugadores. Pasa a `id` con **dos índices únicos parciales** —uno para las del
+equipo y otro para las de jugador— porque en Postgres un NULL no colisiona con otro NULL
+y sin eso podrían colarse dos respuestas de equipo iguales. Y el guardado hace **dos
+upserts**: un solo `onConflict` no puede apuntar a los dos índices, y el que sobrara
+duplicaría filas en silencio.
+
+Borrar también es por clave **y** jugador: sin lo segundo, dejar en blanco la respuesta de
+un crío borraría la de todos los demás.
+
+**Comprobado**: el cierre saca «¿Cómo han trabajado hoy? *» marcada como obligatoria, y
+cerrar sin contestarla no cierra. «De cada uno» sale con las catorce filas y el rótulo
+«de quien quieras». Y el motor, con esfuerzo + una respuesta de un crío + otra en blanco,
+produce exactamente dos filas que guardar y **un borrado con su jugador**.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

@@ -16,6 +16,23 @@ export const ESTRELLAS_MAX = 5;
 /** Clave reservada: la única que alimenta v_session_cumplimiento. */
 export const CLAVE_CUMPLIMIENTO = 'cumplimiento';
 
+/*
+   El ESFUERZO (Tramo 3.11, decisión #20). Estrellas 1-5 y OBLIGATORIA
+   al cerrar: es la única pregunta que se pide siempre, porque es la
+   única que se puede contestar siempre —el entrenador acaba de ver el
+   entrenamiento entero— y la que da la serie con la que después se
+   compara todo lo demás.
+
+   Sustituye en la práctica a `cumplimiento`, que se jubila: desde la
+   decisión #26 el cumplimiento se MIDE por movimiento de rúbrica (3.9)
+   en vez de declararse. Lo ya contestado se queda: es histórico.
+*/
+export const CLAVE_ESFUERZO = 'esfuerzo';
+export const CLAVES_RESERVADAS = [CLAVE_CUMPLIMIENTO, CLAVE_ESFUERZO];
+
+/** Ámbitos de una pregunta (Tramo 3.11). */
+export const AMBITOS = ['equipo', 'jugador'];
+
 export const ESTRELLA_LABEL = {
   1: 'Muy mal', 2: 'Flojo', 3: 'Correcto', 4: 'Bien', 5: 'Excelente',
 };
@@ -37,6 +54,10 @@ const limpia = (s) => (s == null ? '' : String(s)).trim();
  * @returns [{clave, etiqueta, tipo, question_id, valor_num, valor_texto, conflicto, huerfana}]
  */
 export function plantillaEfectiva(preguntas, respuestas) {
+  // las de JUGADOR van por su camino (itemsDeJugador): aquí solo las
+  // que tienen UNA respuesta por sesión
+  preguntas = (preguntas || []).filter((q) => (q.ambito || 'equipo') !== 'jugador');
+  respuestas = (respuestas || []).filter((r) => !r.player_id);
   const porClave = new Map((respuestas || []).map((r) => [r.clave_snapshot, r]));
   const usadas = new Set();
 
@@ -103,7 +124,8 @@ export function filasRespuesta(sessionId, items) {
     const valeTxt = !esEstrellas && txt !== '';
 
     if (!valeNum && !valeTxt) {
-      if (!it.conflicto) aBorrar.push(it.clave);   // lo que no se puede pintar, no se borra
+      // lo que no se puede pintar, no se borra
+      if (!it.conflicto) aBorrar.push({ clave: it.clave, player_id: it.player_id ?? null });
       continue;
     }
     aGuardar.push({
@@ -114,9 +136,60 @@ export function filasRespuesta(sessionId, items) {
       tipo_snapshot: it.tipo,
       valor_num: valeNum ? num : null,
       valor_texto: valeTxt ? txt : null,
+      // Tramo 3.11: null = del equipo. Se manda siempre para que el
+      // upsert sepa a cuál de los dos índices únicos apunta.
+      player_id: it.player_id ?? null,
     });
   }
   return { aGuardar, aBorrar };
+}
+
+/**
+ * Las preguntas de JUGADOR, una entrada por pregunta y jugador
+ * (Tramo 3.11).
+ *
+ * Se devuelven TODOS los jugadores aunque no se les vaya a contestar:
+ * el criterio de la fila es «se valoran a jugadores sueltos, no a
+ * todos», y para elegir a cuáles hay que verlos a todos. Lo que no se
+ * conteste, sencillamente no se guarda (filasRespuesta).
+ *
+ * @param jugadores [{id, nombre, dorsal}]
+ * @returns [{pregunta, jugador, item}]
+ */
+export function itemsDeJugador(preguntas, respuestas, jugadores) {
+  const activas = (preguntas || [])
+    .filter((q) => q.activa !== false && (q.ambito || 'equipo') === 'jugador')
+    .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  if (!activas.length) return [];
+
+  const por = new Map();
+  for (const r of respuestas || []) {
+    if (r.player_id) por.set(`${r.clave_snapshot}|${r.player_id}`, r);
+  }
+
+  const out = [];
+  for (const q of activas) {
+    for (const j of jugadores || []) {
+      const r = por.get(`${q.clave}|${j.id}`);
+      const mismoTipo = r && r.tipo_snapshot === q.tipo;
+      out.push({
+        pregunta: q,
+        jugador: j,
+        item: {
+          clave: q.clave,
+          etiqueta: q.etiqueta,
+          tipo: q.tipo,
+          question_id: q.id ?? null,
+          player_id: j.id,
+          valor_num: mismoTipo ? (r.valor_num ?? null) : null,
+          valor_texto: mismoTipo ? (r.valor_texto ?? null) : null,
+          conflicto: null,
+          huerfana: false,
+        },
+      });
+    }
+  }
+  return out;
 }
 
 /**
@@ -136,6 +209,26 @@ export function mediaEstrellas(items) {
 }
 
 /** El valor de cumplimiento (1-5) que verá v_session_cumplimiento, o null. */
+/**
+ * El esfuerzo (1-5) de la sesión, o null si no está contestado.
+ *
+ * `faltaEsfuerzo` es lo que impide cerrar: la pantalla lo usa para no
+ * dejar marcar la sesión como realizada sin contestarlo. No se fuerza
+ * en la base de datos a propósito — rechazar el guardado dejaría al
+ * entrenador con todo lo demás escrito y sin poder guardarlo.
+ */
+export function esfuerzoDe(items) {
+  const it = (items || []).find((x) => x.clave === CLAVE_ESFUERZO && x.tipo === 'estrellas' && !x.player_id);
+  const n = Number(it?.valor_num);
+  return Number.isInteger(n) && n >= 1 && n <= ESTRELLAS_MAX ? n : null;
+}
+
+/** ¿Se puede cerrar la sesión? Solo falla si la pregunta EXISTE y está sin contestar. */
+export function faltaEsfuerzo(items) {
+  const hay = (items || []).some((x) => x.clave === CLAVE_ESFUERZO && !x.player_id);
+  return hay && esfuerzoDe(items) == null;
+}
+
 export function cumplimientoDe(items) {
   const it = (items || []).find((x) => x.clave === CLAVE_CUMPLIMIENTO && x.tipo === 'estrellas');
   const n = Number(it?.valor_num);
@@ -167,7 +260,7 @@ export function claveDesdeEtiqueta(etiqueta, clavesExistentes = [], { tipo = nul
   if (base.length < 2) base = 'pregunta';
 
   const usadas = new Set(clavesExistentes);
-  if (tipo && tipo !== 'estrellas') usadas.add(CLAVE_CUMPLIMIENTO);
+  if (tipo && tipo !== 'estrellas') for (const c of CLAVES_RESERVADAS) usadas.add(c);
   if (!usadas.has(base)) return base;
   for (let i = 2; i < 100; i++) {
     const cand = `${base.slice(0, 40 - String(i).length - 1)}_${i}`;

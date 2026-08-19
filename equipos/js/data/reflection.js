@@ -8,25 +8,39 @@
 
 import { supabase, leerTodo, porLotes } from './_client.js';
 
-const COLS_Q = 'id, team_id, clave, etiqueta, tipo, orden, activa';
+const COLS_Q_BASE = 'id, team_id, clave, etiqueta, tipo, orden, activa';
+
+/* `ambito` (preguntas) y `player_id` (respuestas) los añade la 027. Se
+   piden y, si no existen, se sigue sin ellos: un equipo sin poder
+   cerrar sesiones por una migración pendiente sería mucho peor que no
+   tener preguntas de jugador. */
+let sin027 = false;
+const COLS_Q = () => (sin027 ? COLS_Q_BASE : `${COLS_Q_BASE}, ambito`);
+const falta027 = (error) => {
+  const m = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  if (error?.code === '42703' || error?.code === 'PGRST204') return true;
+  return m.includes('column') && (m.includes('ambito') || m.includes('player_id'));
+};
 
 // ── Plantilla (por equipo) ────────────────────────────────────
 export async function getPreguntas(teamId) {
-  const { data, error } = await supabase
+  const pide = () => supabase
     .from('reflection_questions')
-    .select(COLS_Q)
+    .select(COLS_Q())
     .eq('team_id', teamId)
     .order('orden')
     .order('created_at');
+  let { data, error } = await pide();
+  if (error && falta027(error)) { sin027 = true; ({ data, error } = await pide()); }
   if (error) throw error;
   return data ?? [];
 }
 
-export async function crearPregunta({ team_id, clave, etiqueta, tipo, orden }) {
+export async function crearPregunta({ team_id, clave, etiqueta, tipo, orden, ambito = 'equipo' }) {
   const { data, error } = await supabase
     .from('reflection_questions')
-    .insert({ team_id, clave, etiqueta: etiqueta.trim(), tipo, orden })
-    .select(COLS_Q)
+    .insert({ team_id, clave, etiqueta: etiqueta.trim(), tipo, orden, ...(sin027 ? {} : { ambito: ambito || 'equipo' }) })
+    .select(COLS_Q())
     .single();
   if (error) throw error;
   return data;
@@ -62,10 +76,17 @@ export async function restaurarPlantilla(teamId) {
 
 // ── Respuestas (por sesión) ───────────────────────────────────
 export async function getRespuestas(sessionId) {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('reflection_answers')
-    .select('session_id, clave_snapshot, question_id, etiqueta_snapshot, tipo_snapshot, valor_num, valor_texto')
+    .select(`session_id, clave_snapshot, question_id, etiqueta_snapshot, tipo_snapshot, valor_num, valor_texto${sin027 ? '' : ', player_id'}`)
     .eq('session_id', sessionId);
+  if (error && falta027(error)) {
+    sin027 = true;
+    ({ data, error } = await supabase
+      .from('reflection_answers')
+      .select('session_id, clave_snapshot, question_id, etiqueta_snapshot, tipo_snapshot, valor_num, valor_texto')
+      .eq('session_id', sessionId));
+  }
   if (error) throw error;
   return data ?? [];
 }
@@ -94,17 +115,40 @@ export async function getRespuestasSesiones(sessionIds) {
  * (una respuesta en blanco no existe: no deja fila).
  */
 export async function guardarRespuestas(sessionId, { aGuardar, aBorrar }) {
-  if (aGuardar?.length) {
+  /* Dos upserts, porque hay dos índices únicos (migración 027): las
+     del EQUIPO chocan por (sesión, clave) y las de un JUGADOR por
+     (sesión, clave, jugador). Un solo `onConflict` no puede apuntar a
+     los dos, y el que sobrara duplicaría filas en silencio. */
+  if (sin027) {
+    // sin la 027 no hay preguntas de jugador: lo suyo no se puede guardar
+    aGuardar = (aGuardar || []).filter((r) => !r.player_id).map(({ player_id, ...r }) => r);
+    aBorrar = (aBorrar || []).filter((b) => !(typeof b === 'object' && b.player_id));
+  }
+  const equipo = (aGuardar || []).filter((r) => !r.player_id);
+  const dePlayer = (aGuardar || []).filter((r) => r.player_id);
+
+  if (equipo.length) {
     const { error } = await supabase
       .from('reflection_answers')
-      .upsert(aGuardar, { onConflict: 'session_id,clave_snapshot' });
+      .upsert(equipo, { onConflict: 'session_id,clave_snapshot' });
     if (error) throw error;
   }
-  if (aBorrar?.length) {
+  if (dePlayer.length) {
     const { error } = await supabase
-      .from('reflection_answers').delete()
-      .eq('session_id', sessionId)
-      .in('clave_snapshot', aBorrar);
+      .from('reflection_answers')
+      .upsert(dePlayer, { onConflict: 'session_id,clave_snapshot,player_id' });
+    if (error) throw error;
+  }
+
+  /* Borrar es por clave Y jugador: sin lo segundo, dejar en blanco la
+     respuesta de un crío borraría la de todos los demás. */
+  for (const b of aBorrar || []) {
+    const clave = typeof b === 'string' ? b : b.clave;
+    const player = typeof b === 'string' ? null : (b.player_id ?? null);
+    let q = supabase.from('reflection_answers').delete()
+      .eq('session_id', sessionId).eq('clave_snapshot', clave);
+    q = player ? q.eq('player_id', player) : q.is('player_id', null);
+    const { error } = await q;
     if (error) throw error;
   }
 }

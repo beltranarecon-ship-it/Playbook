@@ -216,6 +216,12 @@
         { session_id: 'prev2', objective_id: 'o1', sessions: { id: 'prev2', team_id: 't1', season_id: 's1', estado: 'realizada', fecha: '2026-08-11' } },
       ],
       categorias_objetivo: [{ nombre: 'técnico' }, { nombre: 'táctico' }, { nombre: 'físico' }],
+      reflection_questions: [
+        { id: 'q1', team_id: 't1', clave: 'esfuerzo', etiqueta: '¿Cómo han trabajado hoy?', tipo: 'estrellas', orden: -1, activa: true, ambito: 'equipo' },
+        { id: 'q2', team_id: 't1', clave: 'que_funciono', etiqueta: '¿Qué ha funcionado?', tipo: 'texto', orden: 1, activa: true, ambito: 'equipo' },
+        { id: 'q3', team_id: 't1', clave: 'como_ha_ido', etiqueta: '¿Cómo ha ido con…?', tipo: 'texto', orden: 2, activa: true, ambito: 'jugador' },
+      ],
+      reflection_answers: [],
       objectives: [
         { id: 'o1', team_id: 't1', season_id: 's1', titulo: 'Tiro tras bote con equilibrio', descripcion: 'Salir del bote y tirar sin caerse', categoria: 'técnico', fecha_inicio: '2026-08-01', fecha_fin: '2026-10-31', estado: 'activo', created_at: '2026-07-01T00:00:00Z', dianas: ['accion:tiro', 'accion:bote'] },
         { id: 'o2', team_id: 't1', season_id: 's1', titulo: 'Defensa del bloqueo directo', descripcion: null, categoria: 'táctico', fecha_inicio: '2026-09-01', fecha_fin: '2026-12-31', estado: 'activo', created_at: '2026-07-01T00:00:00Z', dianas: [] },

@@ -8,6 +8,7 @@
 import {
   plantillaEfectiva, filasRespuesta, mediaEstrellas, cumplimientoDe,
   hayRespuestas, claveDesdeEtiqueta, CLAVE_CUMPLIMIENTO,
+  CLAVE_ESFUERZO, CLAVES_RESERVADAS, esfuerzoDe, faltaEsfuerzo,
 } from '../js/data/reflexion.js';
 
 let pasan = 0, fallan = 0;
@@ -107,16 +108,16 @@ test('estrellas y texto válidos se guardan con su snapshot', () => {
   eq(aGuardar[0], {
     session_id: 's1', clave_snapshot: 'cumplimiento', question_id: 'q-cumplimiento',
     etiqueta_snapshot: '¿Se cumplió el plan?', tipo_snapshot: 'estrellas',
-    valor_num: 4, valor_texto: null,
+    valor_num: 4, valor_texto: null, player_id: null,
   });
   eq(aGuardar[1].valor_texto, 'La rueda de tiro');   // trim
-  eq(aBorrar, ['actitud']);                          // sin responder → se borra
+  eq(aBorrar, [{ clave: 'actitud', player_id: null }]);   // sin responder → se borra
 });
 
 test('un texto en blanco NO es una respuesta: se borra la fila', () => {
   const it = plantillaEfectiva(PLANTILLA, [R('que_funciono', 'texto', { txt: 'algo' })]);
   it[2].valor_texto = '   ';
-  eq(filasRespuesta('s1', it).aBorrar.includes('que_funciono'), true);
+  eq(filasRespuesta('s1', it).aBorrar.some((x) => x.clave === 'que_funciono'), true);
 });
 
 test('estrellas fuera de rango o no enteras se descartan', () => {
@@ -129,7 +130,7 @@ test('estrellas fuera de rango o no enteras se descartan', () => {
 
 test('estrellas en texto (o al revés) no cuelan por el hueco del otro campo', () => {
   const it = [{ clave: 'que_funciono', etiqueta: 'x', tipo: 'texto', question_id: null, valor_num: 5, valor_texto: '' }];
-  eq(filasRespuesta('s1', it), { aGuardar: [], aBorrar: ['que_funciono'] });
+  eq(filasRespuesta('s1', it), { aGuardar: [], aBorrar: [{ clave: 'que_funciono', player_id: null }] });
 });
 
 console.log('· lecturas derivadas');
@@ -208,6 +209,58 @@ test('la clave reservada solo se concede a estrellas (el CHECK de 015 la ata)', 
   eq(claveDesdeEtiqueta('Cumplimiento', [], { tipo: 'estrellas' }), 'cumplimiento');
   eq(claveDesdeEtiqueta('Cumplimiento', []), 'cumplimiento');   // sin tipo: como antes
   ok(RX_CLAVE_BD.test(claveDesdeEtiqueta('Cumplimiento', [], { tipo: 'texto' })));
+});
+
+/* ── El esfuerzo obligatorio y las preguntas de jugador (3.11) ─ */
+
+console.log('\n· el esfuerzo, y de quién es cada respuesta');
+
+test('el esfuerzo es una clave reservada más, y de estrellas', () => {
+  eq(CLAVE_ESFUERZO, 'esfuerzo');
+  eq(CLAVES_RESERVADAS, ['cumplimiento', 'esfuerzo']);
+  // una pregunta de TEXTO no puede llamarse como ninguna de las dos
+  const c = claveDesdeEtiqueta('Esfuerzo', ['esfuerzo'], { tipo: 'texto' });
+  ok(c !== 'esfuerzo', c);
+});
+
+test('se lee de la plantilla, y solo la del EQUIPO', () => {
+  const items = [
+    { clave: 'esfuerzo', tipo: 'estrellas', valor_num: 4 },
+    { clave: 'esfuerzo', tipo: 'estrellas', valor_num: 1, player_id: 'p1' },
+  ];
+  eq(esfuerzoDe(items), 4, 'la de un jugador no es la de la sesión');
+});
+
+test('sin contestar, falta: es lo que impide cerrar (decisión #20)', () => {
+  ok(faltaEsfuerzo([{ clave: 'esfuerzo', tipo: 'estrellas', valor_num: null }]));
+  ok(!faltaEsfuerzo([{ clave: 'esfuerzo', tipo: 'estrellas', valor_num: 3 }]));
+});
+
+test('si la pregunta NO está en la plantilla, no falta nada', () => {
+  /* Un equipo cuya plantilla se tocó a mano antes de la 027 no se
+     queda sin poder cerrar sesiones. */
+  ok(!faltaEsfuerzo([{ clave: 'actitud', tipo: 'estrellas', valor_num: null }]));
+  ok(!faltaEsfuerzo([]));
+});
+
+test('una respuesta de jugador viaja con su jugador', () => {
+  const it = [{ clave: 'como_ha_ido', tipo: 'texto', etiqueta: '¿Cómo ha ido?', valor_texto: 'bien', player_id: 'p1' }];
+  const { aGuardar } = filasRespuesta('s1', it);
+  eq(aGuardar[0].player_id, 'p1');
+});
+
+test('y se contesta DE QUIEN SE QUIERA, no de todos', () => {
+  /* Es el criterio de la fila. Solo se guarda lo contestado: los
+     jugadores sin respuesta no generan filas vacías. */
+  const it = [
+    { clave: 'como_ha_ido', tipo: 'texto', valor_texto: 'muy bien', player_id: 'p1' },
+    { clave: 'como_ha_ido', tipo: 'texto', valor_texto: '', player_id: 'p2' },
+    { clave: 'como_ha_ido', tipo: 'texto', valor_texto: null, player_id: 'p3' },
+  ];
+  const { aGuardar, aBorrar } = filasRespuesta('s1', it);
+  eq(aGuardar.length, 1);
+  eq(aGuardar[0].player_id, 'p1');
+  eq(aBorrar.map((x) => x.player_id), ['p2', 'p3'], 'los vacíos se borran, cada uno el suyo');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

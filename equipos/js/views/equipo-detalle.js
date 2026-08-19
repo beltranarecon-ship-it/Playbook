@@ -31,7 +31,7 @@ import {
   getPreguntas, crearPregunta, actualizarPregunta, borrarPregunta,
   guardarOrdenPreguntas, restaurarPlantilla,
 } from '../data/reflection.js';
-import { claveDesdeEtiqueta, TIPOS_REFLEXION, CLAVE_CUMPLIMIENTO } from '../data/reflexion.js';
+import { claveDesdeEtiqueta, TIPOS_REFLEXION, CLAVE_CUMPLIMIENTO, CLAVE_ESFUERZO } from '../data/reflexion.js';
 import { modalObjetivo, filaObjetivo } from './objetivo-form.js';
 import { pintaProgresion } from './equipo-progresion.js';
 import { avisoTemporada, fechaLarga } from './temporada-form.js';
@@ -828,7 +828,7 @@ export function render(root, params) {
     try { preguntas = await getPreguntas(teamId); } catch { preguntas = null; }
 
     // ── preguntas de reflexión (plantilla del equipo) ────────
-    const nuevo = { etiqueta: '', tipo: 'estrellas' };
+    const nuevo = { etiqueta: '', tipo: 'estrellas', ambito: 'equipo' };
 
     const filaPregunta = (q, i) => h('div', { class: 'eq-preg' + (q.activa ? '' : ' atenuado') },
       h('div', { class: 'eq-preg-orden' },
@@ -863,7 +863,9 @@ export function render(root, params) {
         onClick: async () => {
           const ok = await confirmar({
             titulo: 'Eliminar pregunta',
-            mensaje: q.clave === CLAVE_CUMPLIMIENTO
+            mensaje: q.clave === CLAVE_ESFUERZO
+              ? 'Es la pregunta de ESFUERZO: es la única obligatoria al cerrar y la que da la serie con la que se compara todo lo demás. Las respuestas ya dadas se conservan. ¿Eliminar?'
+              : q.clave === CLAVE_CUMPLIMIENTO
               ? 'Es la pregunta de CUMPLIMIENTO: sin ella, las sesiones dejarán de medir si se cumplió el plan. Las respuestas ya dadas se conservan. ¿Eliminar?'
               : 'Dejará de preguntarse. Las respuestas ya guardadas se conservan en sus sesiones. ¿Eliminar?',
             textoOk: 'Eliminar',
@@ -893,7 +895,9 @@ export function render(root, params) {
       }
       return h('div', { class: 'eq-form-card' },
         h('div', { class: 'eq-form-seccion' }, 'Preguntas de reflexión'),
-        h('p', { class: 'eq-ayuda' }, 'Lo que te preguntará la app al cerrar cada sesión. Las estrellas van de 1 a 5; los textos son libres.'),
+        h('p', { class: 'eq-ayuda' },
+          'Lo que te preguntará la app al cerrar cada sesión. Las estrellas van de 1 a 5; los textos son libres. '
+          + 'Las de jugador se contestan de quien quieras, no de todos, y «¿Cómo han trabajado hoy?» es la única obligatoria.'),
         preguntas.length
           ? h('div', { class: 'eq-pregs' }, preguntas.map(filaPregunta))
           : h('p', { class: 'eq-ayuda' }, 'Sin preguntas: al cerrar una sesión no se pedirá reflexión.'),
@@ -907,6 +911,15 @@ export function render(root, params) {
             class: 'field-select', 'aria-label': 'Tipo de respuesta',
             onChange: (e) => { nuevo.tipo = e.target.value; },
           }, ...TIPOS_REFLEXION.map((t) => h('option', { value: t }, t === 'estrellas' ? 'Estrellas 1-5' : 'Texto'))),
+          /* De equipo o de jugador (Tramo 3.11). Una de jugador se
+             contesta de quien se quiera, no de todos. */
+          h('select', {
+            class: 'field-select', 'aria-label': 'De quién es la pregunta',
+            onChange: (e) => { nuevo.ambito = e.target.value; },
+          },
+            h('option', { value: 'equipo' }, 'Del equipo'),
+            h('option', { value: 'jugador' }, 'De cada jugador'),
+          ),
           h('button', {
             class: 'btn btn-secondary', type: 'button',
             onClick: async () => {
@@ -916,7 +929,7 @@ export function render(root, params) {
                 await crearPregunta({
                   team_id: teamId,
                   clave: claveDesdeEtiqueta(etiqueta, preguntas.map((q) => q.clave), { tipo: nuevo.tipo }),
-                  etiqueta, tipo: nuevo.tipo,
+                  etiqueta, tipo: nuevo.tipo, ambito: nuevo.ambito,
                   orden: preguntas.reduce((mx, q) => Math.max(mx, q.orden ?? 0), 0) + 1,
                 });
                 refrescar(); toast('Pregunta añadida');
