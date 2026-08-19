@@ -25,6 +25,7 @@ import { resultadoPartido, ESTADOS_PARTIDO } from '../data/partidos.js';
 import { objetivosEnFecha, tituloHeredado } from '../data/sugerencias.js';
 import { modalObjetivo, filaObjetivo } from './objetivo-form.js';
 import { ESTADOS_SESION, WEEKDAYS } from '../config.js';
+import { estadoEfectivo, esActiva } from '../data/estado-sesion.js';
 import { router } from '../main.js';
 
 const hoyISO = () => {
@@ -116,11 +117,33 @@ export function render(root) {
     refrescar();
   }
 
+  /* ---- los cinco estados (Tramo 3.4) ------------------------------
+     El quinto, `activa`, sale del reloj y no de la base de datos. Como
+     depende de la hora, los chips pintados se repasan cada minuto: sin
+     eso, un calendario abierto desde las cinco no se enteraría de que
+     a las seis empieza el entrenamiento. */
+  const chipsVivos = [];
+  const vestirChip = (el, s) => {
+    const e = estadoEfectivo(s);
+    el.className = `eq-ses eq-ses-${e}`;
+    el.title = `${nombres.get(s.team_id) || ''} · ${ESTADOS_SESION[e]} · abre el plan`;
+  };
+  const repasarEstados = () => {
+    // los de celdas ya repintadas se van soltando: si no, la lista
+    // crecería con cada cambio de mes durante toda la sesión
+    for (let i = chipsVivos.length - 1; i >= 0; i--) {
+      const { el, s } = chipsVivos[i];
+      if (!el.isConnected) { chipsVivos.splice(i, 1); continue; }
+      vestirChip(el, s);
+    }
+  };
+  const reloj = setInterval(repasarEstados, 60000);
+
   // ── chip de sesión ─────────────────────────────────────────
   const chip = (s) => h('button', {
-    class: `eq-ses eq-ses-${s.estado}`, type: 'button',
+    class: `eq-ses eq-ses-${estadoEfectivo(s)}`, type: 'button',
     style: { '--team-color': colores.get(s.team_id) || 'var(--muted)' },
-    title: `${nombres.get(s.team_id) || ''} · ${ESTADOS_SESION[s.estado]} · abre el plan`,
+    title: `${nombres.get(s.team_id) || ''} · ${ESTADOS_SESION[estadoEfectivo(s)]} · abre el plan`,
     // pinchar la sesión abre SU plan; el panel del día se queda para el resto
     // de la celda (que es donde se dan de alta sesiones y partidos)
     onClick: (e) => { e.stopPropagation(); router.navigate(`/sesiones/${s.id}`); },
@@ -128,6 +151,9 @@ export function render(root) {
     h('span', { class: 'eq-ses-hora' }, hhmm(s.hora_inicio) || '·'),
     h('span', { class: 'eq-ses-equipo' }, nombres.get(s.team_id) || '—'),
   );
+
+  /** El chip, apuntado para que el repaso del minuto lo alcance. */
+  const chipVivo = (s) => { const el = chip(s); chipsVivos.push({ el, s }); return el; };
 
   // Chip de partido: se distingue de un entreno de un vistazo (borde sólido
   // del color del equipo + marcador si ya está jugado).
@@ -162,7 +188,7 @@ export function render(root) {
         // herencia viva (M3): sin título propio, hereda el de los objetivos del día
         tituloHeredado(s, objetivos) ? h('span', { class: 'eq-dia-ses-titulo' }, tituloHeredado(s, objetivos)) : null,
         h('span', { class: 'eq-dia-ses-meta' },
-          [hhmm(s.hora_inicio) && `${hhmm(s.hora_inicio)}–${hhmm(s.hora_fin)}`, s.lugar, ESTADOS_SESION[s.estado]]
+          [hhmm(s.hora_inicio) && `${hhmm(s.hora_inicio)}–${hhmm(s.hora_fin)}`, s.lugar, ESTADOS_SESION[estadoEfectivo(s)]]
             .filter(Boolean).join(' · ')),
         s.estado === 'cancelada' && s.cancel_motivo ? h('span', { class: 'eq-dia-ses-meta' }, `Motivo: ${s.cancel_motivo}`) : null,
       ),
@@ -410,7 +436,7 @@ export function render(root) {
         }))) : null,
       h('div', { class: 'eq-cal-chips' },
         (partidos || []).map(chipPartido),
-        (sesiones || []).map(chip)),
+        (sesiones || []).map(chipVivo)),
     );
     celdas.set(fecha, celda);
     return celda;
@@ -587,5 +613,7 @@ export function render(root) {
     }
   })();
 
-  return { destroy() {} };
+  // el repaso del minuto muere con la vista: si no, sigue tocando nodos
+  // que ya no están en la página
+  return { destroy() { clearInterval(reloj); } };
 }

@@ -1114,7 +1114,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.1 ✅ | Motor de minutos activos por jugador | 2.12 | Un ejercicio de fila con 14 críos da menos minutos activos que uno simultáneo |
 | 3.2 ✅ | Pantalla de programar sesión: tope de duración, nº de jugadores, agua, material, avisos de repetición | 3.1 | No se puede pasar de los 90 min; el material sale solo |
 | 3.3 ✅ | Bloque libre con vídeo, guardable y reutilizable | 3.2 | Un vídeo guardado se reutiliza en otra sesión |
-| 3.4 | Estado `activa` deducido del reloj + cinco estados en el calendario | — | Los cinco se distinguen a la vista |
+| 3.4 ✅ | Estado `activa` deducido del reloj + cinco estados en el calendario | — | Los cinco se distinguen a la vista |
 | 3.5 | Pantalla de sesión activa: cronómetro, pasar lista, finalizado/+5, anotación en caliente | 3.4 | Un entrenamiento entero se da sin apuntar nada después |
 | 3.6 | Duración real por bloque → duración estimada del ejercicio | 3.5 | La segunda vez que se usa un ejercicio propone la duración real |
 | 3.7 | Rúbrica: filas de acciones y conductas, cuatro niveles, evaluación al cerrar | 2.5 | Se evalúa a cinco jugadores en menos de dos minutos |
@@ -1294,6 +1294,43 @@ clic y entra con sus 6 minutos y su tramo; y el visor lo incrusta con
 **Pendiente del usuario**: aplicar la migración `022`. Sin ella el bloque de vídeo se
 puede montar en la sesión abierta, pero ni se guarda al recargar ni entra en la lista de
 reutilizables; se dice en castellano al intentarlo.
+
+### Estado de 3.4 (hecha)
+
+`equipos/js/data/estado-sesion.js` — módulo PURO, con su banco (`eval-estado.mjs`, 20
+pruebas).
+
+**El quinto estado no se guarda.** En la base de datos hay cuatro —preliminar,
+programada, realizada, cancelada—. El quinto, **activa**, sale del reloj (decisión #17).
+
+Y ese es justo el motivo: con una columna, alguien —un botón, una tarea programada—
+tendría que ponerla en `activa` a las 18:00 y quitarla a las 19:30, y el día que eso
+fallara la sesión se quedaría colgada en «activa» para siempre, o no llegaría a estarlo
+nunca. Es el caso de §11, y deducida del reloj no hay nada que pueda fallar: **a las
+18:00 está activa porque son las 18:00.**
+
+| | |
+|---|---|
+| Ventana | de **15 min antes** de la hora de inicio a **30 min después** del fin |
+| Por qué antes | el entrenador llega antes que los críos y abre la pantalla mientras se cambian |
+| Por qué después | un entrenamiento se alarga, y cerrarlo —lista y reflexión— se hace con la pista caliente |
+| Sin hora de fin | manda `slot_duracion_min`; sin eso, hora y media |
+| Sin hora de inicio | no hay ventana. Inventarle una sería inventarse a qué hora entrena un equipo |
+
+**A qué sesiones llega el reloj**: a `preliminar` y a `programada`. La diferencia entre
+esas dos es si alguien la ha *planificado*, no si va a pasar — y un martes a las seis se
+entrena, esté el plan escrito o no. `realizada` y `cancelada` son finales.
+
+**En el calendario** los cinco se distinguen a la vista: activa va en papaya sólido, en
+negrita y con un punto que late (que se para con `prefers-reduced-motion`). Y como
+depende de la hora, los chips pintados **se repasan cada minuto**: sin eso, un calendario
+abierto desde las cinco no se enteraría de que a las seis empieza el entrenamiento. El
+repaso se muere con la vista y va soltando los chips que ya no están en la página.
+
+**Comprobado**: 20 pruebas, incluidas las dos que importan —a las 20:05 deja de estar
+activa, y al día siguiente tampoco lo está—, y el arnés `/dev/estados.html`, que pone los
+cinco uno al lado de otro con el CSS de verdad: **cinco fondos distintos**, y la que el
+reloj vuelve activa se ve a un metro de la pantalla.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEV · los cinco estados de una sesión</title>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/equipos/css/calendario.css">
+  <style>
+    body { font-family: 'Archivo', system-ui, sans-serif; padding: 2rem; background: var(--bone); }
+    h1, h2 { font-family: 'Saira Condensed', 'Arial Narrow', sans-serif; text-transform: uppercase; }
+    .rejilla { display: grid; gap: 1rem; max-width: 720px; }
+    .caso { display: grid; grid-template-columns: 190px 1fr; gap: 1rem; align-items: center; }
+    .caso small { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+    pre { background: var(--white); border: 1px solid var(--line); padding: 0.75rem; font-size: 0.75rem; }
+  </style>
+
+  <!-- ============================================================
+       ARNÉS DE DESARROLLO — /dev/estados.html
+       Los CINCO estados de una sesión (Tramo 3.4) uno al lado de otro,
+       con el CSS de verdad del calendario. El criterio de la fila es
+       «los cinco se distinguen a la vista», y eso no lo comprueba un
+       banco de pruebas: hay que verlos.
+
+       El quinto —`activa`— no se elige: sale del reloj. Aquí se
+       fabrica una sesión cuya hora es AHORA para poder verlo.
+
+       No es parte de la app. netlify.toml no sirve /dev/* en producción.
+       ============================================================ -->
+</head>
+<body>
+  <h1>Los cinco estados</h1>
+  <p>Cuatro se guardan en la base de datos. El quinto, <strong>activa</strong>, se deduce del reloj (decisión #17).</p>
+  <div class="rejilla" id="rejilla"></div>
+  <h2>Y el reloj</h2>
+  <pre id="reloj">—</pre>
+
+  <script type="module">
+    import { estadoEfectivo, ventanaActiva, esActiva, ANTES_MIN, DESPUES_MIN } from '/equipos/js/data/estado-sesion.js';
+    import { ESTADOS_SESION } from '/equipos/js/config.js';
+
+    const local = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+    if (!local) { document.body.innerHTML = 'Arnés de desarrollo. Solo en localhost.'; throw new Error('fuera'); }
+
+    const ahora = new Date();
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const hm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:00`;
+
+    // una sesión que está ocurriendo AHORA: empezó hace diez minutos
+    const empezo = new Date(ahora.getTime() - 10 * 60000);
+    const acaba = new Date(ahora.getTime() + 50 * 60000);
+    const enCurso = {
+      id: 'ahora', team_id: 't1', estado: 'programada', fecha: iso(ahora),
+      hora_inicio: hm(empezo), hora_fin: hm(acaba), slot_duracion_min: 60,
+    };
+    // y otra cualquiera, para los cuatro guardados
+    const otra = { ...enCurso, id: 'otra', fecha: '2026-01-15', hora_inicio: '18:00:00', hora_fin: '19:30:00' };
+
+    const CASOS = [
+      { etq: 'preliminar', s: { ...otra, estado: 'preliminar' } },
+      { etq: 'programada', s: { ...otra, estado: 'programada' } },
+      { etq: 'activa (del reloj)', s: enCurso },
+      { etq: 'realizada', s: { ...otra, estado: 'realizada' } },
+      { etq: 'cancelada', s: { ...otra, estado: 'cancelada' } },
+    ];
+
+    const rejilla = document.getElementById('rejilla');
+    for (const c of CASOS) {
+      const e = estadoEfectivo(c.s);
+      const chip = document.createElement('button');
+      chip.className = `eq-ses eq-ses-${e}`;
+      chip.style.setProperty('--team-color', '#1F6FEB');
+      chip.title = `Cadete A · ${ESTADOS_SESION[e]}`;
+      chip.innerHTML = `<span class="eq-ses-hora">${c.s.hora_inicio.slice(0, 5)}</span><span class="eq-ses-equipo">Cadete A</span>`;
+
+      const fila = document.createElement('div');
+      fila.className = 'caso';
+      fila.innerHTML = `<div><strong>${c.etq}</strong><br><small>guardado: ${c.s.estado} → pinta: ${e}</small></div>`;
+      const caja = document.createElement('div');
+      caja.append(chip);
+      fila.append(caja);
+      rejilla.append(fila);
+    }
+
+    const v = ventanaActiva(enCurso);
+    document.getElementById('reloj').textContent = JSON.stringify({
+      ahora: ahora.toLocaleTimeString('es-ES'),
+      ventana: `${new Date(v.desde).toLocaleTimeString('es-ES')} → ${new Date(v.hasta).toLocaleTimeString('es-ES')}`,
+      margenes: `${ANTES_MIN} min antes · ${DESPUES_MIN} min después`,
+      estaActiva: esActiva(enCurso),
+    }, null, 2);
+
+    window.__casos = CASOS.map((c) => ({ etq: c.etq, guardado: c.s.estado, pinta: estadoEfectivo(c.s) }));
+  </script>
+</body>
+</html>

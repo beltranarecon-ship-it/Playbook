@@ -81,6 +81,25 @@
 .eq-ses-programada { background: color-mix(in srgb, var(--team-color, var(--muted)) 12%, var(--white)); color: var(--ink); }
 .eq-ses-realizada { background: var(--team-color, var(--muted)); color: var(--white); }
 .eq-ses-cancelada { background: var(--bone); color: var(--muted); text-decoration: line-through; }
+/* El quinto estado (Tramo 3.4): esto está pasando AHORA. Se deduce del
+   reloj, así que aparece solo, y tiene que distinguirse de un vistazo
+   entre los otros cuatro: papaya sólido y un punto que late. */
+.eq-ses-activa {
+  background: var(--papaya); color: var(--white); font-weight: 700;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--papaya) 35%, transparent);
+}
+.eq-ses-activa::before {
+  content: ''; flex: none;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--white);
+  animation: eq-late 1.6s ease-in-out infinite;
+}
+@keyframes eq-late { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+/* Quien haya pedido menos movimiento no necesita el latido para saber
+   que es el único chip en papaya sólido. */
+@media (prefers-reduced-motion: reduce) {
+  .eq-ses-activa::before { animation: none; }
+}
 
 /* ── Vista SEMANA ─────────────────────────────────────────── */
 .eq-semana { display: flex; flex-direction: column; gap: 0.375rem; }

@@ -18,9 +18,15 @@ export const weekdayCorto = (iso) => WEEKDAYS.find((d) => d.iso === iso)?.corto 
 
 export const POSICIONES = ['base', 'escolta', 'alero', 'ala-pivot', 'pivot', 'sin definir'];
 
+/*
+   Cuatro se guardan y el quinto —`activa`— se DEDUCE del reloj y no
+   existe en la base de datos (Tramo 3.4, decisión #17). Está aquí
+   porque a la hora de PINTAR son cinco: ver data/estado-sesion.js.
+*/
 export const ESTADOS_SESION = {
   preliminar: 'Preliminar',
   programada: 'Programada',
+  activa: 'Ahora mismo',
   realizada: 'Realizada',
   cancelada: 'Cancelada',
 };
