@@ -865,3 +865,104 @@
 .eq-videos-min { width: 4rem; text-align: center; }
 .eq-videos-aviso:empty { display: none; }
 .eq-videos-aviso { color: var(--error); font-size: 0.8125rem; }
+
+/* ============================================================
+   Sesión activa (Tramo 3.5)
+
+   Se mira con un balón en la otra mano y a un metro de distancia: todo
+   lo que se toca es grande, y lo que no se toca no compite por sitio.
+   ============================================================ */
+.eq-activa { display: flex; flex-direction: column; gap: 1rem; padding-bottom: 3rem; }
+
+.eq-act-head {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  padding-bottom: 0.5rem; border-bottom: 1px solid var(--line);
+}
+.eq-act-volver { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--muted); font-weight: 600; }
+.eq-act-volver:hover { color: var(--ink); }
+.eq-act-equipo { display: inline-flex; align-items: center; gap: 0.375rem; font-weight: 700; }
+.eq-act-tiempo { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.eq-act-reloj { display: flex; align-items: baseline; gap: 0.5rem; }
+.eq-act-reloj-h { font-family: var(--font-mono); font-size: 0.8125rem; color: var(--muted); }
+.eq-act-desvio { font-weight: 700; font-size: 0.8125rem; color: var(--success); }
+.eq-act-desvio.is-tarde { color: var(--papaya-deep); }
+.eq-act-tarde { font-size: 0.8125rem; }
+
+.eq-act-seccion { display: flex; flex-direction: column; gap: 0.5rem; }
+
+/* ── pasar lista ── */
+.eq-act-lista-cerrada { display: flex; align-items: baseline; gap: 0.5rem; }
+.eq-act-lista-cerrada strong { font-family: var(--font-display); font-size: 1.5rem; }
+.eq-act-jugs { display: flex; flex-direction: column; gap: 0.25rem; }
+.eq-act-jug {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.25rem 0.5rem; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--white);
+}
+.eq-act-jug-n {
+  flex: none; width: 2rem; text-align: center;
+  font-family: var(--font-mono); font-weight: 700; color: var(--muted);
+}
+.eq-act-jug-nombre { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eq-act-jug-estados { display: flex; gap: 2px; }
+.eq-act-est {
+  width: 2rem; height: 2rem; border-radius: var(--radius);
+  font-weight: 800; color: var(--muted); background: var(--bone);
+  border: 1px solid transparent;
+}
+.eq-act-est.is-on { color: var(--white); background: var(--ink); }
+.eq-act-est-ok.is-on { background: var(--success); }
+.eq-act-est-aviso.is-on { background: var(--papaya); }
+.eq-act-est-error.is-on { background: var(--error); }
+
+/* ── el bloque en curso ── */
+.eq-act-bloque {
+  display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+  padding: 1.25rem 1rem;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+  text-align: center;
+}
+.eq-act-cuenta { font-family: var(--font-mono); color: var(--muted); font-size: 0.8125rem; margin: 0; }
+.eq-act-titulo {
+  font-family: var(--font-display); text-transform: uppercase;
+  font-size: clamp(1.5rem, 6vw, 2.5rem); line-height: 1.05; margin: 0;
+}
+.eq-act-marca {
+  padding: 1px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700;
+  background: var(--bone); color: var(--muted);
+}
+.eq-act-crono {
+  font-family: var(--font-display); font-weight: 900;
+  font-size: clamp(3rem, 18vw, 6rem); line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.eq-act-crono.is-pasado { color: var(--papaya); }
+.eq-act-previsto { color: var(--muted); font-size: 0.8125rem; margin: 0; }
+.eq-act-acciones { display: flex; gap: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; justify-content: center; }
+.eq-act-btn-grande { min-height: 3rem; padding-inline: 1.5rem; font-size: 1rem; }
+.eq-act-fin { font-family: var(--font-display); font-size: 1.5rem; text-transform: uppercase; margin: 0; }
+
+/* ── en caliente ── */
+.eq-act-estrellas { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.eq-act-estrella {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  min-height: 2.5rem; padding: 0 0.75rem; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--white);
+  font-family: var(--font-mono); font-weight: 700; color: var(--muted);
+}
+.eq-act-estrella.is-on { background: var(--papaya-soft); border-color: var(--papaya); color: var(--papaya-deep); }
+.eq-act-nofunciono { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+.eq-act-nofunciono input { accent-color: var(--papaya); }
+
+/* ── lo que queda ── */
+.eq-act-item {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.375rem 0.5rem; border-bottom: 1px solid var(--line);
+}
+.eq-act-item-n { width: 1.5rem; font-family: var(--font-mono); color: var(--muted); }
+.eq-act-item-t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eq-act-item-min { font-family: var(--font-mono); font-size: 0.8125rem; color: var(--muted); }
+.eq-act-item-mal { font-size: 0.75rem; font-weight: 700; color: var(--papaya-deep); }
+.eq-act-item.is-hecho { color: var(--muted); }
+.eq-act-item.is-hecho .eq-act-item-t { text-decoration: line-through; }
+.eq-act-item.is-curso { background: var(--papaya-soft); font-weight: 700; }

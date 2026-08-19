@@ -161,9 +161,22 @@
                   tiros: [{ jugador_id: 'A3', balon_id: 'b1', canasta: 'sur', path: via([0.912, 0.92], [0.499, 0.894]) }] }] } },
     };
 
+    /* La sesión del arnés ocurre AHORA cuando se abre con ?ahora=1
+       (Tramo 3.5): es la única forma de ver la pantalla de sesión
+       activa, que solo tiene sentido dentro de su hora. */
+    const RELOJ = new Date();
+    const dos = (n) => String(n).padStart(2, '0');
+    const enCurso = new URLSearchParams(location.search).get('ahora') === '1';
+    const HOY = `${RELOJ.getFullYear()}-${dos(RELOJ.getMonth() + 1)}-${dos(RELOJ.getDate())}`;
+    const HORA_INI = `${dos(RELOJ.getHours())}:${dos(Math.max(0, RELOJ.getMinutes() - 12))}:00`;
+    const HORA_FIN = `${dos((RELOJ.getHours() + 1) % 24)}:${dos(RELOJ.getMinutes())}:00`;
+
     const SESION = {
-      id: 'demo', team_id: 't1', season_id: 's1', fecha: '2026-08-22',
-      hora_inicio: '10:00:00', hora_fin: '11:30:00', lugar: 'Pabellón Municipal',
+      id: 'demo', team_id: 't1', season_id: 's1',
+      fecha: enCurso ? HOY : '2026-08-22',
+      hora_inicio: enCurso ? HORA_INI : '10:00:00',
+      hora_fin: enCurso ? HORA_FIN : '11:30:00',
+      lugar: 'Pabellón Municipal',
       estado: new URLSearchParams(location.search).get('estado') || 'programada',
       titulo: null, origen: 'manual', slot_id: null, slot_date: null,
       slot_duracion_min: 90, carga_total: null, notas: null, material: null,
@@ -202,6 +215,8 @@
       profiles: [{ id: 'u1', full_name: 'Beltrán', role: 'coach' }],
       // Un vídeo ya guardado por el club (Tramo 3.3), para poder
       // comprobar que se reutiliza sin pegar el enlace otra vez.
+      attendance: [],
+      session_stars: [],
       videos_bloque: [
         { id: 'vb1', titulo: 'La jugada del sábado', duracion_min: 6, created_by: 'u1',
           video: { tipo: 'youtube', id: 'dQw4w9WgXcQ', desde: 12, hasta: 19 } },

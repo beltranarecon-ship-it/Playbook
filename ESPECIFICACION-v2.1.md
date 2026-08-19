@@ -1115,7 +1115,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.2 ✅ | Pantalla de programar sesión: tope de duración, nº de jugadores, agua, material, avisos de repetición | 3.1 | No se puede pasar de los 90 min; el material sale solo |
 | 3.3 ✅ | Bloque libre con vídeo, guardable y reutilizable | 3.2 | Un vídeo guardado se reutiliza en otra sesión |
 | 3.4 ✅ | Estado `activa` deducido del reloj + cinco estados en el calendario | — | Los cinco se distinguen a la vista |
-| 3.5 | Pantalla de sesión activa: cronómetro, pasar lista, finalizado/+5, anotación en caliente | 3.4 | Un entrenamiento entero se da sin apuntar nada después |
+| 3.5 ✅ | Pantalla de sesión activa: cronómetro, pasar lista, finalizado/+5, anotación en caliente | 3.4 | Un entrenamiento entero se da sin apuntar nada después |
 | 3.6 | Duración real por bloque → duración estimada del ejercicio | 3.5 | La segunda vez que se usa un ejercicio propone la duración real |
 | 3.7 | Rúbrica: filas de acciones y conductas, cuatro niveles, evaluación al cerrar | 2.5 | Se evalúa a cinco jugadores en menos de dos minutos |
 | 3.8 | Apartado Progresión dentro del equipo | 3.7 | Se elige un jugador y se ven sus datos y sus gráficas |
@@ -1331,6 +1331,62 @@ repaso se muere con la vista y va soltando los chips que ya no están en la pág
 activa, y al día siguiente tampoco lo está—, y el arnés `/dev/estados.html`, que pone los
 cinco uno al lado de otro con el CSS de verdad: **cinco fondos distintos**, y la que el
 reloj vuelve activa se ve a un metro de la pantalla.
+
+### Estado de 3.5 (hecha)
+
+`equipos/js/views/sesion-activa.js` (`/sesiones/:id/activa`) sobre `data/cronometro.js`,
+módulo PURO con su banco (`eval-cronometro.mjs`, 20 pruebas). Migración **023**.
+
+El criterio de la fila es «un entrenamiento entero se da sin apuntar nada después». Eso
+obliga a que todo lo que se recoge quepa en un toque: el cronómetro no se configura, la
+lista se pasa con el pulgar y la estrella es un botón con un dorsal.
+
+**El reloj no cuenta, calcula.** Un cronómetro con `setInterval` miente en cuanto el móvil
+se bloquea en el bolsillo: la pestaña deja de recibir latidos y al volver lleva ocho
+minutos de retraso, justo cuando hacía falta que estuviera bien. Aquí todo sale de dos
+cosas —cuándo se arrancó y qué bloques ya se han dado—, y el latido solo repinta. Diez
+minutos sin preguntar y la respuesta sigue siendo exacta.
+
+**El bloque en curso empieza donde acabó el anterior DE VERDAD**, no donde el plan decía.
+Eso es lo que hace que el reloj siga sirviendo en el minuto 70 de un entrenamiento que se
+ha ido torciendo desde el minuto 10.
+
+**El ajuste de un toque** (§5.6): si se empezó tarde, «Empezamos ahora» corre el plan
+entero — no lo recorta, que es lo que falsearía los tiempos reales (§11). Aparece solo
+cuando de verdad se ha empezado tarde, no se ha dado ningún bloque y no se ha ajustado
+ya: después ya no es «empezamos ahora», es rehacer el pasado.
+
+| Lo que se toca | Lo que pasa |
+|---|---|
+| **Finalizado** | guarda la duración REAL del bloque, que alimentará la duración estimada del ejercicio (fila 3.6) |
+| **+5 min** | alarga el bloque en curso sin tocar a los demás, y el desvío lo dice al momento |
+| **Estrella** | la capa de «un toque» de la progresión (§5.7): un botón con el dorsal |
+| **Nota corta** | va a `notas` del bloque, que ya existía |
+| **No ha funcionado** | se marca en el momento, que es cuando se sabe |
+
+**Pasar lista** ocupa arriba del todo hasta que está pasada; luego se reduce a «13 de 14»
+con un botón de corregir. Y **todo se guarda en cuanto se toca**: un entrenamiento no es
+el sitio donde acordarse de pulsar «guardar».
+
+**Lo que NO va a la base de datos**: el arranque y los «+5». Son ayudas de ese rato y
+viven en el navegador; lo que queda escrito para siempre es la duración real de cada
+bloque. Si el móvil muere a mitad, se pierde el cronómetro del bloque en curso y nada más.
+
+**Migración 023**: `session_blocks.duracion_real_min` y `.no_funciono`, y la tabla
+`session_stars`. La estrella no es una columna de `attendance` porque no es una propiedad
+del jugador en la sesión, es un hecho con su momento —«en el 3c3, el 7 hizo algo que hay
+que recordar»—: en una columna solo cabría la última, y sin saber de qué ejercicio.
+
+Como con la 022, `getBloques` pide las columnas nuevas y, si no existen, sigue sin ellas:
+un plan entero sin abrir por una migración pendiente sería mucho peor que no tener
+cronómetro.
+
+**Comprobado** en `/dev/planner.html?ahora=1`, que pone la sesión del arnés en su hora: el
+plan ofrece «Entrenar ahora»; la pantalla abre en «1 de 5» con la cuenta en **−4:46** y
+«5 min de retraso»; «Empezamos ahora (13 min tarde)» la deja en **8:00 · en hora** y el
+botón desaparece; «+5» pasa a «de 13 min · 5 min de retraso»; «Finalizado» salta al
+bloque 2 y deja el 1 como «1′ reales»; la estrella se enciende y dice «1 estrella hoy»;
+«no ha funcionado» sale en la lista; y marcar a uno ausente deja «13 de 14 han entrenado».
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

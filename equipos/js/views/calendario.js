@@ -195,8 +195,16 @@ export function render(root) {
       h('div', { class: 'eq-dia-ses-acciones' },
         // el foco cambia con el tiempo: lo de mañana se planifica, lo de ayer
         // se cierra (pasar lista + reflexión)
+        /* Con la sesión ocurriendo, lo que se quiere abrir no es el
+           plan: es el entrenamiento (Tramo 3.5). Va primero y en
+           primario porque a esa hora es lo único que se toca. */
+        esActiva(s) ? h('button', {
+          class: 'btn btn-primary eq-btn-mini',
+          type: 'button',
+          onClick: () => { md.cerrar(); router.navigate(`/sesiones/${s.id}/activa`); },
+        }, 'Entrenar ahora') : null,
         h('button', {
-          class: `btn ${s.fecha <= hoyISO() && s.estado !== 'cancelada' ? 'btn-secondary' : 'btn-primary'} eq-btn-mini`,
+          class: `btn ${esActiva(s) || (s.fecha <= hoyISO() && s.estado !== 'cancelada') ? 'btn-secondary' : 'btn-primary'} eq-btn-mini`,
           type: 'button',
           onClick: () => { md.cerrar(); router.navigate(`/sesiones/${s.id}`); },
         }, s.estado === 'preliminar' ? 'Planificar' : 'Abrir plan'),

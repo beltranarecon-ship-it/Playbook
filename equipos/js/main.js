@@ -15,6 +15,7 @@ import * as detalle from './views/equipo-detalle.js';
 import * as calendario from './views/calendario.js';
 import * as planner from './views/sesion-planner.js';
 import * as cierre from './views/sesion-cierre.js';
+import * as sesionActiva from './views/sesion-activa.js';
 import * as partido from './views/partido.js';
 import * as dossier from './views/dossier.js';
 
@@ -34,6 +35,7 @@ router
   .on('/equipos/nuevo', () => show(nuevo))
   .on('/equipos/:teamId', (p) => show(detalle, p))
   .on('/equipos', () => show(lista))
+  .on('/sesiones/:sessionId/activa', (p) => show(sesionActiva, p))
   .on('/sesiones/:sessionId/cierre', (p) => show(cierre, p))
   .on('/sesiones/:sessionId', (p) => show(planner, p))
   .on('/sesiones', () => show(calendario))

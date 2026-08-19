@@ -38,6 +38,7 @@ import {
   textoHace, cabeEnGrupo,
 } from '../data/plan.js';
 import { getSesionesRango } from '../data/sessions.js';
+import { esActiva } from '../data/estado-sesion.js';
 import { getVideosGuardados, guardarVideoBloque, borrarVideoBloque } from '../data/videos.js';
 import { leerVideo, textoTramo } from '../../../taller/js/ia/video.js';
 import { abrirVideo } from '../../../taller/js/ui/video.js';
@@ -1170,16 +1171,27 @@ export function render(root, params) {
           class: 'btn btn-secondary', type: 'button', onClick: irCierre,
         }, 'Pasar lista') : null,
       ),
+      /* Con la sesión ocurriendo, guardar el plan deja de ser lo
+         principal: lo que se quiere es empezar (Tramo 3.5). */
+      esActiva(sesion) ? h('button', {
+        class: 'btn btn-primary eq-planner-guardar', type: 'button',
+        onClick: async () => { await guardar({ callado: true }); salir(`/sesiones/${sessionId}/activa`); },
+      }, 'Entrenar ahora') : null,
       h('button', {
-        class: 'btn btn-primary eq-planner-guardar', type: 'button', onClick: guardar,
+        class: `btn ${esActiva(sesion) ? 'btn-secondary' : 'btn-primary'} eq-planner-guardar`, type: 'button', onClick: guardar,
       }, esPreliminar ? 'Guardar y confirmar' : 'Guardar plan'),
     );
   }
 
-  async function guardar() {
-    if (soloLectura) return;
+  /**
+   * @param opts.callado  guarda sin avisar ni navegar. Lo usa «Entrenar
+   *   ahora»: ahí guardar es un trámite de camino a otra pantalla, y
+   *   mandar al calendario en medio sería tirar al entrenador fuera.
+   */
+  async function guardar({ callado = false } = {}) {
+    if (soloLectura) return true;
     const libreSinTitulo = bloques.find((b) => !b.exercise_id && !(b.titulo || '').trim());
-    if (libreSinTitulo) { toast('Un bloque libre está sin título', 'error'); return; }
+    if (libreSinTitulo) { toast('Un bloque libre está sin título', 'error'); return false; }
     const esPreliminar = sesion.estado === 'preliminar';
     try {
       await guardarBloques(sessionId, bloques);
@@ -1187,10 +1199,13 @@ export function render(root, params) {
       await guardarCabeceraSesion(sessionId, { titulo });
       if (esPreliminar) await promoverSesion(sessionId);
       sucio = false;
+      if (callado) return true;
       toast(esPreliminar ? 'Sesión planificada y confirmada' : 'Plan guardado');
       router.navigate(`/sesiones?equipo=${sesion.team_id}`);
+      return true;
     } catch (e) {
       toast('Error al guardar: ' + e.message, 'error');
+      return false;
     }
   }
 
