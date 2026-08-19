@@ -5,6 +5,8 @@ import { getEjercicios, getThumbnailGif } from './modules/ejercicios.js';
 // con tres) y el mismo ejercicio se anunciaba distinto en la tarjeta y en
 // su ficha.
 import { dificultadDe } from '../taller/js/config.js';
+import { getDuracionesReales } from './modules/duraciones.js';
+import { duracionPropuesta } from '../taller/js/duracion.js';
 
 // ── Estado global de la sesión ───────────────────────────
 let currentUser    = null;
@@ -87,6 +89,17 @@ async function showEjercicios() {
   try {
     ejercicios = await getEjercicios();
     renderEjerciciosGrid(ejercicios);
+
+    /* Las duraciones reales llegan DESPUÉS y repintan (Tramo 3.6): la
+       rejilla no se queda esperando por un dato que solo mejora una
+       etiqueta. Si falla, las tarjetas siguen con lo de la ficha. */
+    getDuracionesReales()
+      .then((d) => {
+        if (!d || !Object.keys(d).length) return;
+        realesPorId = d;
+        repintarRejilla();
+      })
+      .catch(() => {});
   } catch (err) {
     grid.innerHTML = `<div class="empty-state">
       <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -98,6 +111,31 @@ async function showEjercicios() {
   }
 
   setupEjerciciosToolbar();
+}
+
+/* Lo que de verdad ha durado cada ejercicio en los entrenamientos de
+   quien mira (Tramo 3.6). Llega por red DESPUÉS de la primera pintada:
+   la rejilla no espera por un dato de adorno. */
+let realesPorId = {};
+/* Repinta la rejilla RESPETANDO el filtro que haya puesto. Se apunta
+   aquí porque `applyFilters` vive dentro del montaje de los filtros y,
+   sin esto, repintar con las duraciones reales borraría la búsqueda que
+   el entrenador acababa de escribir. */
+let repintarRejilla = () => {};
+
+/**
+ * La duración de la tarjeta. Si el ejercicio se ha dado alguna vez,
+ * manda lo que duró —con la marca de que es real—; si no, lo que
+ * estimó la ficha.
+ */
+function badgeDuracion(ej) {
+  const p = duracionPropuesta(realesPorId[ej.id], ej.duration_min);
+  if (!p.minutos) return '';
+  const real = p.origen === 'real';
+  const titulo = real
+    ? (p.veces === 1 ? 'Lo que duró la última vez que lo diste' : `Lo que dura tus últimas ${p.veces} veces`)
+    : 'Lo que estima la ficha';
+  return `<span class="badge badge-duration${real ? ' badge-real' : ''}" title="${titulo}">${p.minutos} min${real ? ' reales' : ''}</span>`;
 }
 
 function renderEjerciciosGrid(data) {
@@ -124,7 +162,7 @@ function renderEjerciciosGrid(data) {
       <div class="exercise-card-meta">
         ${ej.type ? `<span class="badge badge-type">${ej.type}</span>` : ''}
         ${ej.difficulty ? `<span class="badge badge-difficulty">${escapeHtml(ej.dificultad_label || dificultadDe(ej.difficulty).label)}</span>` : ''}
-        ${ej.duration_min ? `<span class="badge badge-duration">${ej.duration_min} min</span>` : ''}
+        ${badgeDuracion(ej)}
       </div>
       ${ej.description ? `<p class="exercise-card-desc">${escapeHtml(ej.description)}</p>` : ''}
     </article>
@@ -240,6 +278,9 @@ function setupEjerciciosToolbar() {
   typeSelect.onchange = applyFilters;
   catSelect.onchange = applyFilters;
 
+  // el repintado de las duraciones reales (3.6) pasa por aquí para no
+  // borrar la búsqueda que el entrenador tenga escrita
+  repintarRejilla = applyFilters;
   applyFilters();   // deja el contador y la rejilla de acuerdo con los filtros vivos
 }
 

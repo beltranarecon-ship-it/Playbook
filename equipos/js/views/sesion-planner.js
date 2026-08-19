@@ -39,6 +39,8 @@ import {
 } from '../data/plan.js';
 import { getSesionesRango } from '../data/sessions.js';
 import { esActiva } from '../data/estado-sesion.js';
+import { getDuracionesReales } from '../../../taller/js/supabase/duraciones.js';
+import { duracionPropuesta, textoDuracion } from '../../../taller/js/duracion.js';
 import { getVideosGuardados, guardarVideoBloque, borrarVideoBloque } from '../data/videos.js';
 import { leerVideo, textoTramo } from '../../../taller/js/ia/video.js';
 import { abrirVideo } from '../../../taller/js/ui/video.js';
@@ -119,6 +121,10 @@ export function render(root, params) {
   let jugadoresSesion = null;
   let filtrarPorGrupo = true;
   let historial = { sesiones: [], bloquesPorSesion: {} };
+  /* Lo que de verdad duró cada ejercicio las últimas veces (Tramo 3.6).
+     Llega por red y se suma cuando llega: sin ello se propone lo que
+     dice la ficha, que es lo que se hacía antes. */
+  let reales = {};
   let titulo = '';
   let soloLectura = false;
   let sucio = false;
@@ -877,9 +883,13 @@ export function render(root, params) {
     };
 
     const añade = (e) => {
+      /* La duración que se propone sale de lo que DE VERDAD ha durado
+         las últimas veces (Tramo 3.6); solo si nunca se ha dado manda
+         lo que estimó la ficha. */
+      const p = duracionPropuesta(reales[e.id], e.duration_min);
       añadeBloque({
         exercise_id: e.id, titulo: e.name,
-        duracion_min: e.duration_min || 10,
+        duracion_min: p.minutos || 10,
         intensidad: e.intensidad || 3, notas: null,
       }, { seleccionar: false });
       añadidos++;
@@ -942,9 +952,12 @@ export function render(root, params) {
       },
         h('div', { class: 'eq-picker-txt' },
           h('span', { class: 'eq-picker-nombre' }, e.name),
-          h('span', { class: 'eq-picker-meta' },
-            [e.type, e.duration_min ? `${e.duration_min}′` : null,
-             e.intensidad ? `int ${e.intensidad}` : null].filter(Boolean).join(' · ')),
+          (() => {
+            const p = duracionPropuesta(reales[e.id], e.duration_min);
+            return h('span', { class: 'eq-picker-meta' + (p.origen === 'real' ? ' es-real' : '') },
+              [e.type, p.minutos ? `${p.minutos}′${p.origen === 'real' ? ' reales' : ''}` : null,
+               e.intensidad ? `int ${e.intensidad}` : null].filter(Boolean).join(' · '));
+          })(),
         ),
         h('button', {
           class: 'eq-picker-mas', type: 'button', title: 'Añadir al plan', 'aria-label': `Añadir ${e.name} al plan`,
@@ -1253,6 +1266,13 @@ export function render(root, params) {
          suelto y sin bloquear el pintado: si falla, el plan se escribe
          igual y simplemente no hay aviso. */
       cargarHistorial().catch(() => {});
+
+      /* Y lo que de verdad han durado los ejercicios de este equipo
+         (Tramo 3.6). También suelto: si falla, se propone lo de la
+         ficha y no se entera nadie. */
+      getDuracionesReales({ teamId: sesion.team_id })
+        .then((d) => { reales = d || {}; dibujaCurva(); })
+        .catch(() => {});
       porId = new Map(biblioteca.map((e) => [e.id, e]));
 
       // pre-marca los objetivos que cubren la fecha SOLO si la sesión nunca se

@@ -1116,7 +1116,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.3 ✅ | Bloque libre con vídeo, guardable y reutilizable | 3.2 | Un vídeo guardado se reutiliza en otra sesión |
 | 3.4 ✅ | Estado `activa` deducido del reloj + cinco estados en el calendario | — | Los cinco se distinguen a la vista |
 | 3.5 ✅ | Pantalla de sesión activa: cronómetro, pasar lista, finalizado/+5, anotación en caliente | 3.4 | Un entrenamiento entero se da sin apuntar nada después |
-| 3.6 | Duración real por bloque → duración estimada del ejercicio | 3.5 | La segunda vez que se usa un ejercicio propone la duración real |
+| 3.6 ✅ | Duración real por bloque → duración estimada del ejercicio | 3.5 | La segunda vez que se usa un ejercicio propone la duración real |
 | 3.7 | Rúbrica: filas de acciones y conductas, cuatro niveles, evaluación al cerrar | 2.5 | Se evalúa a cinco jugadores en menos de dos minutos |
 | 3.8 | Apartado Progresión dentro del equipo | 3.7 | Se elige un jugador y se ven sus datos y sus gráficas |
 | 3.9 | Objetivos: categorías propias, dianas de acción, medida por rúbrica, panel «qué vigilar» | 3.7 | Un objetivo dice «trabajado en 7 sesiones · 5 de 13 han subido» |
@@ -1387,6 +1387,64 @@ plan ofrece «Entrenar ahora»; la pantalla abre en «1 de 5» con la cuenta en 
 botón desaparece; «+5» pasa a «de 13 min · 5 min de retraso»; «Finalizado» salta al
 bloque 2 y deja el 1 como «1′ reales»; la estrella se enciende y dice «1 estrella hoy»;
 «no ha funcionado» sale en la lista; y marcar a uno ausente deja «13 de 14 han entrenado».
+
+### Estado de 3.6 (hecha)
+
+`taller/js/duracion.js` — módulo PURO con su banco (`eval-duracion.mjs`, 14 pruebas).
+Vive en el Taller porque lo usan las DOS aplicaciones, que es donde ya vive `ficha.js`.
+
+**El problema.** La ficha dice «10 minutos» porque alguien lo estimó al escribirla.
+Después se da en el pabellón y dura catorce. Y la siguiente vez vuelve a proponerse diez,
+y vuelve a durar catorce, y el plan de 90 minutos vuelve a irse a 100.
+
+Desde 3.5, dar un bloque por finalizado guarda lo que **de verdad** duró. Aquí eso se
+convierte en la duración que se propone la próxima vez.
+
+**La mediana, no la media.** Un día un bloque duró cuarenta minutos —se hizo daño un
+crío, entró el conserje— y ese día no dice nada de cuánto dura el ejercicio. Con
+`[12, 40, 13, 12]` la media da **19** y la mediana **12,5**: la media casi dobla la
+propuesta por un solo día raro.
+
+**Solo las últimas cinco.** Un ejercicio que hace un año duraba veinte con el infantil y
+ahora dura doce con el cadete no tiene una duración: tiene dos, y la que importa es la de
+ahora.
+
+**Con una vez basta**, que es literalmente el criterio de la fila: «la segunda vez que se
+usa un ejercicio propone la duración real».
+
+**El «para ese entrenador» de §5.6 sale gratis**: no hace falta filtrar por nadie, porque
+la RLS de `sessions` ya recorta a los equipos de quien pregunta.
+
+**Dónde se ve**, y siempre diciendo de dónde sale el número —«12 min» y «12 min porque
+las tres veces que lo has dado ha durado eso» no son la misma información—:
+
+| | |
+|---|---|
+| Picker del planificador | «Tiro · 16′ **reales** · int 3», en papaya |
+| Al meterlo en el plan | entra con 16, no con los 8 de la ficha |
+| Tarjeta de la biblioteca | badge «16 min reales» con su explicación al pasar por encima |
+
+Las dos aplicaciones repiten la consulta (ocho líneas) a propósito: la biblioteca tiene su
+propio cliente de Supabase, y montar dos en la misma página para ahorrarlas dejaría dos
+sesiones de autenticación vivas discutiendo entre ellas. La CUENTA, que es lo que podría
+divergir, vive una sola vez.
+
+Y las dos la piden **después** de pintar: la rejilla y el picker no esperan por un dato
+que solo mejora una etiqueta. Sin la migración 023, sin red o sin sesión, se propone lo de
+la ficha, como siempre.
+
+**Un fallo que salió del banco**: `duracionPropuesta([0.4], 10)` proponía **1 minuto** en
+vez de los 10 de la ficha. Menos de un minuto no es la duración de un bloque —se guarda
+en minutos enteros y `minutosReales()` nunca devuelve menos de uno—, así que ahora eso es
+ruido y no un dato corto.
+
+**Comprobado** en el arnés: «Flecha de tiro» tiene 8′ en la ficha y se ha dado dos veces,
+17 y 15 → el picker propone **16′ reales** y el bloque entra con 16. «Calentamiento
+articular», dado una vez, propone 6′. «Rueda de entradas», nunca dada, sigue con sus 10′
+de ficha y sin marca.
+
+Y el arnés aprendió a resolver **embebidos** (`sessions!inner(...)`): sin eso la consulta
+devolvía cero filas y la propuesta parecía rota cuando lo que fallaba era el arnés.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

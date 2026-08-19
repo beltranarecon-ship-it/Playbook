@@ -211,6 +211,14 @@ img { max-width: 100%; display: block; }
   font-family: var(--font-mono);
   letter-spacing: 0;
 }
+/* La duración que sale de lo que DE VERDAD ha durado (Tramo 3.6) se
+   distingue de la que estimó la ficha: son dos cosas distintas, y la
+   segunda se corrige sola en cuanto el ejercicio se da una vez. */
+.badge-duration.badge-real {
+  color: var(--papaya-deep);
+  background: var(--papaya-soft);
+  border-color: color-mix(in srgb, var(--papaya) 30%, var(--line));
+}
 
 /* ============================================================
    Utilidades

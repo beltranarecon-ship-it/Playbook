@@ -203,9 +203,12 @@
         { id: 'sb3', session_id: 'demo', exercise_id: null, orden: 2, titulo: 'Charla táctica', duracion_min: 5, intensidad: 1, notas: null },
         { id: 'sb4', session_id: 'demo', exercise_id: 'e7', orden: 3, titulo: 'Contraataque 3x2', duracion_min: 18, intensidad: 5, notas: null },
         { id: 'sb5', session_id: 'demo', exercise_id: 'e3', orden: 4, titulo: 'Defensa del bloqueo directo', duracion_min: 15, intensidad: 4, notas: null },
-        { id: 'pb1', session_id: 'prev1', exercise_id: 'e1', orden: 0, titulo: 'Flecha de tiro', duracion_min: 12, intensidad: 3, notas: null },
-        { id: 'pb2', session_id: 'prev2', exercise_id: 'e1', orden: 0, titulo: 'Flecha de tiro', duracion_min: 12, intensidad: 3, notas: null },
-        { id: 'pb3', session_id: 'prev2', exercise_id: 'e5', orden: 1, titulo: 'Calentamiento articular', duracion_min: 8, intensidad: 1, notas: null },
+        /* Ya dados, con su duración REAL (Tramo 3.6): la ficha de la
+           flecha de tiro dice 8 min y las dos veces que se ha dado ha
+           durado 15 y 17, así que la propuesta tiene que ser 16. */
+        { id: 'pb1', session_id: 'prev1', exercise_id: 'e1', orden: 0, titulo: 'Flecha de tiro', duracion_min: 12, intensidad: 3, notas: null, duracion_real_min: 17 },
+        { id: 'pb2', session_id: 'prev2', exercise_id: 'e1', orden: 0, titulo: 'Flecha de tiro', duracion_min: 12, intensidad: 3, notas: null, duracion_real_min: 15 },
+        { id: 'pb3', session_id: 'prev2', exercise_id: 'e5', orden: 1, titulo: 'Calentamiento articular', duracion_min: 8, intensidad: 1, notas: null, duracion_real_min: 6 },
       ],
       session_objectives: [{ session_id: 'demo', objective_id: 'o1' }],
       objectives: [
@@ -280,10 +283,29 @@
           filas = BIBLIO.slice();
         }
       } else {
+        /* EMBEBIDOS. `select=...,sessions!inner(fecha,team_id)` trae la
+           sesión de cada bloque colgada dentro. Sin esto, la consulta
+           de duraciones reales (Tramo 3.6) no devolvía nada en el arnés
+           y la propuesta parecía rota cuando lo que faltaba era el
+           arnés. Solo se resuelve lo que la app usa de verdad. */
+        const select = u.searchParams.get('select') || '';
+        if (/sessions!inner\(/.test(select) && TABLAS.sessions) {
+          filas = filas
+            .map((r) => ({ ...r, sessions: TABLAS.sessions.find((x) => x.id === r.session_id) || null }))
+            .filter((r) => r.sessions);
+        }
+
         // filtros sencillos, suficientes para el arnés
         for (const [clave, valor] of u.searchParams) {
           if (clave === 'select' || clave === 'order' || clave === 'limit' || clave === 'offset') continue;
           const v = String(valor);
+          // `tabla.columna=eq.x` filtra sobre lo embebido
+          if (clave.includes('.')) {
+            const [tabla, col] = clave.split('.');
+            if (v.startsWith('eq.')) filas = filas.filter((r) => String(r[tabla]?.[col]) === v.slice(3));
+            continue;
+          }
+          if (v.startsWith('not.is.null')) { filas = filas.filter((r) => r[clave] != null); continue; }
           if (v.startsWith('eq.')) {
             filas = filas.filter((r) => String(r[clave]) === v.slice(3));
           } else if (v.startsWith('in.')) {
