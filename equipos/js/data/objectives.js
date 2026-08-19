@@ -6,17 +6,23 @@
 
 import { supabase } from './_client.js';
 
-const COLS_BASE = 'id, team_id, season_id, titulo, descripcion, categoria, fecha_inicio, fecha_fin, estado, created_at';
+const COLS_BASE = 'id, team_id, season_id, player_id, titulo, descripcion, categoria, fecha_inicio, fecha_fin, estado, created_at';
 
 /* `dianas` la añade la migración 025 (Tramo 3.9). Mismo criterio que en
    `blocks.js`: se pide, y si la base de datos dice que no existe se
    apunta y se sigue sin ella. Un equipo sin poder abrir sus objetivos
    por una columna nueva sería mucho peor que no poder medirlos. */
-let sinDianas = false;
-const COLS = () => (sinDianas ? COLS_BASE : `${COLS_BASE}, dianas`);
+/* `dianas` (025) y `player_id` (026). Si una de las dos migraciones no
+   está, la consulta entera fallaría; se apunta y se sigue sin ellas. */
+const OPCIONALES = ['dianas', 'player_id'];
+let sinNuevas = false;
+const COLS = () => (sinNuevas
+  ? COLS_BASE.split(', ').filter((c) => !OPCIONALES.includes(c)).join(', ')
+  : `${COLS_BASE}, dianas`);
 const faltaDianas = (error) => {
   const m = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
-  return error?.code === '42703' || error?.code === 'PGRST204' || (m.includes('column') && m.includes('dianas'));
+  if (error?.code === '42703' || error?.code === 'PGRST204') return true;
+  return m.includes('column') && OPCIONALES.some((c) => m.includes(c));
 };
 
 /** Todos los objetivos del equipo en la temporada (incluye archivados). */
@@ -29,7 +35,7 @@ export async function getObjetivos(teamId, seasonId) {
     .order('fecha_inicio')
     .order('created_at');
   let { data, error } = await pide();
-  if (error && faltaDianas(error)) { sinDianas = true; ({ data, error } = await pide()); }
+  if (error && faltaDianas(error)) { sinNuevas = true; ({ data, error } = await pide()); }
   if (error) throw error;
   return data ?? [];
 }
@@ -53,7 +59,7 @@ export async function getObjetivosRango({ desde, hasta, teamId = null, incluirAr
   return data ?? [];
 }
 
-export async function crearObjetivo({ team_id, season_id, titulo, descripcion, categoria, fecha_inicio, fecha_fin, dianas = [] }) {
+export async function crearObjetivo({ team_id, season_id, titulo, descripcion, categoria, fecha_inicio, fecha_fin, dianas = [], player_id = null }) {
   const { data: { user } } = await supabase.auth.getUser();
   const fila = {
     team_id, season_id,
@@ -61,12 +67,13 @@ export async function crearObjetivo({ team_id, season_id, titulo, descripcion, c
     descripcion: descripcion?.trim() || null,
     categoria, fecha_inicio, fecha_fin,
     created_by: user.id,
-    ...(sinDianas ? {} : { dianas: dianas || [] }),
+    ...(sinNuevas ? {} : { dianas: dianas || [], player_id: player_id || null }),
   };
   let { data, error } = await supabase.from('objectives').insert(fila).select().single();
   if (error && faltaDianas(error)) {
-    sinDianas = true;
-    const { dianas: _, ...sin } = fila;
+    sinNuevas = true;
+    const sin = { ...fila };
+    for (const c of OPCIONALES) delete sin[c];
     ({ data, error } = await supabase.from('objectives').insert(sin).select().single());
   }
   if (error) throw error;
@@ -101,11 +108,13 @@ export async function crearCategoria(nombre) {
 }
 
 export async function actualizarObjetivo(id, patch) {
-  const p = sinDianas ? (({ dianas, ...r }) => r)(patch) : patch;
+  const p = { ...patch };
+  if (sinNuevas) for (const c of OPCIONALES) delete p[c];
   let { error } = await supabase.from('objectives').update(p).eq('id', id);
   if (error && faltaDianas(error)) {
-    sinDianas = true;
-    const { dianas: _, ...sin } = patch;
+    sinNuevas = true;
+    const sin = { ...patch };
+    for (const c of OPCIONALES) delete sin[c];
     ({ error } = await supabase.from('objectives').update(sin).eq('id', id));
   }
   if (error) throw error;

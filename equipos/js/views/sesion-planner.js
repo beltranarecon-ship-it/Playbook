@@ -1316,6 +1316,8 @@ export function render(root, params) {
       getDuracionesReales({ teamId: sesion.team_id })
         .then((d) => { reales = d || {}; dibujaCurva(); })
         .catch(() => {});
+      // los individuales (3.10) no se eligen para una sesión: son del niño
+      objetivosEquipo = (objetivosEquipo || []).filter((o) => !o.player_id);
       porId = new Map(biblioteca.map((e) => [e.id, e]));
 
       // pre-marca los objetivos que cubren la fecha SOLO si la sesión nunca se

@@ -219,6 +219,8 @@
       objectives: [
         { id: 'o1', team_id: 't1', season_id: 's1', titulo: 'Tiro tras bote con equilibrio', descripcion: 'Salir del bote y tirar sin caerse', categoria: 'técnico', fecha_inicio: '2026-08-01', fecha_fin: '2026-10-31', estado: 'activo', created_at: '2026-07-01T00:00:00Z', dianas: ['accion:tiro', 'accion:bote'] },
         { id: 'o2', team_id: 't1', season_id: 's1', titulo: 'Defensa del bloqueo directo', descripcion: null, categoria: 'táctico', fecha_inicio: '2026-09-01', fecha_fin: '2026-12-31', estado: 'activo', created_at: '2026-07-01T00:00:00Z', dianas: [] },
+        /* Uno individual (Tramo 3.10): del jugador 3, con su diana. */
+        { id: 'o3', team_id: 't1', season_id: 's1', player_id: 'p3', titulo: 'Pasar de «con ayuda» a «solo» en bote', descripcion: null, categoria: 'técnico', fecha_inicio: '2026-08-01', fecha_fin: '2026-10-31', estado: 'activo', created_at: '2026-08-01T00:00:00Z', dianas: ['accion:bote'] },
       ],
       profiles: [{ id: 'u1', full_name: 'Beltrán', role: 'coach' }],
       // Un vídeo ya guardado por el club (Tramo 3.3), para poder

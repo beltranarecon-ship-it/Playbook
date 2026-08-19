@@ -18,6 +18,7 @@ import {
   NIVELES, NIVEL_MAX, esNivel, CONDUCTAS, claveAccion, claveConducta, esConducta,
   filasDeRubrica, estadoDe, movimiento, diasSinMirar, ordenSugerido,
   textoSinMirar, porDondeEmpezar, resumenDe, serieDe,
+  proponerObjetivos, tituloPropuesta,
 } from '../js/rubrica.js';
 import { TAGS } from '../js/ia/vocabulario.js';
 
@@ -247,6 +248,48 @@ test('sin nada mirado, no hay medias que dar', () => {
 test('la serie de una fila sale ordenada de lo viejo a lo nuevo', () => {
   eq(serieDe(SERIE, 'accion:bote').map((p) => p.nivel), [1, 2, 3]);
   eq(serieDe(SERIE, 'accion:pase'), [], 'una fila sin historia no inventa puntos');
+});
+
+/* ── 8. Objetivos propuestos desde su rúbrica (3.10) ───── */
+
+console.log('\n· qué proponerle a este niño');
+
+test('lo más bajo primero: es donde más tiene que ganar', () => {
+  const filas = filasDeRubrica();
+  const estado = estadoDe([
+    { clave: 'accion:bote', nivel: 2, created_at: haceDias(5) },
+    { clave: 'accion:tiro', nivel: 0, created_at: haceDias(5) },
+    { clave: 'conducta:escucha', nivel: 1, created_at: haceDias(5) },
+  ]);
+  const p = proponerObjetivos(estado, filas, { cuantos: 3 });
+  eq(p.map((x) => x.fila.clave), ['accion:tiro', 'conducta:escucha', 'accion:bote']);
+});
+
+test('lo que no se ha mirado NO se propone: no se sabe si está bajo', () => {
+  const p = proponerObjetivos({}, filasDeRubrica());
+  eq(p, []);
+});
+
+test('lo que ya está en el tope tampoco: no hay escalón siguiente', () => {
+  const filas = filasDeRubrica();
+  const estado = estadoDe([{ clave: 'accion:bote', nivel: 3, created_at: haceDias(5) }]);
+  eq(proponerObjetivos(estado, filas), []);
+});
+
+test('se aspira al escalón INMEDIATO, no al máximo', () => {
+  /* De «no lo hace» a «con oposición» no es un objetivo, es un deseo. */
+  const filas = filasDeRubrica();
+  const estado = estadoDe([{ clave: 'accion:tiro', nivel: 0, created_at: haceDias(5) }]);
+  const [x] = proponerObjetivos(estado, filas);
+  eq(x.nivel, 0);
+  eq(x.siguiente, 1);
+});
+
+test('el título se lee sin traducir nada', () => {
+  const filas = filasDeRubrica();
+  const estado = estadoDe([{ clave: 'accion:cambio de mano', nivel: 1, created_at: haceDias(5) }]);
+  const [x] = proponerObjetivos(estado, filas);
+  eq(tituloPropuesta(x), 'Pasar de «con ayuda» a «solo» en cambio de mano');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

@@ -246,7 +246,10 @@ export function render(root, params) {
 
   // ── Pestaña OBJETIVOS ──────────────────────────────────────
   async function pintaObjetivos(zona) {
-    const todos = await getObjetivos(teamId, temporada.id);
+    /* Los del EQUIPO. Los individuales (3.10) viven en Progresión, con
+       el jugador delante: mezclados aquí, catorce críos con dos
+       objetivos cada uno taparían los tres del equipo. */
+    const todos = (await getObjetivos(teamId, temporada.id)).filter((o) => !o.player_id);
     /* La medida de cada objetivo (Tramo 3.9). Las dos consultas van
        sueltas y toleran el fallo: sin ellas la lista se pinta igual,
        solo que sin el «5 de 13 han subido». */

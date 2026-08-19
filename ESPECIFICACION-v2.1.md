@@ -1120,7 +1120,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.7 ✅ | Rúbrica: filas de acciones y conductas, cuatro niveles, evaluación al cerrar | 2.5 | Se evalúa a cinco jugadores en menos de dos minutos |
 | 3.8 ✅ | Apartado Progresión dentro del equipo | 3.7 | Se elige un jugador y se ven sus datos y sus gráficas |
 | 3.9 ✅ | Objetivos: categorías propias, dianas de acción, medida por rúbrica, panel «qué vigilar» | 3.7 | Un objetivo dice «trabajado en 7 sesiones · 5 de 13 han subido» |
-| 3.10 | Objetivos individuales, visibles en sesión activa | 3.8 | Cada niño con uno o dos objetivos vivos |
+| 3.10 ✅ | Objetivos individuales, visibles en sesión activa | 3.8 | Cada niño con uno o dos objetivos vivos |
 | 3.11 | Reflexión: esfuerzo obligatorio, preguntas individuales editables | 3.5 | Se valora a jugadores sueltos, no a todos |
 | 3.12 | Plantilla: filtros por asistencia, estado y rendimiento; archivados recuperables | 3.1 | Se recupera un jugador de baja |
 | 3.13 | Borradores con recuperación en sesiones y en edición de ejercicios | — | Se sale a media sesión y al volver la ofrece |
@@ -1586,6 +1586,41 @@ conversión es explícita.
 sin mirar»* — las tres sesiones que lo llevan son dos pasadas y una futura, y la futura
 no cuenta. El que no tiene diana dice *«sin diana, no se puede medir»* y explica cómo
 arreglarlo. El panel del planificador saca las dos líneas con nombres.
+
+### Estado de 3.10 (hecha)
+
+Migración **026**: una columna, `objectives.player_id`. Con valor, el objetivo es de ese
+jugador; en null, del equipo, como hasta ahora.
+
+**Por qué no una tabla aparte**: es exactamente la misma cosa —un título, un periodo, una
+categoría y una diana—. Una tabla `objetivos_jugador` duplicaría las cinco columnas, la
+RLS, el formulario, la medida (3.9) y el panel «qué vigilar hoy», y al mes siguiente una
+de las dos copias se quedaría atrás.
+
+**Propuestos desde su propia rúbrica** (§5.7). La propuesta sale de lo que **ya se ha
+medido en él**: la fila donde está más bajo es, por definición, donde más tiene que
+ganar. No se propone lo que no se ha mirado —de eso no se sabe si está bajo— ni lo que ya
+está en el tope. Y se aspira al **escalón inmediato**: de «no lo hace» a «con oposición»
+no es un objetivo, es un deseo. El título sale escrito: *«Pasar de "con ayuda" a "solo"
+en cambio de mano»*.
+
+**«Uno o dos vivos por niño» se dice, no se impide.** Un entrenador que en una semana rara
+tenga tres abiertos está trabajando, no corrompiendo nada; a partir del tercero sale
+*«con uno o dos se sigue la pista; con cinco no se sigue ninguno»*. Una restricción en la
+base de datos ahí solo serviría para que alguien no pudiera guardar.
+
+**Visibles en la sesión activa** (§12.27), y solo de los que están: el que no ha venido
+hoy no se entrena. Ahí no se editan ni se miden, se **leen** — un objetivo individual que
+solo vive en la ficha del jugador no se cumple, porque en la pista nadie abre fichas.
+
+Los individuales **no aparecen** en la pestaña de objetivos del equipo ni en el selector
+de la sesión: catorce críos con dos objetivos cada uno taparían los tres del equipo.
+
+**Comprobado** en el arnés: el objetivo del Jugador 3 sale en la sesión activa junto a su
+dorsal, y en Progresión con sus botones de conseguido y archivar. Y los dos mensajes de
+«sin propuestas» se distinguen, que era un fallo real: al Jugador 3 le dice *«ya tiene
+objetivo en todo lo que se le ha mirado»* y al Jugador 1, que está en el tope de lo único
+mirado, *«hace falta haberle mirado alguna fila en la que no esté ya arriba del todo»*.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

@@ -1130,3 +1130,30 @@
 }
 .eq-vigilar-obj + .eq-vigilar-obj { margin-top: 0.5rem; }
 .eq-vigilar-l { margin: 0; font-size: 0.8125rem; }
+
+/* Objetivos individuales (Tramo 3.10) */
+.eq-prog-objs { display: flex; flex-direction: column; gap: 0.25rem; }
+.eq-prog-obj {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.375rem 0.5rem; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--white);
+}
+.eq-prog-obj.es-hecho { color: var(--muted); }
+.eq-prog-obj.es-hecho .eq-prog-obj-t { text-decoration: line-through; }
+.eq-prog-obj-t { flex: 1 1 auto; min-width: 0; font-size: 0.875rem; }
+/* «Uno o dos vivos por niño» se dice, no se impide. */
+.eq-prog-aviso { color: var(--papaya-deep); font-weight: 600; }
+.eq-prog-props { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; margin-top: 0.5rem; }
+.eq-prog-prop {
+  padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; text-align: left;
+  border: 1px dashed var(--line); background: var(--white); color: var(--muted);
+}
+.eq-prog-prop:hover { border-style: solid; border-color: var(--papaya); color: var(--papaya-deep); }
+
+/* Y en la sesión activa: se leen, no se editan. */
+.eq-act-obj { display: flex; gap: 0.5rem; align-items: flex-start; padding: 0.25rem 0; }
+.eq-act-obj-n {
+  flex: none; min-width: 2rem; text-align: center;
+  font-family: var(--font-mono); font-weight: 700; color: var(--muted);
+}
+.eq-act-obj-txt p { margin: 0; font-size: 0.875rem; }

@@ -53,6 +53,7 @@ import {
 } from '../data/cronometro.js';
 import { esActiva, minutosDesdeInicio } from '../data/estado-sesion.js';
 import { esAgua, esVideo } from '../data/plan.js';
+import { getObjetivos } from '../data/objectives.js';
 import { router } from '../main.js';
 
 const hhmm = (t) => (t ? t.slice(0, 5) : '');
@@ -69,6 +70,7 @@ export function render(root, params) {
   let sesion = null, equipo = null;
   let bloques = [], jugadores = [], densas = [], estrellas = [];
   let listaAbierta = true;      // pasar lista ocupa arriba hasta que se pasa
+  let objetivosJug = {};        // player_id → sus objetivos vivos (Tramo 3.10)
   let extras = {};              // minutos añadidos con «+5», por bloque
   let arranque = null;
   let guardando = false;
@@ -92,6 +94,7 @@ export function render(root, params) {
   const nodoBloque = h('section', { class: 'eq-act-bloque' });
   const nodoCaliente = h('section', { class: 'eq-act-seccion' });
   const nodoResto = h('section', { class: 'eq-act-seccion' });
+  const nodoObjetivos = h('section', { class: 'eq-act-seccion' });
 
   /* El latido solo REPINTA. La hora se pregunta cada vez (cronometro.js),
      así que un móvil bloqueado diez minutos vuelve con la cuenta bien. */
@@ -179,7 +182,7 @@ export function render(root, params) {
         h('h2', { class: 'eq-zona-titulo' }, 'Pasar lista'),
         h('button', {
           class: 'btn btn-primary eq-btn-mini', type: 'button',
-          onClick: () => { listaAbierta = false; pintaLista(); guardaLista(); },
+          onClick: () => { listaAbierta = false; pintaLista(); pintaObjetivos(); guardaLista(); },
         }, `Listo · ${r.entrenaron} de ${r.total}`),
       ),
       densas.length
@@ -307,6 +310,29 @@ export function render(root, params) {
     pintaCaliente();
   }
 
+  /* ---- los objetivos de cada niño (Tramo 3.10) ---------------------
+     §12.27: visibles TAMBIÉN en la sesión activa. Aquí no se editan ni
+     se miden: se leen. Un objetivo individual que solo vive en la ficha
+     del jugador no se cumple, porque en la pista nadie abre fichas.
+
+     Solo los de los que están: el que no ha venido hoy no se entrena. */
+  function pintaObjetivos() {
+    const presentes = densas.filter((f) => f.estado === 'presente' || f.estado === 'tarde');
+    const conObjetivo = presentes
+      .map((f) => ({ f, objs: (objetivosJug[f.player_id] || []) }))
+      .filter((x) => x.objs.length);
+
+    if (!conObjetivo.length) { nodoObjetivos.replaceChildren(); return; }
+
+    nodoObjetivos.replaceChildren(
+      h('h2', { class: 'eq-zona-titulo' }, 'Lo suyo de cada uno'),
+      ...conObjetivo.map(({ f, objs }) => h('div', { class: 'eq-act-obj' },
+        h('span', { class: 'eq-act-obj-n' }, f.dorsal != null ? String(f.dorsal) : f.nombre.split(' ')[0]),
+        h('div', { class: 'eq-act-obj-txt' }, ...objs.map((o) => h('p', {}, o.titulo))),
+      )),
+    );
+  }
+
   /* ---- lo que queda ------------------------------------------------ */
   function pintaResto() {
     const e = estadoCronometro(bloques, { arranque, ahora: Date.now(), extras });
@@ -351,9 +377,10 @@ export function render(root, params) {
       nodoLista,
       nodoBloque,
       nodoCaliente,
+      nodoObjetivos,
       nodoResto,
     );
-    pintaTiempo(); pintaLista(); pintaBloque(); pintaCaliente(); pintaResto();
+    pintaTiempo(); pintaLista(); pintaBloque(); pintaCaliente(); pintaObjetivos(); pintaResto();
   }
 
   (async () => {
@@ -380,6 +407,18 @@ export function render(root, params) {
          hay: si estaba sin confirmar, se confirma sola. Que quede en
          `preliminar` una sesión que se ha dado es un estado falso. */
       if (sesion.estado === 'preliminar') promoverSesion(sessionId).catch(() => {});
+
+      /* Los objetivos individuales llegan sueltos: sin la 026 aplicada
+         la sección no aparece y el entrenamiento se da igual. */
+      getObjetivos(sesion.team_id, sesion.season_id)
+        .then((os) => {
+          objetivosJug = {};
+          for (const o of os || []) {
+            if (o.player_id && o.estado === 'activo') (objetivosJug[o.player_id] ||= []).push(o);
+          }
+          pintaObjetivos();
+        })
+        .catch(() => {});
 
       pinta();
       if (!esActiva(sesion)) {

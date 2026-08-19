@@ -28,12 +28,15 @@
 import { h, mount } from '../ui/dom.js';
 import { avatar } from '../ui/components.js';
 import { getRubricaEquipo, getFilasClub } from '../data/rubrica.js';
+import { getObjetivos, crearObjetivo, actualizarObjetivo } from '../data/objectives.js';
+import { toast } from '../ui/toast.js';
 import { getEstrellasJugadores } from '../data/estrellas.js';
 import { getAsistenciaEquipo } from '../data/attendance.js';
 import { estadisticasJugadores } from '../data/asistencia.js';
 import {
   NIVELES, NIVEL_MAX, filasDeRubrica, estadoDe, movimiento,
   diasSinMirar, textoSinMirar, resumenDe, serieDe, esConducta,
+  proponerObjetivos, tituloPropuesta,
 } from '../../../taller/js/rubrica.js';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -50,12 +53,20 @@ export async function pintaProgresion(zona, { teamId, seasonId = null }) {
   }
 
   const ids = jugadores.map((j) => j.id);
-  const [series, filasClub, estrellas, asistencia] = await Promise.all([
+  const [series, filasClub, estrellas, asistencia, objetivos] = await Promise.all([
     getRubricaEquipo(ids),
     getFilasClub(),
     getEstrellasJugadores(ids),
     getAsistenciaEquipo(teamId, seasonId).catch(() => []),
+    getObjetivos(teamId, seasonId).catch(() => []),
   ]);
+  // los individuales (Tramo 3.10), por jugador
+  let porJugadorObj = {};
+  const reagrupaObjetivos = (lista) => {
+    porJugadorObj = {};
+    for (const o of lista) if (o.player_id) (porJugadorObj[o.player_id] ||= []).push(o);
+  };
+  reagrupaObjetivos(objetivos);
   const filas = filasDeRubrica(filasClub);
   const asisPorJugador = estadisticasJugadores(jugadores, asistencia);
 
@@ -105,6 +116,9 @@ export async function pintaProgresion(zona, { teamId, seasonId = null }) {
         dato(movimientoTexto(r), 'movimiento', 'cuántas filas han subido o bajado de nivel'),
       ),
 
+      /* ── sus objetivos (Tramo 3.10) ── */
+      seccionObjetivos(j, estado),
+
       /* ── debajo, sus gráficas ── */
       r.miradas
         ? h('div', { class: 'flow' },
@@ -121,6 +135,82 @@ export async function pintaProgresion(zona, { teamId, seasonId = null }) {
               + 'Hasta que haya dos valoraciones de la misma fila no hay movimiento que enseñar: '
               + 'una progresión necesita al menos dos puntos.'),
           ),
+    );
+  }
+
+  /* ---- objetivos individuales (Tramo 3.10) ------------------------
+     «Uno o dos vivos por niño, propuestos desde su propia rúbrica»
+     (§5.7). La propuesta sale de lo que YA se ha medido en él: la fila
+     donde está más bajo es, por definición, donde más tiene que ganar.
+
+     El «uno o dos» se dice, no se impide. Un entrenador que en una
+     semana rara tenga tres abiertos está trabajando, no corrompiendo
+     nada. */
+  function seccionObjetivos(j, estado) {
+    const suyos = (porJugadorObj[j.id] || []).filter((o) => o.estado !== 'archivado');
+    const vivos = suyos.filter((o) => o.estado === 'activo');
+    const todas = proponerObjetivos(estado, filas, { cuantos: 3 });
+    const propuestas = todas.filter((p) => !vivos.some((o) => (o.dianas || []).includes(p.fila.clave)));
+
+    const crear = async (p) => {
+      const hoy = new Date();
+      const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const fin = new Date(hoy.getTime() + 60 * 86400000);
+      try {
+        const nuevo = await crearObjetivo({
+          team_id: teamId, season_id: seasonId, player_id: j.id,
+          titulo: tituloPropuesta(p),
+          descripcion: null,
+          categoria: esConducta(p.fila.clave) ? 'conducta' : 'técnico',
+          fecha_inicio: iso(hoy), fecha_fin: iso(fin),
+          dianas: [p.fila.clave],
+        });
+        (porJugadorObj[j.id] ||= []).push(nuevo);
+        toast('Objetivo puesto');
+        pintaFicha();
+      } catch (e) { toast(`No se ha podido crear: ${e.message}`, 'error'); }
+    };
+
+    const cerrar = async (o, estadoNuevo) => {
+      try {
+        await actualizarObjetivo(o.id, { estado: estadoNuevo });
+        o.estado = estadoNuevo;
+        pintaFicha();
+      } catch (e) { toast(`Error: ${e.message}`, 'error'); }
+    };
+
+    return h('section', { class: 'eq-prog-graf' },
+      h('h4', { class: 'eq-prog-graf-t' }, 'Sus objetivos'),
+      vivos.length > 2
+        ? h('p', { class: 'eq-ayuda eq-prog-aviso' },
+            `${vivos.length} objetivos vivos. Con uno o dos se sigue la pista; con cinco no se sigue ninguno.`)
+        : null,
+      suyos.length
+        ? h('div', { class: 'eq-prog-objs' }, ...suyos.map((o) => h('div', {
+            class: 'eq-prog-obj' + (o.estado === 'conseguido' ? ' es-hecho' : ''),
+          },
+          h('span', { class: 'eq-prog-obj-t' }, o.titulo),
+          o.estado === 'activo'
+            ? h('button', { class: 'btn btn-secondary eq-btn-mini', type: 'button', onClick: () => cerrar(o, 'conseguido') }, '✓')
+            : h('span', { class: 'eq-obj-badge eq-obj-badge-ok' }, '✓ conseguido'),
+          o.estado === 'activo'
+            ? h('button', { class: 'btn btn-secondary eq-btn-mini', type: 'button', title: 'Archivar', onClick: () => cerrar(o, 'archivado') }, '×')
+            : null,
+        )))
+        : h('p', { class: 'eq-ayuda' }, 'Todavía no tiene ninguno.'),
+      propuestas.length
+        ? h('div', { class: 'eq-prog-props' },
+            h('span', { class: 'eq-ayuda' }, 'De su propia rúbrica:'),
+            ...propuestas.map((p) => h('button', {
+              class: 'eq-prog-prop', type: 'button',
+              title: 'Ponérselo como objetivo, para los próximos dos meses',
+              onClick: () => crear(p),
+            }, '+ ', tituloPropuesta(p))),
+          )
+        : h('p', { class: 'eq-ayuda' }, todas.length
+            ? 'Ya tiene objetivo en todo lo que se le ha mirado y está por debajo del tope.'
+            : 'Para proponerle objetivos hace falta haberle mirado alguna fila de la rúbrica '
+              + 'en la que no esté ya arriba del todo.'),
     );
   }
 

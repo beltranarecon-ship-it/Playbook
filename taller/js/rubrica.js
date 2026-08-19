@@ -233,6 +233,41 @@ export function serieDe(valores, clave) {
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+/* ── 5c. Objetivos propuestos desde su propia rúbrica (3.10) ─ */
+
+/**
+ * Qué le vendría bien trabajar a este jugador.
+ *
+ * §5.7: «objetivos individuales: uno o dos vivos por niño, propuestos
+ * desde su propia rúbrica». La propuesta sale de lo que YA se ha
+ * medido en él, no de una lista general: la fila donde está más bajo
+ * es, por definición, donde más tiene que ganar.
+ *
+ * Lo que NO se propone: filas sin mirar —de esas no se sabe si están
+ * bajas o altas— ni filas ya en el tope, que no tienen escalón
+ * siguiente.
+ *
+ * @returns [{fila, nivel, siguiente}] — `siguiente` es el nivel al que
+ *   se aspira, que es el escalón inmediato y no el máximo: un objetivo
+ *   de «no lo hace» a «con oposición» no es un objetivo, es un deseo.
+ */
+export function proponerObjetivos(estado, filas, { cuantos = 3 } = {}) {
+  return (filas || [])
+    .map((f) => ({ fila: f, ...(estado?.[f.clave] || {}) }))
+    .filter((x) => esNivel(x.nivel) && x.nivel < NIVEL_MAX)
+    .sort((a, b) => {
+      if (a.nivel !== b.nivel) return a.nivel - b.nivel;              // lo más bajo
+      return String(a.fecha || '').localeCompare(String(b.fecha || ''));   // lo más viejo
+    })
+    .slice(0, cuantos)
+    .map((x) => ({ fila: x.fila, nivel: x.nivel, siguiente: x.nivel + 1 }));
+}
+
+/** «Pasar de "con ayuda" a "solo" en el cambio de mano». */
+export function tituloPropuesta({ fila, nivel, siguiente }) {
+  return `Pasar de «${NIVELES[nivel].nombre.toLowerCase()}» a «${NIVELES[siguiente].nombre.toLowerCase()}» en ${fila.nombre}`;
+}
+
 /* ── 6. El escalón siguiente ───────────────────────────────── */
 
 /**
