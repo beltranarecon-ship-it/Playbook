@@ -38,25 +38,26 @@ const enPunto = (h, m = 0) => new Date(2026, 8, 15, h, m, 0, 0).getTime();
 
 console.log('\n· cuándo está pasando');
 
-test('empieza antes de la hora, porque el entrenador llega antes', () => {
+test('la ventana son los cinco y cinco de §5.6', () => {
   const v = ventanaActiva(SESION);
-  eq(v.desde, enPunto(17, 60 - ANTES_MIN), 'quince minutos antes de las seis');
-  eq(v.hasta, enPunto(19, 30 + DESPUES_MIN), 'y media hora después del final');
+  eq(ANTES_MIN, 5); eq(DESPUES_MIN, 5);
+  eq(v.desde, enPunto(17, 60 - ANTES_MIN), 'cinco minutos antes de las seis');
+  eq(v.hasta, enPunto(19, 30 + DESPUES_MIN), 'y cinco después del final');
 });
 
-test('a las seis menos veinte todavía no', () => {
-  ok(!esActiva(SESION, enPunto(17, 40)));
+test('a las seis menos diez todavía no', () => {
+  ok(!esActiva(SESION, enPunto(17, 50)));
 });
 
-test('a las seis menos cuarto ya sí, y a las siete también', () => {
-  ok(esActiva(SESION, enPunto(17, 45)), 'justo al abrirse');
+test('a las seis menos cinco ya sí, y a las siete también', () => {
+  ok(esActiva(SESION, enPunto(17, 55)), 'justo al abrirse');
   ok(esActiva(SESION, enPunto(18, 0)), 'a la hora');
   ok(esActiva(SESION, enPunto(19, 0)), 'a mitad');
-  ok(esActiva(SESION, enPunto(20, 0)), 'media hora después, cerrando');
+  ok(esActiva(SESION, enPunto(19, 34)), 'en el alargue');
 });
 
-test('y a las ocho y cinco se acabó: NO se queda colgada (§11)', () => {
-  ok(!esActiva(SESION, enPunto(20, 5)));
+test('y a las ocho menos veinticinco se acabó: NO se queda colgada (§11)', () => {
+  ok(!esActiva(SESION, enPunto(19, 36)));
   ok(!esActiva(SESION, enPunto(23, 0)));
   // al día siguiente tampoco, que es el caso que de verdad importa
   ok(!esActiva(SESION, new Date(2026, 8, 16, 18, 30).getTime()));
@@ -69,7 +70,7 @@ test('sin hora de inicio no hay reloj al que agarrarse', () => {
 
 test('sin hora de fin manda la duración del hueco', () => {
   const v = ventanaActiva({ ...SESION, hora_fin: null, slot_duracion_min: 60 });
-  eq(v.hasta, enPunto(19, 0 + DESPUES_MIN), 'una hora de pista');
+  eq(v.hasta, enPunto(19, DESPUES_MIN), 'una hora de pista');
 });
 
 test('y sin ninguna de las dos, hora y media, que es lo que dura un entreno', () => {

@@ -1311,9 +1311,9 @@ nunca. Es el caso de §11, y deducida del reloj no hay nada que pueda fallar: **
 
 | | |
 |---|---|
-| Ventana | de **15 min antes** de la hora de inicio a **30 min después** del fin |
-| Por qué antes | el entrenador llega antes que los críos y abre la pantalla mientras se cambian |
-| Por qué después | un entrenamiento se alarga, y cerrarlo —lista y reflexión— se hace con la pista caliente |
+| Ventana | de **5 min antes** de la hora de inicio a **5 min después** del fin (§5.6) |
+| Por qué esos | dan para abrir la pantalla mientras se cambian y para el alargue de siempre, y mantienen «activa» pegada a la hora de pista de verdad |
+| Cerrar la sesión | no necesita esta ventana: la pantalla de cierre se abre cuando se quiera |
 | Sin hora de fin | manda `slot_duracion_min`; sin eso, hora y media |
 | Sin hora de inicio | no hay ventana. Inventarle una sería inventarse a qué hora entrena un equipo |
 

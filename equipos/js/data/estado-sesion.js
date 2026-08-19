@@ -16,10 +16,13 @@
    nada que pueda fallar: a las 18:00 está activa porque son las 18:00.
 
    ── LA VENTANA ──────────────────────────────────────────────
-   Quince minutos ANTES, porque el entrenador llega antes que los
-   críos y quiere abrir la pantalla mientras se cambian. Y treinta
-   DESPUÉS, porque un entrenamiento se alarga y porque cerrarlo
-   —pasar lista, la reflexión— se hace con la pista todavía caliente.
+   Cinco minutos antes del inicio y cinco después del fin (§5.6). Son
+   los números de la especificación y no una estimación: dan para abrir
+   la pantalla mientras los críos se cambian y para el alargue de
+   siempre, y mantienen «activa» pegada a la hora de pista de verdad.
+
+   Cerrar la sesión —pasar lista, la reflexión— no necesita esta
+   ventana: la pantalla de cierre se abre cuando se quiera.
 
    ── QUÉ SESIONES PUEDEN ESTARLO ─────────────────────────────
    Las que van a ocurrir: `preliminar` y `programada`. La diferencia
@@ -33,8 +36,8 @@
 export const ACTIVA = 'activa';
 
 /** Minutos de margen alrededor de la hora de pista. */
-export const ANTES_MIN = 15;
-export const DESPUES_MIN = 30;
+export const ANTES_MIN = 5;
+export const DESPUES_MIN = 5;
 
 /** Los cinco, en el orden en que ocurren. */
 export const ESTADOS = ['preliminar', 'programada', ACTIVA, 'realizada', 'cancelada'];
