@@ -200,7 +200,7 @@ tener la app instalada en la pantalla de inicio.
 ### 5.9 · Partidos
 
 - **Corrección de dominio:** en minibasket y alevín se juegan **periodos**, no minutos. Todo el reglamento y el acta están en periodos.
-- Del acta se extraen: alineaciones, **periodos jugados y descansados**, faltas por jugador, faltas de equipo por periodo, tiempos muertos, marcador por periodo, resultado y ganador.
+- Del acta se extraen: alineaciones, **qué periodos jugó cada uno** (y de ahí los jugados y descansados), faltas por jugador, faltas de equipo por periodo, tiempos muertos, marcador por periodo, resultado y ganador.
 - **Comprobación de reglamento** (aritmética pura, sin IA), por categoría: mínimo de inscritos, dos periodos completos jugados y dos descansados de los cinco primeros, faltas de equipo, regla de los 50 puntos. Recuadro al pie de la pantalla del partido con lo incumplido.
 - Pantalla **partidos y clasificación** por equipo. Clasificación **manual ahora**, automática cuando llegue el enlace de la FBCyL.
 - Valoración por jugador y del rival, con estrellas.
@@ -278,7 +278,7 @@ tener la app instalada en la pantalla de inicio.
 | `push_suscripciones` | Endpoint del navegador por usuario y dispositivo |
 | `bloque_tiempos` | Duración real de cada bloque, por ejercicio y entrenador |
 | `clasificacion` | Tabla de la liga por equipo y temporada. Manual ahora, alimentada después |
-| `partido_estadisticas` | Por jugador y partido: periodos jugados, descansados, puntos, faltas |
+| `partido_estadisticas` | Por jugador y partido: **qué** periodos jugó (la rejilla del acta), cuántos jugó y descansó, puntos, faltas |
 
 > **Cambio sobre lo previsto**: las **zonas** no llevan tabla propia. Van dentro de
 > `animacion.zonas`, como los jugadores, los conos y el material. Una tabla aparte
@@ -1756,6 +1756,68 @@ del almacenamiento.
 | 4.11 | Barra de navegación fija y pantalla de inicio con cinco secciones | — | En móvil abajo, en ordenador arriba |
 | 4.12 | Rediseño de calendario: color e imagen por equipo, partidos distinguidos | 3.4 | Se distingue a la vista qué es cada cosa |
 | 4.13 | Avisos entre entrenadores del mismo equipo | 4.7 | Un cambio de uno le llega al otro |
+
+### Estado de 4.1 (hecha)
+
+`equipos/js/data/acta.js` — motor puro del acta, con su banco (`eval-acta.mjs`, **28
+pruebas**). `equipos/js/data/estadisticas.js` — el cliente de `partido_estadisticas`.
+Migración **028**: cuatro columnas nuevas en `matches` (`periodos`, `faltas_equipo`,
+`tiempos_muertos`, `acta_origen`) y la tabla `partido_estadisticas`, con RLS espejo de
+`matches` (si ves el partido, ves sus estadísticas).
+
+La pantalla del partido pasa a ser el acta entera, en el orden en que se rellena el lunes
+con el papel delante: **marcador final → marcador por periodo → quién jugó qué periodos →
+puntos y faltas de cada uno → cómo salió → la foto**.
+
+**La rejilla manda sobre el contador.** Cada jugador guarda *qué* periodos jugó
+—`periodos: [1, 2, 4]`—, no solo cuántos. El acta oficial es exactamente eso, una rejilla
+jugador × periodo. La fila 4.3 pide comprobar «dos periodos completos jugados y dos
+descansados **de los cinco primeros**», y con un contador suelto eso no se puede mirar,
+porque no se sabe cuáles fueron. Los contadores se conservan —a veces son lo único que
+hay: un acta dictada al chat (4.2) da el total y no la rejilla— pero **se derivan** de
+ella cuando la hay: nunca dos versiones de lo mismo que puedan discrepar.
+
+**Lo que no cuadra se dice, no se arregla.** Los descuadres salen en ámbar al pie, con los
+dos números: *«Los puntos de los jugadores suman 38 y el marcador dice 40»*. La pantalla
+no corrige ninguno por su cuenta — un acta copiada a mano con un número mal se arregla
+mirando el papel, y si la app elige cuál de los dos era el bueno, el error deja de verse y
+pasa a ser permanente.
+
+| | |
+|---|---|
+| Lo que se comprueba | los puntos de los jugadores suman el marcador · el marcador por periodo suma el final, en los dos lados · nadie juega y descansa más periodos de los que hay · nadie pasa de cinco faltas |
+| Lo que **no** es un error | lo que falta. Un acta se deja a medias el sábado y se termina el lunes: sale *«Falta por apuntar: …»* en gris, no en ámbar |
+| En pista | el pie de la rejilla cuenta cuántos hay marcados en cada periodo. Cinco. Se **enseña** el número y ya: mientras se rellena ninguna columna suma cinco, y un aviso que salta en cada clic no lo lee nadie |
+| Quien no jugó | **no** se guarda a cero: se borra del acta. Una fila a cero dice «vino y no jugó ni un periodo», que es una acusación; no estar dice «no vino» |
+| El dorsal | viaja congelado, como la clave de la reflexión: un crío cambia de dorsal en enero y el acta de noviembre sigue diciendo lo que decía |
+| Bajar de periodos | se pregunta antes si hay algo apuntado más allá: pasar de 6 a 4 se lleva el quinto y el sexto, y eso es un clic al lado del que se quería dar |
+
+**Si falta la 028**: marcador, estado, valoraciones y foto siguen funcionando, y la parte
+del acta dice que falta la migración. Un partido del sábado que no se puede abrir es mucho
+peor que uno al que le falta media pantalla. Comprobado con `?sin028` en el arnés: la
+primera lectura falla por `matches.periodos`, se repite sin las cuatro columnas, la tabla
+responde 404 y la pantalla se abre y **guarda** igual.
+
+**Dos fallos que salieron al comprobarlo:**
+
+- `periodosDe` daba **un** periodo en vez de seis con `periodos: null` —que es como sale
+  de la base de datos mientras nadie lo toque—: `Number(null)` es 0, y 0 recortado al
+  mínimo da 1. El acta se pintaba con una sola columna.
+- **`confirmar()` devolvía siempre `false` en toda la aplicación.** El botón de aceptar
+  llamaba a `cerrar()` primero, y `cerrar()` dispara `alCerrar`, que resolvía `false`: una
+  promesa solo se resuelve una vez, así que el `true` que venía detrás no llegaba nunca.
+  Se veía como que el botón no hacía nada. Afectaba a las **14** confirmaciones del módulo
+  de equipos —eliminar un partido, quitar el acta, borrar un jugador— y a `pedirTexto`,
+  que tenía el mismo defecto. El Taller usa otro modal sin ese gancho y no lo tenía.
+
+**Comprobado** en el arnés (`/dev/planner.html?ruta=/partidos/m1`, con `matches` y
+`partido_estadisticas` nuevos, y **upsert** y borrado con filtros añadidos al mock): se
+rellena 38-30 por periodos y la suma cuadra; se cambia un periodo a 9 y salta *«El
+marcador por periodos suma 41 y el final dice 38»* con la celda en ámbar, que desaparece
+al corregirlo **sin que la app toque el número**; se marcan cinco jugadores en P1 y P2 y
+el pie dice **5**; se guarda dos veces y siguen siendo 10 filas (el upsert no duplica);
+se desmarca a uno del todo y **desaparece** del acta. En móvil (375 px) la página no se va
+de lado: cada rejilla se desliza dentro de su caja y la columna del nombre se queda fija.
 
 ## Fuera de la v2.1 (marcados «no imprescindible»)
 

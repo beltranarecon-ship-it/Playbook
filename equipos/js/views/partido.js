@@ -1,8 +1,24 @@
 /* ============================================================
    partido.js — /partidos/:matchId · el partido de principio a fin.
-   Marcador, estado, las cinco valoraciones de 1 a 5, las claves y
-   la foto del acta. Es la otra mitad del calendario del entrenador:
-   entrenamos (sesiones) y competimos (partidos).
+   Es la otra mitad del calendario del entrenador: entrenamos
+   (sesiones) y competimos (partidos).
+
+   ── QUÉ CABE AQUÍ (Tramo 4.1) ────────────────────────────────
+   El acta entera, en el orden en que se rellena el lunes con el papel
+   delante: marcador final → marcador por periodo → quién jugó qué
+   periodos → puntos y faltas de cada uno → cómo salió → la foto.
+
+   ── LO QUE NO CUADRA SE DICE, NO SE ARREGLA ─────────────────
+   Los descuadres (`acta.descuadres`) salen en ámbar al pie, con los dos
+   números que no coinciden. La pantalla NUNCA corrige uno por su
+   cuenta: un acta copiada a mano con un número mal se arregla mirando
+   el papel, y si la app elige por su cuenta cuál de los dos era el
+   bueno, el error deja de verse y pasa a ser permanente.
+
+   ── SI FALTA LA 028 ─────────────────────────────────────────
+   Marcador, estado, valoraciones y foto siguen funcionando; la parte
+   del acta dice que falta la migración. Un partido que no se puede
+   abrir es peor que uno al que le falta media pantalla.
    ============================================================ */
 
 import { h, mount } from '../ui/dom.js';
@@ -10,9 +26,17 @@ import { toast } from '../ui/toast.js';
 import { confirmar } from '../ui/modal.js';
 import { puntoEquipo, estrellas } from '../ui/components.js';
 import { getMisEquipos } from '../data/teams.js';
+import { getJugadores } from '../data/players.js';
 import {
-  getPartido, actualizarPartido, borrarPartido, subirActa, urlActa, borrarActa,
+  getPartido, actualizarPartido, borrarPartido, subirActa, urlActa, borrarActa, hayActa,
 } from '../data/matches.js';
+import {
+  getEstadisticas, guardarEstadisticas, borrarEstadisticas, hayTabla,
+} from '../data/estadisticas.js';
+import {
+  periodosDe, filaVacia, totales, sumaPeriodos, descuadres, loQueFalta,
+  rejillaDe, jugoEn, alterna, recuenta, enPista, saneaFila, saneaCuartos,
+} from '../data/acta.js';
 import {
   EJES_VALORACION, ESTADOS_PARTIDO, VALORACION_MAX,
   resultadoPartido, diferencia, mediaValoracion, validaPartido,
@@ -32,6 +56,13 @@ export function render(root, params) {
   mount(root, cont);
 
   let p = null, color = 'var(--muted)', nombreEquipo = '—';
+  /* El acta. `filas` lleva UNA por jugador de la plantilla, aunque no
+     jugara: la rejilla se rellena marcando, no dando de alta a nadie.
+     `teniaFila` recuerda quién estaba ya guardado, para poder BORRAR al
+     que se desmarca del todo —una fila a cero dice «vino y no jugó ni
+     un periodo», que es una acusación; no estar dice «no vino»—. */
+  let jugadores = [], filas = [], teniaFila = new Set();
+  let conActa = true;
   // el estado tal y como está EN LA BASE DE DATOS. `p.estado` es el del chip,
   // que el usuario cambia sin guardar; las policies de 016 miran este.
   let estadoBD = null;
@@ -91,6 +122,242 @@ export function render(root, params) {
     return nodoMarcador;
   }
 
+  // ── el acta · números que se copian de un papel ────────────
+  const nodoCuantos = h('div', { class: 'eq-acta-cuantos' });
+  const nodoPeriodos = h('div', { class: 'eq-acta-bloque' });
+  const nodoFilas = h('div', { class: 'eq-acta-bloque' });
+  const nodoAvisos = h('div', { class: 'eq-acta-avisos' });
+
+  const P = () => periodosDe(p);
+  const num = (x) => { const v = Math.round(Number(x)); return Number.isFinite(v) && v > 0 ? v : 0; };
+  const soloCeros = (l) => (l || []).every((c) => !num(c?.favor) && !num(c?.contra));
+
+  /** ¿Hay algo escrito más allá del periodo `k`? */
+  const seVaAPerder = (k) => filas.some((f) => rejillaDe(f).some((x) => x > k))
+    || ['marcador_cuartos', 'faltas_equipo', 'tiempos_muertos']
+      .some((clave) => !soloCeros((p[clave] || []).slice(k)));
+
+  /** Deja las tres listas del partido con tantas entradas como periodos. */
+  function estiraListas() {
+    for (const clave of ['marcador_cuartos', 'faltas_equipo', 'tiempos_muertos']) {
+      p[clave] = saneaCuartos(p[clave], p);
+    }
+  }
+
+  /* Un campo de número del acta. Vacío en vez de «0» a propósito: una
+     rejilla de treinta y seis ceros no se lee, y lo que importa es lo
+     que está escrito, no lo que está a cero. */
+  const campoNum = (valor, { max = 200, clase = '', aria, alCambiar }) => h('input', {
+    class: `field-input eq-acta-num ${clase}`, type: 'number', min: 0, max,
+    inputmode: 'numeric', placeholder: '0', 'aria-label': aria,
+    value: num(valor) ? String(num(valor)) : '',
+    onInput: (e) => {
+      const v = e.target.value;
+      alCambiar(v === '' ? 0 : Math.max(0, Math.min(max, Math.round(Number(v)) || 0)));
+      marcaSucio(); pintaAvisos();
+    },
+  });
+
+  /** Repinta el acta entera: cambia la FORMA de las dos rejillas. */
+  function pintaActa() { pintaCuantos(); pintaPeriodos(); pintaFilas(); pintaAvisos(); }
+
+  function pintaCuantos() {
+    mount(nodoCuantos,
+      h('span', { class: 'eq-ayuda' }, 'Periodos'),
+      ...[4, 6, 8, 10].map((k) => h('button', {
+        class: 'eq-catchip' + (P() === k ? ' sel' : ''), type: 'button',
+        onClick: async () => {
+          if (P() === k) return;
+          /* Bajar de seis a cuatro se lleva por delante lo que hubiera en
+             el quinto y el sexto, y eso es un clic al lado del que se
+             quería dar. Se pregunta antes. */
+          if (k < P() && seVaAPerder(k)
+              && !(await confirmar({
+                titulo: 'Menos periodos',
+                mensaje: `El acta pasa a ${k} periodos: se borra lo apuntado del ${k + 1} en adelante.`,
+                textoOk: 'Cambiar',
+              }))) return;
+          p.periodos = k;
+          filas = filas.map((f) => recuenta(f, p));
+          marcaSucio(); pintaActa();
+        },
+      }, String(k))),
+    );
+  }
+
+  function pintaPeriodos() {
+    estiraListas();
+    const n = P();
+    const s = sumaPeriodos(p.marcador_cuartos);
+    const descuadra = (lado) => {
+      const fin = lado === 'favor' ? p.marcador_favor : p.marcador_contra;
+      return fin != null && !soloCeros(p.marcador_cuartos) && s[lado] !== num(fin);
+    };
+    const fila = (i) => h('tr', { class: 'eq-acta-fila' },
+      h('th', { scope: 'row', class: 'eq-acta-per' }, `P${i + 1}`),
+      ...[['marcador_cuartos', 'favor', 60], ['marcador_cuartos', 'contra', 60],
+        ['faltas_equipo', 'favor', 20], ['faltas_equipo', 'contra', 20],
+        ['tiempos_muertos', 'favor', 9], ['tiempos_muertos', 'contra', 9],
+      ].map(([clave, lado, max]) => h('td', {},
+        campoNum(p[clave][i][lado], {
+          max, aria: `${clave} ${lado} periodo ${i + 1}`,
+          alCambiar: (v) => { p[clave][i][lado] = v; if (clave === 'marcador_cuartos') pintaTotales(); },
+        }))),
+    );
+
+    mount(nodoPeriodos,
+      h('div', { class: 'eq-acta-scroll' },
+        h('table', { class: 'eq-acta-tabla' },
+          h('thead', {},
+            h('tr', {},
+              h('th', { scope: 'col' }, ''),
+              h('th', { scope: 'col', colspan: 2 }, 'Puntos'),
+              h('th', { scope: 'col', colspan: 2 }, 'Faltas eq.'),
+              h('th', { scope: 'col', colspan: 2 }, 'T. muertos'),
+            ),
+            h('tr', { class: 'eq-acta-sub' },
+              h('th', { scope: 'col' }, ''),
+              ...[0, 1, 2].flatMap(() => [
+                h('th', { scope: 'col', title: nombreEquipo }, 'Nos.'),
+                h('th', { scope: 'col', title: p.rival }, 'Ellos'),
+              ]),
+            ),
+          ),
+          h('tbody', {}, ...Array.from({ length: n }, (_, i) => fila(i))),
+          h('tfoot', {},
+            h('tr', { class: 'eq-acta-total' },
+              h('th', { scope: 'row' }, 'Suma'),
+              h('td', { class: descuadra('favor') ? 'eq-acta-ojo' : '' }, String(s.favor)),
+              h('td', { class: descuadra('contra') ? 'eq-acta-ojo' : '' }, String(s.contra)),
+              h('td', { colspan: 4 }, ''),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /* Solo la fila de sumas: repintar la tabla entera al teclear un número
+     le quita el foco al campo que se está rellenando. */
+  function pintaTotales() {
+    const pie = nodoPeriodos.querySelector('.eq-acta-total');
+    if (!pie) return;
+    const s = sumaPeriodos(p.marcador_cuartos);
+    const cel = pie.querySelectorAll('td');
+    const vacio = soloCeros(p.marcador_cuartos);
+    [['favor', p.marcador_favor], ['contra', p.marcador_contra]].forEach(([lado, fin], k) => {
+      cel[k].textContent = String(s[lado]);
+      cel[k].className = (fin != null && !vacio && s[lado] !== num(fin)) ? 'eq-acta-ojo' : '';
+    });
+    pintaAvisos();
+  }
+
+  // ── el acta · quién jugó qué periodos ──────────────────────
+  /* La rejilla del acta oficial: una fila por jugador, una columna por
+     periodo, y una X donde jugó. Se marca tocando, que es lo que se
+     hace con el papel delante, y los contadores salen solos de ahí.
+     Pedir «cuántos periodos jugó» en vez de «cuáles» ahorraría clics y
+     dejaría sin poder comprobar la regla de los cinco primeros (4.3). */
+  function pintaFilas() {
+    const n = P();
+    const t = totales(filas);
+    const idx = new Map(filas.map((f, i) => [f.player_id, i]));
+
+    const celdaPeriodo = (f, k) => {
+      const dentro = jugoEn(f, k);
+      return h('td', { class: 'eq-acta-cel' },
+        h('button', {
+          type: 'button', class: 'eq-acta-x' + (dentro ? ' sel' : ''),
+          role: 'checkbox', 'aria-checked': String(dentro),
+          'aria-label': `${f.nombre}, periodo ${k}`,
+          onClick: (e) => {
+            const i = idx.get(f.player_id);
+            filas[i] = alterna(filas[i], k, p);
+            const b = e.currentTarget;
+            const ahora = jugoEn(filas[i], k);
+            b.classList.toggle('sel', ahora);
+            b.setAttribute('aria-checked', String(ahora));
+            marcaSucio(); pintaPie(); pintaAvisos();
+          },
+        }, dentro ? '×' : ''),
+      );
+    };
+
+    const fila = (f) => h('tr', { class: 'eq-acta-fila' },
+      h('th', { scope: 'row', class: 'eq-acta-quien' },
+        f.dorsal != null ? h('span', { class: 'eq-acta-dorsal' }, String(f.dorsal)) : null,
+        h('span', { class: 'eq-acta-nombre' }, f.nombre),
+      ),
+      ...Array.from({ length: n }, (_, i) => celdaPeriodo(f, i + 1)),
+      h('td', {}, campoNum(f.puntos, {
+        max: 200, clase: 'eq-acta-pts', aria: `Puntos de ${f.nombre}`,
+        alCambiar: (v) => { filas[idx.get(f.player_id)].puntos = v; pintaPie(); },
+      })),
+      h('td', {}, campoNum(f.faltas, {
+        max: 10, clase: 'eq-acta-fal', aria: `Faltas de ${f.nombre}`,
+        alCambiar: (v) => { filas[idx.get(f.player_id)].faltas = v; pintaPie(); },
+      })),
+    );
+
+    mount(nodoFilas,
+      h('div', { class: 'eq-acta-scroll' },
+        h('table', { class: 'eq-acta-tabla eq-acta-rejilla' },
+          h('thead', {},
+            h('tr', {},
+              h('th', { scope: 'col' }, 'Jugador'),
+              ...Array.from({ length: n }, (_, i) => h('th', { scope: 'col' }, `P${i + 1}`)),
+              h('th', { scope: 'col', title: 'Puntos' }, 'Pt'),
+              h('th', { scope: 'col', title: 'Faltas' }, 'F'),
+            ),
+          ),
+          h('tbody', {}, ...filas.map(fila)),
+          h('tfoot', {},
+            h('tr', { class: 'eq-acta-pie' },
+              h('th', { scope: 'row' }, 'En pista'),
+              /* Cinco por columna: la que no sume cinco está mal copiada.
+                 Se enseña el número y ya — mientras se rellena ninguna
+                 columna suma cinco, y un aviso que salta en cada clic no
+                 lo lee nadie. */
+              ...Array.from({ length: n }, (_, i) => h('td', { class: 'eq-acta-pista' }, String(enPista(filas, i + 1)))),
+              h('td', { class: 'eq-acta-suma' }, String(t.puntos)),
+              h('td', { class: 'eq-acta-suma' }, String(t.faltas)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /* Solo el pie de la rejilla, por lo mismo que las sumas del marcador:
+     repintar la tabla al teclear un punto le quita el foco al campo. */
+  function pintaPie() {
+    const pie = nodoFilas.querySelector('.eq-acta-pie');
+    if (!pie) return;
+    const t = totales(filas);
+    const n = P();
+    const cel = pie.querySelectorAll('td');
+    for (let i = 0; i < n; i++) if (cel[i]) cel[i].textContent = String(enPista(filas, i + 1));
+    if (cel[n]) cel[n].textContent = String(t.puntos);
+    if (cel[n + 1]) cel[n + 1].textContent = String(t.faltas);
+    marcaSucio(); pintaAvisos();
+  }
+
+  // ── lo que no cuadra, y lo que falta ───────────────────────
+  /* Dos cosas distintas, y se pintan distinto. Un DESCUADRE es un error
+     de copia —dos números que no pueden ser los dos ciertos— y sale en
+     ámbar con los dos. Lo que FALTA no es un error: un acta se puede
+     dejar a medias el sábado y terminarse el lunes. */
+  function pintaAvisos() {
+    const malos = descuadres(p, filas);
+    const falta = loQueFalta(p, filas);
+    mount(nodoAvisos,
+      ...malos.map((d) => h('p', { class: 'eq-acta-descuadre' }, d.texto)),
+      falta.length
+        ? h('p', { class: 'eq-ayuda' }, `Falta por apuntar: ${falta.join(', ')}.`)
+        : (malos.length ? null : h('p', { class: 'eq-acta-ok' }, 'El acta cuadra.')),
+    );
+  }
+
   // ── acta ───────────────────────────────────────────────────
   function seccionActa() {
     const zona = h('div', { class: 'eq-acta' });
@@ -146,6 +413,22 @@ export function render(root, params) {
   }
 
   // ── guardado ───────────────────────────────────────────────
+  /* Una fila con algo escrito. La que no tiene nada NO se guarda: una
+     fila a cero dice «vino y no jugó ni un periodo», que es una
+     acusación; no estar en el acta dice «no vino», que suele ser la
+     verdad. El reglamento (4.3) mira esa diferencia. */
+  const tieneAlgo = (f) => rejillaDe(f).length || f.periodos_jugados || f.puntos || f.faltas;
+  const hayAlgoDelActa = () => filas.some(tieneAlgo) || !soloCeros(p.marcador_cuartos);
+
+  async function guardaFilas() {
+    const conAlgo = filas.filter(tieneAlgo);
+    // los que tenían fila y se han quedado en blanco: se van del acta
+    const fuera = filas.filter((f) => !tieneAlgo(f) && teniaFila.has(f.player_id));
+    await guardarEstadisticas(matchId, conAlgo.map((f) => saneaFila(f, p)));
+    await borrarEstadisticas(matchId, fuera.map((f) => f.player_id));
+    teniaFila = new Set(conAlgo.map((f) => f.player_id));
+  }
+
   async function guardar({ volver = false } = {}) {
     const problema = validaPartido(p);
     if (problema) { toast(problema, 'error'); return; }
@@ -157,7 +440,16 @@ export function render(root, params) {
         val_defensa: p.val_defensa, val_ataque: p.val_ataque, val_actitud: p.val_actitud,
         val_acierto: p.val_acierto, val_global: p.val_global,
         claves: p.claves?.trim() || null,
+        // Una lista de ceros no es un marcador por periodos: es un acta
+        // sin rellenar, y guardarla como si estuviera hecha le quitaría
+        // de encima el «falta por apuntar» sin que nadie apuntara nada.
+        marcador_cuartos: soloCeros(p.marcador_cuartos) ? [] : p.marcador_cuartos,
+        faltas_equipo: soloCeros(p.faltas_equipo) ? [] : p.faltas_equipo,
+        tiempos_muertos: soloCeros(p.tiempos_muertos) ? [] : p.tiempos_muertos,
+        periodos: p.periodos ?? null,
+        acta_origen: p.acta_origen || (hayAlgoDelActa() ? 'mano' : null),
       });
+      if (conActa) await guardaFilas();
       sucio = false;
       estadoBD = p.estado;             // ya está persistido: el botón puede fiarse
       toast('Partido guardado');
@@ -220,6 +512,25 @@ export function render(root, params) {
 
       h('section', { class: 'eq-cierre-seccion' },
         h('div', { class: 'eq-zona-head' },
+          h('h2', { class: 'eq-zona-titulo' }, 'El acta'),
+          conActa ? nodoCuantos : null,
+        ),
+        conActa
+          ? h('div', {},
+              h('p', { class: 'eq-ayuda eq-acta-guia' },
+                'Se rellena con el papel delante: primero el marcador de cada periodo, '
+                + 'luego una cruz en los periodos que jugó cada uno.'),
+              nodoPeriodos,
+              nodoFilas,
+              nodoAvisos,
+            )
+          : h('p', { class: 'eq-ayuda' },
+              'Para apuntar el acta (marcador por periodo, alineaciones y estadísticas) '
+              + 'falta aplicar la migración 028 en la base de datos.'),
+      ),
+
+      h('section', { class: 'eq-cierre-seccion' },
+        h('div', { class: 'eq-zona-head' },
           h('h2', { class: 'eq-zona-titulo' }, 'Cómo salió'),
           media != null ? h('span', { class: 'eq-ayuda' }, `media ${media.toFixed(1)} / ${VALORACION_MAX}`) : null,
         ),
@@ -274,6 +585,10 @@ export function render(root, params) {
         ),
       ),
     );
+
+    // los nodos del acta viven fuera del árbol que `pinta` reconstruye
+    // (para no perder el foco al teclear), así que se rellenan aquí
+    if (conActa) pintaActa();
   }
 
   (async () => {
@@ -284,6 +599,29 @@ export function render(root, params) {
       const eq = equipos.find((t) => t.id === p.team_id);
       color = eq?.color || 'var(--muted)';
       nombreEquipo = eq?.name || 'Nosotros';
+
+      /* El acta: la plantilla manda el orden y las estadísticas guardadas
+         rellenan lo que haya. Se listan TODOS los jugadores, también los
+         que no jugaron: la rejilla se rellena marcando, no dando de alta
+         a nadie, y buscar a un crío que falta en la lista es justo lo que
+         no se quiere hacer un lunes. */
+      try {
+        jugadores = await getJugadores(p.team_id);
+        const guardadas = await getEstadisticas(matchId);
+        conActa = hayTabla() && hayActa();
+        const porId = new Map(guardadas.map((f) => [f.player_id, f]));
+        teniaFila = new Set(porId.keys());
+        filas = jugadores.map((j) => {
+          const g = porId.get(j.id);
+          return g
+            ? { ...filaVacia(j), ...g, nombre: j.nombre, dorsal: g.dorsal ?? j.dorsal ?? null }
+            : filaVacia(j);
+        });
+      } catch (err) {
+        // el acta es una parte de la pantalla, no la pantalla
+        conActa = false;
+        console.warn('[partido] sin acta:', err.message);
+      }
       pinta();
     } catch (e) {
       mount(cont, h('div', { class: 'empty-state' },

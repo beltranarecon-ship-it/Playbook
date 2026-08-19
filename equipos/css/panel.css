@@ -727,6 +727,97 @@
 .eq-acta-thumb { display: block; max-width: 260px; border: 1px solid var(--line); }
 .eq-acta-thumb img { display: block; width: 100%; height: auto; }
 
+/* ── El acta del partido (Tramo 4.1) ──────────────────────── */
+/* Dos rejillas: el marcador periodo a periodo y quién jugó cuáles.
+   Son tablas de verdad —fila y columna significan algo— y se leen con
+   el papel delante, así que priman los números y no el adorno. */
+.eq-acta-bloque { margin-top: 0.875rem; }
+.eq-acta-guia { margin-bottom: 0.25rem; }
+.eq-acta-cuantos { display: flex; align-items: center; gap: 0.375rem; }
+.eq-acta-cuantos .eq-catchip { min-width: 2.25rem; justify-content: center; }
+
+/* En un móvil no caben seis periodos y dos columnas más: la tabla se
+   desliza dentro de su caja, y la página NO se mueve de lado. */
+.eq-acta-scroll {
+  overflow-x: auto; overscroll-behavior-x: contain;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--white);
+}
+.eq-acta-tabla { border-collapse: collapse; width: 100%; font-size: 0.8125rem; }
+.eq-acta-tabla th, .eq-acta-tabla td { padding: 0.1875rem 0.25rem; text-align: center; }
+.eq-acta-tabla thead th {
+  font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--line);
+  padding-top: 0.375rem; padding-bottom: 0.375rem; white-space: nowrap;
+}
+.eq-acta-sub th { padding-top: 0; border-bottom: 1px solid var(--line); }
+.eq-acta-fila + .eq-acta-fila th, .eq-acta-fila + .eq-acta-fila td { border-top: 1px solid var(--bone); }
+.eq-acta-per {
+  font-family: var(--font-mono); font-weight: 700; color: var(--muted);
+  padding-left: 0.625rem !important; text-align: left !important;
+}
+.eq-acta-num {
+  width: 3rem; padding: 0.1875rem 0.25rem; text-align: center;
+  font-family: var(--font-mono); font-size: 0.875rem;
+}
+/* Sin las flechitas: en una rejilla de treinta campos ocupan más que el número */
+.eq-acta-num::-webkit-outer-spin-button,
+.eq-acta-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.eq-acta-num { -moz-appearance: textfield; }
+
+/* Sumas y recuentos: se enseñan, no se editan. */
+.eq-acta-total th, .eq-acta-total td, .eq-acta-pie th, .eq-acta-pie td {
+  border-top: 2px solid var(--line); font-family: var(--font-mono);
+  font-weight: 700; padding-top: 0.375rem; padding-bottom: 0.375rem;
+}
+.eq-acta-total th, .eq-acta-pie th {
+  font-family: var(--font-body); font-size: 0.6875rem; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--muted); text-align: left !important;
+  padding-left: 0.625rem !important; white-space: nowrap;
+}
+.eq-acta-pista { color: var(--muted); }
+/* El número que no cuadra con el marcador final. Ámbar, no rojo: no
+   está prohibido guardarlo, hay que mirarlo. */
+.eq-acta-ojo {
+  color: var(--papaya-deep); background: var(--papaya-soft);
+  box-shadow: inset 0 0 0 1px var(--papaya);
+}
+
+/* La rejilla de jugadores */
+.eq-acta-quien {
+  text-align: left !important; padding-left: 0.625rem !important;
+  white-space: nowrap; font-weight: 600; position: sticky; left: 0;
+  background: var(--white); z-index: 1;
+}
+.eq-acta-rejilla .eq-acta-pie th { position: sticky; left: 0; background: var(--white); z-index: 1; }
+.eq-acta-dorsal {
+  font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted);
+  margin-right: 0.375rem; min-width: 1.25rem; display: inline-block;
+}
+.eq-acta-nombre { font-size: 0.8125rem; }
+.eq-acta-cel { padding: 0.125rem !important; }
+/* La cruz del acta. Toda la celda es el objetivo: se marca con el dedo
+   y con el papel en la otra mano. */
+.eq-acta-x {
+  /* Se marca con el dedo y con el papel en la otra mano: más alto que
+     ancho a propósito, porque a lo ancho compiten diez columnas y a lo
+     alto no compite nadie. */
+  width: 1.875rem; height: 2.125rem; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--white); cursor: pointer;
+  font-family: var(--font-display); font-size: 1rem; font-weight: 800; line-height: 1;
+  color: var(--ghost); transition: background var(--t-fast), border-color var(--t-fast);
+}
+.eq-acta-x:hover { border-color: var(--ink); }
+.eq-acta-x.sel { background: var(--carbon); border-color: var(--carbon); color: var(--white); }
+.eq-acta-suma { color: var(--ink); }
+
+/* Lo que no cuadra y lo que falta */
+.eq-acta-avisos { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.eq-acta-descuadre {
+  font-size: 0.8125rem; color: var(--papaya-deep); background: var(--papaya-soft);
+  border-left: 3px solid var(--papaya); padding: 0.375rem 0.625rem; border-radius: var(--radius);
+}
+.eq-acta-ok { font-size: 0.8125rem; color: var(--success); }
+
 /* Lista de partidos de la temporada */
 .eq-partidos { display: flex; flex-direction: column; gap: 0.375rem; }
 .eq-partido-fila {

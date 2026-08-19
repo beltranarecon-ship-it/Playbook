@@ -48,29 +48,43 @@ export function abrirModal({ titulo, cuerpo, pie, alCerrar, clase = '' }) {
   return { cerrar };
 }
 
-/** Confirmación simple. resolve(true) si acepta. */
+/**
+ * Confirmación simple. resolve(true) si acepta.
+ *
+ * La respuesta se guarda ANTES de cerrar. El botón de aceptar llamaba a
+ * `cerrar()` primero, y `cerrar()` dispara `alCerrar`, que resolvía
+ * `false`: una promesa solo se resuelve una vez, así que el `true` que
+ * venía detrás no llegó nunca y TODA confirmación de la aplicación
+ * respondía que no. Se veía como que el botón no hacía nada.
+ */
 export function confirmar({ titulo, mensaje, textoOk = 'Confirmar', textoNo = 'Cancelar' }) {
   return new Promise((resolve) => {
+    let dicho = false;
+    const responder = (v) => { if (!dicho) { dicho = true; resolve(v); } };
     const m = abrirModal({
       titulo,
       cuerpo: h('p', { class: 'eq-confirm-text' }, mensaje),
       pie: [
-        h('button', { class: 'btn btn-secondary', type: 'button', onClick: () => { m.cerrar(); resolve(false); } }, textoNo),
-        h('button', { class: 'btn btn-primary', type: 'button', onClick: () => { m.cerrar(); resolve(true); } }, textoOk),
+        h('button', { class: 'btn btn-secondary', type: 'button', onClick: () => { responder(false); m.cerrar(); } }, textoNo),
+        h('button', { class: 'btn btn-primary', type: 'button', onClick: () => { responder(true); m.cerrar(); } }, textoOk),
       ],
-      alCerrar: () => resolve(false),
+      // cerrar por Escape, por la X o por el fondo es decir que no
+      alCerrar: () => responder(false),
     });
   });
 }
 
-/** Pide un texto (p. ej. motivo de cancelación). resolve(string|null). */
+/** Pide un texto (p. ej. motivo de cancelación). resolve(string|null).
+ *  Responde antes de cerrar, por lo mismo que `confirmar`: cerrar dispara
+ *  `alCerrar`, y una promesa ya resuelta no se vuelve a resolver. */
 export function pedirTexto({ titulo, etiqueta, placeholder = '', obligatorio = true }) {
   return new Promise((resolve) => {
-    let input;
+    let input, dicho = false;
+    const responder = (v) => { if (!dicho) { dicho = true; resolve(v); } };
     const enviar = () => {
       const v = input.value.trim();
       if (obligatorio && !v) { input.focus(); input.classList.add('animate-shake'); return; }
-      m.cerrar(); resolve(v || null);
+      responder(v || null); m.cerrar();
     };
     const m = abrirModal({
       titulo,
@@ -82,10 +96,10 @@ export function pedirTexto({ titulo, etiqueta, placeholder = '', obligatorio = t
         }),
       ),
       pie: [
-        h('button', { class: 'btn btn-secondary', type: 'button', onClick: () => { m.cerrar(); resolve(null); } }, 'Cancelar'),
+        h('button', { class: 'btn btn-secondary', type: 'button', onClick: () => { responder(null); m.cerrar(); } }, 'Cancelar'),
         h('button', { class: 'btn btn-primary', type: 'button', onClick: enviar }, 'Aceptar'),
       ],
-      alCerrar: () => resolve(null),
+      alCerrar: () => responder(null),
     });
     input.focus();
   });

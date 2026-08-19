@@ -243,6 +243,18 @@
       session_stars: [
         { id: 'st1', session_id: 'prev1', player_id: 'p3', block_id: null, nota: null, created_at: '2026-08-17T19:00:00Z' },
       ],
+      /* Un partido del sábado, para el acta (Tramo 4.1). Sin marcador
+         ni estadísticas: así se ve lo que dice cuando falta todo. */
+      matches: [{
+        id: 'm1', team_id: 't1', season_id: 's1', fecha: '2026-08-22', hora: '11:00:00',
+        lugar: 'Pabellón Municipal', rival: 'CB Rival', es_local: true, estado: 'jugado',
+        marcador_favor: null, marcador_contra: null, marcador_cuartos: [],
+        val_defensa: null, val_ataque: null, val_actitud: null, val_acierto: null,
+        val_global: null, claves: null, acta_path: null, valorada_at: null,
+        convocatoria_cerrada: false,
+        periodos: null, faltas_equipo: [], tiempos_muertos: [], acta_origen: null,
+      }],
+      partido_estadisticas: [],
       rubrica_filas: [],
       /* Algo de historia para ver el «↑» y el «hace N días» (3.7): al
          3 se le miró el bote hace dos meses y hace una semana. */
@@ -281,6 +293,37 @@
       ],
     };
 
+    /* Los filtros de PostgREST que usa la app. Estaban dentro del GET;
+       hacen falta también en el DELETE, que ya no siempre va por `id`
+       (el acta borra por `match_id` + `player_id`). */
+    function filtrar(filas, u) {
+      for (const [clave, valor] of u.searchParams) {
+        if (['select', 'order', 'limit', 'offset', 'on_conflict'].includes(clave)) continue;
+        const v = String(valor);
+        if (clave.includes('.')) {
+          const [t, col] = clave.split('.');
+          if (v.startsWith('eq.')) filas = filas.filter((r) => String(r[t]?.[col]) === v.slice(3));
+          continue;
+        }
+        if (v.startsWith('not.is.null')) { filas = filas.filter((r) => r[clave] != null); continue; }
+        if (v.startsWith('eq.')) {
+          filas = filas.filter((r) => String(r[clave]) === v.slice(3));
+        } else if (v.startsWith('in.')) {
+          const dentro = new Set(v.slice(3).replace(/^\(|\)$/g, '').split(',').map((x) => x.replace(/^"|"$/g, '')));
+          filas = filas.filter((r) => dentro.has(String(r[clave])));
+        } else if (v.startsWith('gte.')) {
+          filas = filas.filter((r) => String(r[clave]) >= v.slice(4));
+        } else if (v.startsWith('lte.')) {
+          filas = filas.filter((r) => String(r[clave]) <= v.slice(4));
+        } else if (v.startsWith('neq.')) {
+          filas = filas.filter((r) => String(r[clave]) !== v.slice(4));
+        }
+      }
+      return filas;
+    }
+
+    const SIN028 = new URLSearchParams(location.search).has('sin028');
+
     const real = window.fetch.bind(window);
     window.fetch = function (entrada, opciones) {
       const url = typeof entrada === 'string' ? entrada : entrada.url;
@@ -295,6 +338,29 @@
       const tabla = u.pathname.split('/rest/v1/')[1].split('?')[0];
       const metodo = ((opciones && opciones.method) || (entrada && entrada.method) || 'GET').toUpperCase();
 
+      /* MIGRACIÓN SIN APLICAR. Con `?sin028` la base de datos responde
+         como si la 028 no estuviera: la tabla del acta no existe y las
+         columnas nuevas de `matches` tampoco. Sirve para comprobar que
+         la pantalla del partido se abre igual —marcador, valoraciones y
+         foto— y solo pierde la parte del acta. Una migración pendiente
+         no puede dejar a nadie sin el partido del sábado. */
+      if (SIN028) {
+        const fallo = (estado, cuerpo) => Promise.resolve(new Response(JSON.stringify(cuerpo), {
+          status: estado, headers: { 'Content-Type': 'application/json' },
+        }));
+        if (tabla === 'partido_estadisticas') {
+          console.log('[arnés] sin028: no existe partido_estadisticas');
+          return fallo(404, { code: '42P01', message: 'relation "public.partido_estadisticas" does not exist' });
+        }
+        const pedido = (u.searchParams.get('select') || '') + ' ' + ((opciones && opciones.body) || '');
+        const nueva = ['periodos', 'faltas_equipo', 'tiempos_muertos', 'acta_origen']
+          .find((c) => new RegExp('(^|[^_a-z])' + c + '($|[^_a-z])').test(pedido));
+        if (tabla === 'matches' && nueva) {
+          console.log('[arnés] sin028: no existe matches.' + nueva);
+          return fallo(400, { code: '42703', message: `column matches.${nueva} does not exist` });
+        }
+      }
+
       /* ESCRITURAS. El arnés solo leía, y con eso no se puede comprobar
          nada que dependa de haber guardado —como que un vídeo guardado
          se reutilice (Tramo 3.3)—. Se guarda en memoria: se pierde al
@@ -305,8 +371,19 @@
           // `created_at` lo pone la base de datos de verdad; sin él, todo
           // lo que dependa de «cuándo» se cree que no ha pasado nunca
           .map((r, i) => ({ id: `${tabla}_${Date.now()}_${i}`, created_by: 'u1', created_at: new Date().toISOString(), ...r }));
+        /* UPSERT. El acta se guarda con `upsert` sobre (match_id,
+           player_id): al corregirla el lunes se mandan las MISMAS filas
+           con otros números, y un arnés que solo apila las duplica —y
+           entonces los totales salen al doble y parece un fallo de la
+           app cuando el que miente es el arnés. */
+        const choque = (u.searchParams.get('on_conflict') || '').split(',').filter(Boolean);
+        if (choque.length) {
+          const clave = (r) => choque.map((c) => String(r[c])).join('|');
+          const dentro = new Set(nuevas.map(clave));
+          TABLAS[tabla] = TABLAS[tabla].filter((r) => !dentro.has(clave(r)));
+        }
         TABLAS[tabla].push(...nuevas);
-        console.log('[arnés] POST', tabla, '→', nuevas.length, 'filas');
+        console.log('[arnés] POST', tabla, choque.length ? '(upsert)' : '', '→', nuevas.length, 'filas');
         return Promise.resolve(new Response(JSON.stringify(nuevas.length === 1 ? nuevas[0] : nuevas), {
           status: 201, headers: { 'Content-Type': 'application/json' },
         }));
@@ -328,11 +405,11 @@
         }));
       }
       if (metodo === 'DELETE' && TABLAS[tabla]) {
-        const idEq = u.searchParams.get('id');
-        const id = idEq && idEq.startsWith('eq.') ? idEq.slice(3) : null;
-        const fuera = TABLAS[tabla].filter((r) => String(r.id) === id);
-        TABLAS[tabla] = TABLAS[tabla].filter((r) => String(r.id) !== id);
-        console.log('[arnés] DELETE', tabla, id, '→', fuera.length);
+        // por los filtros que traiga, no solo por `id`: el acta borra a
+        // los que se quedaron en blanco por match_id + player_id
+        const fuera = new Set(filtrar(TABLAS[tabla].slice(), u));
+        TABLAS[tabla] = TABLAS[tabla].filter((r) => !fuera.has(r));
+        console.log('[arnés] DELETE', tabla, u.search, '→', fuera.size);
         return Promise.resolve(new Response(JSON.stringify(fuera), {
           status: 200, headers: { 'Content-Type': 'application/json' },
         }));
@@ -361,31 +438,7 @@
             .filter((r) => r.sessions);
         }
 
-        // filtros sencillos, suficientes para el arnés
-        for (const [clave, valor] of u.searchParams) {
-          if (clave === 'select' || clave === 'order' || clave === 'limit' || clave === 'offset') continue;
-          const v = String(valor);
-          // `tabla.columna=eq.x` filtra sobre lo embebido
-          if (clave.includes('.')) {
-            const [tabla, col] = clave.split('.');
-            if (v.startsWith('eq.')) filas = filas.filter((r) => String(r[tabla]?.[col]) === v.slice(3));
-            continue;
-          }
-          if (v.startsWith('not.is.null')) { filas = filas.filter((r) => r[clave] != null); continue; }
-          if (v.startsWith('eq.')) {
-            filas = filas.filter((r) => String(r[clave]) === v.slice(3));
-          } else if (v.startsWith('in.')) {
-            // in.(a,b,c) — lo usa getBloquesSesiones para leer de varias
-            const dentro = new Set(v.slice(3).replace(/^\(|\)$/g, '').split(',').map((x) => x.replace(/^"|"$/g, '')));
-            filas = filas.filter((r) => dentro.has(String(r[clave])));
-          } else if (v.startsWith('gte.')) {
-            filas = filas.filter((r) => String(r[clave]) >= v.slice(4));
-          } else if (v.startsWith('lte.')) {
-            filas = filas.filter((r) => String(r[clave]) <= v.slice(4));
-          } else if (v.startsWith('neq.')) {
-            filas = filas.filter((r) => String(r[clave]) !== v.slice(4));
-          }
-        }
+        filas = filtrar(filas, u);
       }
 
       /* PAGINACIÓN. `leerTodo` (data/_client.js) pide páginas con
@@ -409,7 +462,10 @@
       }));
     };
 
-    history.replaceState({}, '', '/sesiones/demo');
+    /* La ruta que se abre. Por defecto el planificador, que es para lo
+       que nació el arnés; con `?ruta=/partidos/m1` se abre el partido
+       del sábado (Tramo 4.1) con los mismos datos falsos. */
+    history.replaceState({}, '', new URLSearchParams(location.search).get('ruta') || '/sesiones/demo');
   })();
   </script>
 
