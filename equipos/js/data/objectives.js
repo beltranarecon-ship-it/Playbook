@@ -77,7 +77,12 @@ export async function getEjerciciosSugeribles() {
   if (_biblioteca) return _biblioteca;
   const { data, error } = await supabase
     .from('exercises')
-    .select('id, name, type, category, difficulty, duration_min, description, tags, intensidad')
+    /* `requisitos` viaja con la lista LIGERA (Tramo 3.1): es lo que
+       necesitan los minutos activos —densidad, aforo, simultáneo— y
+       pesa unos cientos de bytes por ficha. Lo pesado sigue fuera: la
+       animación es un jsonb de decenas de kB y esa solo se pide del
+       ejercicio que se abre. */
+    .select('id, name, type, category, difficulty, duration_min, description, tags, intensidad, requisitos')
     .eq('is_archived', false);
   if (error) throw error;
   _biblioteca = data ?? [];

@@ -24,6 +24,8 @@ import {
   plantillaEfectiva, filasRespuesta, mediaEstrellas, ESTRELLAS_MAX, ESTRELLA_LABEL,
 } from '../data/reflexion.js';
 import { curvaCarga, INTENSIDAD_MAX } from '../data/carga.js';
+import { minutosDeSesion, textoMinutos } from '../data/minutos.js';
+import { getEjerciciosSugeribles } from '../data/objectives.js';
 import { ESTADOS_SESION, WEEKDAYS } from '../config.js';
 import { router } from '../main.js';
 
@@ -49,6 +51,12 @@ export function render(root, params) {
   let jugadores = [], filasBD = [], densas = [];
   let preguntas = [], items = [];
   let bloques = [], objetivosSesion = [];
+  /* Requisitos de las fichas del plan (Tramo 3.1). Aquí los minutos
+     activos se calculan con la asistencia REAL —los que de verdad
+     entrenaron—, así que este es el número más honesto de los tres
+     sitios donde aparece. La consulta es la lista ligera de la
+     biblioteca, que ya viene cacheada del planificador. */
+  let requisitosPorEjercicio = new Map();
   let soloLectura = false;      // cancelada = no se cierra ni se pasa lista
   let sucio = false;
   const marcaSucio = () => { sucio = true; };
@@ -223,6 +231,13 @@ export function render(root, params) {
   function seccionPlan() {
     if (!bloques.length && !objetivosSesion.length) return null;
     const c = curvaCarga(bloques);
+    /* Con la asistencia ya pasada, «cuántos había» no se estima: se
+       sabe. Si todavía no se ha pasado lista, se cae a la plantilla. */
+    const entrenaron = resumenAsistencia(densas).entrenaron || jugadores.length || null;
+    const m = minutosDeSesion(bloques, {
+      jugadores: entrenaron,
+      requisitosDe: (b) => (b.exercise_id ? requisitosPorEjercicio.get(b.exercise_id) || null : null),
+    });
     return h('section', { class: 'eq-cierre-seccion' },
       h('div', { class: 'eq-zona-head' },
         h('h2', { class: 'eq-zona-titulo' }, 'Lo que estaba planificado'),
@@ -237,7 +252,8 @@ export function render(root, params) {
           h('span', { class: 'eq-bloque-ro-dato' }, `${b.duracion_min}′`),
           h('span', { class: 'eq-bloque-ro-dato' }, `int ${b.intensidad}/${INTENSIDAD_MAX}`),
         )),
-        h('p', { class: 'eq-ayuda' }, `${c.duracion} min · carga ${c.carga} · intensidad media ${c.cargaMedia.toFixed(1)}`),
+        h('p', { class: 'eq-ayuda' }, textoMinutos(m)),
+        h('p', { class: 'eq-ayuda' }, `${c.duracion} min · intensidad media ${c.cargaMedia.toFixed(1)}`),
       ) : null,
     );
   }
@@ -392,15 +408,17 @@ export function render(root, params) {
       };
 
       // cada bloque degrada solo: sin 014/015 aplicadas, la vista sigue en pie
-      const [js, fbd, qs, rs, blks, objIds] = await Promise.all([
+      const [js, fbd, qs, rs, blks, objIds, bib] = await Promise.all([
         getJugadores(sesion.team_id, { incluirBajas: true }).catch(() => []),
         getAsistencia(sessionId).catch(() => []),
         getPreguntas(sesion.team_id).catch(() => []),
         getRespuestas(sessionId).catch(() => []),
         getBloques(sessionId).catch(() => []),
         getObjetivosSesion(sessionId).catch(() => []),
+        getEjerciciosSugeribles().catch(() => []),
       ]);
       jugadores = js; filasBD = fbd; preguntas = qs; bloques = blks;
+      requisitosPorEjercicio = new Map((bib || []).map((e) => [e.id, e.requisitos || null]));
       densas = filasDensas(jugadores, filasBD);
       items = plantillaEfectiva(preguntas, rs);
 

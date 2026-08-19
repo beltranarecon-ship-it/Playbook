@@ -1111,7 +1111,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 
 | # | Tarea | Depende de | Cómo se comprueba |
 |---|---|---|---|
-| 3.1 | Motor de minutos activos por jugador | 2.12 | Un ejercicio de fila con 14 críos da menos minutos activos que uno simultáneo |
+| 3.1 ✅ | Motor de minutos activos por jugador | 2.12 | Un ejercicio de fila con 14 críos da menos minutos activos que uno simultáneo |
 | 3.2 | Pantalla de programar sesión: tope de duración, nº de jugadores, agua, material, avisos de repetición | 3.1 | No se puede pasar de los 90 min; el material sale solo |
 | 3.3 | Bloque libre con vídeo, guardable y reutilizable | 3.2 | Un vídeo guardado se reutiliza en otra sesión |
 | 3.4 | Estado `activa` deducido del reloj + cinco estados en el calendario | — | Los cinco se distinguen a la vista |
@@ -1124,6 +1124,59 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.11 | Reflexión: esfuerzo obligatorio, preguntas individuales editables | 3.5 | Se valora a jugadores sueltos, no a todos |
 | 3.12 | Plantilla: filtros por asistencia, estado y rendimiento; archivados recuperables | 3.1 | Se recupera un jugador de baja |
 | 3.13 | Borradores con recuperación en sesiones y en edición de ejercicios | — | Se sale a media sesión y al volver la ofrece |
+
+### Estado de 3.1 (hecha)
+
+`equipos/js/data/minutos.js` — módulo PURO, con su banco (`eval-minutos.mjs`, 23
+pruebas). Lo usan el planificador y el cierre de sesión.
+
+**Qué sustituye.** La carga era `intensidad × duración`: un número que subía igual
+poniendo un ejercicio más duro que poniendo uno más largo, y que no distinguía doce
+niños trabajando a la vez de doce haciendo cola. Como medida de lo que un crío se lleva
+de un entrenamiento, no medía nada.
+
+```
+minutos activos = duración × compromiso × turno
+```
+
+| | De dónde sale |
+|---|---|
+| `compromiso` | La **densidad** declarada (D4), que se mide en acciones útiles por jugador y minuto: alta ≥ 4, media 2–4, baja < 2. La fracción es el punto medio de la banda dividido por el umbral de «alta»: **1 · 0,75 · 0,25**. Salen de los números de la doctrina, no de una tabla inventada |
+| `turno` | El **aforo**: `jugadores_max`. Si vienen más, los de más esperan y el tiempo se reparte (§11). Un ejercicio `simultaneo` no tiene turno: nadie hace cola |
+
+**Dónde NO entran `estaciones` ni `canastas`, y por qué.** La fila del §6 los nombra
+entre las entradas del cálculo. Se miró la biblioteca antes de escribirlo: `jugadores_max`
+es el tope del montaje **entero** —las 149 fichas con `estaciones: 2` declaran
+`jugadores_max: 12`, no 6—, así que multiplicar por las estaciones contaría dos veces lo
+mismo. Entran en el **aviso**, que es donde sirven de algo: «*«Flecha de tiro» se queda
+corto para 14: sobran 2. Harían falta 4 estaciones y 4 canastas*». Eso se puede arreglar
+antes del entrenamiento; un número inflado, no.
+
+**Lo que no se inventa.** Una ficha nueva nace con los requisitos en `null` («sin
+decidir», 2.12). Un bloque así no se penaliza ni se descarta: cuenta como si nadie
+esperase, **y se dice** debajo del número. Y un bloque libre —una charla, el agua— se
+distingue de una ficha a medias: no es un dato que falte, es otro tipo de bloque, y
+mandar al entrenador a «completar la ficha» de una charla sería mandarlo a arreglar algo
+que no está roto.
+
+**Dónde se ve.**
+
+- **Planificador**: primero y en papaya, `min activos por jugador`, con el `% del
+  entreno` al lado. Detrás quedan los minutos totales y la intensidad media, que son
+  contexto. La cuenta usa la plantilla del equipo (sin bajas); sin plantilla se dice que
+  solo cuenta la densidad.
+- **Cierre de sesión**: con la **asistencia real** —los que de verdad entrenaron—, que
+  es el número más honesto de los dos.
+
+**Comprobado** en el arnés `/dev/planner.html`, con catorce jugadores y una biblioteca
+que ya trae `requisitos` reales: el plan de cinco bloques da **47 de 60 min · 78 %**, y
+quitar el peor ejercicio —el contraataque, con tope de diez— lo sube a **88 %** en el
+acto. Es exactamente el uso: se cambia un ejercicio y se ve subir. 23 pruebas nuevas,
+incluida la del criterio: una fila con 14 críos da 9,6 min de 15, y un simultáneo da 15.
+
+**Fuera de esta fila**: la media de temporada del dossier sigue leyendo
+`sessions.carga_total`, que lo calcula un trigger de la migración 013. Cambiarlo es una
+migración y la columna de minutos por jugador de la plantilla, que es la fila **3.12**.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

@@ -31,6 +31,8 @@ import { objetivosEnFecha, sugerirEjercicios, normaliza } from '../data/sugerenc
 import {
   curvaCarga, avisoDuracion, INTENSIDAD_MAX, INTENSIDAD_LABEL,
 } from '../data/carga.js';
+import { minutosDeSesion, avisoAforo } from '../data/minutos.js';
+import { getJugadores } from '../data/players.js';
 import { ESTADOS_SESION, WEEKDAYS } from '../config.js';
 import { router } from '../main.js';
 
@@ -93,6 +95,12 @@ export function render(root, params) {
   let objetivosSel = new Set();
   let biblioteca = [];
   let porId = new Map();         // id de ejercicio → fila de la biblioteca
+  /* Cuántos van a estar en la pista (Tramo 3.1). De la plantilla, sin
+     las bajas: es la mejor estimación que hay ANTES de pasar lista, y
+     es lo que decide si un ejercicio de doce se convierte en una cola
+     de dieciocho. Si no se puede saber, los minutos se calculan solo
+     con la densidad y se dice en pantalla. */
+  let jugadoresEquipo = null;
   let titulo = '';
   let soloLectura = false;
   let sucio = false;
@@ -105,6 +113,7 @@ export function render(root, params) {
   const nodoCurva = h('div', { class: 'eq-curva-wrap' });
   const nodoBloques = h('div', { class: 'eq-bloques' });
   const nodoTotales = h('div', { class: 'eq-carga-totales' });
+  const nodoNotaMinutos = h('p', { class: 'eq-minutos-nota' });
   const nodoEstado = h('span', { class: 'eq-guardado' });
   const anfitrionVisor = h('div', { class: 'eq-planner-visor' });
 
@@ -192,11 +201,19 @@ export function render(root, params) {
     const slot = Number(sesion?.slot_duracion_min) || 0;
     const aviso = avisoDuracion(c.duracion, slot);
 
+    /* Los MINUTOS ACTIVOS por jugador (Tramo 3.1) van los primeros y en
+       grande, porque son el número que decide si el plan sirve. La
+       carga de siempre —intensidad × minutos— se queda detrás: no
+       distingue doce niños trabajando de doce haciendo cola, pero es
+       con la que se han leído las sesiones hasta hoy. */
+    const m = minutosDeSesion(bloques, { jugadores: jugadoresEquipo, requisitosDe });
+
     // Totales. Ojo: replaceChildren NO filtra null (lo pintaría como el
     // texto "null"), a diferencia de h(); por eso el .filter(Boolean).
     nodoTotales.replaceChildren(...[
+      dato(String(Math.round(m.minutos)), 'min activos por jugador', tituloMinutos(m)),
+      dato(m.duracion ? `${Math.round(m.aprovechamiento * 100)} %` : '0 %', 'del entreno'),
       dato(String(c.duracion), 'min totales'),
-      dato(String(c.carga), 'carga (int×min)'),
       dato(c.cargaMedia ? c.cargaMedia.toFixed(1) : '0', 'intensidad media'),
       dato(String(bloques.length), bloques.length === 1 ? 'bloque' : 'bloques'),
       aviso ? h('span', { class: `eq-carga-aviso is-${aviso.tipo}` },
@@ -205,14 +222,67 @@ export function render(root, params) {
           : `${aviso.diff} min de menos para un entreno de ${slot}′`) : null,
     ].filter(Boolean));
 
+    nodoNotaMinutos.replaceChildren(...notaMinutos(m).filter(Boolean));
+
     nodoCurva.replaceChildren(c.segmentos.length
       ? svgCurva(c, slot)
       : h('div', { class: 'eq-curva-vacia' }, 'Añade bloques y aquí verás cómo sube y baja la intensidad del entreno.'));
   }
 
-  const dato = (num, lbl) => h('div', { class: 'eq-carga-dato' },
+  const dato = (num, lbl, titulo = null) => h('div', { class: 'eq-carga-dato', ...(titulo ? { title: titulo } : {}) },
     h('span', { class: 'eq-carga-num' }, num),
     h('span', { class: 'eq-carga-lbl' }, lbl));
+
+  /* ---- minutos activos (Tramo 3.1) --------------------------------
+     Los requisitos salen de la lista LIGERA de la biblioteca, que ya
+     está cargada: no hay ninguna consulta más por mover un bloque. Un
+     bloque libre —una charla, el agua— no tiene ficha, y eso es `null`:
+     cuenta entero, porque nadie está esperando turno para beber. */
+  const requisitosDe = (b) => (b?.exercise_id ? (porId.get(b.exercise_id)?.requisitos || null) : null);
+
+  const tituloMinutos = (m) => (jugadoresEquipo
+    ? `Con ${jugadoresEquipo} jugadores en la pista. Cuenta la densidad de cada ejercicio y a cuántos admite su montaje.`
+    : 'Sin plantilla cargada: solo cuenta la densidad de cada ejercicio.');
+
+  /*
+     La nota al pie no es un adorno: el número se construye con lo que
+     las fichas declaran, y un número redondo encima de huecos es peor
+     que un número con una advertencia. Se dice cuántos bloques lo
+     sostienen y qué ejercicio no cabe con la gente que hay.
+  */
+  function notaMinutos(m) {
+    const partes = [];
+    if (!m.duracion) return partes;
+
+    if (!jugadoresEquipo) {
+      partes.push(h('span', { class: 'eq-minutos-supuesto' },
+        'Sin plantilla: no se puede saber quién hace cola, así que solo cuenta la densidad.'));
+    }
+    if (m.conSupuestos) {
+      partes.push(h('span', { class: 'eq-minutos-supuesto' },
+        m.conSupuestos === 1
+          ? '1 ejercicio no declara densidad o aforo: cuenta como si nadie esperase. Complétalo en su ficha.'
+          : `${m.conSupuestos} ejercicios no declaran densidad o aforo: cuentan como si nadie esperase. Complétalos en su ficha.`));
+    }
+    if (m.libres) {
+      // no es un dato que falte: es otro tipo de bloque
+      partes.push(h('span', { class: 'eq-minutos-supuesto' },
+        m.libres === 1
+          ? '1 bloque libre (sin ficha) cuenta entero: la app no sabe si es juego o charla.'
+          : `${m.libres} bloques libres (sin ficha) cuentan enteros: la app no sabe si son juego o charla.`));
+    }
+
+    // qué ejercicio concreto no cabe, y qué haría falta para que quepa
+    for (const b of bloques) {
+      const av = avisoAforo(requisitosDe(b), jugadoresEquipo);
+      if (!av) continue;
+      partes.push(h('span', { class: 'eq-minutos-aforo' },
+        `«${b.titulo || 'Bloque'}» se queda corto para ${jugadoresEquipo}: sobran ${av.sobran}. `
+        + `Harían falta ${av.estacionesNecesarias} estaciones`
+        + (av.canastasNecesarias ? ` y ${av.canastasNecesarias} canastas.` : '.')));
+    }
+    return partes;
+  }
 
   /**
    * Curva escalón con ejes de verdad: intensidad 1-5 a la izquierda,
@@ -742,6 +812,7 @@ export function render(root, params) {
           h('section', { class: 'eq-planner-seccion' },
             h('h2', { class: 'eq-zona-titulo' }, 'Curva de carga'),
             nodoTotales,
+            nodoNotaMinutos,
             nodoCurva,
           ),
 
@@ -842,10 +913,15 @@ export function render(root, params) {
       bloques = blks.map((b) => ({ ...b, uid: nuevoUid() }));
       objetivosSel = new Set(objsSes);
 
-      [objetivosEquipo, biblioteca] = await Promise.all([
+      let plantilla = [];
+      [objetivosEquipo, biblioteca, plantilla] = await Promise.all([
         getObjetivos(sesion.team_id, sesion.season_id),
         getEjerciciosSugeribles().catch(() => []),
+        // sin plantilla el plan se sigue haciendo: los minutos activos
+        // salen solo de la densidad y la pantalla lo dice
+        getJugadores(sesion.team_id).catch(() => []),
       ]);
+      jugadoresEquipo = plantilla.length || null;
       porId = new Map(biblioteca.map((e) => [e.id, e]));
 
       // pre-marca los objetivos que cubren la fecha SOLO si la sesión nunca se

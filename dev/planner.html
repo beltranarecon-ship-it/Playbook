@@ -85,14 +85,27 @@
       ],
     };
 
+    /* `requisitos` con la forma REAL de la biblioteca (Tramo 3.1): de
+       aquí salen los minutos activos por jugador. `e2` es la rueda de
+       entradas —una fila de las de toda la vida, con tope de 12— y `e6`
+       es simultáneo, cada uno con su balón. Con la plantilla de 14 de
+       abajo, los dos se pueden comparar en pantalla. */
     const BIBLIO = [
-      { id: 'e1', name: 'Flecha de tiro', type: 'Tiro', category: 'ataque', difficulty: 3, duration_min: 8, intensidad: 3, tags: ['tiro', 'entrada'], description: 'Serie de tiro tras bote.' },
-      { id: 'e2', name: 'Rueda de entradas', type: 'Tiro', category: 'ataque', difficulty: 2, duration_min: 10, intensidad: 4, tags: ['entrada'], description: 'Dos filas, entrada y rebote.' },
-      { id: 'e3', name: 'Defensa del bloqueo directo', type: 'Defensa', category: 'defensa', difficulty: 5, duration_min: 15, intensidad: 4, tags: ['bloqueo directo'], description: 'Pasar por debajo y recuperar.' },
-      { id: 'e4', name: '3vs3 con ventaja', type: '3vs3', category: 'ataque', difficulty: 4, duration_min: 12, intensidad: 5, tags: ['ventaja'], description: null },
-      { id: 'e5', name: 'Calentamiento articular', type: 'Calentamiento', category: null, difficulty: 1, duration_min: 6, intensidad: 1, tags: [], description: null },
-      { id: 'e6', name: 'Bote con dos balones', type: 'Bote', category: null, difficulty: 3, duration_min: 7, intensidad: 2, tags: ['bote'], description: null },
-      { id: 'e7', name: 'Contraataque 3x2', type: 'Contraataque', category: 'transición', difficulty: 4, duration_min: 14, intensidad: 5, tags: ['contraataque'], description: null },
+      { id: 'e1', name: 'Flecha de tiro', type: 'Tiro', category: 'ataque', difficulty: 3, duration_min: 8, intensidad: 3, tags: ['tiro', 'entrada'], description: 'Serie de tiro tras bote.',
+        requisitos: { densidad: 'media', jugadores_min: 3, jugadores_max: 12, estaciones: 2, canastas: 2 } },
+      { id: 'e2', name: 'Rueda de entradas', type: 'Tiro', category: 'ataque', difficulty: 2, duration_min: 10, intensidad: 4, tags: ['entrada'], description: 'Dos filas, entrada y rebote.',
+        requisitos: { densidad: 'media', jugadores_min: 4, jugadores_max: 12, estaciones: 2, canastas: 1 } },
+      { id: 'e3', name: 'Defensa del bloqueo directo', type: 'Defensa', category: 'defensa', difficulty: 5, duration_min: 15, intensidad: 4, tags: ['bloqueo directo'], description: 'Pasar por debajo y recuperar.',
+        requisitos: { densidad: 'alta', jugadores_min: 4, jugadores_max: 16, estaciones: 2, canastas: 2 } },
+      { id: 'e4', name: '3vs3 con ventaja', type: '3vs3', category: 'ataque', difficulty: 4, duration_min: 12, intensidad: 5, tags: ['ventaja'], description: null,
+        requisitos: { densidad: 'alta', jugadores_min: 6, jugadores_max: 12, estaciones: 2, canastas: 2 } },
+      { id: 'e5', name: 'Calentamiento articular', type: 'Calentamiento', category: null, difficulty: 1, duration_min: 6, intensidad: 1, tags: [], description: null,
+        requisitos: { densidad: 'alta', jugadores_min: 1, jugadores_max: 20, estaciones: 1, canastas: 0, simultaneo: true } },
+      // a medio rellenar a propósito: es lo que enseña la nota al pie
+      { id: 'e6', name: 'Bote con dos balones', type: 'Bote', category: null, difficulty: 3, duration_min: 7, intensidad: 2, tags: ['bote'], description: null,
+        requisitos: { densidad: null, jugadores_min: null, jugadores_max: null } },
+      { id: 'e7', name: 'Contraataque 3x2', type: 'Contraataque', category: 'transición', difficulty: 4, duration_min: 14, intensidad: 5, tags: ['contraataque'], description: null,
+        requisitos: { densidad: 'media', jugadores_min: 5, jugadores_max: 10, estaciones: 1, canastas: 2 } },
     ];
 
     const FICHA = {
@@ -175,6 +188,13 @@
         { id: 'o2', team_id: 't1', season_id: 's1', titulo: 'Defensa del bloqueo directo', descripcion: null, categoria: 'táctico', fecha_inicio: '2026-09-01', fecha_fin: '2026-12-31', estado: 'activo', created_at: '2026-07-01T00:00:00Z' },
       ],
       profiles: [{ id: 'u1', full_name: 'Beltrán', role: 'coach' }],
+      // Catorce, que es el grupo del criterio de 3.1: dos más de los que
+      // admite la rueda de entradas.
+      players: Array.from({ length: 14 }, (_, i) => ({
+        id: `p${i + 1}`, team_id: 't1', nombre: `Jugador ${i + 1}`, dorsal: i + 4,
+        fecha_nacimiento: null, posicion: null, foto_path: null, notas: null,
+        estado: 'activo', tutor_nombre: null, tutor_contacto: null,
+      })),
     };
 
     const real = window.fetch.bind(window);

@@ -416,6 +416,10 @@
 /* Curva de carga */
 .eq-carga-totales { display: flex; gap: 1.75rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 0.875rem; }
 .eq-carga-dato { display: flex; flex-direction: column; }
+/* Los minutos activos por jugador van primeros y en papaya: son el
+   número que decide si el plan sirve (Tramo 3.1). Los demás son
+   contexto. */
+.eq-carga-dato:first-child .eq-carga-num { color: var(--papaya); font-size: 2.25rem; }
 .eq-carga-num { font-family: var(--font-display); font-weight: 800; font-size: 1.75rem; line-height: 1; }
 .eq-carga-lbl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .eq-carga-aviso {
@@ -428,6 +432,18 @@
    se lo come el entreno siguiente, quedarse corto deja pista pagada sin
    usar. Mismo peso visual, distinto color. */
 .eq-carga-aviso.is-corto { color: var(--muted); background: var(--bone); border-color: var(--line); }
+
+/* De qué está hecho el número de minutos activos. No es una nota
+   pequeña por decoración: un número redondo construido sobre fichas a
+   medio rellenar engaña más que no darlo. */
+.eq-minutos-nota {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  margin: -0.375rem 0 0.875rem;
+  font-size: 0.8125rem; line-height: 1.4;
+}
+.eq-minutos-nota:empty { display: none; }
+.eq-minutos-supuesto { color: var(--muted); }
+.eq-minutos-aforo { color: var(--papaya-deep); font-weight: 600; }
 
 .eq-curva-wrap {
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
