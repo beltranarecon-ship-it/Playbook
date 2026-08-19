@@ -17,7 +17,7 @@
 import {
   NIVELES, NIVEL_MAX, esNivel, CONDUCTAS, claveAccion, claveConducta, esConducta,
   filasDeRubrica, estadoDe, movimiento, diasSinMirar, ordenSugerido,
-  textoSinMirar, porDondeEmpezar,
+  textoSinMirar, porDondeEmpezar, resumenDe, serieDe,
 } from '../js/rubrica.js';
 import { TAGS } from '../js/ia/vocabulario.js';
 
@@ -218,6 +218,35 @@ test('si lo de hoy no llena la pantalla, se completa con el resto', () => {
 
 test('devuelve solo las que caben en pantalla', () => {
   eq(porDondeEmpezar({}, filasDeRubrica(), { cuantas: 6 }).length, 6);
+});
+
+/* ── 7. El resumen de Progresión (3.8) ─────────────── */
+
+console.log('\n· el resumen de un jugador');
+
+test('cuenta MOVIMIENTOS, que es lo que distingue «va bien» de «empezó bien»', () => {
+  const e = estadoDe(SERIE);
+  const r = resumenDe(e);
+  eq(r.subidas, 1, 'el bote subió');
+  eq(r.bajadas, 1, 'el tiro bajó');
+  eq(r.miradas, 3);
+});
+
+test('las medias van por familia: mezclar actitud con tiro daría una nota', () => {
+  const e = estadoDe(SERIE);
+  const r = resumenDe(e);
+  eq(r.mediaConducta, 2, 'una sola conducta, a 2');
+  eq(r.mediaAccion, 2, 'bote a 3 y tiro a 1');
+});
+
+test('sin nada mirado, no hay medias que dar', () => {
+  eq(resumenDe({}), { miradas: 0, subidas: 0, bajadas: 0, mediaConducta: null, mediaAccion: null });
+  eq(resumenDe(null).miradas, 0);
+});
+
+test('la serie de una fila sale ordenada de lo viejo a lo nuevo', () => {
+  eq(serieDe(SERIE, 'accion:bote').map((p) => p.nivel), [1, 2, 3]);
+  eq(serieDe(SERIE, 'accion:pase'), [], 'una fila sin historia no inventa puntos');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

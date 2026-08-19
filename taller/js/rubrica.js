@@ -183,6 +183,56 @@ export function textoSinMirar(dias) {
   return `hace ${dias} días`;
 }
 
+/* ── 5b. El resumen de un jugador ──────────────────────────── */
+
+/**
+ * Los cuatro números de la cabecera de Progresión (§5.7).
+ *
+ * `subidas` y `bajadas` cuentan MOVIMIENTOS, no niveles: es la unidad
+ * en la que se mide el cumplimiento desde la decisión #26, y es
+ * también lo único que distingue «va bien» de «empezó bien».
+ *
+ * Las medias van por familia porque mezclar «actitud» con «tiro» en un
+ * solo número daría una nota, y una nota no dice qué hacer el martes.
+ */
+export function resumenDe(estado) {
+  const filas = Object.entries(estado || {});
+  let subidas = 0, bajadas = 0;
+  const suma = { conducta: 0, accion: 0 };
+  const cuenta = { conducta: 0, accion: 0 };
+
+  for (const [clave, f] of filas) {
+    if (f.anterior != null) {
+      if (f.nivel > f.anterior) subidas += 1;
+      else if (f.nivel < f.anterior) bajadas += 1;
+    }
+    const fam = esConducta(clave) ? 'conducta' : 'accion';
+    suma[fam] += f.nivel;
+    cuenta[fam] += 1;
+  }
+
+  const media = (fam) => (cuenta[fam] ? Math.round((suma[fam] / cuenta[fam]) * 10) / 10 : null);
+  return {
+    miradas: filas.length,
+    subidas,
+    bajadas,
+    mediaConducta: media('conducta'),
+    mediaAccion: media('accion'),
+  };
+}
+
+/**
+ * La serie de UNA fila, de lo más viejo a lo más nuevo, para pintar su
+ * línea. Se devuelven los puntos tal cual —fecha y nivel— y no una
+ * geometría: quien la pinte sabrá de cuántos píxeles dispone.
+ */
+export function serieDe(valores, clave) {
+  return (valores || [])
+    .filter((v) => v?.clave === clave && esNivel(Number(v.nivel)))
+    .map((v) => ({ fecha: String(v.created_at || '').slice(0, 10), nivel: Number(v.nivel) }))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
 /* ── 6. El escalón siguiente ───────────────────────────────── */
 
 /**

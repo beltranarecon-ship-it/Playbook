@@ -31,6 +31,7 @@ import {
 } from '../data/reflection.js';
 import { claveDesdeEtiqueta, TIPOS_REFLEXION, CLAVE_CUMPLIMIENTO } from '../data/reflexion.js';
 import { modalObjetivo, filaObjetivo } from './objetivo-form.js';
+import { pintaProgresion } from './equipo-progresion.js';
 import { avisoTemporada, fechaLarga } from './temporada-form.js';
 import { temporadaCubre } from '../data/programacion.js';
 import { invalidarEquipos, esAdmin } from '../store.js';
@@ -68,7 +69,7 @@ export function render(root, params) {
   );
 
   const tabs = () => h('nav', { class: 'eq-tabs', 'aria-label': 'Secciones del equipo' },
-    ...[['plantilla', 'Plantilla'], ['objetivos', 'Objetivos'], ['partidos', 'Partidos'], ['horarios', 'Horarios'], ['ajustes', 'Ajustes']].map(([k, txt]) =>
+    ...[['plantilla', 'Plantilla'], ['progresion', 'Progresión'], ['objetivos', 'Objetivos'], ['partidos', 'Partidos'], ['horarios', 'Horarios'], ['ajustes', 'Ajustes']].map(([k, txt]) =>
       h('button', {
         class: 'eq-tab-btn' + (tab === k ? ' active' : ''), type: 'button',
         'aria-current': tab === k ? 'page' : null,
@@ -993,7 +994,8 @@ export function render(root, params) {
     const zona = h('div', { class: 'eq-zona' }, h('div', { class: 'skeleton eq-skeleton' }));
     mount(cont, cabecera(), tabs(), zona);
     try {
-      if (tab === 'horarios') await pintaHorarios(zona);
+      if (tab === 'progresion') await pintaProgresion(zona, { teamId, seasonId: temporada?.id || null });
+      else if (tab === 'horarios') await pintaHorarios(zona);
       else if (tab === 'objetivos') await pintaObjetivos(zona);
       else if (tab === 'partidos') await pintaPartidos(zona);
       else if (tab === 'ajustes') await pintaAjustes(zona);

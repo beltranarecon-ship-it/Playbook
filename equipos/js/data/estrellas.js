@@ -52,6 +52,26 @@ export async function ponerEstrella({ sessionId, playerId, blockId = null, nota 
   return data;
 }
 
+/**
+ * Las de VARIOS jugadores, para Progresión (3.8) → { player_id: [...] }.
+ * La RLS de `sessions` ya recorta a los equipos de quien pregunta.
+ */
+export async function getEstrellasJugadores(playerIds) {
+  const out = {};
+  if (!playerIds?.length) return out;
+  try {
+    const { data, error } = await supabase
+      .from('session_stars').select(COLS)
+      .in('player_id', playerIds)
+      .order('created_at', { ascending: false });
+    if (error) return out;
+    for (const r of data || []) (out[r.player_id] ||= []).push(r);
+    return out;
+  } catch {
+    return out;
+  }
+}
+
 /** Quitarla, para el toque que no era. */
 export async function quitarEstrella(id) {
   const { data, error } = await supabase.from('session_stars').delete().eq('id', id).select('id');

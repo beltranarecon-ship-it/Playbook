@@ -1016,3 +1016,76 @@
   border: 1px solid var(--line); background: var(--white); color: var(--muted);
 }
 .eq-rub-add:hover { border-color: var(--papaya); color: var(--papaya-deep); }
+
+/* ============================================================
+   Progresión (Tramo 3.8)
+
+   §5.7 literal: se selecciona un jugador, arriba sus datos, debajo sus
+   gráficas. La lista de jugadores a la izquierda con lo único que hace
+   falta para elegir: quién lleva más sin mirarse.
+   ============================================================ */
+.eq-prog { display: grid; grid-template-columns: 240px 1fr; gap: 1.5rem; align-items: start; }
+@media (max-width: 860px) { .eq-prog { grid-template-columns: 1fr; } }
+
+.eq-prog-lista { display: flex; flex-direction: column; gap: 2px; max-height: 70vh; overflow-y: auto; }
+.eq-prog-jug {
+  display: flex; align-items: center; gap: 0.5rem; text-align: left;
+  padding: 0.375rem 0.5rem; border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+.eq-prog-jug:hover { background: var(--bone); }
+.eq-prog-jug.is-sel { background: var(--papaya-soft); border-color: var(--papaya); }
+.eq-prog-jug-n { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.eq-prog-jug-d { font-size: 0.6875rem; color: var(--muted); }
+.eq-prog-jug-d.is-nunca { color: var(--papaya-deep); font-weight: 700; }
+
+.eq-prog-ficha { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.eq-prog-cab { display: flex; align-items: center; gap: 0.75rem; }
+.eq-prog-nombre { font-family: var(--font-display); text-transform: uppercase; font-size: 1.5rem; margin: 0; }
+
+/* Los cuatro números que se leen antes de hablar con el crío. */
+.eq-prog-datos { display: flex; gap: 1.75rem; flex-wrap: wrap; }
+.eq-prog-dato { display: flex; flex-direction: column; }
+.eq-prog-num { font-family: var(--font-display); font-weight: 800; font-size: 1.75rem; line-height: 1; }
+.eq-prog-lbl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+
+.eq-prog-graf { display: flex; flex-direction: column; gap: 0.5rem; }
+.eq-prog-graf-t {
+  font-family: var(--font-display); text-transform: uppercase;
+  font-size: 0.875rem; letter-spacing: 0.04em; color: var(--muted); margin: 0;
+}
+
+/* Gráfica 1: dónde está ahora. Cuatro escalones por fila. */
+.eq-prog-barras { display: flex; flex-direction: column; gap: 1px; }
+.eq-prog-barra {
+  display: flex; align-items: center; gap: 0.75rem; text-align: left;
+  padding: 0.25rem 0.5rem; border-radius: var(--radius);
+}
+.eq-prog-barra:hover { background: var(--bone); }
+.eq-prog-barra.is-sel { background: var(--papaya-soft); }
+.eq-prog-barra-t { flex: 1 1 auto; min-width: 0; font-size: 0.875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eq-prog-barra-t.es-conducta { font-style: italic; }
+.eq-prog-esc { display: flex; gap: 2px; flex: none; }
+.eq-prog-paso { width: 1.5rem; height: 0.75rem; border-radius: 2px; background: var(--line); }
+.eq-prog-paso.is-on { background: var(--papaya); }
+.eq-prog-mov { font-weight: 800; width: 1rem; }
+.eq-prog-mov.es-sube { color: var(--success); }
+.eq-prog-mov.es-baja { color: var(--error); }
+
+/* Gráfica 2: la línea escalonada. */
+.eq-prog-svg { width: 100%; max-width: 560px; height: auto; }
+.eq-prog-guia { stroke: var(--line); stroke-width: 1; }
+.eq-prog-eje { fill: var(--muted); font-size: 9px; font-family: var(--font-mono); }
+.eq-prog-linea { fill: none; stroke: var(--papaya); stroke-width: 2.5; stroke-linejoin: round; }
+.eq-prog-punto { fill: var(--white); stroke: var(--papaya); stroke-width: 2.5; }
+
+/* Gráfica 3: asistencia por mes. */
+.eq-prog-meses { display: flex; gap: 0.5rem; align-items: flex-end; }
+.eq-prog-mes { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.eq-prog-mes-barra { width: 1.75rem; height: 4.5rem; background: var(--bone); border-radius: 2px; display: flex; align-items: flex-end; }
+.eq-prog-mes-relleno { width: 100%; background: var(--papaya); border-radius: 2px; min-height: 2px; }
+.eq-prog-mes-n { font-size: 0.6875rem; font-family: var(--font-mono); }
+.eq-prog-mes-t { font-size: 0.6875rem; color: var(--muted); }
+
+.eq-prog-vacio { padding: 1.5rem; background: var(--bone); border-radius: var(--radius); }
+.eq-prog-vacio p { margin: 0 0 0.5rem; }

@@ -1118,7 +1118,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.5 ✅ | Pantalla de sesión activa: cronómetro, pasar lista, finalizado/+5, anotación en caliente | 3.4 | Un entrenamiento entero se da sin apuntar nada después |
 | 3.6 ✅ | Duración real por bloque → duración estimada del ejercicio | 3.5 | La segunda vez que se usa un ejercicio propone la duración real |
 | 3.7 ✅ | Rúbrica: filas de acciones y conductas, cuatro niveles, evaluación al cerrar | 2.5 | Se evalúa a cinco jugadores en menos de dos minutos |
-| 3.8 | Apartado Progresión dentro del equipo | 3.7 | Se elige un jugador y se ven sus datos y sus gráficas |
+| 3.8 ✅ | Apartado Progresión dentro del equipo | 3.7 | Se elige un jugador y se ven sus datos y sus gráficas |
 | 3.9 | Objetivos: categorías propias, dianas de acción, medida por rúbrica, panel «qué vigilar» | 3.7 | Un objetivo dice «trabajado en 7 sesiones · 5 de 13 han subido» |
 | 3.10 | Objetivos individuales, visibles en sesión activa | 3.8 | Cada niño con uno o dos objetivos vivos |
 | 3.11 | Reflexión: esfuerzo obligatorio, preguntas individuales editables | 3.5 | Se valora a jugadores sueltos, no a todos |
@@ -1497,6 +1497,43 @@ directo, contraataque— las filas que salen son las cuatro conductas y **tiro**
 y **bloqueo directo**, que son sus etiquetas. Cinco jugadores con dos valoraciones cada
 uno: 15 toques, un guardado, y los cinco pasan a «mirado hoy». El movimiento «↑» aparece
 en cuanto hay dos valoraciones de la misma fila.
+
+### Estado de 3.8 (hecha)
+
+`equipos/js/views/equipo-progresion.js` — pestaña **Progresión** en la ficha del equipo,
+entre Plantilla y Objetivos.
+
+§5.7 literal, y en ese orden: **se selecciona un jugador, arriba sus datos, debajo sus
+gráficas.** Arriba, cuatro números que se leen antes de hablar con el crío —asistencia,
+estrellas, filas miradas y **movimiento**—. Debajo, lo que hay que mirar despacio.
+
+**Las tres capas de §5.7, cada una con lo que cuesta**: la asistencia ya se recogía, las
+estrellas vienen de la sesión activa (3.5) y los niveles y movimientos del cierre (3.7).
+Ninguna se inventa: si una capa está vacía se dice que está vacía.
+
+| Gráfica | Qué enseña |
+|---|---|
+| **Dónde está ahora** | una barra de cuatro escalones por fila mirada, conductas primero y lo más bajo arriba. No es un ranking: es un mapa de por dónde va |
+| **Cómo ha ido en «…»** | la serie de una fila en el tiempo, al tocarla |
+| **Asistencia por mes** | barras, de lo que ya se recogía |
+
+**La línea es escalonada y no suave**, y eso es una decisión: entre dos valoraciones no
+hay nada medido, y una recta entre ellas dibujaría un progreso que nadie ha visto. El
+nivel se mantiene hasta que alguien vuelve a mirar.
+
+**Cuando no hay nada, se dice qué falta y por qué**, en vez de enseñar un cero que parece
+un suspenso — que es justo el riesgo declarado para el primer trimestre: *«hasta que haya
+dos valoraciones de la misma fila no hay movimiento que enseñar: una progresión necesita
+al menos dos puntos»*.
+
+**Sin librería de gráficas.** Son dos formas —barras de cuatro escalones y una línea
+escalonada—, veinte líneas de SVG cada una. Traerse una librería para esto pesaría más
+que todo el módulo de sesiones junto.
+
+**Comprobado** en el arnés: la lista ordena por quién lleva más sin mirarse; el Jugador 3
+sale con **100 % de asistencia · 1 estrella · 1 fila mirada · ↑1**, su barra de «bote»
+llena tres de cuatro escalones con la flecha de subida, y al tocarla se abre «Cómo ha ido
+en «bote»» con **dos puntos** y los cuatro niveles en el eje.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 
