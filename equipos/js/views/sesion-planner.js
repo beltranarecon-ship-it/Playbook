@@ -39,6 +39,10 @@ import {
 } from '../data/plan.js';
 import { getSesionesRango } from '../data/sessions.js';
 import { esActiva } from '../data/estado-sesion.js';
+import {
+  guardar as guardarBorrador, leer as leerBorrador, borrar as borrarBorrador,
+  claveSesion, hayQueOfrecer, fechaDe, limpiarViejos,
+} from '../../../taller/js/borradores.js';
 import { getRubricaEquipo } from '../data/rubrica.js';
 import { queVigilarHoy } from '../data/objetivos-medida.js';
 import { filasDeRubrica } from '../../../taller/js/rubrica.js';
@@ -141,7 +145,37 @@ export function render(root, params) {
   let modalPicker = null;
   let ordenAntesDeArrastrar = null;
 
-  const marcaSucio = () => { sucio = true; pintaEstadoGuardado(); };
+  /* ---- el borrador del plan (Tramo 3.13) --------------------------
+     Cerrar la pestaña con media sesión planificada perdía el trabajo
+     sin avisar, y no es un caso raro: es un martes con un crío
+     llamando a la puerta. Se guarda solo mientras se escribe y al
+     volver se OFRECE — no se restaura por su cuenta, porque un
+     borrador puede ser viejo o de otro ordenador, y sobrescribir el
+     plan bueno con uno de hace tres semanas no se nota hasta que ya no
+     hay nada que recuperar. */
+  const CLAVE_BORRADOR = claveSesion(sessionId);
+  const instantanea = () => ({
+    titulo,
+    objetivos: [...objetivosSel].sort(),
+    bloques: bloques.map((b) => ({
+      exercise_id: b.exercise_id ?? null, titulo: b.titulo || '',
+      duracion_min: Number(b.duracion_min) || 0, intensidad: Number(b.intensidad) || 0,
+      notas: b.notas || null, video: b.video ?? null,
+    })),
+  });
+  const huella = (x) => JSON.stringify({
+    titulo: x?.titulo || '',
+    objetivos: [...(x?.objetivos || [])].sort(),
+    bloques: x?.bloques || [],
+  });
+
+  let guardaBorradorTimer = null;
+  const anotaBorrador = () => {
+    clearTimeout(guardaBorradorTimer);
+    guardaBorradorTimer = setTimeout(() => guardarBorrador(CLAVE_BORRADOR, instantanea()), 800);
+  };
+
+  const marcaSucio = () => { sucio = true; pintaEstadoGuardado(); anotaBorrador(); };
 
   /* ---- cuánta gente va a haber (Tramo 3.2) ------------------------
      Manda lo que el entrenador ponga para ESTE día; si no ha puesto
@@ -1238,6 +1272,35 @@ export function render(root, params) {
    *   ahora»: ahí guardar es un trámite de camino a otra pantalla, y
    *   mandar al calendario en medio sería tirar al entrenador fuera.
    */
+  /** El cartel de «tenías esto a medias». Decide quien lo escribió. */
+  function ofreceBorrador(b) {
+    const barra = h('div', { class: 'eq-borrador' },
+      h('span', {},
+        `Dejaste este plan a medias el ${fechaDe(b)} `,
+        h('strong', null, `(${(b.bloques || []).length} bloques)`),
+        '. ¿Lo retomas?'),
+      h('div', { class: 'row' },
+        h('button', {
+          class: 'btn btn-primary eq-btn-mini', type: 'button',
+          onClick: () => {
+            titulo = b.titulo || '';
+            objetivosSel = new Set(b.objetivos || []);
+            bloques = (b.bloques || []).map((x) => ({ ...x, uid: nuevoUid() }));
+            sucio = true;
+            barra.remove();
+            pinta();
+            toast('Plan retomado. Guarda cuando lo tengas.');
+          },
+        }, 'Retomar'),
+        h('button', {
+          class: 'btn btn-secondary eq-btn-mini', type: 'button',
+          onClick: () => { borrarBorrador(CLAVE_BORRADOR); barra.remove(); },
+        }, 'Descartar'),
+      ),
+    );
+    cont.prepend(barra);
+  }
+
   async function guardar({ callado = false } = {}) {
     if (soloLectura) return true;
     const libreSinTitulo = bloques.find((b) => !b.exercise_id && !(b.titulo || '').trim());
@@ -1249,6 +1312,7 @@ export function render(root, params) {
       await guardarCabeceraSesion(sessionId, { titulo });
       if (esPreliminar) await promoverSesion(sessionId);
       sucio = false;
+      borrarBorrador(CLAVE_BORRADOR);
       if (callado) return true;
       toast(esPreliminar ? 'Sesión planificada y confirmada' : 'Plan guardado');
       router.navigate(`/sesiones?equipo=${sesion.team_id}`);
@@ -1330,6 +1394,16 @@ export function render(root, params) {
       pinta();
       // arrancar con el primer bloque puesto ahorra un clic y explica el panel
       if (bloques.length && hayHueco()) selecciona(bloques[0], { abrirEnMovil: false });
+
+      /* Y AHORA se ofrece el borrador, con el plan bueno ya en pantalla
+         (Tramo 3.13): primero se ve lo guardado y después se decide si
+         se quiere lo de encima. Solo si de verdad dice algo distinto —
+         un cartel que sale siempre no lo lee nadie. */
+      limpiarViejos();
+      const guardado = leerBorrador(CLAVE_BORRADOR);
+      if (hayQueOfrecer(guardado, instantanea(), { huella, tieneAlgo: (b) => (b.bloques || []).length })) {
+        ofreceBorrador(guardado);
+      }
     } catch (e) {
       mount(cont, h('div', { class: 'empty-state' },
         h('p', { class: 'empty-state-display' }, 'No se pudo abrir la sesión'),
@@ -1346,6 +1420,7 @@ export function render(root, params) {
     destroy() {
       window.removeEventListener('beforeunload', onBeforeUnload);
       window.removeEventListener('resize', alRedimensionar);
+      clearTimeout(guardaBorradorTimer);
       modalPicker?.cerrar?.();
       modalVisor?.cerrar?.();
       visor.destroy();

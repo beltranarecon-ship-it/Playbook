@@ -1123,7 +1123,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.10 ✅ | Objetivos individuales, visibles en sesión activa | 3.8 | Cada niño con uno o dos objetivos vivos |
 | 3.11 ✅ | Reflexión: esfuerzo obligatorio, preguntas individuales editables | 3.5 | Se valora a jugadores sueltos, no a todos |
 | 3.12 ✅ | Plantilla: filtros por asistencia, estado y rendimiento; archivados recuperables | 3.1 | Se recupera un jugador de baja |
-| 3.13 | Borradores con recuperación en sesiones y en edición de ejercicios | — | Se sale a media sesión y al volver la ofrece |
+| 3.13 ✅ | Borradores con recuperación en sesiones y en edición de ejercicios | — | Se sale a media sesión y al volver la ofrece |
 
 ### Estado de 3.1 (hecha)
 
@@ -1701,6 +1701,43 @@ no pueden retrasar la lista, y si fallan la plantilla se ve igual.
 2 sesiones» y al pasar a semana cambian a «semana: 1 de 1 · 100 % · 9 min activos en 1
 sesión»; «Sin mirar» deja 10 de 14; y un jugador archivado se filtra, se recupera de un
 botón y vuelve a la lista sin la marca de baja.
+
+### Estado de 3.13 (hecha)
+
+`taller/js/borradores.js` — módulo compartido por las dos aplicaciones, con su banco
+(`eval-borradores.mjs`, 14 pruebas, con un `localStorage` de mentira). Sin migración: un
+borrador es del navegador, no de la base de datos.
+
+El Taller ya guardaba el ejercicio a medio hacer. Fuera de ahí no: cerrar la pestaña con
+media sesión planificada, o con un ejercicio ya creado a medio corregir, perdía el trabajo
+sin avisar. Y no es un caso raro — es un martes con un crío llamando a la puerta.
+
+**No se restaura solo, se OFRECE.** Un borrador puede ser viejo, puede ser de otro
+ordenador y puede haber quedado atrás respecto a lo guardado. Restaurar sin preguntar
+convierte «recuperé lo que estaba escribiendo» en «me ha sobrescrito el plan bueno con
+uno de hace tres semanas» — y eso no se nota hasta que ya no hay nada que recuperar.
+
+**Y solo si difiere.** Un borrador idéntico a lo guardado no es una recuperación, es
+ruido: si cada vez que se abre una sesión salta un cartel, a la tercera nadie lo lee.
+
+| | |
+|---|---|
+| Cuándo se ofrece | con el plan bueno **ya en pantalla**: primero se ve lo guardado, después se decide si se quiere lo de encima |
+| Cuánto vive | 14 días. Más allá, lo guardado manda |
+| Limpieza | al abrir se barren los caducados: sin eso, cada sesión tocada deja una entrada para siempre en un almacenamiento pequeño y compartido |
+| Dónde | barra arriba del todo, no un toast: es una decisión, no un aviso que se desvanece |
+
+**Un fallo que arrastraba el Taller**: había **una sola clave** de borrador, así que
+empezar un ejercicio nuevo pisaba el borrador de la corrección que estabas a medias, y al
+revés. Por eso solo se ofrecía al crear. Ahora cada ejercicio tiene la suya
+(`cbp_borrador_ejercicio:<id>`) y **al editar también se ofrece**, que es la mitad de lo
+que pedía la fila.
+
+**Comprobado** en el arnés: se abre el plan (sin cartel, porque no hay nada distinto), se
+quita un bloque, se sale y se vuelve — el plan carga con sus **5** bloques guardados y una
+barra dice *«Dejaste este plan a medias el 19 ago, 20:06 (4 bloques). ¿Lo retomas?»*.
+«Retomar» deja los 4 y marca cambios sin guardar; «Descartar» quita la barra y la entrada
+del almacenamiento.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

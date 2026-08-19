@@ -23,6 +23,7 @@ import { toast, confirmToast } from '../ui/toast.js';
 import { nuevoDraft, puedeGuardar } from '../wizard/draft.js';
 import { borradorDeEjercicio, nombreRepetido } from '../wizard/cargar.js';
 import { guardarBorrador, leerBorrador, borrarBorrador, borradorConContenido, fechaBorrador } from '../wizard/borrador.js';
+import { estaViejo, limpiarViejos } from '../borradores.js';
 import { getUser } from '../supabase/auth.js';
 import { guardarEjercicio, actualizarEjercicio, getEjercicio, nombresDeEjercicios } from '../supabase/ejercicios.js';
 import { paso0 } from '../wizard/paso0.js';
@@ -54,7 +55,11 @@ export function render(root, { id = null, modo = 'nuevo' } = {}) {
 
   // ---- autoguardado de borrador (§13) ----
   let saveTimer = null;
-  const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => guardarBorrador(draft, stage.board.getElementos(), state.step), 600); };
+  /* Cada ejercicio guarda SU borrador (Tramo 3.13): al editar uno ya
+     creado, el suyo; al crear, el del ejercicio nuevo. Con una sola
+     clave, empezar un ejercicio nuevo pisaba la corrección a medias. */
+  const claveBorrador = () => (modo === 'nuevo' ? null : id);
+  const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => guardarBorrador(draft, stage.board.getElementos(), state.step, claveBorrador()), 600); };
 
   const onDraftChange = () => { if (btnGuardar) btnGuardar.disabled = !puedeGuardar(draft); scheduleSave(); };
   const ctx = { draft, stage, onDraftChange, goTo, toast };
@@ -123,7 +128,7 @@ export function render(root, { id = null, modo = 'nuevo' } = {}) {
       const { id: guardadoId } = draft.id
         ? await actualizarEjercicio(draft.id, draft, stage.board.getElementos())
         : await guardarEjercicio(draft, stage.board.getElementos());
-      borrarBorrador();
+      borrarBorrador(claveBorrador());
       toast(draft.id ? 'Cambios guardados.' : 'Ejercicio guardado.', { type: 'ok' });
       history.pushState({}, '', `/ejercicios/${guardadoId}`);
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -190,22 +195,30 @@ export function render(root, { id = null, modo = 'nuevo' } = {}) {
     }
   })() : (async () => { otros = await nombresDeEjercicios().catch(() => []); })();
 
-  /* El borrador sin guardar solo se ofrece al crear: al abrir un
-     ejercicio existente, lo que hay que cargar es ESE ejercicio, y
-     preguntar por un borrador de otra cosa a media pantalla es la
-     manera más rápida de perder lo que se acaba de abrir. */
-  if (modo === 'nuevo') {
-    const b = leerBorrador();
-    if (borradorConContenido(b)) {
-      toast(`Tienes un borrador sin guardar del ${fechaBorrador(b)}. ¿Retomar?`, {
+  /* El borrador sin guardar se ofrece SIEMPRE, pero el suyo (Tramo
+     3.13). Antes solo al crear, y con razón: con una sola clave, abrir
+     un ejercicio existente y encontrarse el borrador de OTRA cosa era
+     la manera más rápida de perder lo que se acababa de abrir. Ahora
+     cada ejercicio tiene el suyo y esa confusión ya no puede darse.
+
+     Se espera a que el ejercicio esté cargado: primero se ve lo
+     guardado y después se pregunta si se quiere lo de encima. */
+  (cargando || Promise.resolve()).then(() => {
+    const b = leerBorrador(claveBorrador());
+    if (!borradorConContenido(b) || estaViejo(b)) return;
+    toast(
+      modo === 'nuevo'
+        ? `Tienes un borrador sin guardar del ${fechaBorrador(b)}. ¿Retomar?`
+        : `Dejaste cambios sin guardar el ${fechaBorrador(b)}. ¿Retomarlos?`,
+      {
         type: 'info', timeout: 0,
         actions: [
           { label: 'Retomar', onClick: () => aplicarBorrador(b) },
-          { label: 'Descartar', onClick: () => borrarBorrador() },
+          { label: 'Descartar', onClick: () => borrarBorrador(claveBorrador()) },
         ],
-      });
-    }
-  }
+      },
+    );
+  }).catch(() => {});
 
   if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') { window.__stage = stage; window.__draft = draft; window.__wizard = { guardar, aplicarBorrador }; }
   return { destroy() { clearTimeout(saveTimer); current?.destroy?.(); stage.destroy(); view.remove(); } };

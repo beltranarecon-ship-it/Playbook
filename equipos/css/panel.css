@@ -1185,3 +1185,14 @@
   flex: 0 0 5.5rem; font-size: 0.6875rem; text-transform: uppercase;
   letter-spacing: 0.05em; color: var(--muted); font-weight: 700;
 }
+
+/* El borrador que se ofrece al volver (Tramo 3.13). Va arriba del todo
+   y no como un toast: es una decisión, no un aviso que se desvanece. */
+.eq-borrador {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  padding: 0.75rem 1rem; margin-bottom: 1rem;
+  background: var(--papaya-soft);
+  border: 1px solid color-mix(in srgb, var(--papaya) 35%, var(--line));
+  border-radius: var(--radius);
+}
