@@ -34,6 +34,14 @@ import {
 import { claveDesdeEtiqueta, TIPOS_REFLEXION, CLAVE_CUMPLIMIENTO, CLAVE_ESFUERZO } from '../data/reflexion.js';
 import { modalObjetivo, filaObjetivo } from './objetivo-form.js';
 import { pintaProgresion } from './equipo-progresion.js';
+import {
+  minutosPorJugador, asistenciaPorPeriodo, ultimaSemana, pasaFiltros,
+  textoAsistencia, textoMinutos, FILTROS_ESTADO, FILTROS_RENDIMIENTO,
+} from '../data/plantilla.js';
+import { getSesionesRango } from '../data/sessions.js';
+import { getBloquesSesiones } from '../data/blocks.js';
+import { getEjerciciosSugeribles } from '../data/objectives.js';
+import { estadoDe, resumenDe } from '../../../taller/js/rubrica.js';
 import { avisoTemporada, fechaLarga } from './temporada-form.js';
 import { temporadaCubre } from '../data/programacion.js';
 import { invalidarEquipos, esAdmin } from '../store.js';
@@ -81,16 +89,95 @@ export function render(root, params) {
 
   // ── Pestaña PLANTILLA ──────────────────────────────────────
   async function pintaPlantilla(zona) {
-    // la asistencia acumulada (M5) es el pago de pasar lista; si 014 no está
-    // aplicada o no hay listas todavía, la ficha sigue igual de útil
+    /* La plantilla ahora se puede INTERROGAR (Tramo 3.12). Todo lo que
+       hace falta ya se recogía —asistencia (M5), rúbrica (3.7) y
+       minutos activos (3.1)—; lo que faltaba era poder preguntar.
+
+       `incluirBajas` porque los archivados tienen que poder
+       recuperarse, y para eso hay que verlos. */
     const [jugadores, filasAsis] = await Promise.all([
-      getJugadores(teamId),
+      getJugadores(teamId, { incluirBajas: true }),
       getAsistenciaEquipo(teamId, temporada.id).catch(() => []),
     ]);
     const color = equipo.team_settings?.color;
     const stats = new Map(estadisticasJugadores(jugadores, filasAsis).map((s) => [s.player_id, s]));
 
-    const fila = (j) => h('div', { class: 'eq-jugador' + (j.estado !== 'activo' ? ' atenuado' : '') },
+    /* ---- lo que se puede preguntar (Tramo 3.12) -------------------- */
+    const filtro = { periodo: 'temporada', estados: [], rendimiento: [], asistenciaMax: null };
+    let minutos = {};      // player_id → {minutos, sesiones}
+    let resumenes = {};    // player_id → resumen de rúbrica
+
+    const asisDe = () => (filtro.periodo === 'semana'
+      ? asistenciaPorPeriodo(filasAsis, ultimaSemana())
+      : asistenciaPorPeriodo(filasAsis));
+
+    const nodoLista = h('div', { class: 'eq-jugadores' });
+    const nodoCuenta = h('span', { class: 'eq-ayuda' });
+
+    const chip = (txt, activo, onClick, extra = '') => h('button', {
+      class: `eq-catchip${activo ? ' sel' : ''} ${extra}`, type: 'button',
+      'aria-pressed': String(activo), onClick,
+    }, txt);
+
+    const alterna = (lista, k) => {
+      const i = lista.indexOf(k);
+      if (i >= 0) lista.splice(i, 1); else lista.push(k);
+      pintaLista();
+    };
+
+    const FILTROS_REND_ORDEN = FILTROS_RENDIMIENTO;
+    const ETQ_ESTADO = { activo: 'Activos', lesionado: 'Lesionados', baja: 'Archivados' };
+    const ETQ_REND = { subido: 'Han subido', bajado: 'Han bajado', sin_mirar: 'Sin mirar' };
+
+    const barraFiltros = () => h('div', { class: 'eq-plant-filtros' },
+      h('div', { class: 'eq-plant-grupo' },
+        h('span', { class: 'eq-plant-etq' }, 'Asistencia'),
+        chip('Temporada', filtro.periodo === 'temporada', () => { filtro.periodo = 'temporada'; pintaLista(); }),
+        chip('Última semana', filtro.periodo === 'semana', () => { filtro.periodo = 'semana'; pintaLista(); }),
+        chip('Por debajo del 60 %', filtro.asistenciaMax != null,
+          () => { filtro.asistenciaMax = filtro.asistenciaMax == null ? 60 : null; pintaLista(); }),
+      ),
+      h('div', { class: 'eq-plant-grupo' },
+        h('span', { class: 'eq-plant-etq' }, 'Estado'),
+        ...FILTROS_ESTADO.map((k) => chip(ETQ_ESTADO[k], filtro.estados.includes(k), () => alterna(filtro.estados, k))),
+      ),
+      h('div', { class: 'eq-plant-grupo' },
+        h('span', { class: 'eq-plant-etq' }, 'Rendimiento'),
+        ...FILTROS_REND_ORDEN.map((k) => chip(ETQ_REND[k], filtro.rendimiento.includes(k), () => alterna(filtro.rendimiento, k))),
+      ),
+      h('div', { class: 'eq-plant-grupo' },
+        nodoCuenta,
+        (filtro.estados.length || filtro.rendimiento.length || filtro.asistenciaMax != null)
+          ? h('button', {
+              class: 'btn btn-secondary eq-btn-mini', type: 'button',
+              onClick: () => { filtro.estados = []; filtro.rendimiento = []; filtro.asistenciaMax = null; pintaLista(); },
+            }, 'Quitar filtros')
+          : null,
+      ),
+    );
+
+    function pintaLista() {
+      const asis = asisDe();
+      const visibles = jugadores.filter((j) => pasaFiltros(j, {
+        estados: filtro.estados, rendimiento: filtro.rendimiento,
+        asistenciaMax: filtro.asistenciaMax, resumenes, asistencia: asis,
+      }));
+
+      nodoCuenta.textContent = visibles.length === jugadores.length
+        ? `${jugadores.length} en plantilla`
+        : `${visibles.length} de ${jugadores.length}`;
+
+      nodoLista.replaceChildren(...(visibles.length
+        ? visibles.map((j) => fila(j, asis))
+        : [h('p', { class: 'eq-ayuda' }, 'Ningún jugador casa con lo que has pedido.')]));
+      // los filtros se repintan aparte para que los chips reflejen el estado
+      zonaFiltros.replaceChildren(barraFiltros());
+    }
+
+    const zonaFiltros = h('div', {});
+
+
+    const fila = (j, asis) => h('div', { class: 'eq-jugador' + (j.estado !== 'activo' ? ' atenuado' : '') },
       avatar(j.nombre, color),
       h('span', { class: 'eq-jugador-dorsal' }, j.dorsal != null ? String(j.dorsal) : '·'),
       h('div', { class: 'eq-jugador-datos' },
@@ -99,11 +186,28 @@ export function render(root, params) {
           [
             j.posicion,
             j.estado !== 'activo' ? ESTADOS_JUGADOR[j.estado] : null,
-            stats.get(j.id)?.pct != null
-              ? `${stats.get(j.id).pct}% asistencia (${stats.get(j.id).entrenaron}/${stats.get(j.id).total})`
-              : null,
+            `${filtro.periodo === 'semana' ? 'semana' : 'temporada'}: ${textoAsistencia(asis[j.id])}`,
+            // los minutos activos (Tramo 3.1 → 3.12): lo que de verdad
+            // ha entrenado, no las sesiones a las que vino
+            textoMinutos(minutos[j.id]),
           ].filter(Boolean).join(' · ') || ' '),
       ),
+      /* Recuperar un archivado desde aquí: dar de baja es reversible, y
+         si el camino de vuelta no existe la gente deja de dar de baja y
+         empieza a borrar. */
+      j.estado === 'baja'
+        ? h('button', {
+            class: 'btn btn-secondary eq-btn-mini', type: 'button',
+            onClick: async () => {
+              try {
+                await actualizarJugador(j.id, { estado: 'activo' });
+                j.estado = 'activo';
+                toast(`${j.nombre} vuelve a la plantilla`);
+                pintaLista();
+              } catch (e) { toast('Error: ' + e.message, 'error'); }
+            },
+          }, 'Recuperar')
+        : null,
       h('button', {
         class: 'btn btn-secondary eq-btn-mini', type: 'button',
         onClick: () => modalJugador(j),
@@ -236,12 +340,41 @@ export function render(root, params) {
           h('button', { class: 'btn btn-primary', type: 'button', onClick: () => modalJugador() }, 'Añadir jugador'),
         ),
       ),
+      jugadores.length ? zonaFiltros : null,
       jugadores.length
-        ? h('div', { class: 'eq-jugadores' }, jugadores.map(fila))
+        ? nodoLista
         : h('div', { class: 'empty-state' },
             h('p', { class: 'empty-state-display' }, 'Sin jugadores'),
             h('p', {}, 'Añade la plantilla para poder pasar lista. El truco rápido: «Pegar lista».')),
     );
+    pintaLista();
+
+    /* Los minutos activos y el rendimiento llegan DESPUÉS: la plantilla
+       se abre con lo que ya está en memoria y se enriquece cuando llega.
+       Tres consultas para una columna no pueden retrasar la lista. */
+    (async () => {
+      try {
+        const ids = jugadores.map((j) => j.id);
+        const sesiones = await getSesionesRango({
+          desde: temporada.start_date || '2000-01-01',
+          hasta: temporada.end_date || '2100-01-01',
+          teamId,
+        });
+        const [bloquesPorSesion, bib, rub] = await Promise.all([
+          getBloquesSesiones(sesiones.map((x) => x.id)),
+          getEjerciciosSugeribles().catch(() => []),
+          getRubricaEquipo(ids).catch(() => ({})),
+        ]);
+        const reqs = new Map((bib || []).map((e) => [e.id, e.requisitos || null]));
+        minutos = minutosPorJugador({
+          sesiones, bloquesPorSesion, asistencia: filasAsis,
+          requisitosDe: (b) => (b.exercise_id ? reqs.get(b.exercise_id) || null : null),
+        });
+        resumenes = {};
+        for (const id of ids) resumenes[id] = resumenDe(estadoDe(rub[id]));
+        pintaLista();
+      } catch { /* la plantilla se ve igual, sin la columna */ }
+    })();
   }
 
   // ── Pestaña OBJETIVOS ──────────────────────────────────────

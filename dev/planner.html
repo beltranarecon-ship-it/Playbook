@@ -268,11 +268,17 @@
       ],
       // Catorce, que es el grupo del criterio de 3.1: dos más de los que
       // admite la rueda de entradas.
-      players: Array.from({ length: 14 }, (_, i) => ({
-        id: `p${i + 1}`, team_id: 't1', nombre: `Jugador ${i + 1}`, dorsal: i + 4,
-        fecha_nacimiento: null, posicion: null, foto_path: null, notas: null,
-        estado: 'activo', tutor_nombre: null, tutor_contacto: null,
-      })),
+      players: [
+        ...Array.from({ length: 14 }, (_, i) => ({
+          id: `p${i + 1}`, team_id: 't1', nombre: `Jugador ${i + 1}`, dorsal: i + 4,
+          fecha_nacimiento: null, posicion: null, foto_path: null, notas: null,
+          estado: 'activo', tutor_nombre: null, tutor_contacto: null,
+        })),
+        // uno archivado, para el criterio de 3.12: «se recupera un jugador de baja»
+        { id: 'pbaja', team_id: 't1', nombre: 'Jugador archivado', dorsal: 99,
+          fecha_nacimiento: null, posicion: null, foto_path: null, notas: null,
+          estado: 'baja', tutor_nombre: null, tutor_contacto: null },
+      ],
     };
 
     const real = window.fetch.bind(window);
@@ -303,6 +309,22 @@
         console.log('[arnés] POST', tabla, '→', nuevas.length, 'filas');
         return Promise.resolve(new Response(JSON.stringify(nuevas.length === 1 ? nuevas[0] : nuevas), {
           status: 201, headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+      if ((metodo === 'PATCH' || metodo === 'PUT') && TABLAS[tabla]) {
+        const idEq = u.searchParams.get('id');
+        const id = idEq && idEq.startsWith('eq.') ? idEq.slice(3) : null;
+        const patch = JSON.parse((opciones && opciones.body) || '{}');
+        const tocadas = [];
+        TABLAS[tabla] = TABLAS[tabla].map((r) => {
+          if (String(r.id) !== id) return r;
+          const n = { ...r, ...patch };
+          tocadas.push(n);
+          return n;
+        });
+        console.log('[arnés] PATCH', tabla, id, '→', tocadas.length);
+        return Promise.resolve(new Response(JSON.stringify(tocadas), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
         }));
       }
       if (metodo === 'DELETE' && TABLAS[tabla]) {

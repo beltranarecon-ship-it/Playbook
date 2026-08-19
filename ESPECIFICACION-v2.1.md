@@ -1122,7 +1122,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | 3.9 ✅ | Objetivos: categorías propias, dianas de acción, medida por rúbrica, panel «qué vigilar» | 3.7 | Un objetivo dice «trabajado en 7 sesiones · 5 de 13 han subido» |
 | 3.10 ✅ | Objetivos individuales, visibles en sesión activa | 3.8 | Cada niño con uno o dos objetivos vivos |
 | 3.11 ✅ | Reflexión: esfuerzo obligatorio, preguntas individuales editables | 3.5 | Se valora a jugadores sueltos, no a todos |
-| 3.12 | Plantilla: filtros por asistencia, estado y rendimiento; archivados recuperables | 3.1 | Se recupera un jugador de baja |
+| 3.12 ✅ | Plantilla: filtros por asistencia, estado y rendimiento; archivados recuperables | 3.1 | Se recupera un jugador de baja |
 | 3.13 | Borradores con recuperación en sesiones y en edición de ejercicios | — | Se sale a media sesión y al volver la ofrece |
 
 ### Estado de 3.1 (hecha)
@@ -1663,6 +1663,44 @@ un crío borraría la de todos los demás.
 cerrar sin contestarla no cierra. «De cada uno» sale con las catorce filas y el rótulo
 «de quien quieras». Y el motor, con esfuerzo + una respuesta de un crío + otra en blanco,
 produce exactamente dos filas que guardar y **un borrado con su jugador**.
+
+### Estado de 3.12 (hecha)
+
+`equipos/js/data/plantilla.js` — módulo PURO con su banco (`eval-plantilla.mjs`, 15
+pruebas). Sin migración: todo lo que hace falta ya se recogía.
+
+La plantilla era una lista con el estado de cada jugador. Con catorce críos eso se lee;
+con catorce y tres meses de historia detrás, las preguntas que se hacen de verdad no se
+podían contestar mirándola: *¿quién ha faltado esta semana? ¿quién no ha subido de nivel
+en todo el trimestre? ¿cuánto ha entrenado de verdad cada uno?*
+
+**Tres ejes de filtro**, y se suman: asistencia (temporada · última semana · por debajo
+del 60 %), estado (activos · lesionados · archivados) y rendimiento (han subido · han
+bajado · sin mirar).
+
+**«Sin mirar» no es «va mal»**, y son cajones distintos a propósito: meterlos juntos
+convertiría una lista de trabajo en una lista de acusados. Igual con la asistencia — sin
+datos no se cuela en el filtro de los que faltan.
+
+**«Semana» son los últimos siete días**, no la semana natural. El lunes por la mañana una
+semana natural está vacía, y la pregunta se queda sin respuesta justo cuando se hace.
+
+**La columna de minutos activos** es la de 3.1 llevada al jugador, y no es «los minutos
+de las sesiones a las que vino»: es la suma de los minutos **activos** de cada una, que
+dependen de cuánta gente hubo **ese** día. Un martes de seis rinde más por crío que un
+jueves de dieciocho, y esa diferencia es justo lo que el número tiene que enseñar. Solo
+suma quien estuvo: contarle los minutos a quien no vino sería premiarle por faltar.
+
+**Los archivados se recuperan desde la propia lista.** Dar de baja es reversible, y si el
+camino de vuelta no existe la gente deja de dar de baja y empieza a borrar.
+
+Los minutos y el rendimiento llegan **después** de pintar: tres consultas para una columna
+no pueden retrasar la lista, y si fallan la plantilla se ve igual.
+
+**Comprobado** en el arnés: las filas dicen «temporada: 2 de 2 · 100 % · 26 min activos en
+2 sesiones» y al pasar a semana cambian a «semana: 1 de 1 · 100 % · 9 min activos en 1
+sesión»; «Sin mirar» deja 10 de 14; y un jugador archivado se filtra, se recupera de un
+botón y vuelve a la lista sin la marca de baja.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 
