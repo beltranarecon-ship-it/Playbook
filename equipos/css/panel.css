@@ -786,3 +786,45 @@
   letter-spacing: 0.05em; color: var(--papaya);
 }
 .eq-toast-btn:hover { color: var(--papaya-deep); }
+
+/* ============================================================
+   Programar la sesión (Tramo 3.2)
+   ============================================================ */
+
+/* Cuánta gente viene. Va ARRIBA de los números porque los cambia
+   todos: los minutos activos, el material y el filtro del picker. */
+.eq-plan-gente {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem;
+  margin-bottom: 0.875rem;
+}
+.eq-plan-gente-lbl {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-weight: 600;
+}
+.eq-plan-gente-n { width: 4.5rem; text-align: center; }
+.eq-plan-gente .eq-ayuda { flex: 1 1 100%; margin: 0; }
+
+/* El cuadro de material: lo que hay que sacar del almacén antes de
+   bajar a la pista. */
+.eq-material-fila { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
+.eq-material-item {
+  padding: 0.25rem 0.75rem; border-radius: 999px;
+  background: var(--bone); border: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+.eq-material-item strong { font-family: var(--font-display); font-weight: 800; }
+
+/* «Ya lo hiciste el martes». Avisa, no bloquea: repetir a los tres
+   días puede ser justo lo que se quiere. */
+.eq-bloque-repe {
+  margin: 0.125rem 0 0;
+  font-size: 0.75rem; font-weight: 600; color: var(--papaya-deep);
+}
+
+/* El filtro por nº de jugadores del picker, con cuántos esconde. */
+.eq-picker-grupo {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.8125rem; color: var(--muted);
+}
+.eq-picker-grupo input { accent-color: var(--papaya); }
+.eq-picker-escondidos { color: var(--papaya-deep); font-weight: 600; }

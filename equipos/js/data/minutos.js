@@ -47,6 +47,7 @@
    ============================================================ */
 
 import { DENSIDAD_KEYS } from '../../../taller/js/ia/vocabulario.js';
+import { esAgua } from './plan.js';
 
 /**
  * Qué fracción del tiempo está haciendo algo un jugador, según la
@@ -101,6 +102,13 @@ export function minutosDeBloque(bloque, { jugadores = null, requisitos = null } 
   const libre = !bloque?.exercise_id;
   const supuestos = [];
 
+  /* El agua no entrena a nadie (Tramo 3.2). Ocupa pista —cuenta en la
+     duración— pero cero minutos activos, y por eso bajar el porcentaje
+     al meterla es correcto: son tres minutos que no son entrenamiento. */
+  if (esAgua(bloque)) {
+    return { minutos: 0, duracion, fraccion: 0, compromiso: 0, turno: 0, libre: true, agua: true, supuestos };
+  }
+
   let compromiso = compromisoDe(requisitos);
   if (compromiso == null) { compromiso = 1; if (!libre) supuestos.push('densidad'); }
 
@@ -122,6 +130,7 @@ export function minutosDeBloque(bloque, { jugadores = null, requisitos = null } 
     compromiso,
     turno,
     libre,
+    agua: false,
     supuestos,
   };
 }

@@ -1112,7 +1112,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 | # | Tarea | Depende de | Cómo se comprueba |
 |---|---|---|---|
 | 3.1 ✅ | Motor de minutos activos por jugador | 2.12 | Un ejercicio de fila con 14 críos da menos minutos activos que uno simultáneo |
-| 3.2 | Pantalla de programar sesión: tope de duración, nº de jugadores, agua, material, avisos de repetición | 3.1 | No se puede pasar de los 90 min; el material sale solo |
+| 3.2 ✅ | Pantalla de programar sesión: tope de duración, nº de jugadores, agua, material, avisos de repetición | 3.1 | No se puede pasar de los 90 min; el material sale solo |
 | 3.3 | Bloque libre con vídeo, guardable y reutilizable | 3.2 | Un vídeo guardado se reutiliza en otra sesión |
 | 3.4 | Estado `activa` deducido del reloj + cinco estados en el calendario | — | Los cinco se distinguen a la vista |
 | 3.5 | Pantalla de sesión activa: cronómetro, pasar lista, finalizado/+5, anotación en caliente | 3.4 | Un entrenamiento entero se da sin apuntar nada después |
@@ -1177,6 +1177,71 @@ incluida la del criterio: una fila con 14 críos da 9,6 min de 15, y un simultá
 **Fuera de esta fila**: la media de temporada del dossier sigue leyendo
 `sessions.carga_total`, que lo calcula un trigger de la migración 013. Cambiarlo es una
 migración y la columna de minutos por jugador de la plantilla, que es la fila **3.12**.
+
+### Estado de 3.2 (hecha)
+
+`equipos/js/data/plan.js` — módulo PURO con las reglas, y su banco (`eval-plan.mjs`, 32
+pruebas). La pantalla es el planificador de siempre; lo que cambia es lo que sabe.
+
+**El tope de duración deja de ser un aviso.** Antes la suma podía pasarse de la hora de
+pista y solo salía un rótulo en ámbar. Un plan de 110 minutos para 90 de pista no es un
+plan: es una lista de la que alguien va a tener que tachar algo con los críos ya
+cambiados. Ahora manda el hueco: **lo que no cabe no entra**, y lo que cabe a medias
+entra recortado diciéndolo («*Entra con 7 min: es lo que quedaba de los 90*»). Vale para
+añadir, para duplicar y para subir la duración de un bloque —y ahí el bloque no cuenta
+contra sí mismo—. Una sesión sin horario no tiene tope, y ahí no se inventa ninguno.
+
+**Cuántos vienen hoy.** Un campo arriba del panel, que arranca de la plantilla del equipo
+y se puede cambiar para ese día. Cambia tres cosas a la vez: los minutos activos (3.1),
+las cantidades del material y el filtro del picker. Se recuerda **en el navegador y no en
+la base de datos**: es una estimación para planificar, y el número de verdad sale de
+pasar lista.
+
+**El agua es un bloque libre que se llama «Agua».** No hace falta columna nueva ni
+migración: el marcador es la palabra que el entrenador lee. Tres minutos ajustables, y
+**cero minutos activos** — ocupa pista y no entrena a nadie, así que meterla baja el
+porcentaje, que es exactamente la verdad. Se reconoce también en los bloques de agua que
+ya existieran escritos a mano. Nace con intensidad 1 y no 0 porque la columna la exige
+entre 1 y 5 (migración 013); la «carga 0» se cumple donde importa.
+
+**El cuadro de material** al pie del plan, calculado de lo que declara cada ficha. Solo
+se cuentan **balones y pelotas de tenis**, que son lo que se usa uno por crío: uno por
+jugador si el ejercicio es simultáneo, uno por estación si va por turnos, y manda el que
+más necesite. Del resto —conos, petos, aros— la ficha no dice cuántos, así que se listan
+sin número: ponerlo a ojo sería peor. Cada cosa dice de qué bloque viene.
+
+**Los dos avisos de repetición**, ninguno de los cuales bloquea:
+
+| | |
+|---|---|
+| En la misma sesión | «Está 2 veces en esta sesión» |
+| En las dos semanas anteriores | «Ya lo hiciste hace 5 días (2026-08-17)» |
+
+Solo del mismo equipo, y mirando **hacia atrás**: lo que está planificado para el viernes
+no es «ya lo hiciste», es otro plan que todavía se puede cambiar. Una sesión cancelada no
+ocurrió. Si la consulta falla, el plan se escribe igual y simplemente no hay aviso.
+
+**El picker filtra por la gente que hay**, y se puede apagar (§6). Esconde solo lo que no
+se puede montar —no llegar al mínimo: un 5c5 con seis no es un 5c5—. Pasarse del máximo
+**no** esconde nada: se hace cola, y los minutos activos ya lo penalizan; esconderlo
+taparía media biblioteca con catorce críos. Y se dice cuántos esconde, que es la
+diferencia entre un filtro y una desaparición.
+
+#### Un cuelgue que estaba esperando
+
+Al leer los bloques de varias sesiones de una tacada salió que el arnés
+`/dev/planner.html` **colgaba la pestaña**: `leerTodo` pide páginas con `offset`/`limit`
+hasta que una viene vacía, y el arnés los ignoraba, así que devolvía siempre las mismas
+ocho filas y el bucle no terminaba nunca — sin error, sin mensaje, solo la pantalla
+quieta. No afecta a la app (Supabase sí pagina), pero dejaba el arnés inservible para
+todo lo que venga. Ahora entiende `offset`, `limit`, `in.`, `gte.`, `lte.` y `neq.`.
+
+**Comprobado** en el arnés: el plan de cinco bloques dice «*Quedan 30 min de los 90*»;
+meter agua baja del 78 % al 74 % sin tocar los minutos activos; cuatro clics en «bloque
+libre» meten 10, 10 y 7 minutos y el cuarto se rechaza, sumando **exactamente 90**;
+duplicar un ejercicio saca «*Está 2 veces*»; el material sale «2 balones · conos · 14
+pelotas de tenis · petos»; bajar de 14 a 4 jugadores sube el aprovechamiento al 87 % y el
+picker esconde 2 de 7, con la casilla para verlos.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

@@ -92,20 +92,20 @@
        abajo, los dos se pueden comparar en pantalla. */
     const BIBLIO = [
       { id: 'e1', name: 'Flecha de tiro', type: 'Tiro', category: 'ataque', difficulty: 3, duration_min: 8, intensidad: 3, tags: ['tiro', 'entrada'], description: 'Serie de tiro tras bote.',
-        requisitos: { densidad: 'media', jugadores_min: 3, jugadores_max: 12, estaciones: 2, canastas: 2 } },
+        requisitos: { densidad: 'media', jugadores_min: 3, jugadores_max: 12, estaciones: 2, canastas: 2, material: ['balones', 'conos'] } },
       { id: 'e2', name: 'Rueda de entradas', type: 'Tiro', category: 'ataque', difficulty: 2, duration_min: 10, intensidad: 4, tags: ['entrada'], description: 'Dos filas, entrada y rebote.',
-        requisitos: { densidad: 'media', jugadores_min: 4, jugadores_max: 12, estaciones: 2, canastas: 1 } },
+        requisitos: { densidad: 'media', jugadores_min: 4, jugadores_max: 12, estaciones: 2, canastas: 1, material: ['balones'] } },
       { id: 'e3', name: 'Defensa del bloqueo directo', type: 'Defensa', category: 'defensa', difficulty: 5, duration_min: 15, intensidad: 4, tags: ['bloqueo directo'], description: 'Pasar por debajo y recuperar.',
-        requisitos: { densidad: 'alta', jugadores_min: 4, jugadores_max: 16, estaciones: 2, canastas: 2 } },
+        requisitos: { densidad: 'alta', jugadores_min: 4, jugadores_max: 16, estaciones: 2, canastas: 2, material: ['balones', 'petos'] } },
       { id: 'e4', name: '3vs3 con ventaja', type: '3vs3', category: 'ataque', difficulty: 4, duration_min: 12, intensidad: 5, tags: ['ventaja'], description: null,
-        requisitos: { densidad: 'alta', jugadores_min: 6, jugadores_max: 12, estaciones: 2, canastas: 2 } },
+        requisitos: { densidad: 'alta', jugadores_min: 6, jugadores_max: 12, estaciones: 2, canastas: 2, material: ['balones', 'petos'] } },
       { id: 'e5', name: 'Calentamiento articular', type: 'Calentamiento', category: null, difficulty: 1, duration_min: 6, intensidad: 1, tags: [], description: null,
-        requisitos: { densidad: 'alta', jugadores_min: 1, jugadores_max: 20, estaciones: 1, canastas: 0, simultaneo: true } },
+        requisitos: { densidad: 'alta', jugadores_min: 1, jugadores_max: 20, estaciones: 1, canastas: 0, simultaneo: true, material: ['pelotas de tenis'] } },
       // a medio rellenar a propósito: es lo que enseña la nota al pie
       { id: 'e6', name: 'Bote con dos balones', type: 'Bote', category: null, difficulty: 3, duration_min: 7, intensidad: 2, tags: ['bote'], description: null,
         requisitos: { densidad: null, jugadores_min: null, jugadores_max: null } },
       { id: 'e7', name: 'Contraataque 3x2', type: 'Contraataque', category: 'transición', difficulty: 4, duration_min: 14, intensidad: 5, tags: ['contraataque'], description: null,
-        requisitos: { densidad: 'media', jugadores_min: 5, jugadores_max: 10, estaciones: 1, canastas: 2 } },
+        requisitos: { densidad: 'media', jugadores_min: 5, jugadores_max: 10, estaciones: 1, canastas: 2, material: ['balones', 'petos'] } },
     ];
 
     const FICHA = {
@@ -170,8 +170,17 @@
       evaluada_at: null, motivo_cancelacion: null,
     };
 
+    /* Dos entrenamientos anteriores del mismo equipo, para el aviso
+       «esto ya lo hiciste el martes» (Tramo 3.2). El del día 17 repite
+       la flecha de tiro; el del 10 queda dentro de la ventana pero más
+       lejos, y manda el más reciente. */
+    const PREVIAS = [
+      { ...SESION, id: 'prev1', fecha: '2026-08-17', estado: 'realizada' },
+      { ...SESION, id: 'prev2', fecha: '2026-08-11', estado: 'realizada' },
+    ];
+
     const TABLAS = {
-      sessions: [SESION],
+      sessions: [SESION, ...PREVIAS],
       teams: [{ id: 't1', name: 'Cadete A', category: 'cadete',
                 team_coaches: [{ coach_id: 'u1', rol: 'principal', profiles: { full_name: 'Beltrán' } }],
                 team_settings: { color: '#1F6FEB', dia_convocatoria: 5 } }],
@@ -181,6 +190,9 @@
         { id: 'sb3', session_id: 'demo', exercise_id: null, orden: 2, titulo: 'Charla táctica', duracion_min: 5, intensidad: 1, notas: null },
         { id: 'sb4', session_id: 'demo', exercise_id: 'e7', orden: 3, titulo: 'Contraataque 3x2', duracion_min: 18, intensidad: 5, notas: null },
         { id: 'sb5', session_id: 'demo', exercise_id: 'e3', orden: 4, titulo: 'Defensa del bloqueo directo', duracion_min: 15, intensidad: 4, notas: null },
+        { id: 'pb1', session_id: 'prev1', exercise_id: 'e1', orden: 0, titulo: 'Flecha de tiro', duracion_min: 12, intensidad: 3, notas: null },
+        { id: 'pb2', session_id: 'prev2', exercise_id: 'e1', orden: 0, titulo: 'Flecha de tiro', duracion_min: 12, intensidad: 3, notas: null },
+        { id: 'pb3', session_id: 'prev2', exercise_id: 'e5', orden: 1, titulo: 'Calentamiento articular', duracion_min: 8, intensidad: 1, notas: null },
       ],
       session_objectives: [{ session_id: 'demo', objective_id: 'o1' }],
       objectives: [
@@ -220,14 +232,38 @@
           filas = BIBLIO.slice();
         }
       } else {
-        // filtros eq. sencillos, suficientes para el arnés
+        // filtros sencillos, suficientes para el arnés
         for (const [clave, valor] of u.searchParams) {
-          if (clave === 'select' || clave === 'order' || clave === 'limit') continue;
-          if (!String(valor).startsWith('eq.')) continue;
-          const v = String(valor).slice(3);
-          filas = filas.filter((r) => String(r[clave]) === v);
+          if (clave === 'select' || clave === 'order' || clave === 'limit' || clave === 'offset') continue;
+          const v = String(valor);
+          if (v.startsWith('eq.')) {
+            filas = filas.filter((r) => String(r[clave]) === v.slice(3));
+          } else if (v.startsWith('in.')) {
+            // in.(a,b,c) — lo usa getBloquesSesiones para leer de varias
+            const dentro = new Set(v.slice(3).replace(/^\(|\)$/g, '').split(',').map((x) => x.replace(/^"|"$/g, '')));
+            filas = filas.filter((r) => dentro.has(String(r[clave])));
+          } else if (v.startsWith('gte.')) {
+            filas = filas.filter((r) => String(r[clave]) >= v.slice(4));
+          } else if (v.startsWith('lte.')) {
+            filas = filas.filter((r) => String(r[clave]) <= v.slice(4));
+          } else if (v.startsWith('neq.')) {
+            filas = filas.filter((r) => String(r[clave]) !== v.slice(4));
+          }
         }
       }
+
+      /* PAGINACIÓN. `leerTodo` (data/_client.js) pide páginas con
+         `offset`/`limit` hasta que una viene VACÍA. Un arnés que los
+         ignore devuelve siempre las mismas filas y el bucle no termina
+         nunca: la pestaña se cuelga sin decir por qué, y el aviso que
+         se estaba probando simplemente no aparece.
+
+         Salió al añadir el aviso de «esto ya lo hiciste» (Tramo 3.2),
+         que lee los bloques de varias sesiones de una tacada. */
+      const desplazamiento = Number(u.searchParams.get('offset')) || 0;
+      const tope = Number(u.searchParams.get('limit'));
+      if (desplazamiento) filas = filas.slice(desplazamiento);
+      if (Number.isFinite(tope) && tope > 0) filas = filas.slice(0, tope);
 
       console.log('[arnés]', tabla, u.search, '→', filas.length, 'filas');
       const objeto = (cab.get('Accept') || '').includes('pgrst.object');

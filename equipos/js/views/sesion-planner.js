@@ -32,6 +32,13 @@ import {
   curvaCarga, avisoDuracion, INTENSIDAD_MAX, INTENSIDAD_LABEL,
 } from '../data/carga.js';
 import { minutosDeSesion, avisoAforo } from '../data/minutos.js';
+import {
+  bloqueAgua, esAgua, huecoDisponible, ajustarADisponible,
+  materialDeSesion, textoMaterial, repetidosEnSesion, repetidosRecientes,
+  textoHace, cabeEnGrupo,
+} from '../data/plan.js';
+import { getSesionesRango } from '../data/sessions.js';
+import { getBloquesSesiones } from '../data/blocks.js';
 import { getJugadores } from '../data/players.js';
 import { ESTADOS_SESION, WEEKDAYS } from '../config.js';
 import { router } from '../main.js';
@@ -101,6 +108,13 @@ export function render(root, params) {
      de dieciocho. Si no se puede saber, los minutos se calculan solo
      con la densidad y se dice en pantalla. */
   let jugadoresEquipo = null;
+  /* El número que el entrenador AJUSTA para este día: «hoy vienen 10».
+     No se guarda en la base de datos porque es una estimación, no un
+     registro —el número de verdad sale de pasar lista—, pero sí en el
+     navegador, para que no haya que volver a ponerlo al recargar. */
+  let jugadoresSesion = null;
+  let filtrarPorGrupo = true;
+  let historial = { sesiones: [], bloquesPorSesion: {} };
   let titulo = '';
   let soloLectura = false;
   let sucio = false;
@@ -110,10 +124,37 @@ export function render(root, params) {
   let ordenAntesDeArrastrar = null;
 
   const marcaSucio = () => { sucio = true; pintaEstadoGuardado(); };
+
+  /* ---- cuánta gente va a haber (Tramo 3.2) ------------------------
+     Manda lo que el entrenador ponga para ESTE día; si no ha puesto
+     nada, la plantilla del equipo. Se recuerda en el navegador y no en
+     la base de datos: es una estimación para planificar, y el dato de
+     verdad lo da la asistencia. */
+  const CLAVE_JUGADORES = `cbp-jugadores-${sessionId}`;
+  const jugadores = () => jugadoresSesion ?? jugadoresEquipo;
+  function ponJugadores(n) {
+    const v = Number(n);
+    jugadoresSesion = Number.isFinite(v) && v > 0 ? Math.min(60, Math.round(v)) : null;
+    try {
+      if (jugadoresSesion) localStorage.setItem(CLAVE_JUGADORES, String(jugadoresSesion));
+      else localStorage.removeItem(CLAVE_JUGADORES);
+    } catch { /* modo privado: se pierde al recargar y no pasa nada */ }
+    dibujaCurva();
+    pintaBloques();
+  }
+  try {
+    const g = Number(localStorage.getItem(CLAVE_JUGADORES));
+    if (Number.isFinite(g) && g > 0) jugadoresSesion = g;
+  } catch { /* sin localStorage se usa la plantilla */ }
+
+  /** El tope de pista, o null si esta sesión no tiene horario. */
+  const tope = () => Number(sesion?.slot_duracion_min) || null;
   const nodoCurva = h('div', { class: 'eq-curva-wrap' });
   const nodoBloques = h('div', { class: 'eq-bloques' });
   const nodoTotales = h('div', { class: 'eq-carga-totales' });
   const nodoNotaMinutos = h('p', { class: 'eq-minutos-nota' });
+  const nodoJugadores = h('div', { class: 'eq-plan-gente' });
+  const nodoMaterial = h('div', { class: 'eq-material' });
   const nodoEstado = h('span', { class: 'eq-guardado' });
   const anfitrionVisor = h('div', { class: 'eq-planner-visor' });
 
@@ -206,23 +247,32 @@ export function render(root, params) {
        carga de siempre —intensidad × minutos— se queda detrás: no
        distingue doce niños trabajando de doce haciendo cola, pero es
        con la que se han leído las sesiones hasta hoy. */
-    const m = minutosDeSesion(bloques, { jugadores: jugadoresEquipo, requisitosDe });
+    const m = minutosDeSesion(bloques, { jugadores: jugadores(), requisitosDe });
 
     // Totales. Ojo: replaceChildren NO filtra null (lo pintaría como el
     // texto "null"), a diferencia de h(); por eso el .filter(Boolean).
     nodoTotales.replaceChildren(...[
-      dato(String(Math.round(m.minutos)), 'min activos por jugador', tituloMinutos(m)),
+      dato(String(Math.round(m.minutos)), 'min activos por jugador', tituloMinutos()),
       dato(m.duracion ? `${Math.round(m.aprovechamiento * 100)} %` : '0 %', 'del entreno'),
       dato(String(c.duracion), 'min totales'),
       dato(c.cargaMedia ? c.cargaMedia.toFixed(1) : '0', 'intensidad media'),
       dato(String(bloques.length), bloques.length === 1 ? 'bloque' : 'bloques'),
-      aviso ? h('span', { class: `eq-carga-aviso is-${aviso.tipo}` },
-        aviso.tipo === 'excede'
-          ? `${aviso.diff} min de más para un entreno de ${slot}′`
-          : `${aviso.diff} min de menos para un entreno de ${slot}′`) : null,
+      // Pasarse ya no es posible al añadir (Tramo 3.2), pero un plan
+      // escrito antes de esta regla puede llegar pasado: se sigue
+      // diciendo en vez de disimularlo.
+      aviso && aviso.tipo === 'excede'
+        ? h('span', { class: 'eq-carga-aviso is-excede' }, `${aviso.diff} min de más para un entreno de ${slot}′`)
+        : null,
+      slot && !(aviso && aviso.tipo === 'excede')
+        ? h('span', { class: 'eq-carga-aviso is-corto' }, huecoDisponible(bloques, slot)
+          ? `Quedan ${huecoDisponible(bloques, slot)} min de los ${slot} de pista`
+          : `Los ${slot} min de pista, completos`)
+        : null,
     ].filter(Boolean));
 
     nodoNotaMinutos.replaceChildren(...notaMinutos(m).filter(Boolean));
+    pintaJugadores();
+    pintaMaterial();
 
     nodoCurva.replaceChildren(c.segmentos.length
       ? svgCurva(c, slot)
@@ -233,6 +283,62 @@ export function render(root, params) {
     h('span', { class: 'eq-carga-num' }, num),
     h('span', { class: 'eq-carga-lbl' }, lbl));
 
+  /* ---- cuánta gente y qué material (Tramo 3.2) --------------------
+     Los dos van juntos porque el segundo depende del primero: cuántos
+     balones hay que sacar del almacén sale de cuántos críos vienen. */
+  function pintaJugadores() {
+    if (soloLectura) { nodoJugadores.replaceChildren(); return; }
+    const campo = h('input', {
+      class: 'field-input eq-plan-gente-n', type: 'number', min: 1, max: 60,
+      value: jugadores() ?? '', placeholder: String(jugadoresEquipo ?? ''),
+      'aria-label': 'Cuántos jugadores vienen a esta sesión',
+      onChange: (e) => ponJugadores(e.target.value),
+    });
+    // replaceChildren NO filtra null (lo pintaría como el texto "null"),
+    // a diferencia de h(): de ahí el .filter(Boolean).
+    nodoJugadores.replaceChildren(...[
+      h('label', { class: 'eq-plan-gente-lbl' }, 'Hoy vienen', campo, 'jugadores'),
+      jugadoresSesion && jugadoresEquipo && jugadoresSesion !== jugadoresEquipo
+        ? h('button', {
+            class: 'btn btn-secondary eq-btn-mini', type: 'button',
+            onClick: () => ponJugadores(null),
+          }, `Volver a la plantilla (${jugadoresEquipo})`)
+        : null,
+      h('span', { class: 'eq-ayuda' }, 'Es una estimación para planificar; el número de verdad sale de pasar lista.'),
+    ].filter(Boolean));
+  }
+
+  function pintaMaterial() {
+    const filas = materialDeSesion(bloques, { jugadores: jugadores(), requisitosDe });
+    if (!filas.length) {
+      nodoMaterial.replaceChildren(bloques.length
+        ? h('p', { class: 'eq-ayuda' }, 'Ninguna ficha del plan declara material.')
+        : h('p', { class: 'eq-ayuda' }, 'Añade bloques y aquí saldrá lo que hay que sacar del almacén.'));
+      return;
+    }
+    nodoMaterial.replaceChildren(
+      h('div', { class: 'eq-material-fila' }, ...filas.map((f) => h('span', { class: 'eq-material-item', title: `De: ${f.deQuien.join(' · ')}` },
+        f.cantidad ? h('strong', null, String(f.cantidad)) : null,
+        f.cantidad ? ' ' : null,
+        f.nombre,
+      ))),
+      h('p', { class: 'eq-ayuda' }, 'Sale de lo que declara cada ficha. Solo se cuentan balones y pelotas de tenis, que son lo que se usa uno por crío; del resto, la ficha no dice cuántos.'),
+    );
+  }
+
+  /* ---- lo repetido (Tramo 3.2) ------------------------------------
+     Ninguno de los dos avisos bloquea: repetir un ejercicio a los tres
+     días puede ser exactamente lo que se quiere. Lo que no puede pasar
+     es enterarse en la pista. */
+  function avisoRepeticion(b) {
+    if (!b?.exercise_id) return null;
+    const dosVeces = repetidosEnSesion(bloques).find((r) => r.exercise_id === b.exercise_id);
+    if (dosVeces) return `Está ${dosVeces.veces} veces en esta sesión`;
+    const reciente = repetidosRecientes([b], { ...historial, fecha: sesion?.fecha }).at(0);
+    if (reciente) return `Ya lo hiciste ${textoHace(reciente.dias)} (${reciente.fecha})`;
+    return null;
+  }
+
   /* ---- minutos activos (Tramo 3.1) --------------------------------
      Los requisitos salen de la lista LIGERA de la biblioteca, que ya
      está cargada: no hay ninguna consulta más por mover un bloque. Un
@@ -240,8 +346,8 @@ export function render(root, params) {
      cuenta entero, porque nadie está esperando turno para beber. */
   const requisitosDe = (b) => (b?.exercise_id ? (porId.get(b.exercise_id)?.requisitos || null) : null);
 
-  const tituloMinutos = (m) => (jugadoresEquipo
-    ? `Con ${jugadoresEquipo} jugadores en la pista. Cuenta la densidad de cada ejercicio y a cuántos admite su montaje.`
+  const tituloMinutos = () => (jugadores()
+    ? `Con ${jugadores()} jugadores en la pista. Cuenta la densidad de cada ejercicio y a cuántos admite su montaje.`
     : 'Sin plantilla cargada: solo cuenta la densidad de cada ejercicio.');
 
   /*
@@ -254,7 +360,7 @@ export function render(root, params) {
     const partes = [];
     if (!m.duracion) return partes;
 
-    if (!jugadoresEquipo) {
+    if (!jugadores()) {
       partes.push(h('span', { class: 'eq-minutos-supuesto' },
         'Sin plantilla: no se puede saber quién hace cola, así que solo cuenta la densidad.'));
     }
@@ -274,10 +380,10 @@ export function render(root, params) {
 
     // qué ejercicio concreto no cabe, y qué haría falta para que quepa
     for (const b of bloques) {
-      const av = avisoAforo(requisitosDe(b), jugadoresEquipo);
+      const av = avisoAforo(requisitosDe(b), jugadores());
       if (!av) continue;
       partes.push(h('span', { class: 'eq-minutos-aforo' },
-        `«${b.titulo || 'Bloque'}» se queda corto para ${jugadoresEquipo}: sobran ${av.sobran}. `
+        `«${b.titulo || 'Bloque'}» se queda corto para ${jugadores()}: sobran ${av.sobran}. `
         + `Harían falta ${av.estacionesNecesarias} estaciones`
         + (av.canastasNecesarias ? ` y ${av.canastasNecesarias} canastas.` : '.')));
     }
@@ -396,6 +502,7 @@ export function render(root, params) {
         tieneNotas(b) ? h('span', { class: 'eq-bloque-marca', title: 'Tiene notas para esta sesión' }, '✎') : null,
       ),
       meta ? h('p', { class: 'eq-bloque-meta' + (meta === 'Ya no está en la biblioteca' ? ' is-roto' : '') }, meta) : null,
+      (() => { const r = avisoRepeticion(b); return r ? h('p', { class: 'eq-bloque-repe' }, r) : null; })(),
       soloLectura
         ? h('div', { class: 'eq-bloque-ctrls eq-bloque-ctrls-ro' },
             h('span', { class: 'eq-bloque-ro-dato' }, `${b.duracion_min} min`),
@@ -406,8 +513,13 @@ export function render(root, params) {
                 class: 'field-input', type: 'number', min: 1, max: 240, value: b.duracion_min,
                 'aria-label': `Duración en minutos de ${b.titulo || 'el bloque'}`,
                 onChange: (e) => {
-                  b.duracion_min = Math.max(1, Math.min(240, Number(e.target.value) || 1));
+                  const pedida = Math.max(1, Math.min(240, Number(e.target.value) || 1));
+                  // el propio bloque no cuenta contra sí mismo: subirlo
+                  // puede llegar hasta lo que dejen LOS DEMÁS
+                  const { duracion, recortado } = ajustarADisponible(bloques, tope(), pedida, { excepto: b.uid });
+                  b.duracion_min = Math.max(1, duracion);
                   e.target.value = b.duracion_min;
+                  if (recortado) toast(`Hasta ${b.duracion_min} min: es lo que queda de los ${tope()} de pista.`);
                   marcaSucio(); dibujaCurva(); visor.refrescarCabecera();
                 },
               }),
@@ -552,17 +664,47 @@ export function render(root, params) {
   function duplicaBloque(i) {
     // sin id: es un bloque NUEVO, no el mismo dos veces (guardarBloques
     // hace UPDATE por id y el original se perdería).
-    const copia = { ...bloques[i], id: undefined, uid: nuevoUid() };
+    const { duracion, recortado } = ajustarADisponible(bloques, tope(), bloques[i].duracion_min);
+    if (duracion <= 0) { toast(`No cabe: la sesión ya suma los ${tope()} min de pista.`, 'error'); return; }
+    const copia = { ...bloques[i], id: undefined, duracion_min: duracion, uid: nuevoUid() };
     bloques.splice(i + 1, 0, copia);
+    if (recortado) toast(`La copia entra con ${duracion} min: es lo que quedaba.`);
     marcaSucio(); pintaBloques(); selecciona(copia, { abrirEnMovil: false });
   }
 
+  /**
+   * Añade un bloque SIN pasarse de la hora de pista (Tramo 3.2).
+   *
+   * Lo que no cabe entero entra recortado y se dice; lo que no cabe
+   * nada, no entra. Un plan de 110 minutos para 90 de pista no es un
+   * plan: es una lista de la que alguien va a tener que tachar algo
+   * con los críos ya cambiados.
+   */
   function añadeBloque(b, { seleccionar = true } = {}) {
-    const nuevo = { ...b, uid: nuevoUid() };
+    const { duracion, recortado } = ajustarADisponible(bloques, tope(), b.duracion_min);
+    if (duracion <= 0) {
+      toast(`No cabe: la sesión ya suma los ${tope()} min de pista.`, 'error');
+      return null;
+    }
+    const nuevo = { ...b, duracion_min: duracion, uid: nuevoUid() };
     bloques.push(nuevo);
+    if (recortado) toast(`Entra con ${duracion} min: es lo que quedaba de los ${tope()}.`);
     marcaSucio(); pintaBloques();
     if (seleccionar) selecciona(nuevo, { abrirEnMovil: false });
     return nuevo;
+  }
+
+  /** Sesiones del equipo de las dos semanas anteriores, con sus bloques. */
+  async function cargarHistorial() {
+    if (!sesion?.fecha) return;
+    const hasta = sesion.fecha;
+    const desde = new Date(Date.parse(`${hasta}T00:00:00Z`) - 14 * 86400000).toISOString().slice(0, 10);
+    const sesiones = (await getSesionesRango({ desde, hasta, teamId: sesion.team_id }))
+      .filter((x) => x.id !== sessionId);
+    if (!sesiones.length) return;
+    const bloquesPorSesion = await getBloquesSesiones(sesiones.map((x) => x.id));
+    historial = { sesiones, bloquesPorSesion };
+    pintaBloques();
   }
 
   // ── picker de ejercicios ───────────────────────────────────
@@ -583,8 +725,19 @@ export function render(root, params) {
      * ranking solo decide el ORDEN: nada se esconde, y la frontera entre
      * "esto va con tus objetivos" y "esto es lo demás" se ve.
      */
+    /* El filtro por grupo esconde SOLO lo que no se puede montar con
+       los que vienen: no llegar al mínimo (un 5c5 con seis no es un
+       5c5). Pasarse del máximo no esconde nada —se hace cola, y los
+       minutos activos ya lo penalizan—. Y se puede apagar (§6). */
+    const conGrupo = (l) => (filtrarPorGrupo && jugadores()
+      ? l.filter((e) => cabeEnGrupo(e.requisitos, jugadores()))
+      : l);
+    const escondidos = () => (filtrarPorGrupo && jugadores()
+      ? biblioteca.length - conGrupo(biblioteca).length
+      : 0);
+
     const filtra = () => {
-      const porTipo = (l) => (tipo ? l.filter((e) => e.type === tipo) : l);
+      const porTipo = (l) => conGrupo(tipo ? l.filter((e) => e.type === tipo) : l);
       const term = normaliza(q);
       if (term) {
         return {
@@ -700,12 +853,33 @@ export function render(root, params) {
 
     contadorEl = h('span', { class: 'eq-picker-contador' });
 
+    /* Desactivable a propósito: el entrenador puede estar montando el
+       plan de un día en el que todavía no sabe cuántos vienen, o
+       queriendo ver la biblioteca entera. Y se dice CUÁNTOS esconde,
+       que es la diferencia entre un filtro y una desaparición. */
+    const filtroGrupo = jugadores() ? h('label', { class: 'eq-picker-grupo' },
+      h('input', {
+        type: 'checkbox', checked: filtrarPorGrupo,
+        onChange: (ev) => { filtrarPorGrupo = ev.target.checked; pintaLista(); pintaEscondidos(); },
+      }),
+      h('span', null, `Solo lo que se puede montar con ${jugadores()}`),
+      h('span', { class: 'eq-picker-escondidos' }),
+    ) : null;
+    const pintaEscondidos = () => {
+      if (!filtroGrupo) return;
+      const n = escondidos();
+      filtroGrupo.querySelector('.eq-picker-escondidos').textContent = n
+        ? `— ${n} ${n === 1 ? 'escondido' : 'escondidos'}`
+        : '';
+    };
+
     const md = modalPicker = abrirModal({
       titulo: 'Añadir ejercicios',
       clase: 'modal-picker',
       cuerpo: h('div', { class: 'eq-picker' },
         h('div', { class: 'eq-picker-col' },
           buscador,
+          filtroGrupo,
           tipos.length ? chipsTipo : null,
           listaEl = h('div', { class: 'eq-picker-lista' }),
           contadorEl,
@@ -725,6 +899,7 @@ export function render(root, params) {
       alCerrar: () => { modalPicker = null; previo.destroy(); },
     });
     pintaLista();
+    pintaEscondidos();
     buscador.focus();
   }
 
@@ -803,6 +978,14 @@ export function render(root, params) {
                   class: 'btn btn-secondary btn-sm', type: 'button',
                   onClick: () => añadeBloque({ exercise_id: null, titulo: '', duracion_min: 10, intensidad: 3, notas: null }),
                 }, '+ Bloque libre'),
+                // El agua ocupa pista y no entrena a nadie. Tenerla como
+                // botón la mete en el plan en vez de dejarla de propina
+                // sobre los 90 minutos (§6).
+                h('button', {
+                  class: 'btn btn-secondary btn-sm', type: 'button',
+                  title: 'Tres minutos de agua. Cuentan de pista y no cuentan como minutos activos.',
+                  onClick: () => añadeBloque(bloqueAgua(), { seleccionar: false }),
+                }, '+ Agua'),
                 h('button', { class: 'btn btn-primary btn-sm', type: 'button', onClick: abrePicker }, '+ Ejercicios'),
               ),
             ),
@@ -810,10 +993,16 @@ export function render(root, params) {
           ),
 
           h('section', { class: 'eq-planner-seccion' },
-            h('h2', { class: 'eq-zona-titulo' }, 'Curva de carga'),
+            h('h2', { class: 'eq-zona-titulo' }, 'Cuánto entrena cada uno'),
+            nodoJugadores,
             nodoTotales,
             nodoNotaMinutos,
             nodoCurva,
+          ),
+
+          h('section', { class: 'eq-planner-seccion' },
+            h('h2', { class: 'eq-zona-titulo' }, 'Material'),
+            nodoMaterial,
           ),
 
           barraAcciones(),
@@ -922,6 +1111,12 @@ export function render(root, params) {
         getJugadores(sesion.team_id).catch(() => []),
       ]);
       jugadoresEquipo = plantilla.length || null;
+
+      /* Lo que este equipo ha entrenado en las dos semanas anteriores,
+         para el aviso «esto ya lo hiciste el martes» (Tramo 3.2). Va
+         suelto y sin bloquear el pintado: si falla, el plan se escribe
+         igual y simplemente no hay aviso. */
+      cargarHistorial().catch(() => {});
       porId = new Map(biblioteca.map((e) => [e.id, e]));
 
       // pre-marca los objetivos que cubren la fecha SOLO si la sesión nunca se
