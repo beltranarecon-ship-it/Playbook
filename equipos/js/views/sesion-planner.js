@@ -33,11 +33,14 @@ import {
 } from '../data/carga.js';
 import { minutosDeSesion, avisoAforo } from '../data/minutos.js';
 import {
-  bloqueAgua, esAgua, huecoDisponible, ajustarADisponible,
+  bloqueAgua, esAgua, esVideo, bloqueDeVideo, huecoDisponible, ajustarADisponible,
   materialDeSesion, textoMaterial, repetidosEnSesion, repetidosRecientes,
   textoHace, cabeEnGrupo,
 } from '../data/plan.js';
 import { getSesionesRango } from '../data/sessions.js';
+import { getVideosGuardados, guardarVideoBloque, borrarVideoBloque } from '../data/videos.js';
+import { leerVideo, textoTramo } from '../../../taller/js/ia/video.js';
+import { abrirVideo } from '../../../taller/js/ui/video.js';
 import { getBloquesSesiones } from '../data/blocks.js';
 import { getJugadores } from '../data/players.js';
 import { ESTADOS_SESION, WEEKDAYS } from '../config.js';
@@ -503,6 +506,10 @@ export function render(root, params) {
       ),
       meta ? h('p', { class: 'eq-bloque-meta' + (meta === 'Ya no está en la biblioteca' ? ' is-roto' : '') }, meta) : null,
       (() => { const r = avisoRepeticion(b); return r ? h('p', { class: 'eq-bloque-repe' }, r) : null; })(),
+      esVideo(b) ? h('p', { class: 'eq-bloque-video' },
+        '▶ Vídeo · ',
+        [b.video.tipo === 'tiktok' ? 'TikTok' : 'YouTube', textoTramo(b.video)].filter(Boolean).join(' · '),
+      ) : null,
       soloLectura
         ? h('div', { class: 'eq-bloque-ctrls eq-bloque-ctrls-ro' },
             h('span', { class: 'eq-bloque-ro-dato' }, `${b.duracion_min} min`),
@@ -705,6 +712,115 @@ export function render(root, params) {
     const bloquesPorSesion = await getBloquesSesiones(sesiones.map((x) => x.id));
     historial = { sesiones, bloquesPorSesion };
     pintaBloques();
+  }
+
+  /* ---- vídeos como bloque del plan (Tramo 3.3) --------------------
+     Dos caminos en el mismo cuadro: elegir uno de los que ya ha
+     guardado el club, o pegar un enlace nuevo. El primero es el que da
+     sentido al segundo — un vídeo que hay que volver a buscar cada
+     martes es lo que ya se hacía por WhatsApp. */
+  function abreVideos() {
+    let guardados = [];
+    const lista = h('div', { class: 'eq-videos-lista' },
+      h('p', { class: 'eq-ayuda' }, 'Cargando los vídeos guardados…'));
+
+    const enlace = h('input', {
+      class: 'field-input', type: 'url', placeholder: 'Pega un enlace de YouTube o de TikTok',
+      'aria-label': 'Enlace del vídeo',
+    });
+    const nombre = h('input', {
+      class: 'field-input', type: 'text', placeholder: 'Cómo se llama (p. ej. «La jugada del sábado»)',
+      'aria-label': 'Nombre del bloque',
+    });
+    const minutos = h('input', {
+      class: 'field-input eq-videos-min', type: 'number', min: 1, max: 60, value: 5,
+      'aria-label': 'Minutos',
+    });
+    const guardarTambien = h('input', { type: 'checkbox', checked: true });
+    const aviso = h('p', { class: 'eq-videos-aviso' });
+
+    async function pintaLista() {
+      guardados = await getVideosGuardados();
+      if (!guardados.length) {
+        lista.replaceChildren(h('p', { class: 'eq-ayuda' },
+          'Todavía no hay vídeos guardados. El primero que guardes aquí lo tendrá todo el club.'));
+        return;
+      }
+      lista.replaceChildren(...guardados.map((g) => h('div', { class: 'eq-videos-item' },
+        h('button', {
+          class: 'eq-videos-elegir', type: 'button',
+          onClick: () => { meter(bloqueDeVideo(g)); },
+        },
+          h('span', { class: 'eq-videos-nombre' }, g.titulo),
+          h('span', { class: 'eq-videos-meta' },
+            [g.video.tipo === 'tiktok' ? 'TikTok' : 'YouTube', textoTramo(g.video), g.duracion_min ? `${g.duracion_min}′` : null]
+              .filter(Boolean).join(' · ')),
+        ),
+        h('button', {
+          class: 'eq-videos-icono', type: 'button', title: 'Verlo', 'aria-label': `Ver ${g.titulo}`,
+          onClick: () => abrirVideo(g.video, { titulo: g.titulo }),
+        }, '▶'),
+        h('button', {
+          class: 'eq-videos-icono eq-videos-x', type: 'button', title: 'Quitar de la lista', 'aria-label': `Quitar ${g.titulo} de la lista`,
+          onClick: async () => {
+            try {
+              const fuera = await borrarVideoBloque(g.id);
+              if (!fuera) { toast('Lo guardó otro entrenador: solo puede quitarlo quien lo guardó, o un administrador.', 'error'); return; }
+              pintaLista();
+            } catch (e) { toast(`No se pudo quitar: ${e.message}`, 'error'); }
+          },
+        }, '×'),
+      )));
+    }
+
+    /** Mete el bloque en el plan y cierra. El tope de 3.2 sigue mandando. */
+    const meter = (b) => { if (añadeBloque(b)) md.cerrar(); };
+
+    async function nuevo() {
+      aviso.textContent = '';
+      const v = leerVideo(enlace.value);
+      if (!v) { aviso.textContent = 'No se reconoce ese enlace. Tiene que ser de YouTube o de TikTok.'; return; }
+      const titulo = nombre.value.trim() || 'Vídeo';
+      const dur = Math.max(1, Math.min(60, Number(minutos.value) || 5));
+
+      if (guardarTambien.checked) {
+        /* Guardar puede fallar —sin migración, sin red— y eso NO debe
+           impedir meter el vídeo en el plan de hoy: son dos cosas
+           distintas y la urgente es la del martes. */
+        try {
+          await guardarVideoBloque({ titulo, video: v, duracion_min: dur });
+        } catch (e) {
+          toast(`El bloque entra, pero no se ha podido guardar para reutilizar: ${e.message}`, 'error');
+        }
+      }
+      meter(bloqueDeVideo({ titulo, video: v, duracion_min: dur }, dur));
+    }
+
+    const md = modalPicker = abrirModal({
+      titulo: 'Vídeo como bloque',
+      clase: 'modal-videos',
+      cuerpo: h('div', { class: 'eq-videos' },
+        h('div', { class: 'eq-videos-col' },
+          h('h4', { class: 'eq-vsec-t' }, 'Guardados del club'),
+          lista,
+        ),
+        h('div', { class: 'eq-videos-col' },
+          h('h4', { class: 'eq-vsec-t' }, 'Uno nuevo'),
+          enlace,
+          nombre,
+          h('div', { class: 'eq-videos-fila' },
+            h('label', { class: 'eq-videos-lbl' }, minutos, 'min'),
+            h('label', { class: 'eq-videos-lbl' }, guardarTambien, 'Guardar para reutilizar'),
+            h('button', { class: 'btn btn-primary', type: 'button', onClick: nuevo }, 'Añadir al plan'),
+          ),
+          h('p', { class: 'eq-ayuda' }, 'De YouTube se puede pegar el enlace de «compartir a partir de aquí» y se queda con el segundo de entrada. Un vídeo ocupa minutos de pista y no cuenta como minutos activos: nadie entrena mirando.'),
+          aviso,
+        ),
+      ),
+      alCerrar: () => { modalPicker = null; },
+    });
+    pintaLista();
+    enlace.focus();
   }
 
   // ── picker de ejercicios ───────────────────────────────────
@@ -986,6 +1102,11 @@ export function render(root, params) {
                   title: 'Tres minutos de agua. Cuentan de pista y no cuentan como minutos activos.',
                   onClick: () => añadeBloque(bloqueAgua(), { seleccionar: false }),
                 }, '+ Agua'),
+                h('button', {
+                  class: 'btn btn-secondary btn-sm', type: 'button',
+                  title: 'Un vídeo de YouTube o TikTok como bloque del plan',
+                  onClick: abreVideos,
+                }, '+ Vídeo'),
                 h('button', { class: 'btn btn-primary btn-sm', type: 'button', onClick: abrePicker }, '+ Ejercicios'),
               ),
             ),

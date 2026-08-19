@@ -47,7 +47,7 @@
    ============================================================ */
 
 import { DENSIDAD_KEYS } from '../../../taller/js/ia/vocabulario.js';
-import { esAgua } from './plan.js';
+import { noEntrena } from './plan.js';
 
 /**
  * Qué fracción del tiempo está haciendo algo un jugador, según la
@@ -102,10 +102,12 @@ export function minutosDeBloque(bloque, { jugadores = null, requisitos = null } 
   const libre = !bloque?.exercise_id;
   const supuestos = [];
 
-  /* El agua no entrena a nadie (Tramo 3.2). Ocupa pista —cuenta en la
-     duración— pero cero minutos activos, y por eso bajar el porcentaje
-     al meterla es correcto: son tres minutos que no son entrenamiento. */
-  if (esAgua(bloque)) {
+  /* El agua (3.2) y un vídeo (3.3) no entrenan a nadie. Ocupan pista
+     —cuentan en la duración— pero cero minutos activos, y por eso bajar
+     el porcentaje al meterlos es correcto: son minutos que no son
+     entrenamiento. Con estos dos no es una suposición: de una charla no
+     se sabe si es charla o juego; de un vídeo, sí. */
+  if (noEntrena(bloque)) {
     return { minutos: 0, duracion, fraccion: 0, compromiso: 0, turno: 0, libre: true, agua: true, supuestos };
   }
 

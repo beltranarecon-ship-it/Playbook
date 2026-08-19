@@ -1113,7 +1113,7 @@ canasta en vez de a 1,10. Está cubierto por una prueba con ese nombre.
 |---|---|---|---|
 | 3.1 ✅ | Motor de minutos activos por jugador | 2.12 | Un ejercicio de fila con 14 críos da menos minutos activos que uno simultáneo |
 | 3.2 ✅ | Pantalla de programar sesión: tope de duración, nº de jugadores, agua, material, avisos de repetición | 3.1 | No se puede pasar de los 90 min; el material sale solo |
-| 3.3 | Bloque libre con vídeo, guardable y reutilizable | 3.2 | Un vídeo guardado se reutiliza en otra sesión |
+| 3.3 ✅ | Bloque libre con vídeo, guardable y reutilizable | 3.2 | Un vídeo guardado se reutiliza en otra sesión |
 | 3.4 | Estado `activa` deducido del reloj + cinco estados en el calendario | — | Los cinco se distinguen a la vista |
 | 3.5 | Pantalla de sesión activa: cronómetro, pasar lista, finalizado/+5, anotación en caliente | 3.4 | Un entrenamiento entero se da sin apuntar nada después |
 | 3.6 | Duración real por bloque → duración estimada del ejercicio | 3.5 | La segunda vez que se usa un ejercicio propone la duración real |
@@ -1242,6 +1242,58 @@ libre» meten 10, 10 y 7 minutos y el cuarto se rechaza, sumando **exactamente 9
 duplicar un ejercicio saca «*Está 2 veces*»; el material sale «2 balones · conos · 14
 pelotas de tenis · petos»; bajar de 14 a 4 jugadores sube el aprovechamiento al 87 % y el
 picker esconde 2 de 7, con la casilla para verlos.
+
+### Estado de 3.3 (hecha)
+
+Un bloque libre es lo que no sale de la biblioteca: una charla, un juego, «ver la jugada
+del sábado». Ese último caso no se podía montar — el vídeo se mandaba por WhatsApp antes
+del entrenamiento y en la pista había que volver a buscarlo.
+
+**Botón «+ Vídeo»** junto a «Bloque libre» y «Agua». Abre un cuadro con dos caminos: los
+**guardados del club** a la izquierda y **uno nuevo** a la derecha. El primero es el que
+da sentido al segundo: un vídeo que hay que volver a buscar cada martes es lo que ya se
+hacía por WhatsApp.
+
+Se pega el enlace (las cinco formas de YouTube y las dos de TikTok, con el segundo de
+entrada del «compartir a partir de aquí»), se le pone nombre y minutos, y **«guardar para
+reutilizar»** viene marcado. Guardar y meterlo en el plan son dos cosas distintas: si lo
+primero falla —sin migración, sin red— el bloque entra igual y se dice, porque la urgente
+es la del martes.
+
+En el visor, el bloque enseña su vídeo: YouTube incrustado con su tramo, TikTok como
+enlace que se abre aparte (§12.36). **Sin autoplay**, al revés que en el proyector: allí
+la animación se ha parado para esto, aquí se salta de un bloque a otro y que cada clic
+arranque un vídeo es insoportable.
+
+**Ver un vídeo no entrena a nadie**, igual que el agua, y por eso cuenta minutos de pista
+y **cero minutos activos**. Con el vídeo la afirmación es más fuerte que con una charla:
+de una charla no se sabe si es charla o juego; de un vídeo, sí. Quince minutos de vídeo
+sobre sesenta de trabajo dejan el aprovechamiento en el 80 %, y eso es exactamente lo que
+hay que ver antes de ponerlos.
+
+**Migración 022**, dos cosas que por separado no sirven: `session_blocks.video` —sin la
+columna no hay dónde ponerlo— y la tabla `videos_bloque` —sin ella no se reutiliza—. No
+se reusa `videos_accion` (021) porque significan cosas distintas: aquel cuelga de una
+ACCIÓN del vocabulario y sale solo en el proyector al llegar esa fase; este es un trozo
+de sesión que alguien decidió poner un martes.
+
+#### La migración que puede no estar aplicada
+
+Pedir una columna que no existe hace fallar **toda** la consulta: un plan entero sin
+abrir por una función que el entrenador ni siquiera está usando. Así que `getBloques`
+pide `video`, y si la base de datos dice que no existe se apunta y sigue sin ella —lo
+mismo al escribir—. Es el criterio del módulo de sesiones desde M5: cada pieza degrada
+sola.
+
+**Comprobado** en el arnés: se pega un TikTok con nombre y 4 minutos, entra en el plan
+como «▶ Vídeo · TikTok», el hueco baja de 30 a 26 y los minutos activos **no se mueven**;
+al reabrir el cuadro está en la lista de guardados junto al de fábrica; se elige de un
+clic y entra con sus 6 minutos y su tramo; y el visor lo incrusta con
+`start=12&end=19&autoplay=0`. 38 pruebas en `eval-plan` (6 nuevas) y 34 en `eval-video`.
+
+**Pendiente del usuario**: aplicar la migración `022`. Sin ella el bloque de vídeo se
+puede montar en la sesión abierta, pero ni se guarda al recargar ni entra en la lista de
+reutilizables; se dice en castellano al intentarlo.
 
 ## Tramo 4 · Partidos, avisos, administración y navegación
 

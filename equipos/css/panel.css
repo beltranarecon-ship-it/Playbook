@@ -828,3 +828,40 @@
 }
 .eq-picker-grupo input { accent-color: var(--papaya); }
 .eq-picker-escondidos { color: var(--papaya-deep); font-weight: 600; }
+
+/* Bloque libre con vídeo (Tramo 3.3) */
+.eq-bloque-video {
+  margin: 0.125rem 0 0;
+  font-size: 0.75rem; font-weight: 600; color: var(--muted);
+}
+
+/* El cuadro de «Vídeo como bloque»: los guardados a la izquierda, uno
+   nuevo a la derecha. El primero es el que da sentido al segundo. */
+.eq-videos { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 720px) { .eq-videos { grid-template-columns: 1fr; } }
+.eq-videos-col { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.eq-videos-lista { display: flex; flex-direction: column; gap: 0.375rem; max-height: 340px; overflow-y: auto; }
+.eq-videos-item {
+  display: flex; align-items: center; gap: 0.25rem;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--white);
+}
+.eq-videos-elegir {
+  flex: 1 1 auto; min-width: 0; text-align: left;
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 0.5rem 0.75rem;
+}
+.eq-videos-elegir:hover { background: var(--bone); }
+.eq-videos-nombre { font-weight: 600; }
+.eq-videos-meta { font-size: 0.75rem; color: var(--muted); }
+.eq-videos-icono {
+  width: 2rem; height: 2rem; display: grid; place-items: center;
+  color: var(--muted); border-radius: var(--radius);
+}
+.eq-videos-icono:hover { background: var(--bone); color: var(--ink); }
+.eq-videos-x:hover { color: var(--error); }
+.eq-videos-fila { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.eq-videos-lbl { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem; }
+.eq-videos-min { width: 4rem; text-align: center; }
+.eq-videos-aviso:empty { display: none; }
+.eq-videos-aviso { color: var(--error); font-size: 0.8125rem; }

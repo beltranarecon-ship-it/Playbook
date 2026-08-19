@@ -164,6 +164,8 @@ test('el incrustado lleva el tramo y arranca solo', () => {
   ok(u.includes('start=12'), 'entra en el 12');
   ok(u.includes('end=19'), 'sale en el 19');
   ok(u.includes('autoplay=1'), 'no hay que darle al play: la animación ya se paró');
+  ok(urlIncrustado({ tipo: 'youtube', id: ID }, { autoplay: false }).includes('autoplay=0'),
+    'y se puede pedir que NO arranque solo: en el planificador se salta de bloque en bloque');
   ok(u.includes('rel=0'), 'sin rejilla de sugeridos en la pared del pabellón');
 });
 

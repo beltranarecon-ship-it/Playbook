@@ -447,3 +447,15 @@
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.16);
   color: rgba(255,255,255,0.88);
 }
+
+/* El vídeo de un bloque libre, dentro del visor (Tramo 3.3) */
+.eq-vvideo { display: flex; flex-direction: column; gap: 0.5rem; }
+.eq-vvideo-frame {
+  width: 100%; aspect-ratio: 16 / 9; border: 0;
+  border-radius: var(--radius); background: #000;
+}
+.eq-vvideo-enlace {
+  display: flex; flex-direction: column; gap: 0.75rem; align-items: flex-start;
+  padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--bone);
+}

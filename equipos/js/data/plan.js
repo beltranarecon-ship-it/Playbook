@@ -53,6 +53,35 @@ export function esAgua(bloque) {
   return /^agua\b/.test(norm(bloque.titulo));
 }
 
+/* ── 1b. El bloque con vídeo (Tramo 3.3) ───────────────────── */
+
+/**
+ * Un bloque LIBRE que lleva un vídeo. Un ejercicio de la biblioteca no
+ * lo es: los suyos cuelgan de la acción (Tramo 2.14) y salen solos en
+ * el proyector.
+ */
+export const esVideo = (bloque) => !!bloque && !bloque.exercise_id && !!bloque.video;
+
+/** Un bloque listo para meter en el plan a partir de un vídeo guardado. */
+export const bloqueDeVideo = (guardado, duracion_min = null) => ({
+  exercise_id: null,
+  titulo: String(guardado?.titulo || 'Vídeo').trim(),
+  duracion_min: Number(duracion_min) || Number(guardado?.duracion_min) || 5,
+  intensidad: 1,
+  notas: null,
+  video: guardado?.video ?? null,
+});
+
+/**
+ * ¿Este bloque ocupa pista sin que nadie entrene?
+ *
+ * El agua y un vídeo. Los dos cuentan minutos de pista y cero minutos
+ * activos, por la misma razón: nadie está haciendo nada. Con el vídeo
+ * no es una suposición —de una charla no se sabe si es charla o juego,
+ * de un vídeo sí—, y por eso aquí sí se puede afirmar.
+ */
+export const noEntrena = (bloque) => esAgua(bloque) || esVideo(bloque);
+
 /* ── 2. El tope de duración ────────────────────────────────── */
 
 /** Suma de minutos de una lista de bloques. */

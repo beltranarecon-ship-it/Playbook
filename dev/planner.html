@@ -179,7 +179,7 @@
       { ...SESION, id: 'prev2', fecha: '2026-08-11', estado: 'realizada' },
     ];
 
-    const TABLAS = {
+    let TABLAS = {
       sessions: [SESION, ...PREVIAS],
       teams: [{ id: 't1', name: 'Cadete A', category: 'cadete',
                 team_coaches: [{ coach_id: 'u1', rol: 'principal', profiles: { full_name: 'Beltrán' } }],
@@ -200,6 +200,12 @@
         { id: 'o2', team_id: 't1', season_id: 's1', titulo: 'Defensa del bloqueo directo', descripcion: null, categoria: 'táctico', fecha_inicio: '2026-09-01', fecha_fin: '2026-12-31', estado: 'activo', created_at: '2026-07-01T00:00:00Z' },
       ],
       profiles: [{ id: 'u1', full_name: 'Beltrán', role: 'coach' }],
+      // Un vídeo ya guardado por el club (Tramo 3.3), para poder
+      // comprobar que se reutiliza sin pegar el enlace otra vez.
+      videos_bloque: [
+        { id: 'vb1', titulo: 'La jugada del sábado', duracion_min: 6, created_by: 'u1',
+          video: { tipo: 'youtube', id: 'dQw4w9WgXcQ', desde: 12, hasta: 19 } },
+      ],
       // Catorce, que es el grupo del criterio de 3.1: dos más de los que
       // admite la rueda de entradas.
       players: Array.from({ length: 14 }, (_, i) => ({
@@ -221,6 +227,33 @@
 
       const u = new URL(url);
       const tabla = u.pathname.split('/rest/v1/')[1].split('?')[0];
+      const metodo = ((opciones && opciones.method) || (entrada && entrada.method) || 'GET').toUpperCase();
+
+      /* ESCRITURAS. El arnés solo leía, y con eso no se puede comprobar
+         nada que dependa de haber guardado —como que un vídeo guardado
+         se reutilice (Tramo 3.3)—. Se guarda en memoria: se pierde al
+         recargar, que para un arnés es exactamente lo que se quiere. */
+      if (metodo === 'POST' && TABLAS[tabla]) {
+        const cuerpoTxt = (opciones && opciones.body) || '';
+        const nuevas = [].concat(JSON.parse(cuerpoTxt || '[]'))
+          .map((r, i) => ({ id: `${tabla}_${Date.now()}_${i}`, created_by: 'u1', ...r }));
+        TABLAS[tabla].push(...nuevas);
+        console.log('[arnés] POST', tabla, '→', nuevas.length, 'filas');
+        return Promise.resolve(new Response(JSON.stringify(nuevas.length === 1 ? nuevas[0] : nuevas), {
+          status: 201, headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+      if (metodo === 'DELETE' && TABLAS[tabla]) {
+        const idEq = u.searchParams.get('id');
+        const id = idEq && idEq.startsWith('eq.') ? idEq.slice(3) : null;
+        const fuera = TABLAS[tabla].filter((r) => String(r.id) === id);
+        TABLAS[tabla] = TABLAS[tabla].filter((r) => String(r.id) !== id);
+        console.log('[arnés] DELETE', tabla, id, '→', fuera.length);
+        return Promise.resolve(new Response(JSON.stringify(fuera), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        }));
+      }
+
       let filas = TABLAS[tabla] ? TABLAS[tabla].slice() : [];
 
       if (tabla === 'exercises') {

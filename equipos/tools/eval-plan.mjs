@@ -13,7 +13,7 @@
 import {
   MINUTOS_AGUA, bloqueAgua, esAgua, duracionTotal, huecoDisponible,
   ajustarADisponible, materialDeSesion, textoMaterial, repetidosEnSesion,
-  repetidosRecientes, textoHace, cabeEnGrupo,
+  repetidosRecientes, textoHace, cabeEnGrupo, esVideo, bloqueDeVideo, noEntrena,
 } from '../js/data/plan.js';
 import { minutosDeBloque, minutosDeSesion } from '../js/data/minutos.js';
 
@@ -265,6 +265,59 @@ test('sin dato, no se filtra', () => {
   ok(cabeEnGrupo({ jugadores_min: 20 }, null), 'sin saber cuántos vienen');
   ok(cabeEnGrupo({}, 14), 'la ficha no lo declara');
   ok(cabeEnGrupo(null, 14));
+});
+
+/* ── 7. El bloque con vídeo (Tramo 3.3) ────────────────────── */
+
+console.log('\n· un bloque libre con vídeo');
+
+const YT = { tipo: 'youtube', id: 'dQw4w9WgXcQ', desde: 12, hasta: 19 };
+
+test('un vídeo es un bloque LIBRE, no un ejercicio de la biblioteca', () => {
+  ok(esVideo({ video: YT }), 'sin ficha');
+  ok(!esVideo({ video: YT, exercise_id: 'e1' }), 'los del ejercicio cuelgan de la acción (2.14)');
+  ok(!esVideo({ titulo: 'Charla' }), 'sin vídeo no es un bloque de vídeo');
+  ok(!esVideo(null));
+});
+
+test('un vídeo guardado se convierte en un bloque listo para el plan', () => {
+  const g = { id: 'v1', titulo: 'La jugada del sábado', video: YT, duracion_min: 6 };
+  eq(bloqueDeVideo(g), {
+    exercise_id: null, titulo: 'La jugada del sábado', duracion_min: 6,
+    intensidad: 1, notas: null, video: YT,
+  });
+});
+
+test('y se le puede dar otra duración al reutilizarlo', () => {
+  const g = { titulo: 'X', video: YT, duracion_min: 6 };
+  eq(bloqueDeVideo(g, 10).duracion_min, 10);
+  eq(bloqueDeVideo({ titulo: 'X', video: YT }).duracion_min, 5, 'sin duración guardada, cinco minutos');
+});
+
+test('ver un vídeo NO entrena a nadie, igual que el agua', () => {
+  /* Y aquí no es una suposición: de una charla no se sabe si es charla
+     o juego; de un vídeo, sí. */
+  ok(noEntrena({ video: YT }), 'el vídeo');
+  ok(noEntrena(bloqueAgua()), 'el agua');
+  ok(!noEntrena({ titulo: 'Charla' }), 'una charla puede ser cualquier cosa');
+  ok(!noEntrena({ exercise_id: 'e1', titulo: 'Rueda' }), 'un ejercicio sí entrena');
+
+  const m = minutosDeBloque({ duracion_min: 8, video: YT }, { jugadores: 12 });
+  eq(m.duracion, 8, 'ocupa pista');
+  eq(m.minutos, 0, 'y cero minutos activos');
+});
+
+test('quince minutos de vídeo se ven en el aprovechamiento', () => {
+  const req = () => ({ densidad: 'alta', jugadores_max: 12 });
+  const sin = minutosDeSesion([{ duracion_min: 60, exercise_id: 'e1' }], { jugadores: 12, requisitosDe: req });
+  const con = minutosDeSesion([{ duracion_min: 60, exercise_id: 'e1' }, { duracion_min: 15, video: YT, titulo: 'Vídeo' }], { jugadores: 12, requisitosDe: req });
+  eq(sin.aprovechamiento, 1);
+  eq(Math.round(con.aprovechamiento * 100), 80, 'de 75 minutos de pista, 60 de trabajo');
+});
+
+test('un bloque de vídeo cuenta contra el tope de pista como cualquiera', () => {
+  const plan = [{ uid: 'v', duracion_min: 15, video: YT, titulo: 'Vídeo' }];
+  eq(huecoDisponible(plan, 90), 75);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

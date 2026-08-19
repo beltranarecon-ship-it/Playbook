@@ -190,11 +190,15 @@ export function validarVideo(v) {
  * rompe el «continúa sola»—. `rel=0` y `modestbranding=1` para que al
  * acabar no aparezca una rejilla de vídeos sugeridos EN LA PARED del
  * pabellón, delante de doce críos.
+ *
+ * `autoplay: false` para donde el vídeo NO es el motivo por el que se
+ * está mirando la pantalla: en el planificador se salta de un bloque a
+ * otro, y que cada clic arranque un vídeo es insoportable.
  */
-export function urlIncrustado(v) {
+export function urlIncrustado(v, { autoplay = true } = {}) {
   const n = normalizarVideo(v);
   if (!n || n.tipo !== 'youtube') return null;
-  const q = ['autoplay=1', 'rel=0', 'modestbranding=1', 'playsinline=1'];
+  const q = [`autoplay=${autoplay ? 1 : 0}`, 'rel=0', 'modestbranding=1', 'playsinline=1'];
   if (n.desde != null) q.push(`start=${n.desde}`);
   if (n.hasta != null) q.push(`end=${n.hasta}`);
   return `https://www.youtube-nocookie.com/embed/${n.id}?${q.join('&')}`;

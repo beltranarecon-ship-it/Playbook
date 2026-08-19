@@ -7,15 +7,33 @@
 
 import { supabase, leerTodo, porLotes } from './_client.js';
 
-const COLS = 'id, session_id, exercise_id, orden, titulo, duracion_min, intensidad, notas';
+const COLS_BASE = 'id, session_id, exercise_id, orden, titulo, duracion_min, intensidad, notas';
+
+/* ---- La columna `video` y la migración que puede no estar ----------
+   `session_blocks.video` la añade la migración 022 (Tramo 3.3). Si esa
+   migración todavía no se ha aplicado, pedirla haría fallar TODA la
+   consulta y el planificador no abriría ninguna sesión: un plan entero
+   perdido por una función que el entrenador ni siquiera está usando.
+
+   Así que se pide, y si la base de datos dice que no existe se apunta
+   y se sigue sin ella. Mismo criterio que el resto del módulo de
+   sesiones: cada pieza degrada sola. */
+let sinVideo = false;
+const cols = () => (sinVideo ? COLS_BASE : `${COLS_BASE}, video`);
+const faltaColumnaVideo = (error) => {
+  const m = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  return error?.code === '42703' || (m.includes('video') && m.includes('column'));
+};
 
 /** Bloques de una sesión, en orden. */
 export async function getBloques(sessionId) {
-  const { data, error } = await supabase
+  const pide = () => supabase
     .from('session_blocks')
-    .select(COLS)
+    .select(cols())
     .eq('session_id', sessionId)
     .order('orden');
+  let { data, error } = await pide();
+  if (error && faltaColumnaVideo(error)) { sinVideo = true; ({ data, error } = await pide()); }
   if (error) throw error;
   return data ?? [];
 }
@@ -49,17 +67,24 @@ export async function guardarBloques(sessionId, bloques) {
       duracion_min: Number(b.duracion_min),
       intensidad: Number(b.intensidad),
       notas: b.notas?.trim() || null,
+      ...(sinVideo ? {} : { video: b.video ?? null }),
     };
     // insert vs update se decide contra lo que HAY en BD, no contra b.id: si otra
     // pestaña borró este bloque entretanto, su id es obsoleto → se reinserta en
     // vez de hacer un UPDATE de 0 filas que lo perdería en silencio.
-    if (b.id && idsEnBD.has(b.id)) {
-      const { error } = await supabase.from('session_blocks').update(fila).eq('id', b.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from('session_blocks').insert(fila);
-      if (error) throw error;
+    /* Si la 022 no está aplicada, el primer escribir con `video` falla
+       aquí (la lectura pudo no haber pasado por este proceso). Se apunta
+       y se reintenta SIN la columna, en vez de perder el plan. */
+    const escribe = async (f) => (b.id && idsEnBD.has(b.id)
+      ? supabase.from('session_blocks').update(f).eq('id', b.id)
+      : supabase.from('session_blocks').insert(f));
+    let { error } = await escribe(fila);
+    if (error && faltaColumnaVideo(error)) {
+      sinVideo = true;
+      const { video, ...sin } = fila;
+      ({ error } = await escribe(sin));
     }
+    if (error) throw error;
   }
 }
 
@@ -73,8 +98,15 @@ export async function getBloquesSesiones(sessionIds) {
   const out = {};
   for (const lote of porLotes(sessionIds)) {
     const filas = await leerTodo(() => supabase
-      .from('session_blocks').select(COLS).in('session_id', lote)
-      .order('session_id').order('orden'));
+      .from('session_blocks').select(cols()).in('session_id', lote)
+      .order('session_id').order('orden'))
+      .catch(async (e) => {
+        if (!faltaColumnaVideo(e)) throw e;
+        sinVideo = true;
+        return leerTodo(() => supabase
+          .from('session_blocks').select(cols()).in('session_id', lote)
+          .order('session_id').order('orden'));
+      });
     for (const b of filas) (out[b.session_id] ||= []).push(b);
   }
   return out;

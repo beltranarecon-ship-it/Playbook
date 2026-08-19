@@ -22,6 +22,7 @@ import { CourtView } from '../../../taller/js/canvas/court.js';
 import { AnimationEngine } from '../../../taller/js/canvas/engine.js';
 import { controls } from '../../../taller/js/canvas/controls.js';
 import { abrirProyector } from '../../../taller/js/canvas/proyector.js';
+import { urlIncrustado, urlPublica, textoTramo, seIncrusta } from '../../../taller/js/ia/video.js';
 import { cargarCatalogoConVideos } from '../../../taller/js/supabase/acciones.js';
 import { dificultadDe } from '../../../taller/js/config.js';
 import { guionDeAnimacion, resumenMaterial } from '../data/guion.js';
@@ -193,6 +194,10 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
 
   function vistaGuion() {
     if (!bloque.exercise_id) {
+      /* Un bloque libre CON vídeo (Tramo 3.3) enseña el vídeo. Es el
+         único bloque del plan que se mira en vez de correrse, así que
+         aquí no hay pizarra que dibujar: hay algo que ver. */
+      if (bloque.video) return vistaVideo();
       return h('p', { class: 'eq-ayuda' },
         'Bloque libre: no sale de la biblioteca, así que no hay pizarra. Descríbelo en las notas de abajo para acordarte en el pabellón.');
     }
@@ -225,6 +230,40 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
         ))),
       h('p', { class: 'eq-vpie' },
         'Guion generado a partir de la pizarra. Toca una fase para saltar a ella.'),
+    );
+  }
+
+  /**
+   * El vídeo de un bloque libre.
+   *
+   * YouTube se incrusta con su tramo; TikTok es un enlace que se abre
+   * aparte, por lo mismo que en el proyector (§12.36): su incrustado no
+   * admite segundo de entrada ni mando desde fuera.
+   */
+  function vistaVideo() {
+    const v = bloque.video;
+    const tramo = textoTramo(v);
+    return h('div', { class: 'eq-vvideo' },
+      seIncrusta(v)
+        ? h('iframe', {
+            // sin autoplay: aquí se salta de un bloque a otro, y que
+            // cada clic arranque un vídeo es insoportable
+            class: 'eq-vvideo-frame', src: urlIncrustado(v, { autoplay: false }),
+            title: `Vídeo de ${bloque.titulo || 'el bloque'}`,
+            allow: 'encrypted-media; picture-in-picture',
+            sandbox: 'allow-scripts allow-same-origin allow-presentation',
+            referrerpolicy: 'strict-origin-when-cross-origin',
+            allowfullscreen: 'true', frameborder: '0',
+          })
+        : h('div', { class: 'eq-vvideo-enlace' },
+            h('p', {}, 'TikTok no se puede incrustar con tramo, así que se abre aparte.'),
+            h('a', {
+              class: 'btn btn-primary', href: urlPublica(v) || '#',
+              target: '_blank', rel: 'noopener noreferrer',
+            }, 'Abrir el vídeo')),
+      h('p', { class: 'eq-vpie' },
+        [tramo, 'Ocupa minutos de pista y no cuenta como minutos activos: nadie entrena mirando.']
+          .filter(Boolean).join(' · ')),
     );
   }
 
@@ -325,7 +364,7 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
 
     const dif = ficha?.difficulty ? dificultadDe(ficha.difficulty) : null;
     elChips.replaceChildren(...[
-      chip(bloque.exercise_id ? (ficha?.type || null) : 'Bloque libre', 'eq-vchip-tipo'),
+      chip(bloque.exercise_id ? (ficha?.type || null) : (bloque.video ? 'Vídeo' : 'Bloque libre'), 'eq-vchip-tipo'),
       dif ? chip(ficha.dificultad_label || dif.label, `eq-vchip-dif ${dif.clase}`) : null,
       chip(`${bloque.duracion_min} min`),
       medidorIntensidad(bloque.intensidad),
