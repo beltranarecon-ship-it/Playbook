@@ -1969,6 +1969,86 @@ mismo acta en **cadete** no dice nada de rotación ni de diferencia, porque ahí
 El recuadro se repinta al marcar una × o teclear un número: pasar de 8 a 9 y a 10 inscritos
 va cambiando el veredicto en vivo. En móvil (375 px) cabe y no desborda.
 
+### Estado de 4.4 (hecha)
+
+`equipos/js/data/temporada-stats.js` — motor puro, con su banco (`eval-temporada-stats.mjs`,
+**18 pruebas**). Sin migración: suma lo que ya guarda `partido_estadisticas` (028). Dos
+sitios donde se ve: la **ficha del jugador** (pestaña Progresión) y una tabla de
+**acumulados** en la pestaña Partidos.
+
+**En periodos, no en minutos** (§5.9). Sumar periodos es sumar la unidad que existe;
+traducir a minutos obligaría a inventarse una equivalencia que el acta no dice.
+
+**La pregunta que importa no es cuántos puntos.** Los puntos se suman porque están en el
+acta y porque al crío le hacen ilusión, pero lo que un entrenador de formación necesita ver
+—y lo que nadie mira si la tabla se ordena por anotación— es **cuántos periodos lleva cada
+uno**. Por eso la tabla se ordena por periodos y no por puntos: **el último nombre de la
+lista es la conversación del martes**, y ordenada por anotación queda escondido en medio.
+
+**Ausencia no es cero**, igual que en la rúbrica una fila sin mirar no es un suspenso:
+
+- un partido **sin acta** no cuenta ni a favor ni en contra;
+- una fila de un partido **aplazado, programado o borrado** no suma, aunque exista;
+- el que no aparece en ninguna acta sale en la tabla —**a cero y al final**, porque el que
+  no juega es exactamente el que hay que tener delante— pero su ficha dice *«No aparece en
+  el acta de ninguno de los 3 partidos jugados»*, que es otra cosa que un cero;
+- y todo lo que se enseña dice **sobre cuántos partidos** va la cuenta: una media sobre dos
+  partidos y una sobre veinte se leen igual y no valen lo mismo.
+
+**El reparto tiene su propia línea.** No es una nota: es la distancia entre el que más juega
+y el que menos, contando solo a los que han estado en alguna acta —meter al que no ha venido
+mediría otra cosa, y de eso ya se encarga la asistencia—. A partir de seis periodos de
+brecha sale en ámbar con el nombre: *«Del que más juega al que menos hay 11 periodos. El que
+menos, Jugador 5, lleva 1»*.
+
+**Comprobado** en el arnés (tres partidos con acta): la ficha del Jugador 1 dice **12
+periodos · 4 por partido · 33 puntos · 3 faltas**, sobre «3 de 3 partidos», con una caja por
+partido del más reciente al más viejo; la del Jugador 12 dice que no aparece en ninguna acta;
+y la tabla de acumulados sale ordenada 12, 9, 6, 6, 1, 0…
+
+### Estado de 4.5 (hecha)
+
+`equipos/js/data/clasificacion.js` — el motor puro y el cliente en un solo fichero (el motor
+son cuarenta líneas y partirlo costaría más de leer que de escribir), con su banco
+(`eval-clasificacion.mjs`, **15 pruebas**). Migración **029**: la tabla `clasificacion`, con
+RLS por equipo. Se ve en la pestaña Partidos, debajo de los acumulados.
+
+**A mano** (decisión #28): la federación la publica en una web que hoy no sabemos leer. Se
+copia —o se **pega entera**, que es un gesto en vez de setenta y dos números— y el día que
+llegue el enlace se rellenan estas mismas filas sin cambiar ni una consulta de la app.
+
+| | |
+|---|---|
+| Los puntos | **2 por victoria y 1 por derrota**, que es el baloncesto. Con 3-0, como en el fútbol, media liga sale ordenada al revés y nadie lo nota hasta abril |
+| La posición | **no se guarda**: se calcula. Guardarla obligaría a renumerar doce filas cada vez que se corrige un resultado, y a la primera que se olvide la tabla miente |
+| Los empatados | los que están a la par **en puntos y en diferencia** salen marcados con «=». El desempate de verdad es el resultado particular entre ellos, que la app no conoce, y ponerlos en un orden sin decirlo sería inventarse la clasificación |
+| Nuestra fila | se marca a mano (`es_nuestro`), se pinta en papaya y al pie dice *«Vamos 2.º de 4, con 9 puntos»*. Si no hay ninguna marcada, se dice |
+| Lo que no cuadra | ganados + perdidos tienen que ser los jugados. Se dice, no se corrige: se copió de una pantalla y se arregla mirándola otra vez |
+
+**Pegar la tabla es tolerante pero no adivina.** Acepta espacios o tabuladores, con o sin la
+posición delante, y se queda con los **cinco últimos** números de cada línea —así «CB 1987
+SORIA» conserva su nombre y sus cuatro cifras no se toman por los jugados—. Una línea con
+menos de cinco números **no entra**: las cabeceras se caen solas y una tabla mal leída, que
+se guarda con pinta de buena y nadie vuelve a mirar, es peor que copiarla a mano. Antes de
+guardar se enseña cuántos equipos se han entendido, y sustituir una clasificación que ya
+existe se pregunta.
+
+**Comprobado** en el arnés: la clasificación de cuatro equipos sale ordenada con nuestra fila
+resaltada y los dos empatados marcados; se pega una tabla nueva de tres —con su línea de
+cabecera, que se cae sola—, avisa de que va a sustituir, entra y recalcula posiciones y
+puntos; se edita una fila para marcarla como nuestra y el pie pasa a *«Vamos 3.º de 3, con 10
+puntos»*; un 3+2 con 7 jugados saca el descuadre con los dos números; y quitar una fila
+reordena el resto.
+
+**Un arreglo de paso**: el arnés tenía la temporada con las columnas en castellano
+(`nombre`, `fecha_inicio`…) y las de verdad son `label`, `start_date`, `end_date`,
+`is_active`; por eso la pestaña decía «Partidos · undefined».
+
+**Un defecto que ya estaba y que salió al comprobar esto**: en un móvil de 375 px las seis
+pestañas del detalle de equipo no caben y empujan la página entera de lado
+(`scrollWidth` 612 con 375 de ancho). Es de la barra de pestañas, no de estas dos tablas
+—las dos caben y se deslizan dentro de su caja—, y queda anotado aparte.
+
 ## Fuera de la v2.1 (marcados «no imprescindible»)
 
 Miniaturas de más calidad · uso sin conexión · identidad visual y estética general ·

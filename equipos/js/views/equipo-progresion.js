@@ -32,6 +32,9 @@ import { getObjetivos, crearObjetivo, actualizarObjetivo } from '../data/objecti
 import { toast } from '../ui/toast.js';
 import { getEstrellasJugadores } from '../data/estrellas.js';
 import { getAsistenciaEquipo } from '../data/attendance.js';
+import { getPartidosEquipo } from '../data/matches.js';
+import { getEstadisticasDePartidos } from '../data/estadisticas.js';
+import { acumular, deJugador, textoAcumulado, conUnDecimal } from '../data/temporada-stats.js';
 import { estadisticasJugadores } from '../data/asistencia.js';
 import {
   NIVELES, NIVEL_MAX, filasDeRubrica, estadoDe, movimiento,
@@ -69,6 +72,19 @@ export async function pintaProgresion(zona, { teamId, seasonId = null }) {
   reagrupaObjetivos(objetivos);
   const filas = filasDeRubrica(filasClub);
   const asisPorJugador = estadisticasJugadores(jugadores, asistencia);
+
+  /* Lo de competición (Tramo 4.4). Va aparte y con su propio try: si la
+     028 no está aplicada, o el equipo no juega liga, la progresión
+     entera no puede caerse por eso. */
+  let porPartidos = new Map();
+  let partidosTemporada = [];
+  try {
+    partidosTemporada = await getPartidosEquipo(teamId, seasonId);
+    const jugados = partidosTemporada.filter((m) => m.estado === 'jugado');
+    if (jugados.length) {
+      porPartidos = acumular(await getEstadisticasDePartidos(jugados.map((m) => m.id)), partidosTemporada);
+    }
+  } catch (e) { console.warn('[progresión] sin estadísticas de partido:', e.message); }
 
   let selId = jugadores[0].id;
   let filaAbierta = null;   // qué fila se está mirando en la línea
@@ -116,6 +132,9 @@ export async function pintaProgresion(zona, { teamId, seasonId = null }) {
         dato(movimientoTexto(r), 'movimiento', 'cuántas filas han subido o bajado de nivel'),
       ),
 
+      /* ── lo que lleva en competición (Tramo 4.4) ── */
+      seccionCompeticion(j),
+
       /* ── sus objetivos (Tramo 3.10) ── */
       seccionObjetivos(j, estado),
 
@@ -135,6 +154,61 @@ export async function pintaProgresion(zona, { teamId, seasonId = null }) {
               + 'Hasta que haya dos valoraciones de la misma fila no hay movimiento que enseñar: '
               + 'una progresión necesita al menos dos puntos.'),
           ),
+    );
+  }
+
+  /* ---- competición (Tramo 4.4) -----------------------------------
+     «La ficha del jugador suma periodos y puntos». En PERIODOS (§5.9):
+     en minibasket no se juegan minutos, y traducir obligaría a
+     inventarse una equivalencia que el acta no dice en ningún sitio.
+
+     Lo primero que se lee son los periodos y no los puntos, a
+     propósito: los puntos están porque al crío le hacen ilusión, pero
+     la pregunta del entrenador de formación es cuánto ha jugado. */
+  function seccionCompeticion(j) {
+    const a = deJugador(porPartidos, j.id);
+    const jugados = partidosTemporada.filter((m) => m.estado === 'jugado').length;
+
+    if (!a.partidos) {
+      /* Y aquí se distingue entre las dos maneras de no tener nada: que
+         no haya partidos todavía, o que los haya y este crío no esté en
+         ninguna acta. La segunda es una conversación. */
+      return h('div', { class: 'eq-prog-comp' },
+        h('h4', { class: 'eq-prog-comp-tit' }, 'Competición'),
+        h('p', { class: 'eq-ayuda' }, jugados
+          ? `No aparece en el acta de ninguno de los ${jugados} partidos jugados.`
+          : 'Todavía no hay partidos jugados con el acta apuntada.'),
+      );
+    }
+
+    const ult = a.ultimos.slice(0, 5);
+    return h('div', { class: 'eq-prog-comp' },
+      h('div', { class: 'eq-prog-comp-cab' },
+        h('h4', { class: 'eq-prog-comp-tit' }, 'Competición'),
+        // sobre cuántos partidos va la cuenta: una media sobre dos y una
+        // sobre veinte se leen igual y no valen lo mismo
+        h('span', { class: 'eq-ayuda' }, `${a.partidos} de ${jugados} partidos`),
+      ),
+      h('div', { class: 'eq-prog-datos' },
+        dato(String(a.periodos), a.periodos === 1 ? 'periodo' : 'periodos', 'sumados en toda la temporada'),
+        dato(conUnDecimal(a.periodosPorPartido), 'por partido', 'periodos de media en los partidos en los que está'),
+        dato(String(a.puntos), a.puntos === 1 ? 'punto' : 'puntos', `${conUnDecimal(a.puntosPorPartido)} de media`),
+        dato(String(a.faltas), a.faltas === 1 ? 'falta' : 'faltas', 'en toda la temporada'),
+      ),
+      ult.length > 1
+        ? h('div', { class: 'eq-prog-comp-ult' },
+            h('span', { class: 'eq-ayuda' }, 'Sus últimos partidos'),
+            h('div', { class: 'eq-prog-comp-fila' },
+              ...ult.map((x) => h('span', {
+                class: 'eq-prog-comp-caja',
+                title: `${x.fecha}: ${x.periodos} periodo(s), ${x.puntos} punto(s)`,
+              },
+                h('b', {}, String(x.periodos)),
+                h('i', {}, x.puntos ? `${x.puntos} pt` : '—'),
+              )),
+            ),
+          )
+        : null,
     );
   }
 

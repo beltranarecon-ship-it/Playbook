@@ -18,6 +18,15 @@ import {
 } from '../data/schedules.js';
 import { getTemporadas } from '../data/seasons.js';
 import { getPartidosEquipo } from '../data/matches.js';
+import { getEstadisticasDePartidos } from '../data/estadisticas.js';
+import {
+  acumular, tabla as tablaTemporada, reparto, textoReparto, conUnDecimal,
+} from '../data/temporada-stats.js';
+import {
+  getClasificacion, crearFilas, actualizarFila, borrarFila, borrarTodo,
+  hayTabla as hayClasificacion, ordenar, nuestra, leerPegado,
+  descuadres as descuadresClasi,
+} from '../data/clasificacion.js';
 import {
   balancePartidos, mediasPorEje, resultadoPartido, mediaValoracion, ESTADOS_PARTIDO,
 } from '../data/partidos.js';
@@ -448,7 +457,282 @@ export function render(root, params) {
   }
 
   // ── Pestaña PARTIDOS ───────────────────────────────────────
+  /* ---- acumulados de la temporada (Tramo 4.4) ---------------------
+     «Estadísticas por jugador y acumulados; periodos, no minutos».
+
+     La tabla se ordena por PERIODOS y no por puntos, y eso no es un
+     detalle: ordenada por anotación, el que menos juega queda escondido
+     en medio de la lista, que es justo el nombre que hay que ver. Aquí
+     el último de la tabla es la conversación del martes. */
+  async function seccionAcumulados(partidos) {
+    const jugados = partidos.filter((m) => m.estado === 'jugado');
+    if (!jugados.length) return null;
+
+    let jugadores = [], mapa = new Map();
+    try {
+      jugadores = await getJugadores(teamId);
+      mapa = acumular(await getEstadisticasDePartidos(jugados.map((m) => m.id)), partidos);
+    } catch (e) {
+      return h('p', { class: 'eq-ayuda' }, `Las estadísticas por jugador no están disponibles: ${e.message}`);
+    }
+    if (!jugadores.length) return null;
+
+    const filas = tablaTemporada(mapa, jugadores);
+    if (!filas.some((f) => f.partidos)) {
+      return h('div', { class: 'eq-acum' },
+        h('h3', { class: 'eq-acum-tit' }, 'Acumulados'),
+        h('p', { class: 'eq-ayuda' },
+          `Hay ${jugados.length} partido${jugados.length === 1 ? '' : 's'} jugado${jugados.length === 1 ? '' : 's'} `
+          + 'pero ninguna acta apuntada todavía. Se apuntan en la pantalla del partido.'),
+      );
+    }
+
+    const r = reparto(mapa, jugadores);
+    const aviso = textoReparto(r);
+
+    return h('div', { class: 'eq-acum' },
+      h('div', { class: 'eq-zona-head' },
+        h('h3', { class: 'eq-acum-tit' }, 'Acumulados · periodos'),
+        h('span', { class: 'eq-ayuda' }, `${jugados.length} partido${jugados.length === 1 ? '' : 's'} jugado${jugados.length === 1 ? '' : 's'}`),
+      ),
+      aviso ? h('p', { class: r && r.brecha >= 6 ? 'eq-acum-brecha' : 'eq-ayuda' }, aviso) : null,
+      h('div', { class: 'eq-acta-scroll' },
+        h('table', { class: 'eq-acta-tabla eq-acum-tabla' },
+          h('thead', {},
+            h('tr', {},
+              h('th', { scope: 'col' }, 'Jugador'),
+              h('th', { scope: 'col', title: 'Partidos con acta' }, 'PJ'),
+              h('th', { scope: 'col', title: 'Periodos jugados' }, 'Per'),
+              h('th', { scope: 'col', title: 'Periodos por partido' }, '/PJ'),
+              h('th', { scope: 'col', title: 'Puntos' }, 'Pt'),
+              h('th', { scope: 'col', title: 'Faltas' }, 'F'),
+            ),
+          ),
+          h('tbody', {}, ...filas.map((f) => h('tr', { class: 'eq-acta-fila' + (f.partidos ? '' : ' eq-acum-sin') },
+            h('th', { scope: 'row', class: 'eq-acta-quien' },
+              f.jugador.dorsal != null ? h('span', { class: 'eq-acta-dorsal' }, String(f.jugador.dorsal)) : null,
+              h('span', { class: 'eq-acta-nombre' }, f.jugador.nombre),
+            ),
+            h('td', {}, String(f.partidos)),
+            h('td', { class: 'eq-acum-per' }, String(f.periodos)),
+            h('td', {}, f.partidos ? conUnDecimal(f.periodosPorPartido) : '—'),
+            h('td', {}, String(f.puntos)),
+            h('td', {}, String(f.faltas)),
+          ))),
+        ),
+      ),
+      h('p', { class: 'eq-ayuda' },
+        'En periodos, no en minutos (§5.9). Los que no aparecen en ninguna acta salen a cero: '
+        + 'no jugar también es un dato.'),
+    );
+  }
+
+  /* ---- clasificación (Tramo 4.5) ----------------------------------
+     A mano (decisión #28): la federación la publica en una web que hoy
+     no sabemos leer, y copiar doce filas cada dos semanas es un minuto.
+     Se puede PEGAR entera, que es un gesto en vez de setenta y dos
+     números.
+
+     La posición no se guarda: se calcula. Guardarla obligaría a
+     renumerar doce filas cada vez que se corrige un resultado, y a la
+     primera que se olvide, la tabla miente. */
+  function seccionClasificacion(zona) {
+    const nodo = h('div', { class: 'eq-clasi' });
+    let filas = [];
+
+    const modalFila = (f = null) => {
+      const campo = (clave, etiqueta, max = 999) => h('label', { class: 'eq-clasi-campo' },
+        h('span', { class: 'field-label' }, etiqueta),
+        h('input', {
+          class: 'field-input', type: 'number', min: 0, max, inputmode: 'numeric',
+          name: clave, value: f ? String(f[clave] ?? 0) : '',
+        }),
+      );
+      const nombre = h('input', {
+        class: 'field-input', type: 'text', maxlength: 80,
+        value: f?.nombre || '', placeholder: 'CB Ejemplo A',
+      });
+      const nuestro = h('input', { type: 'checkbox', checked: !!f?.es_nuestro });
+      const caja = h('div', { class: 'eq-clasi-form' },
+        h('label', { class: 'field-group' }, h('span', { class: 'field-label' }, 'Equipo'), nombre),
+        h('div', { class: 'eq-clasi-nums' },
+          campo('jugados', 'J', 99), campo('ganados', 'G', 99), campo('perdidos', 'P', 99),
+          campo('puntos_favor', 'PF', 9999), campo('puntos_contra', 'PC', 9999),
+        ),
+        h('label', { class: 'eq-puente-pisar' }, nuestro, h('span', {}, 'Este equipo somos nosotros')),
+      );
+      const leer = () => {
+        const num = (k) => Math.max(0, Math.round(Number(caja.querySelector(`[name="${k}"]`).value) || 0));
+        return {
+          nombre: nombre.value.trim(), es_nuestro: nuestro.checked,
+          jugados: num('jugados'), ganados: num('ganados'), perdidos: num('perdidos'),
+          puntos_favor: num('puntos_favor'), puntos_contra: num('puntos_contra'),
+        };
+      };
+      const m = abrirModal({
+        titulo: f ? 'Editar equipo' : 'Añadir equipo',
+        cuerpo: caja,
+        pie: [
+          h('button', { class: 'btn btn-secondary', type: 'button', onClick: () => m.cerrar() }, 'Cancelar'),
+          h('button', {
+            class: 'btn btn-primary', type: 'button',
+            onClick: async () => {
+              const datos = leer();
+              if (!datos.nombre) { toast('Ponle nombre al equipo', 'error'); return; }
+              try {
+                if (f) { await actualizarFila(f.id, datos); Object.assign(f, datos); }
+                else filas.push(...await crearFilas(teamId, temporada.id, [datos]));
+                m.cerrar(); pintaTabla();
+              } catch (e) { toast('Error: ' + e.message, 'error'); }
+            },
+          }, 'Guardar'),
+        ],
+      });
+    };
+
+    const modalPegar = () => {
+      const area = h('textarea', {
+        class: 'field-textarea', rows: 10,
+        placeholder: '1  CB EJEMPLO A   6  6  0  312  198\n2  CD SAN JOSÉ    6  4  2  280  245',
+      });
+      const previo = h('p', { class: 'eq-ayuda' });
+      /* Se enseña lo que se ha entendido ANTES de guardar. Una tabla mal
+         leída que entra sin verse se queda con pinta de buena y nadie la
+         vuelve a mirar. */
+      area.addEventListener('input', () => {
+        const n = leerPegado(area.value).length;
+        mount(previo, h('span', { class: n ? 'eq-acta-ok' : 'eq-ayuda' },
+          n ? `Entiendo ${n} equipo${n === 1 ? '' : 's'}.`
+            : 'Todavía no entiendo ninguna fila: cada línea necesita el nombre y cinco números (J, G, P, PF, PC).'));
+      });
+      const m = abrirModal({
+        titulo: 'Pegar la clasificación',
+        cuerpo: h('div', { class: 'flow' },
+          h('p', { class: 'eq-ayuda' },
+            'Copia la tabla de la web de la federación y pégala aquí. Cada línea: el nombre '
+            + 'y luego jugados, ganados, perdidos, puntos a favor y en contra.'),
+          area, previo,
+        ),
+        pie: [
+          h('button', { class: 'btn btn-secondary', type: 'button', onClick: () => m.cerrar() }, 'Cancelar'),
+          h('button', {
+            class: 'btn btn-primary', type: 'button',
+            onClick: async () => {
+              const nuevas = leerPegado(area.value);
+              if (!nuevas.length) { toast('No he entendido ninguna fila', 'error'); return; }
+              if (filas.length && !(await confirmar({
+                titulo: 'Sustituir la clasificación',
+                mensaje: `Se borran los ${filas.length} equipos de ahora y se ponen los ${nuevas.length} pegados. ¿Seguir?`,
+                textoOk: 'Sustituir',
+              }))) return;
+              try {
+                if (filas.length) await borrarTodo(teamId, temporada.id);
+                filas = await crearFilas(teamId, temporada.id, nuevas);
+                m.cerrar(); pintaTabla();
+                toast(`Clasificación con ${filas.length} equipos`);
+              } catch (e) { toast('Error: ' + e.message, 'error'); }
+            },
+          }, 'Guardar'),
+        ],
+      });
+    };
+
+    function pintaTabla() {
+      const t = ordenar(filas);
+      const nos = nuestra(t);
+      const mal = descuadresClasi(filas);
+
+      mount(nodo,
+        h('div', { class: 'eq-zona-head' },
+          h('h3', { class: 'eq-acum-tit' }, 'Clasificación'),
+          h('div', { class: 'eq-clasi-acciones' },
+            h('button', { class: 'btn btn-secondary eq-btn-mini', type: 'button', onClick: modalPegar },
+              filas.length ? 'Volver a pegarla' : 'Pegar la tabla'),
+            h('button', { class: 'btn btn-secondary eq-btn-mini', type: 'button', onClick: () => modalFila() }, 'Añadir equipo'),
+          ),
+        ),
+        !filas.length
+          ? h('p', { class: 'eq-ayuda' },
+              'Sin clasificación todavía. Se copia a mano de la web de la federación '
+              + '—o se pega entera— hasta que se pueda leer sola.')
+          : h('div', { class: 'eq-acta-scroll' },
+              h('table', { class: 'eq-acta-tabla eq-clasi-tabla' },
+                h('thead', {},
+                  h('tr', {},
+                    h('th', { scope: 'col' }, ''),
+                    h('th', { scope: 'col' }, 'Equipo'),
+                    h('th', { scope: 'col', title: 'Jugados' }, 'J'),
+                    h('th', { scope: 'col', title: 'Ganados' }, 'G'),
+                    h('th', { scope: 'col', title: 'Perdidos' }, 'P'),
+                    h('th', { scope: 'col', title: 'Puntos a favor' }, 'PF'),
+                    h('th', { scope: 'col', title: 'Puntos en contra' }, 'PC'),
+                    h('th', { scope: 'col', title: 'Diferencia' }, 'Dif'),
+                    h('th', { scope: 'col', title: 'Puntos de clasificación' }, 'Pts'),
+                    h('th', { scope: 'col' }, ''),
+                  ),
+                ),
+                h('tbody', {}, ...t.map((f) => h('tr', { class: 'eq-acta-fila' + (f.es_nuestro ? ' eq-clasi-nos' : '') },
+                  h('td', { class: 'eq-clasi-pos' },
+                    String(f.pos),
+                    // empatado a puntos Y a diferencia: ahí manda el
+                    // particular, que la app no conoce
+                    f.empatadoCon ? h('span', { class: 'eq-clasi-emp', title: 'Empatado: el desempate es el resultado particular, que la app no sabe' }, '=') : null,
+                  ),
+                  h('th', { scope: 'row', class: 'eq-acta-quien' }, f.nombre),
+                  h('td', {}, String(f.jugados)),
+                  h('td', {}, String(f.ganados)),
+                  h('td', {}, String(f.perdidos)),
+                  h('td', {}, String(f.puntos_favor)),
+                  h('td', {}, String(f.puntos_contra)),
+                  h('td', { class: f.dif > 0 ? 'eq-clasi-mas' : (f.dif < 0 ? 'eq-clasi-menos' : '') },
+                    f.dif > 0 ? `+${f.dif}` : String(f.dif)),
+                  h('td', { class: 'eq-clasi-pts' }, String(f.puntos)),
+                  h('td', { class: 'eq-clasi-cel' },
+                    h('button', {
+                      class: 'eq-btn-icono', type: 'button', title: 'Editar', 'aria-label': `Editar ${f.nombre}`,
+                      onClick: () => modalFila(filas.find((x) => x.id === f.id)),
+                    }, '✎'),
+                    h('button', {
+                      class: 'eq-btn-icono', type: 'button', title: 'Quitar', 'aria-label': `Quitar ${f.nombre}`,
+                      onClick: async () => {
+                        if (!(await confirmar({ titulo: 'Quitar equipo', mensaje: `Se quita «${f.nombre}» de la clasificación.`, textoOk: 'Quitar' }))) return;
+                        try {
+                          await borrarFila(f.id);
+                          filas = filas.filter((x) => x.id !== f.id);
+                          pintaTabla();
+                        } catch (e) { toast('Error: ' + e.message, 'error'); }
+                      },
+                    }, '×'),
+                  ),
+                ))),
+              ),
+            ),
+        nos ? h('p', { class: 'eq-ayuda' }, `Vamos ${nos.pos}.º de ${t.length}, con ${nos.puntos} puntos.`) : null,
+        ...mal.map((x) => h('p', { class: 'eq-acta-descuadre' }, x)),
+        filas.length && !nos
+          ? h('p', { class: 'eq-ayuda' }, 'Ninguna fila está marcada como nuestra: edita la nuestra y márcala.')
+          : null,
+      );
+    }
+
+    (async () => {
+      try { filas = await getClasificacion(teamId, temporada.id); }
+      catch (e) { console.warn('[clasificación]', e.message); }
+      if (!hayClasificacion()) {
+        mount(nodo, h('p', { class: 'eq-ayuda' },
+          'Para la clasificación falta aplicar la migración 029 en la base de datos.'));
+        return;
+      }
+      pintaTabla();
+    })();
+
+    mount(zona, nodo);
+    return nodo;
+  }
+
   async function pintaPartidos(zona) {
+    const nodoAcum = h('div', {});
+    const nodoClasi = h('div', {});
     let partidos = [];
     try { partidos = await getPartidosEquipo(teamId, temporada.id); }
     catch {
@@ -507,7 +791,15 @@ export function render(root, params) {
         : h('div', { class: 'empty-state' },
             h('p', { class: 'empty-state-display' }, 'Sin partidos'),
             h('p', {}, 'Añádelos desde el calendario, en el día que se juegan.')),
+      // ── lo de la temporada, debajo de los partidos sueltos ──
+      h('div', { class: 'eq-part-temporada' }, nodoAcum, nodoClasi),
     );
+
+    /* Los acumulados van después y aparte: leen otra tabla, pueden
+       tardar y no pueden retrasar la lista de partidos, que es lo que
+       se viene a ver. */
+    seccionAcumulados(partidos).then((n) => { if (n) mount(nodoAcum, n); });
+    seccionClasificacion(nodoClasi);
   }
 
   // ── Pestaña HORARIOS ───────────────────────────────────────

@@ -235,7 +235,10 @@
       profiles: [{ id: 'u1', full_name: 'Beltrán', role: 'coach' }],
       // Un vídeo ya guardado por el club (Tramo 3.3), para poder
       // comprobar que se reutiliza sin pegar el enlace otra vez.
-      seasons: [{ id: 's1', nombre: '2026/27', fecha_inicio: '2026-09-01', fecha_fin: '2027-06-30', activa: true }],
+      /* Las columnas de verdad de `seasons` (data/seasons.js): label,
+         start_date, end_date, is_active. Estaban en castellano y por eso
+         la pestaña de partidos decía «Partidos · undefined». */
+      seasons: [{ id: 's1', label: '2026/27', start_date: '2026-08-24', end_date: '2027-06-30', is_active: true }],
       /* Asistencia y estrellas de tres meses, para que Progresión (3.8)
          tenga algo que dibujar. */
       attendance: [
@@ -249,16 +252,51 @@
       ],
       /* Un partido del sábado, para el acta (Tramo 4.1). Sin marcador
          ni estadísticas: así se ve lo que dice cuando falta todo. */
-      matches: [{
-        id: 'm1', team_id: 't1', season_id: 's1', fecha: '2026-08-22', hora: '11:00:00',
-        lugar: 'Pabellón Municipal', rival: 'CB Rival', es_local: true, estado: 'jugado',
-        marcador_favor: null, marcador_contra: null, marcador_cuartos: [],
-        val_defensa: null, val_ataque: null, val_actitud: null, val_acierto: null,
-        val_global: null, claves: null, acta_path: null, valorada_at: null,
-        convocatoria_cerrada: false,
-        periodos: null, faltas_equipo: [], tiempos_muertos: [], acta_origen: null,
-      }],
-      partido_estadisticas: [],
+      matches: [
+        {
+          id: 'm1', team_id: 't1', season_id: 's1', fecha: '2026-08-22', hora: '11:00:00',
+          lugar: 'Pabellón Municipal', rival: 'CB Rival', es_local: true, estado: 'jugado',
+          marcador_favor: null, marcador_contra: null, marcador_cuartos: [],
+          val_defensa: null, val_ataque: null, val_actitud: null, val_acierto: null,
+          val_global: null, claves: null, acta_path: null, valorada_at: null,
+          convocatoria_cerrada: false,
+          periodos: null, faltas_equipo: [], tiempos_muertos: [], acta_origen: null,
+        },
+        // dos más ya cerrados, para que los acumulados (4.4) tengan de qué sumar
+        { id: 'm2', team_id: 't1', season_id: 's1', fecha: '2026-08-15', hora: '11:00:00',
+          lugar: 'Pabellón Municipal', rival: 'CD San José', es_local: false, estado: 'jugado',
+          marcador_favor: 44, marcador_contra: 38, marcador_cuartos: [],
+          val_defensa: 4, val_ataque: 3, val_actitud: 5, val_acierto: 3, val_global: 4,
+          claves: null, acta_path: null, valorada_at: null, convocatoria_cerrada: false,
+          periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: 'mano' },
+        { id: 'm3', team_id: 't1', season_id: 's1', fecha: '2026-08-08', hora: '12:30:00',
+          lugar: 'Pabellón Municipal', rival: 'CB Ejemplo A', es_local: true, estado: 'jugado',
+          marcador_favor: 31, marcador_contra: 52, marcador_cuartos: [],
+          val_defensa: 2, val_ataque: 2, val_actitud: 4, val_acierto: 2, val_global: 2,
+          claves: null, acta_path: null, valorada_at: null, convocatoria_cerrada: false,
+          periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: 'mano' },
+      ],
+      /* Tres partidos jugados con acta, para los acumulados (4.4). El
+         reparto es feo a propósito: del que más al que menos hay ocho
+         periodos, que es lo que la tabla tiene que hacer visible. */
+      partido_estadisticas: [
+        ...['m1', 'm2', 'm3'].flatMap((m, k) => [
+          { match_id: m, player_id: 'p1', dorsal: 4, periodos: [1, 2, 3, 4], periodos_jugados: 4, periodos_descansados: 2, puntos: 10 + k, faltas: 1 },
+          { match_id: m, player_id: 'p2', dorsal: 5, periodos: [1, 2, 5], periodos_jugados: 3, periodos_descansados: 3, puntos: 6, faltas: 0 },
+          { match_id: m, player_id: 'p3', dorsal: 6, periodos: [3, 4], periodos_jugados: 2, periodos_descansados: 4, puntos: 2, faltas: 2 },
+          { match_id: m, player_id: 'p4', dorsal: 7, periodos: [5, 6], periodos_jugados: 2, periodos_descansados: 4, puntos: 0, faltas: 0 },
+        ]),
+        // el 5 solo estuvo en el último, y un periodo
+        { match_id: 'm3', player_id: 'p5', dorsal: 8, periodos: [6], periodos_jugados: 1, periodos_descansados: 5, puntos: 0, faltas: 0 },
+      ],
+      /* La clasificación a mano (4.5), con nuestra fila marcada y dos
+         equipos empatados a puntos y a diferencia. */
+      clasificacion: [
+        { id: 'c1', team_id: 't1', season_id: 's1', nombre: 'CB EJEMPLO A', es_nuestro: false, jugados: 6, ganados: 6, perdidos: 0, puntos_favor: 312, puntos_contra: 198 },
+        { id: 'c2', team_id: 't1', season_id: 's1', nombre: 'Cadete A', es_nuestro: true, jugados: 6, ganados: 3, perdidos: 3, puntos_favor: 260, puntos_contra: 262 },
+        { id: 'c3', team_id: 't1', season_id: 's1', nombre: 'CD SAN JOSÉ', es_nuestro: false, jugados: 6, ganados: 3, perdidos: 3, puntos_favor: 250, puntos_contra: 252 },
+        { id: 'c4', team_id: 't1', season_id: 's1', nombre: 'CB 1987 SORIA', es_nuestro: false, jugados: 6, ganados: 0, perdidos: 6, puntos_favor: 190, puntos_contra: 300 },
+      ],
       rubrica_filas: [],
       /* Algo de historia para ver el «↑» y el «hace N días» (3.7): al
          3 se le miró el bote hace dos meses y hace una semana. */
