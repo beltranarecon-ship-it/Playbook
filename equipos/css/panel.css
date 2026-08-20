@@ -19,7 +19,9 @@
 .eq-tab {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   min-width: 44px; min-height: 44px; justify-content: center;
-  padding: 0.25rem 1.25rem;
+  /* Con cuatro destinos (Tramo 4.11) el relleno fijo de 1.25rem sacaba
+     la barra de un móvil de 360 px. Reparto por igual y sin desbordar. */
+  flex: 1 1 0; padding: 0.25rem 0.5rem;
   color: rgba(255,255,255,0.55);
   font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
   transition: color var(--t-fast);
@@ -1489,4 +1491,56 @@ input.eq-acta-duda, .eq-acta-x.eq-acta-duda {
   background: var(--papaya-soft);
   border: 1px solid color-mix(in srgb, var(--papaya) 35%, var(--line));
   border-radius: var(--radius);
+}
+
+/* ── Pantalla de inicio (Tramo 4.11) ──────────────── */
+.eq-inicio { max-width: 60rem; }
+.eq-ini-sec { margin-bottom: 1.75rem; }
+/* Las vacías se quedan, apagadas: una pantalla que cambia de forma
+   cada día no se aprende nunca. */
+.eq-ini-sec.vacia { opacity: 0.45; }
+.eq-ini-sec.vacia .eq-zona-titulo { font-size: 0.875rem; }
+.eq-ini-lista { display: flex; flex-direction: column; gap: 0.375rem; }
+.eq-ini-fila {
+  display: flex; align-items: baseline; gap: 0.875rem; flex-wrap: wrap;
+  background: var(--white); border: 1px solid var(--line);
+  border-left: 3px solid var(--team-color, var(--muted));
+  padding: 0.5rem 0.875rem; border-radius: var(--radius);
+  text-decoration: none; color: var(--ink);
+  transition: border-color var(--t-fast), transform var(--t-fast);
+}
+.eq-ini-fila:hover { border-color: var(--ink); transform: translateX(2px); }
+/* Un partido pesa más que un entreno y se ve antes. */
+.eq-ini-fila.es-partido { background: var(--carbon); color: var(--white); }
+.eq-ini-fila.es-partido .eq-ini-cuando { color: rgba(255,255,255,0.6); }
+.eq-ini-fila.es-convo { border-style: dashed; }
+.eq-ini-cuando {
+  font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted);
+  min-width: 7.5rem;
+}
+.eq-ini-que { font-weight: 600; flex: 1; min-width: 8rem; }
+.eq-ini-equipo { font-size: 0.8125rem; opacity: 0.8; }
+/* Lo que falta por hacer, en ámbar: es la razón de que la fila esté ahí. */
+.eq-ini-pendiente {
+  font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--papaya-deep); background: var(--papaya-soft);
+  padding: 1px 6px; border-radius: var(--radius);
+}
+.eq-ini-avisos {
+  background: var(--papaya-soft); border-left: 3px solid var(--papaya);
+  padding: 0.875rem 1rem; border-radius: var(--radius); margin-bottom: 1.75rem;
+}
+.eq-ini-aviso {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 0.375rem 0; text-decoration: none; color: var(--ink);
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.eq-ini-aviso span { font-size: 0.8125rem; color: var(--muted); }
+
+/* La campana (Tramo 4.7) */
+.eq-campana { position: relative; display: inline-flex; }
+.eq-campana-punto {
+  position: absolute; top: 4px; right: 4px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--papaya); box-shadow: 0 0 0 2px var(--carbon);
 }

@@ -64,3 +64,26 @@ export const CATEGORIAS_EQUIPO = [
   'babybasket', 'premini', 'minibasket', 'alevin', 'infantil',
   'cadete', 'junior', 'senior',
 ];
+
+/* ============================================================
+   AVISOS PUSH (Tramo 4.7)
+
+   La clave VAPID PÚBLICA. Es pública por diseño —el navegador la
+   necesita para suscribirse y viaja en cada suscripción—, así que
+   estar aquí no es una filtración. La PRIVADA vive solo en las
+   variables de entorno de Netlify y no se escribe en ningún fichero.
+
+   Cómo se generan (una vez, y valen para siempre):
+
+     npx web-push generate-vapid-keys
+
+   La pública se pega aquí; la privada, en Netlify → Site settings →
+   Environment variables, como VAPID_PRIVATE_KEY.
+
+   Vacía = no hay avisos. La pantalla lo dice («falta la clave pública»)
+   en vez de enseñar un botón que no funciona.
+   ============================================================ */
+export const VAPID_PUBLIC_KEY = '';
+
+/** A quién contesta el servicio de push si algo va mal. */
+export const VAPID_CONTACTO = 'mailto:playbook@cbpalencia.es';

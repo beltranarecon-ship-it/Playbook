@@ -3,7 +3,7 @@
 // Cache-first servía módulos del Taller obsoletos; network-first lo evita.
 // Las llamadas a Supabase y esm.sh NUNCA se cachean aquí.
 
-const CACHE_NAME = 'cbp-v2-shell-v12'; // v12: caída al lector local sin clave de IA
+const CACHE_NAME = 'cbp-v2-shell-v13'; // v13: push y notificationclick (Tramo 4.7)
 
 const PRECACHE_ASSETS = [
   '/index.html',
@@ -81,3 +81,62 @@ self.addEventListener('fetch', (event) => {
     }).catch(() => caches.match(event.request))
   );
 });
+
+/* ============================================================
+   AVISOS PUSH (Tramo 4.7)
+
+   El service worker deja de solo cachear y pasa a manejar `push` y
+   `notificationclick` (§9).
+
+   LO QUE LLEGA
+   La función programada manda un JSON con {titulo, cuerpo, url, tag}.
+   Si por lo que sea llega sin cuerpo —una prueba desde el navegador, un
+   push vacío de mantenimiento— se enseña algo genérico en vez de no
+   enseñar nada: un push que no muestra notificación hace que el
+   navegador retire el permiso.
+
+   TODO SE PUEDE HACER ABRIENDO EL AVISO (§5.8)
+   Al tocarlo se abre `url`. Y si ya hay una pestaña de la app abierta,
+   se REUTILIZA y se navega dentro: abrir una segunda deja al entrenador
+   con dos copias de la app y los cambios a medias en la de atrás.
+   ============================================================ */
+
+self.addEventListener('push', (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch { d = {}; }
+
+  const titulo = d.titulo || 'Playbook CBP';
+  const opciones = {
+    body: d.cuerpo || '',
+    icon: '/assets/icons/icon-192.png',
+    badge: '/assets/icons/icon-192.png',
+    // el tag hace que un aviso nuevo del MISMO hecho sustituya al
+    // anterior en la bandeja en vez de apilarse
+    tag: d.tag || d.clave || 'cbp',
+    renotify: false,
+    data: { url: d.url || '/equipos/' },
+    // vibra: en el bolsillo, durante un entrenamiento, es lo único que
+    // se percibe
+    vibrate: [80, 40, 80],
+  };
+  event.waitUntil(self.registration.showNotification(titulo, opciones));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const destino = (event.notification.data && event.notification.data.url) || '/equipos/';
+
+  event.waitUntil((async () => {
+    const abiertas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of abiertas) {
+      // misma app abierta: se navega dentro y se trae al frente
+      if (new URL(c.url).origin === self.location.origin) {
+        await c.focus();
+        if ('navigate' in c) { try { await c.navigate(destino); } catch { /* algunos navegadores no dejan */ } }
+        return;
+      }
+    }
+    await self.clients.openWindow(destino);
+  })());
+});
+

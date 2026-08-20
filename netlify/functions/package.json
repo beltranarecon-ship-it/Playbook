@@ -1,0 +1,10 @@
+{
+  "name": "cbp-funciones",
+  "private": true,
+  "type": "module",
+  "description": "Dependencias SOLO de las funciones de Netlify. El frontend sigue sin proceso de compilación (§9): aquí no entra nada que se sirva al navegador.",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "web-push": "^3.6.7"
+  }
+}

@@ -17,10 +17,14 @@
 /* ── Topbar negra ───────────────────────────────────── */
 
 .topbar {
+  /* Fija de verdad (§5.11): en un pabellón, con una lista larga
+     delante, tener que subir hasta arriba para cambiar de sitio es lo
+     que hace que la gente deje de moverse por la app. Y algo más alta
+     que antes, que es lo que pedía la misma sección. */
   position: sticky;
   top: 0;
   z-index: 100;
-  height: 60px;
+  height: 68px;
   background: var(--carbon);
   display: flex;
   align-items: center;
