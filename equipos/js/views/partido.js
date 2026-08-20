@@ -23,7 +23,7 @@
 
 import { h, mount } from '../ui/dom.js';
 import { toast } from '../ui/toast.js';
-import { confirmar } from '../ui/modal.js';
+import { confirmar, abrirModal } from '../ui/modal.js';
 import { puntoEquipo, estrellas } from '../ui/components.js';
 import { getMisEquipos } from '../data/teams.js';
 import { getJugadores } from '../data/players.js';
@@ -37,6 +37,9 @@ import {
   periodosDe, filaVacia, totales, sumaPeriodos, descuadres, loQueFalta,
   rejillaDe, jugoEn, alterna, recuenta, enPista, saneaFila, saneaCuartos,
 } from '../data/acta.js';
+import {
+  armarEnvio, volcar, resumen as resumenPuente, avisos as avisosPuente,
+} from '../data/acta-chat.js';
 import {
   EJES_VALORACION, ESTADOS_PARTIDO, VALORACION_MAX,
   resultadoPartido, diferencia, mediaValoracion, validaPartido,
@@ -63,6 +66,11 @@ export function render(root, params) {
      un periodo», que es una acusación; no estar dice «no vino»—. */
   let jugadores = [], filas = [], teniaFila = new Set();
   let conActa = true;
+  /* Lo que ha entrado por el puente al chat (4.2) y todavía no ha
+     mirado nadie. Un acta manuscrita leída por un modelo no es un dato,
+     es una propuesta: se pinta en ámbar hasta que se toca el campo —que
+     es la señal de que se ha mirado— o se da por repasada entera. */
+  let dudosos = new Set();
   // el estado tal y como está EN LA BASE DE DATOS. `p.estado` es el del chip,
   // que el usuario cambia sin guardar; las policies de 016 miran este.
   let estadoBD = null;
@@ -101,11 +109,15 @@ export function render(root, params) {
     const campo = (clave, etiqueta) => h('label', { class: 'eq-marcador-campo' },
       h('span', { class: 'eq-marcador-lbl' }, etiqueta),
       h('input', {
-        class: 'field-input eq-marcador-num', type: 'number', min: 0, max: 300,
+        class: 'field-input eq-marcador-num'
+          + (dudosos.has(`marcador.${clave === 'marcador_favor' ? 'favor' : 'contra'}`) ? ' eq-acta-duda' : ''),
+        type: 'number', min: 0, max: 300,
         value: p[clave] ?? '', 'aria-label': etiqueta, inputmode: 'numeric',
         onInput: (e) => {
           const v = e.target.value;
           p[clave] = v === '' ? null : Math.max(0, Math.min(300, Number(v)));
+          dudosos.delete(`marcador.${clave === 'marcador_favor' ? 'favor' : 'contra'}`);
+          e.target.classList.remove('eq-acta-duda');
           marcaSucio(); pintaResultado();
         },
       }),
@@ -147,13 +159,17 @@ export function render(root, params) {
   /* Un campo de número del acta. Vacío en vez de «0» a propósito: una
      rejilla de treinta y seis ceros no se lee, y lo que importa es lo
      que está escrito, no lo que está a cero. */
-  const campoNum = (valor, { max = 200, clase = '', aria, alCambiar }) => h('input', {
-    class: `field-input eq-acta-num ${clase}`, type: 'number', min: 0, max,
+  const campoNum = (valor, { max = 200, clase = '', aria, duda = null, alCambiar }) => h('input', {
+    class: `field-input eq-acta-num ${clase}` + (duda && dudosos.has(duda) ? ' eq-acta-duda' : ''),
+    type: 'number', min: 0, max,
     inputmode: 'numeric', placeholder: '0', 'aria-label': aria,
     value: num(valor) ? String(num(valor)) : '',
+    title: duda && dudosos.has(duda) ? 'Lo ha leído el chat: repásalo contra el papel' : undefined,
     onInput: (e) => {
       const v = e.target.value;
       alCambiar(v === '' ? 0 : Math.max(0, Math.min(max, Math.round(Number(v)) || 0)));
+      // tocar el campo ES mirarlo: el ámbar de ese número se apaga
+      if (duda && dudosos.delete(duda)) { e.target.classList.remove('eq-acta-duda'); e.target.removeAttribute('title'); }
       marcaSucio(); pintaAvisos();
     },
   });
@@ -185,6 +201,9 @@ export function render(root, params) {
     );
   }
 
+  /* Las claves con las que el puente marca lo dudoso (`acta-chat.js`). */
+  const PREFIJO = { marcador_cuartos: 'periodo', faltas_equipo: 'faltas', tiempos_muertos: 'tm' };
+
   function pintaPeriodos() {
     estiraListas();
     const n = P();
@@ -201,6 +220,7 @@ export function render(root, params) {
       ].map(([clave, lado, max]) => h('td', {},
         campoNum(p[clave][i][lado], {
           max, aria: `${clave} ${lado} periodo ${i + 1}`,
+          duda: `${PREFIJO[clave]}.${i + 1}.${lado}`,
           alCambiar: (v) => { p[clave][i][lado] = v; if (clave === 'marcador_cuartos') pintaTotales(); },
         }))),
     );
@@ -265,9 +285,11 @@ export function render(root, params) {
 
     const celdaPeriodo = (f, k) => {
       const dentro = jugoEn(f, k);
+      const duda = `jugador.${f.player_id}.periodos`;
       return h('td', { class: 'eq-acta-cel' },
         h('button', {
-          type: 'button', class: 'eq-acta-x' + (dentro ? ' sel' : ''),
+          type: 'button',
+          class: 'eq-acta-x' + (dentro ? ' sel' : '') + (dudosos.has(duda) ? ' eq-acta-duda' : ''),
           role: 'checkbox', 'aria-checked': String(dentro),
           'aria-label': `${f.nombre}, periodo ${k}`,
           onClick: (e) => {
@@ -277,6 +299,11 @@ export function render(root, params) {
             const ahora = jugoEn(filas[i], k);
             b.classList.toggle('sel', ahora);
             b.setAttribute('aria-checked', String(ahora));
+            // tocar la rejilla de este jugador la da por repasada entera
+            if (dudosos.delete(duda)) {
+              nodoFilas.querySelectorAll(`[aria-label^="${f.nombre}, periodo"]`)
+                .forEach((x) => x.classList.remove('eq-acta-duda'));
+            }
             marcaSucio(); pintaPie(); pintaAvisos();
           },
         }, dentro ? '×' : ''),
@@ -291,10 +318,12 @@ export function render(root, params) {
       ...Array.from({ length: n }, (_, i) => celdaPeriodo(f, i + 1)),
       h('td', {}, campoNum(f.puntos, {
         max: 200, clase: 'eq-acta-pts', aria: `Puntos de ${f.nombre}`,
+        duda: `jugador.${f.player_id}.puntos`,
         alCambiar: (v) => { filas[idx.get(f.player_id)].puntos = v; pintaPie(); },
       })),
       h('td', {}, campoNum(f.faltas, {
         max: 10, clase: 'eq-acta-fal', aria: `Faltas de ${f.nombre}`,
+        duda: `jugador.${f.player_id}.faltas`,
         alCambiar: (v) => { filas[idx.get(f.player_id)].faltas = v; pintaPie(); },
       })),
     );
@@ -342,6 +371,100 @@ export function render(root, params) {
     marcaSucio(); pintaAvisos();
   }
 
+  // ── el puente al chat (4.2) ────────────────────────────────
+  /* La app arma el envío, el entrenador lo pega en su chat con la foto
+     del acta y trae la respuesta. Sin red, sin clave, sin coste (§2), y
+     sin un solo nombre de un crío en lo que sale de aquí. */
+  function abrirPuente() {
+    const envio = armarEnvio(p, jugadores, { nombreEquipo });
+    const salida = h('textarea', {
+      class: 'field-textarea eq-puente-envio', rows: 7, readonly: true,
+      'aria-label': 'Lo que hay que pegar en el chat',
+    }, envio);
+    const entrada = h('textarea', {
+      class: 'field-textarea', rows: 6,
+      placeholder: 'Pega aquí la respuesta del chat, entera, con las llaves incluidas.',
+      'aria-label': 'La respuesta del chat',
+    });
+    const parte = h('p', { class: 'eq-ayuda' });
+    /* Repegar una respuesta corregida es el segundo uso más común del
+       puente —se le pide al chat que mire otra vez una columna y se
+       vuelve— y la regla de «no pisar lo escrito» la rechazaba entera.
+       Se ofrece, apagado: pisar por defecto convertiría una ayuda en un
+       secuestro, pero no poder hacerlo nunca obliga a borrar a mano. */
+    const sustituir = h('input', { type: 'checkbox', id: 'eq-puente-pisar' });
+
+    const copiar = async (e) => {
+      try {
+        await navigator.clipboard.writeText(envio);
+        e.target.textContent = 'Copiado';
+        setTimeout(() => { e.target.textContent = 'Copiar'; }, 1500);
+      } catch {
+        // sin permiso de portapapeles queda seleccionado, que es lo mismo
+        salida.select();
+        mount(parte, h('span', {}, 'No he podido copiarlo yo: está seleccionado, dale a copiar.'));
+      }
+    };
+
+    const m = abrirModal({
+      titulo: 'Leer el acta con el chat',
+      clase: 'eq-puente-modal',
+      cuerpo: h('div', { class: 'eq-puente' },
+        h('p', { class: 'eq-ayuda' },
+          'Pega esto en tu chat junto con la foto del acta. No lleva ningún nombre: '
+          + 'va por dorsal, y el casado lo hace la app aquí dentro.'),
+        h('div', { class: 'field-group' },
+          h('div', { class: 'eq-puente-cab' },
+            h('label', { class: 'field-label' }, '1 · Cópialo en tu chat'),
+            h('button', { class: 'btn btn-secondary eq-btn-mini', type: 'button', onClick: copiar }, 'Copiar'),
+          ),
+          salida,
+        ),
+        h('div', { class: 'field-group' },
+          h('label', { class: 'field-label' }, '2 · Pega aquí lo que te devuelva'),
+          entrada,
+          h('label', { class: 'eq-puente-pisar', for: 'eq-puente-pisar' },
+            sustituir, h('span', {}, 'Sustituir lo que ya haya escrito')),
+          parte,
+        ),
+      ),
+      pie: [
+        h('button', { class: 'btn btn-secondary', type: 'button', onClick: () => m.cerrar() }, 'Cancelar'),
+        h('button', {
+          class: 'btn btn-primary', type: 'button',
+          onClick: () => {
+            const r = volcar(p, filas, entrada.value, { pisar: sustituir.checked });
+            if (r.error) { mount(parte, h('span', { class: 'eq-acta-descuadre' }, r.error)); return; }
+            if (!r.puestos.length) {
+              // el caso de repegar: todo lo que traía ya estaba escrito
+              mount(parte, h('span', { class: 'eq-acta-descuadre' },
+                r.ignorados.length
+                  ? `Todo eso ya estaba escrito en el acta (${r.ignorados.length} campos). Marca «Sustituir lo que ya haya escrito» si quieres cambiarlo.`
+                  : resumenPuente(r)));
+              return;
+            }
+            /* Se sustituyen los objetos enteros: `volcar` devuelve copias
+               a propósito, así que hasta este momento no se ha tocado
+               nada de lo que hay en pantalla. */
+            Object.assign(p, r.partido);
+            filas = r.filas;
+            dudosos = new Set(r.dudosos);
+            delPuente = {
+              resumen: resumenPuente(r),
+              avisos: avisosPuente(r, { sinDorsal: jugadores.filter((x) => x.dorsal == null).length }),
+            };
+            marcaSucio(); m.cerrar(); pinta();
+            toast(resumenPuente(r));
+          },
+        }, 'Volcar en el acta'),
+      ],
+    });
+  }
+
+  /* Lo que dejó el último volcado, para poder contarlo al pie del acta
+     mientras quede algo por repasar. */
+  let delPuente = null;
+
   // ── lo que no cuadra, y lo que falta ───────────────────────
   /* Dos cosas distintas, y se pintan distinto. Un DESCUADRE es un error
      de copia —dos números que no pueden ser los dos ciertos— y sale en
@@ -350,7 +473,29 @@ export function render(root, params) {
   function pintaAvisos() {
     const malos = descuadres(p, filas);
     const falta = loQueFalta(p, filas);
+    /* Lo que el chat dijo que no leyó seguro y los dorsales que no ha
+       sabido casar: se dicen una vez, con el volcado reciente. */
+    const delChat = delPuente ? delPuente.avisos.filter((a) => !malos.some((d) => d.texto === a)) : [];
     mount(nodoAvisos,
+      dudosos.size
+        ? h('div', { class: 'eq-acta-repasar' },
+            h('span', {},
+              `${dudosos.size} campo${dudosos.size === 1 ? '' : 's'} por repasar contra el papel.`),
+            h('button', {
+              class: 'btn btn-secondary eq-btn-mini', type: 'button',
+              // repasar es mirar, y mirar no deja rastro: se apaga a mano.
+              // El ámbar se quita del DOM entero y no solo repintando el
+              // acta: los dos campos del marcador final viven en otra
+              // sección, y se quedaban encendidos ahí.
+              onClick: () => {
+                dudosos = new Set(); delPuente = null;
+                cont.querySelectorAll('.eq-acta-duda').forEach((x) => x.classList.remove('eq-acta-duda'));
+                pintaActa();
+              },
+            }, 'Ya lo he repasado'),
+          )
+        : null,
+      ...delChat.map((t) => h('p', { class: 'eq-acta-descuadre' }, t)),
       ...malos.map((d) => h('p', { class: 'eq-acta-descuadre' }, d.texto)),
       falta.length
         ? h('p', { class: 'eq-ayuda' }, `Falta por apuntar: ${falta.join(', ')}.`)
@@ -517,9 +662,15 @@ export function render(root, params) {
         ),
         conActa
           ? h('div', {},
-              h('p', { class: 'eq-ayuda eq-acta-guia' },
-                'Se rellena con el papel delante: primero el marcador de cada periodo, '
-                + 'luego una cruz en los periodos que jugó cada uno.'),
+              h('div', { class: 'eq-acta-guia' },
+                h('p', { class: 'eq-ayuda' },
+                  'Se rellena con el papel delante: primero el marcador de cada periodo, '
+                  + 'luego una cruz en los periodos que jugó cada uno.'
+                  + (p.acta_origen === 'chat' ? ' Esta la leyó el chat.' : '')),
+                h('button', {
+                  class: 'btn btn-secondary eq-btn-mini', type: 'button', onClick: abrirPuente,
+                }, 'Leerla con el chat'),
+              ),
               nodoPeriodos,
               nodoFilas,
               nodoAvisos,

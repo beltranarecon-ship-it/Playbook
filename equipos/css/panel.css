@@ -732,7 +732,36 @@
    Son tablas de verdad —fila y columna significan algo— y se leen con
    el papel delante, así que priman los números y no el adorno. */
 .eq-acta-bloque { margin-top: 0.875rem; }
-.eq-acta-guia { margin-bottom: 0.25rem; }
+.eq-acta-guia {
+  margin-bottom: 0.25rem; display: flex; align-items: flex-start;
+  gap: 0.875rem; flex-wrap: wrap; justify-content: space-between;
+}
+.eq-acta-guia p { flex: 1; min-width: 14rem; }
+
+/* ÁMBAR: lo que ha leído el chat y no ha mirado nadie (Tramo 4.2).
+   No es un error —puede estar perfecto—: es un dato sin comprobar, y
+   se distingue del descuadre en que ese sí sabemos que está mal. */
+input.eq-acta-duda, .eq-acta-x.eq-acta-duda {
+  background: var(--papaya-soft);
+  box-shadow: inset 0 0 0 2px var(--papaya);
+}
+.eq-acta-x.sel.eq-acta-duda { background: var(--papaya-deep); border-color: var(--papaya-deep); color: var(--white); }
+.eq-acta-repasar {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  font-size: 0.8125rem; color: var(--papaya-deep);
+  background: var(--papaya-soft); border-left: 3px solid var(--papaya);
+  padding: 0.375rem 0.625rem; border-radius: var(--radius);
+}
+
+/* El puente al chat */
+.eq-puente { display: flex; flex-direction: column; gap: 1rem; }
+.eq-puente-cab { display: flex; align-items: center; justify-content: space-between; gap: 0.875rem; }
+.eq-puente-envio { font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.45; }
+.eq-puente-pisar {
+  display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;
+  font-size: 0.8125rem; color: var(--muted); cursor: pointer;
+}
+.eq-puente-modal .modal { max-width: 44rem; }
 .eq-acta-cuantos { display: flex; align-items: center; gap: 0.375rem; }
 .eq-acta-cuantos .eq-catchip { min-width: 2.25rem; justify-content: center; }
 

@@ -1819,6 +1819,91 @@ el pie dice **5**; se guarda dos veces y siguen siendo 10 filas (el upsert no du
 se desmarca a uno del todo y **desaparece** del acta. En móvil (375 px) la página no se va
 de lado: cada rejilla se desliza dentro de su caja y la columna del nombre se queda fija.
 
+### Estado de 4.2 (hecha)
+
+`equipos/js/data/acta-chat.js` — el puente, módulo puro, con su banco (`eval-acta-chat.mjs`,
+**40 pruebas**). Sin migración: la 028 ya trae `acta_origen`, que pasa a `'chat'` cuando el
+acta entra por aquí. En la pantalla del partido, un botón **«Leerla con el chat»**.
+
+La app arma el envío, el entrenador lo pega en su chat **con la foto del acta**, trae la
+respuesta y la app la coloca en los cuarenta huecos. Sin red, sin clave, sin coste (§2):
+el trabajo de leer la letra lo hace la suscripción que el entrenador ya paga.
+
+**Por dorsal, y solo por dorsal.** El envío no lleva ni un nombre de un crío —es la razón
+de ser del puente (§2)— y el casado dorsal → jugador se hace dentro de la app, contra la
+plantilla. La primera prueba del banco es esa: que ningún nombre, ni el apellido ni el de
+pila, aparezca en el texto que sale del club. Efecto colateral bueno: el acta se lee igual
+aunque el chat no sepa descifrar los apellidos manuscritos, que es justo lo que peor se lee.
+
+**Ámbar en lo dudoso.** Un acta manuscrita leída por un modelo no es un dato, es una
+propuesta. Todo lo que entra se pinta en ámbar y la duda viene de tres sitios:
+
+| | |
+|---|---|
+| Lo que el chat confiesa | se le pide la lista en `"dudoso"` y se repite en cristiano al pie |
+| Lo que no cuadra | `acta.descuadres`: el único juez que no opina es la suma. Un modelo segurísimo se equivoca igual |
+| Lo que hemos tocado nosotros | lo recortado a los límites y lo que no se ha sabido casar |
+
+El ámbar de un campo se apaga **al tocarlo** —tocar es mirar— y el resto con «Ya lo he
+repasado». Ninguna de las dos cosas la decide la app sola.
+
+**No pisa lo escrito**, como el puente del Taller (§2.12): rellena huecos y dice cuántos
+campos ha respetado. Y si **todo** lo que traía ya estaba escrito —el caso de repegar una
+respuesta corregida— lo dice y señala la casilla «Sustituir lo que ya haya escrito», que
+está apagada. Pisar por defecto convertiría una ayuda en un secuestro; no poder pisar nunca
+obliga a borrar a mano.
+
+**Y no casa a nadie a lo loco.** Un dorsal que no es de nadie, uno que llevan dos jugadores
+de la plantilla o uno que aparece dos veces en la respuesta se **dicen**; no se colocan en
+la fila de al lado. Meterle el acta al jugador equivocado es peor que dejar la fila vacía,
+porque el error viaja a la temporada entera (4.4).
+
+#### Lo que encontró un ataque adversario
+
+Escribí el módulo, le puse 28 pruebas y estaban todas verdes. Después lancé cinco agentes
+contra el lector, cada uno con una lente distinta —formato, números, rejilla, dorsales,
+estructura— con la obligación de **comprobar cada hallazgo ejecutando node**, y una segunda
+vuelta de escépticos encargados de refutarlos. Salieron **20 hallazgos**. La segunda vuelta
+se quedó a medias (se agotó el límite de la sesión con 4 juzgados, los 4 refutados), así
+que los 16 restantes los trié a mano, uno por uno, con node.
+
+Lo que cambió, todo comprobado antes y después:
+
+| Lo que hacía | Lo que hace |
+|---|---|
+| Cogía la **primera** valla de código. Un chat que repite el formato antes de contestar hacía que se volcara **la plantilla de ceros** con pinta de acta leída | Se puntúan todos los bloques y gana el que más se parece a un acta **leída**: las claves cuentan poco y los números cuentan mucho, que es lo único que distingue el molde del acta |
+| Una coma de más antes de cerrar, o un comentario `//`, tiraban la respuesta entera | Se reintenta limpiando las dos cosas |
+| `{"acta": {…}}` no se encontraba | Se mira también un nivel hacia dentro |
+| El envío pedía **poner 0** en lo que no se leyera, contradiciendo al propio módulo, que distingue «cero puntos» de «no lo sé» | El envío pide `null` y que lo diga en `"dudoso"` |
+| Un dorsal repetido **en la respuesta**: ganaba el primero y el segundo se contaba como «respetado lo que ya estaba escrito», que dice lo contrario de lo que pasa | Se dice: «aparece dos veces en la respuesta» |
+| `jugadores` como objeto indexado por dorsal se perdía entero, en silencio, y el resumen decía que todo había ido bien | Se entiende, y en cualquier otra forma se dice que no ha entrado ninguno |
+| Solo se entendía `favor`/`contra` | También `nosotros/ellos`, `local/visitante` —según de qué lado juguemos— y el par ordenado `[6, 5]` |
+| La rejilla solo se entendía como lista de números | También escrita en texto («1, 2, 4»). Un número suelto **no** se interpreta: un «4» puede ser «jugó el cuarto» o «jugó cuatro periodos» |
+| Pegar el molde del propio modal dejaba el acta a cero con pinta de leída | Se detecta y se dice que eso es el formato, no la respuesta |
+| Un `"periodos": 4` del chat con el partido a 6 se ignoraba sin más | Se avisa: o el partido está mal configurado o el chat ha leído otra cosa |
+| «El dorsal 23 no se ha podido casar» a secas | Si hay críos sin dorsal en la plantilla, se dice: el fallo está ahí y no en el acta |
+
+**Lo que NO se cambió**, porque los escépticos lo refutaron con razón: que una rejilla vacía
+quede como «0 de 6 periodos» no afirma nada —la pantalla lo escribe igual, y una fila sin
+nada no se guarda—, y el arreglo propuesto sí inventaba un contador fantasma; que una
+máscara `0/1` o una lista en base cero no se «corrijan» sumando uno, porque el propio envío
+manda poner 0 en lo dudoso y `[0,2,4]` pasaría a `[1,3,5]`, inventando un periodo; y que
+`dudoso` en prosa se descarte, porque lo más habitual ahí es una negación («ninguno, lo he
+leído todo») y convertirla en aviso enseña a ignorar el panel.
+
+**Comprobado** en el arnés con el caso compuesto más feo que supe montar: el chat repite el
+formato antes de contestar, llama a los lados «nosotros/ellos», manda los periodos como
+pares `[6, 5]`, la rejilla de un jugador como texto «1, 2, 4» y los jugadores como objeto
+indexado por dorsal. Entra **38-30**, las dos rejillas correctas, y al pie una nota honesta
+de que la lista venía como objeto. Repegar lo mismo dice *«Todo eso ya estaba escrito en el
+acta (5 campos)»*; con la casilla marcada, sustituye. Se guarda y en la base de datos quedan
+las rejillas, los puntos y `acta_origen = 'chat'`.
+
+**Un límite conocido**: la rejilla lista a los jugadores **activos**, así que un crío dado de
+baja después del partido no se puede casar por dorsal —sale como «no hay nadie con ese
+dorsal»—. Se dice, no se falsea, pero un acta vieja de alguien que ya no está hay que
+apuntarla antes de archivarlo.
+
 ## Fuera de la v2.1 (marcados «no imprescindible»)
 
 Miniaturas de más calidad · uso sin conexión · identidad visual y estética general ·
