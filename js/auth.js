@@ -1,7 +1,10 @@
 import { supabase } from './supabase-client.js';
 
 const LOGIN_URL = '/index.html';
-const APP_URL   = '/app.html';
+/* Al entrar se abre el INICIO, no la biblioteca (§5.11: «pantalla de
+   inicio con lo de hoy arriba del todo»). La biblioteca es una de las
+   cuatro cosas que se hacen, no la puerta. */
+const APP_URL   = '/inicio';
 
 // ── Sesión ───────────────────────────────────────────────
 

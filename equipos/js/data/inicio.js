@@ -56,6 +56,16 @@ export function semanas(hoyIso) {
 
 const dentro = (fecha, r) => fecha >= r.desde && fecha <= r.hasta;
 
+/* QUÉ es cada cosa. Va en TODAS las secciones y no solo en las que
+   mezclan tipos, porque quien pinta no tiene otra forma de saberlo: una
+   sesión y un partido se parecen bastante —los dos tienen id, fecha,
+   equipo— y al que llegue sin etiqueta hay que adivinarlo.
+
+   Adivinarlo es exactamente lo que pasó: tres secciones salían sin
+   `que`, la vista las daba por partidos, pintaba «@ undefined» y
+   mandaba a /partidos/<id-de-sesión>, que no existe. */
+const comoSesion = (x) => ({ ...x, que: 'sesion' });
+
 /**
  * Reparte todo en las cinco secciones.
  *
@@ -74,7 +84,7 @@ export function secciones({ hoy, sesiones = [], partidos = [], convocatorias = [
 
   const deHoy = [
     ...sesiones.filter((x) => x.fecha === hoy && x.estado !== 'cancelada')
-      .map((x) => ({ ...x, que: 'sesion' })),
+      .map(comoSesion),
     ...partidos.filter((x) => x.fecha === hoy && x.estado !== 'cancelado')
       .map((x) => ({ ...x, que: 'partido' })),
     ...convocatorias.filter((x) => x.fecha === hoy)
@@ -83,18 +93,21 @@ export function secciones({ hoy, sesiones = [], partidos = [], convocatorias = [
 
   const proximaSinPlan = sesiones
     .filter((x) => dentro(x.fecha, s.proxima) && x.estado === 'preliminar')
-    .sort(porFecha);
+    .sort(porFecha)
+    .map(comoSesion);
 
   const proximaConPlan = sesiones
     .filter((x) => dentro(x.fecha, s.proxima) && x.estado === 'programada')
-    .sort(porFecha);
+    .sort(porFecha)
+    .map(comoSesion);
 
   /* «Realizados de la semana pasada» incluye lo que sigue SIN CERRAR, y
      eso va primero: es lo único de esta sección sobre lo que todavía se
      puede hacer algo. */
   const pasada = sesiones
     .filter((x) => dentro(x.fecha, s.pasada) && x.estado === 'realizada')
-    .sort((a, b) => (!!a.evaluada_at) - (!!b.evaluada_at) || porFecha(b, a));
+    .sort((a, b) => (!!a.evaluada_at) - (!!b.evaluada_at) || porFecha(b, a))
+    .map(comoSesion);
 
   /* Partidos y convocatorias, de hoy en adelante. Lo de ayer ya está en
      el calendario; aquí interesa lo que hay por delante. */

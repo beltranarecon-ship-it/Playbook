@@ -149,7 +149,8 @@
       setLoading(true);
       try {
         await login(email, password);
-        window.location.replace('/app.html');
+        // al inicio, no a la biblioteca (§5.11)
+        window.location.replace('/inicio');
       } catch (err) {
         const msg = err.message?.includes('Invalid login credentials')
           ? 'Correo o contraseña incorrectos.'

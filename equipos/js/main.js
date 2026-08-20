@@ -28,11 +28,43 @@ export const router = new Router();
 const app = document.getElementById('app');
 let activa = null;
 
+/* Cuál de los cuatro destinos de la barra corresponde a una ruta. Se
+   calcula en un solo sitio para que el pintado y el repaso no puedan
+   discrepar, y sirve tanto para `location.pathname` como para el `href`
+   de cada botón. */
+function destinoDe(ruta) {
+  if (!ruta) return null;
+  if (ruta.startsWith('/equipos')) return 'equipos';
+  if (ruta.startsWith('/inicio')) return 'inicio';
+  if (ruta.startsWith('/app')) return 'ejercicios';
+  if (ruta.startsWith('/sesiones') || ruta.startsWith('/partidos') || ruta.startsWith('/dossier')) return 'sesiones';
+  // /perfil y /admin no son destinos de la barra: no encienden ninguno
+  return null;
+}
+
+/**
+ * Enciende el botón del destino en el que estamos.
+ *
+ * Se llama desde `show()`, que es lo único que ocurre SIEMPRE y SIEMPRE
+ * después de que la ruta haya cambiado. Antes colgaba de un clic con
+ * `queueMicrotask`, y un microtask corre ANTES de que el router navegue:
+ * leía la ruta anterior, así que la barra iba un paso por detrás y
+ * hacían falta dos clics para que se moviera la marca.
+ */
+function marcaNav() {
+  const activo = destinoDe(location.pathname);
+  document.querySelectorAll('.topbar .nav-item, .eq-tabbar .eq-tab').forEach((el) => {
+    const suyo = destinoDe(el.getAttribute('href'));
+    el.classList.toggle('active', !!suyo && suyo === activo);
+  });
+}
+
 function show(mod, params = {}) {
   if (activa?.destroy) activa.destroy();
   app.replaceChildren();
   activa = mod.render(app, params) || null;
   window.scrollTo(0, 0);
+  marcaNav();
 }
 
 router
@@ -57,15 +89,6 @@ router
   const session = await getSession();
   if (!session) { window.location.replace('/index.html'); return; }
 
-  /* Cuál de los cuatro destinos está activo. Se calcula en un sitio y
-     lo usan el pintado y el repaso, para que no puedan discrepar. */
-  const destinoDe = (ruta) => {
-    if (ruta.startsWith('/equipos')) return 'equipos';
-    if (ruta.startsWith('/inicio')) return 'inicio';
-    if (ruta.startsWith('/app')) return 'ejercicios';
-    return 'sesiones';
-  };
-
   // chrome persistente (fuera del root de vistas)
   document.body.prepend(...chrome(destinoDe(location.pathname), { avisos: 0 }));
 
@@ -85,16 +108,11 @@ router
     } catch { /* sin avisos y sin ruido */ }
   })();
 
-  // marca activo el nav al navegar
-  const marcaNav = () => {
-    const activo = destinoDe(location.pathname);
-    document.querySelectorAll('.topbar .nav-item, .eq-tabbar .eq-tab').forEach((el) => {
-      const href = el.getAttribute('href') || '';
-      el.classList.toggle('active', destinoDe(href) === activo && !!href);
-    });
-  };
+  /* La barra se pinta recién creada y después en cada `show()`. El
+     `popstate` sigue haciendo falta para el botón de atrás del
+     navegador cuando el router no repinta la vista. */
+  marcaNav();
   window.addEventListener('popstate', marcaNav);
-  document.addEventListener('click', () => queueMicrotask(marcaNav));
 
   // perfil (para gates de admin); un fallo aquí no bloquea el módulo
   try { setState({ perfil: await getProfile(session.user.id) }); } catch { /* coach sin perfil */ }

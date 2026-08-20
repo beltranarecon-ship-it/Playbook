@@ -71,6 +71,16 @@ export function render(root) {
        equipo, qué es— y se distinguen por la marca de la izquierda, que
        es la misma del calendario (4.12). */
     const fila = (x) => {
+      /* Si no viene dicho QUÉ es, no se adivina. Lo de adivinar acabó
+         mandando entrenamientos a /partidos/<id-de-sesión>: un enlace
+         roto que además pintaba «@ undefined». Más vale una fila que no
+         lleva a ningún sitio y lo dice. */
+      if (!['sesion', 'partido', 'convocatoria'].includes(x.que)) {
+        console.warn('[inicio] cosa sin tipo, no se enlaza:', x);
+        return h('div', { class: 'eq-ini-fila' },
+          h('span', { class: 'eq-ini-cuando' }, fechaCorta(x.fecha)),
+          h('span', { class: 'eq-ini-que' }, x.titulo || 'Sin identificar'));
+      }
       const esConv = x.que === 'convocatoria';
       const m = esConv ? x.partido : x;
       const teamId = m.team_id;

@@ -65,10 +65,13 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.55);
+  /* 0.55 sobre carbón se lee mal en un portátil con brillo bajo, y con
+     cuatro destinos (4.11) hay el doble de sitio donde perderse. */
+  color: rgba(255,255,255,0.72);
   transition: color var(--t-fast);
 }
 .nav-item:hover { color: var(--white); }
+.nav-item.active { color: var(--white); }
 
 /* Subrayado papaya que entra desde la izquierda en el activo */
 .nav-item::after {

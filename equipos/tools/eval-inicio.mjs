@@ -77,6 +77,39 @@ test('están siempre las cinco, y en el orden de §5.11', () => {
   eq(s.every((x) => Array.isArray(x.cosas)), true);
 });
 
+test('TODO lo que sale lleva dicho QUÉ es', () => {
+  /* El fallo que este banco no cazaba: tres secciones salían sin `que`,
+     la vista las daba por partidos, pintaba «@ undefined» y mandaba a
+     /partidos/<id-de-sesión>. Una sesión y un partido se parecen
+     bastante, y quien pinta no tiene otra forma de distinguirlos.
+
+     Se comprueban las CINCO secciones a la vez a propósito: mirar solo
+     las que mezclan tipos es exactamente lo que dejó pasar el fallo. */
+  const s = secciones({
+    hoy: HOY,
+    sesiones: [
+      ses('hoy', HOY),
+      ses('sinplan', '2026-10-20', 'preliminar'),
+      ses('conplan', '2026-10-21', 'programada'),
+      ses('pasada', '2026-10-08', 'realizada'),
+    ],
+    partidos: [par('m1', HOY), par('m2', '2026-10-17')],
+    convocatorias: [{ fecha: HOY, partido: par('m3', '2026-10-17'), cuantos: 0 }],
+  });
+  const legales = ['sesion', 'partido', 'convocatoria'];
+  for (const sec of s) {
+    for (const x of sec.cosas) {
+      ok(legales.includes(x.que), `en «${sec.clave}» salió ${x.id || '?'} con que=${JSON.stringify(x.que)}`);
+    }
+  }
+  // y las tres que fallaban, por su nombre
+  for (const clave of ['sin_plan', 'con_plan', 'pasada']) {
+    const cosas = s.find((x) => x.clave === clave).cosas;
+    ok(cosas.length, `«${clave}» tenía que traer algo`);
+    ok(cosas.every((x) => x.que === 'sesion'), `«${clave}» tiene que traer sesiones`);
+  }
+});
+
 test('lo de hoy va arriba, y mezcla entreno, partido y convocatoria', () => {
   const s = secciones({
     hoy: HOY,
