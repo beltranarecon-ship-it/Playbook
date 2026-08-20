@@ -1743,19 +1743,19 @@ del almacenamiento.
 
 | # | Tarea | Depende de | Cómo se comprueba |
 |---|---|---|---|
-| 4.1 | Rediseño de la pantalla de partido con todos los datos | 1.1 | Cabe el marcador por periodo, alineaciones y estadísticas |
-| 4.2 | Puente al chat para el acta + volcado a los campos, con ámbar en lo dudoso | 4.1 | Un acta manuscrita rellena marcador, periodos y faltas |
-| 4.3 | Comprobación de reglamento por categoría | 4.2 | Una alineación indebida se detecta y se explica |
-| 4.4 | Estadísticas por jugador y acumulados; periodos, no minutos | 4.2 | La ficha del jugador suma periodos y puntos |
-| 4.5 | Pantalla partidos y clasificación, con tabla manual | 4.1 | Se rellena a mano y se ve por equipo |
-| 4.6 | Convocatoria: plantilla PDF, evento automático, relleno desde la app | 4.1 | Sale el PDF con rival, día, hora y lista |
-| 4.7 | Suscripciones push + service worker + función programada | — | Llega un aviso con la app cerrada en Android |
-| 4.8 | Los seis avisos | 4.7, 3.5 | Cada uno llega cuando toca y abre donde toca |
-| 4.9 | Panel de administrador + lista de invitaciones + disparador de alta | — | Se invita a un entrenador y entra solo, con su clave |
-| 4.10 | Acceso con Google restringido a invitados + recuperar contraseña + perfil | 4.9 | Un correo no invitado no entra |
-| 4.11 | Barra de navegación fija y pantalla de inicio con cinco secciones | — | En móvil abajo, en ordenador arriba |
-| 4.12 | Rediseño de calendario: color e imagen por equipo, partidos distinguidos | 3.4 | Se distingue a la vista qué es cada cosa |
-| 4.13 | Avisos entre entrenadores del mismo equipo | 4.7 | Un cambio de uno le llega al otro |
+| 4.1 ✅ | Rediseño de la pantalla de partido con todos los datos | 1.1 | Cabe el marcador por periodo, alineaciones y estadísticas |
+| 4.2 ✅ | Puente al chat para el acta + volcado a los campos, con ámbar en lo dudoso | 4.1 | Un acta manuscrita rellena marcador, periodos y faltas |
+| 4.3 ✅ | Comprobación de reglamento por categoría | 4.2 | Una alineación indebida se detecta y se explica |
+| 4.4 ✅ | Estadísticas por jugador y acumulados; periodos, no minutos | 4.2 | La ficha del jugador suma periodos y puntos |
+| 4.5 ✅ | Pantalla partidos y clasificación, con tabla manual | 4.1 | Se rellena a mano y se ve por equipo |
+| 4.6 ✅ | Convocatoria: plantilla PDF, evento automático, relleno desde la app | 4.1 | Sale el PDF con rival, día, hora y lista |
+| 4.7 ✅ | Suscripciones push + service worker + función programada | — | Llega un aviso con la app cerrada en Android |
+| 4.8 ✅ | Los seis avisos | 4.7, 3.5 | Cada uno llega cuando toca y abre donde toca |
+| 4.9 ✅ | Panel de administrador + lista de invitaciones + disparador de alta | — | Se invita a un entrenador y entra solo, con su clave |
+| 4.10 ✅ | Acceso con Google restringido a invitados + recuperar contraseña + perfil | 4.9 | Un correo no invitado no entra |
+| 4.11 ✅ | Barra de navegación fija y pantalla de inicio con cinco secciones | — | En móvil abajo, en ordenador arriba |
+| 4.12 ✅ | Rediseño de calendario: color e imagen por equipo, partidos distinguidos | 3.4 | Se distingue a la vista qué es cada cosa |
+| 4.13 ✅ | Avisos entre entrenadores del mismo equipo | 4.7 | Un cambio de uno le llega al otro |
 
 ### Estado de 4.1 (hecha)
 
@@ -2048,6 +2048,211 @@ reordena el resto.
 pestañas del detalle de equipo no caben y empujan la página entera de lado
 (`scrollWidth` 612 con 375 de ancho). Es de la barra de pestañas, no de estas dos tablas
 —las dos caben y se deslizan dentro de su caja—, y queda anotado aparte.
+
+### Estado de 4.6 (hecha)
+
+`equipos/js/data/convocatoria.js` (puro, **19 pruebas**), la vista imprimible
+`/partidos/:id/convocatoria` y `equipos/js/data/equipo-archivos.js`. Migración **030**:
+`matches.convocados` (jsonb), `convocatoria_lugar` y `convocatoria_hora`; en
+`team_settings`, la plantilla PDF, la imagen del equipo y la hora del aviso. Bucket privado
+`equipos` con el mismo guard por primera carpeta que `actas`.
+
+**El lugar y la hora de la convocatoria no son los del partido.** Se queda media hora antes
+y muchas veces en otro sitio —el pabellón de casa, para ir juntos—, y meterlo en `lugar` y
+`hora` haría que el calendario mintiera sobre cuándo se juega.
+
+**El evento se deduce, no se guarda.** §5.9 dice «se crea sola como evento del calendario»,
+y sale del partido más el día de convocatoria del equipo, igual que el estado «activa» de
+una sesión sale del reloj (§5.6). Una tabla de eventos hay que mantenerla al día, y a la
+primera que se olvide el calendario enseña convocatorias de partidos que ya no existen.
+El día se busca siempre **hacia atrás**: nunca cae el mismo día del partido, porque un aviso
+que llega el sábado por la mañana no sirve de nada.
+
+Al llegar a los **doce** que caben en el acta no se desconvoca a nadie por cuenta propia: se
+dice y decide el entrenador. Quitar a un crío para meter a otro no es una decisión de la app.
+
+**Desviación de §5.9, dicha en su sitio.** El documento se compone como **página imprimible**
+y no rellenando la plantilla PDF del club. Rellenar un escaneado exige saber en qué
+coordenada exacta va cada campo de *ese* papel: hay que calibrarlo con el fichero delante,
+uno por club, y otra vez cada vez que la federación cambia el formato. Imprimir a PDF desde
+el navegador —«Guardar como PDF», que está en el móvil y en el ordenador— da el mismo
+documento, sale hoy y no trae ninguna librería (§9). La plantilla del club se guarda igual y
+se ofrece al lado, para quien tenga que entregar ese papel concreto en la mesa.
+
+**Y un fallo gordo que salió mapeando el código para esta fila**: `Object.assign` sobre
+`el.style` **ignora en silencio las variables CSS**, así que los siete `--team-color` del
+módulo de equipos no llegaban nunca al DOM y el calendario, las listas y los horarios caían
+al gris de reserva creyendo que el equipo no tenía color. El Taller ya lo tenía arreglado y
+documentado. Comprobado: los chips pasan de gris a `#1F6FEB`.
+
+### Estado de 4.7 y 4.8 (hechas)
+
+Migración **031**: `push_suscripciones` (una fila por usuario **y** dispositivo) y `avisos`,
+que es una **cola**. `sw.js` pasa de solo cachear a manejar `push` y `notificationclick`.
+`equipos/js/data/push.js` (suscripción y bandeja), `equipos/js/data/avisos.js` (puro, **24
+pruebas**) y `netlify/functions/avisos.mjs` (programada, cada diez minutos).
+
+**Una cola y no envío directo**, por dos razones que se sostienen solas:
+
+- los avisos tienen dos productores muy distintos —la función programada y los cambios de un
+  compañero (4.13)— y un solo consumidor: el que produce no sabe de VAPID y el que manda no
+  sabe de baloncesto;
+- en **iPhone sin la app instalada el push no llega** (§5.8). La cola se lee dentro de la
+  aplicación, así que el aviso existe aunque la notificación no aparezca. Sin cola, ese
+  entrenador no se entera de nada.
+
+**La clave identifica el hecho, no el envío** (`sin_cerrar:<session_id>`), y un índice único
+por (usuario, clave) hace imposible el duplicado aunque Netlify reintente la función. Por eso
+se encola **antes** de mandar: al revés, un reintento deja el mismo aviso dos veces.
+
+| El aviso | Cuándo | Y cuándo NO |
+|---|---|---|
+| fin de bloque | con la sesión arrancada, al acabarse cada bloque | sin arrancar no hay bloques que acabar |
+| pasar lista | a la hora de empezar | si ya se pasó, o la sesión está cancelada |
+| mañana sin plan | la tarde anterior, a las 19:00 | si ya está programada |
+| convocatoria | el día y a la hora del equipo | si ya hay convocados, o **si el equipo no ha puesto hora** |
+| sin cerrar | al día siguiente | si ya está evaluada |
+| post-partido | la mañana siguiente | si están el resultado, la valoración y el acta |
+
+Lo que más se ha cuidado es la columna de la derecha: **un aviso que sobra enseña a ignorar
+todos los demás**, y entonces el que importa tampoco se lee. Y sin hora de convocatoria no se
+avisa: mejor callarse que despertar a alguien a las siete de la mañana.
+
+Cada aviso lleva su `url`, porque en el móvil más limitado **todo se hace abriendo el aviso**
+(§5.8): los botones dentro de la notificación solo existen en Android. Al tocarlo se
+**reutiliza** la pestaña abierta en vez de abrir una segunda con la app duplicada. Y los
+endpoints muertos (404/410) se borran en el momento, o se les manda un push a nadie en cada
+ejecución para siempre.
+
+**Lo que falta y no se puede comprobar aquí.** Hacen falta las claves VAPID
+(`npx web-push generate-vapid-keys`): la pública en `equipos/js/config.js`, la privada en
+Netlify. Sin ellas la función **dice qué falta y se va** —un error de configuración tiene que
+leerse en el registro, no deducirse de que no llega nada—, y el perfil dice «falta la clave
+pública» en vez de enseñar un botón que no hace nada. El criterio de la fila —«llega un aviso
+con la app cerrada en Android»— necesita esas claves y un despliegue.
+
+### Estado de 4.9 (hecha)
+
+Migración **032**: la tabla `invitaciones` y un disparador de alta que la comprueba.
+`equipos/js/data/invitaciones.js` y la pantalla `/admin`.
+
+**Decisión #31**: lista de invitaciones en vez de contraseñas creadas por el administrador.
+Nadie del club llega a ver ni a teclear la contraseña de otro. El administrador escribe un
+correo y elige equipos; la persona entra por su cuenta y elige su clave.
+
+**El disparador es también la puerta.** Es lo que hace posible la fila 4.10: como Google deja
+entrar a cualquiera con cuenta, la restricción no puede estar en el botón. Un alta cuyo
+correo no esté invitado **falla**, y el usuario no llega a existir.
+
+**Y lleva escotilla, que es obligatoria en un disparador que rechaza altas**: si no hay ni un
+perfil todavía, la primera persona que entra pasa y se queda de administrador. Es la
+instalación. Sin eso, una base de datos limpia se queda cerrada para siempre.
+
+Los equipos se eligen **al** invitar y no después: asignarlos luego obliga a acordarse de una
+segunda tarea que nadie apunta, y la persona entra, no ve nada y cree que la app está rota.
+A quien ya entró **no se le retira** la invitación: tiene cuenta y equipos, y quitársela no
+le echaría — daría la falsa sensación de haberlo hecho.
+
+### Estado de 4.10 (hecha)
+
+Tres puertas y **una sola cerradura**, la del disparador de la 032: entrar con Google,
+registrarse eligiendo la propia contraseña y recuperarla. En el cliente no se comprueba quién
+puede entrar, a propósito: una lista de correos en el navegador la lee cualquiera, y una
+segunda comprobación solo sirve para que un día discrepe de la de verdad.
+
+«¿No te acuerdas de la clave?» contesta **lo mismo exista o no la cuenta**. Si el mensaje
+cambiara, cualquiera podría averiguar quién tiene cuenta en el club probando correos.
+
+`clave.html` es una página aparte y no un trozo del login: ahí se llega con una sesión de
+recuperación abierta por el enlace del correo, y mezclarlo con el formulario de entrar lleva
+a que alguien teclee su contraseña vieja en un formulario que espera la nueva. Si el enlace
+ha caducado, lo dice antes de que nadie escriba nada.
+
+El **perfil** hace tres cosas y ninguna más: el nombre, la contraseña y los avisos de *este*
+dispositivo. Los avisos son por dispositivo y no una preferencia del usuario —el móvil
+suscrito y el portátil no es lo normal, no un fallo— y el estado se **mira** cada vez que se
+pinta, porque el permiso del navegador se cambia desde fuera de la app. En la barra, el
+perfil va **antes** que la salida: se entra ahí muchas más veces que se cierra sesión.
+
+### Estado de 4.11 (hecha)
+
+Barra fija con **cuatro** destinos —Inicio, Calendario, Equipos, Ejercicios— arriba en
+ordenador y abajo en móvil, con la campana de avisos. Y `/inicio`, con las cinco secciones de
+§5.11 (`equipos/js/data/inicio.js`, puro, **14 pruebas**).
+
+**El orden es el mensaje**: primero lo que hay que hacer hoy, después lo que hay que
+preparar, después lo que hay que cerrar, y al final lo que ya pasó. Una pantalla de inicio
+que empieza por el histórico convierte la app en un archivo, y esta es una herramienta de
+martes por la tarde.
+
+**«La semana que viene» es de lunes a domingo**, no los próximos siete días: un entrenador
+planifica por semanas, y con una ventana móvil el domingo por la noche desaparecería de golpe
+media pantalla. Las secciones vacías **se quedan**, apagadas: una pantalla que cambia de
+forma cada día no se aprende nunca.
+
+La campana no abre un desplegable: lleva a inicio, donde está la bandeja. En el móvil más
+limitado, un menú flotante encima de una lista es justo lo que no se acierta con el pulgar.
+
+### Estado de 4.12 (hecha)
+
+El color por equipo ya estaba escrito desde hacía tramos; lo que no funcionaba era `h()`
+(ver 4.6). Con eso arreglado, el calendario recupera la identidad que ya tenía.
+
+Encima, la **marca del equipo**: su imagen si la tiene, y si no un punto de su color. La
+misma pieza en el chip de entreno y en el de partido, para que el ojo aprenda **una** marca
+por equipo y la reconozca en los dos sitios. Las URL firmadas se piden todas de una antes del
+primer pintado: dentro del chip serían una petición por celda del mes.
+
+Y si la imagen no carga —enlace caducado, fichero borrado a mano en el bucket— se cae al
+punto de color en vez de dejar el icono de imagen rota en cada chip. **La identidad del
+equipo no puede depender de que un enlace siga vivo.** Comprobado justo así: con la URL
+firmada rota, los seis escudos se convierten en seis puntos azules.
+
+Tres cosas y tres formas: el entreno lleva el color en la banda, el partido va en carbón
+sólido con balón y marcador, y la convocatoria —que no es algo que pase ese día, sino un
+recordatorio de que hay que mandarla— va en línea discontinua y **se apaga** cuando ya está
+rellenada. Las tres, en la leyenda.
+
+### Estado de 4.13 (hecha)
+
+`equipos/js/data/avisar.js`, sobre la cola de la 031. §5.10: «cada cambio de un entrenador se
+avisa al otro entrenador del mismo equipo». Enganchado en los dos sitios que los entrenadores
+comparten de verdad: el plan de la sesión y el partido.
+
+**Al que hace el cambio no se le avisa.** Avisar a alguien de lo que acaba de hacer él es la
+manera más rápida de que silencie la app, y entonces tampoco le llegará lo del compañero, que
+es lo único que esta fila quiere conseguir. Un equipo de un solo entrenador no genera nada,
+ni una consulta de más.
+
+**La clave lleva la hora dentro**, al revés que en los seis avisos: aquí el hecho es «lo
+cambió a las siete y veinte», y dos cambios distintos del mismo plan son dos avisos. Con
+clave compartida, el segundo no llegaría y el compañero se quedaría con la versión de antes
+creyendo que está al día — exactamente lo que esto viene a evitar.
+
+**Y avisar no puede tumbar un guardado**: va dentro de un try, sin `await`, y lo peor que pasa
+es una línea en la consola. El trabajo ya está hecho; perderlo por no poder mandar una
+notificación sería absurdo.
+
+Comprobado en el arnés con dos entrenadores: al guardar, la cola recibe **una** fila, para
+Marta y no para Beltrán, con «Beltrán ha tocado el plan del martes» y su url. La bandeja de
+inicio la enseña y «marcar leídos» la retira.
+
+### Lo que el arnés aprendió en el Tramo 4
+
+`/dev/planner.html` ha crecido con el tramo, y tres de esas cosas eran **fallos suyos** que
+hacían mentir a las comprobaciones:
+
+- el `DELETE` devolvía un `Set`, que serializa como `{}`, así que todo el código que decide
+  con `data.length` si la policy dejó borrar —borrar un partido, retirar una invitación—
+  creía que no se había borrado nada aunque sí;
+- la temporada tenía las columnas en castellano (`nombre`, `fecha_inicio`) y las de verdad
+  son `label`, `start_date`, `end_date`, `is_active`: de ahí el «Partidos · undefined»;
+- `getUser()` no contestaba, y hay código que pregunta quién eres antes de escribir.
+
+Y lo que se le ha añadido a propósito: `?ruta=` para abrir cualquier pantalla, `?cat=` para
+cambiar la categoría del equipo, `?sin028` para fingir una migración pendiente, upsert y
+borrado con filtros, firma de URL de Storage, y datos falsos de actas, clasificación,
+invitaciones, avisos y un segundo entrenador.
 
 ## Fuera de la v2.1 (marcados «no imprescindible»)
 
