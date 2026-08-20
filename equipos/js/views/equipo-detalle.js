@@ -99,6 +99,17 @@ export function render(root, params) {
       }, txt)),
   );
 
+  /* La barra se desliza (panel.css): si la activa es de las últimas,
+     al entrar por ?tab= caería fuera de la vista. Se centra a mano en
+     lugar de con scrollIntoView, que también arrastraría la página. */
+  const centraTabActiva = () => {
+    const nav = cont.querySelector('.eq-tabs');
+    const activa = nav?.querySelector('.eq-tab-btn.active');
+    if (!nav || !activa) return;
+    const caja = nav.getBoundingClientRect(), btn = activa.getBoundingClientRect();
+    nav.scrollLeft += (btn.left - caja.left) - (caja.width - btn.width) / 2;
+  };
+
   // ── Pestaña PLANTILLA ──────────────────────────────────────
   async function pintaPlantilla(zona) {
     /* La plantilla ahora se puede INTERROGAR (Tramo 3.12). Todo lo que
@@ -1546,6 +1557,7 @@ export function render(root, params) {
     }
     const zona = h('div', { class: 'eq-zona' }, h('div', { class: 'skeleton eq-skeleton' }));
     mount(cont, cabecera(), tabs(), zona);
+    centraTabActiva();
     try {
       if (tab === 'progresion') await pintaProgresion(zona, { teamId, seasonId: temporada?.id || null });
       else if (tab === 'horarios') await pintaHorarios(zona);

@@ -206,6 +206,14 @@
       /* Un aviso sin leer para el que está mirando (u1), que es lo que
          hace visible la bandeja de §5.8 —la que sirve en el iPhone sin
          la app instalada, donde el push no llega nunca—. */
+      /* Dos invitaciones para el panel de administrador (4.9): una
+         pendiente y otra que ya se usó. */
+      invitaciones: [
+        { id: 'i1', email: 'marta@cbpalencia.es', rol: 'coach', equipos: ['t1'], nombre: 'Marta',
+          usada_at: '2026-08-01T10:00:00Z', created_at: '2026-07-20T10:00:00Z' },
+        { id: 'i2', email: 'nuevo@cbpalencia.es', rol: 'coach', equipos: [], nombre: null,
+          usada_at: null, created_at: '2026-08-18T10:00:00Z' },
+      ],
       avisos: [{
         id: 'av1', user_id: 'u1', tipo: 'equipo', clave: 'equipo:t1:el plan del jueves:2026-08-20T19:20',
         titulo: 'Marta ha tocado el plan del jueves', cuerpo: 'Cadete A',
@@ -250,7 +258,7 @@
         { id: 'o3', team_id: 't1', season_id: 's1', player_id: 'p3', titulo: 'Pasar de «con ayuda» a «solo» en bote', descripcion: null, categoria: 'técnico', fecha_inicio: '2026-08-01', fecha_fin: '2026-10-31', estado: 'activo', created_at: '2026-08-01T00:00:00Z', dianas: ['accion:bote'] },
       ],
       profiles: [
-        { id: 'u1', full_name: 'Beltrán', role: 'coach' },
+        { id: 'u1', full_name: 'Beltrán', role: 'admin' },   // admin: para poder ver el panel de 4.9
         { id: 'u2', full_name: 'Marta', role: 'coach' },
       ],
       // Un vídeo ya guardado por el club (Tramo 3.3), para poder
@@ -492,10 +500,15 @@
       if (metodo === 'DELETE' && TABLAS[tabla]) {
         // por los filtros que traiga, no solo por `id`: el acta borra a
         // los que se quedaron en blanco por match_id + player_id
-        const fuera = new Set(filtrar(TABLAS[tabla].slice(), u));
+        const borradas = filtrar(TABLAS[tabla].slice(), u);
+        const fuera = new Set(borradas);
         TABLAS[tabla] = TABLAS[tabla].filter((r) => !fuera.has(r));
-        console.log('[arnés] DELETE', tabla, u.search, '→', fuera.size);
-        return Promise.resolve(new Response(JSON.stringify(fuera), {
+        console.log('[arnés] DELETE', tabla, u.search, '→', borradas.length);
+        /* Se devuelve la LISTA, no el Set: `JSON.stringify(new Set())` es
+           `{}`, y media app decide con `data.length` si la policy dejó
+           borrar (borrarPartido, retirar una invitación…). Con el Set,
+           todas creían que no se había borrado nada aunque sí. */
+        return Promise.resolve(new Response(JSON.stringify(borradas), {
           status: 200, headers: { 'Content-Type': 'application/json' },
         }));
       }
