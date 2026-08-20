@@ -213,3 +213,23 @@
   letter-spacing: 0.08em;
   color: rgba(255,255,255,0.28);
 }
+
+/* ── Google, registro y recuperación (Tramo 4.10) ─────── */
+.auth-otros { display: flex; flex-direction: column; gap: 0.875rem; margin-top: 1.25rem; }
+.btn-google {
+  display: flex; align-items: center; justify-content: center; gap: 0.625rem;
+  width: 100%; padding: 0.75rem 1rem; cursor: pointer;
+  background: #fff; color: #1f1f1f; border: 1px solid #dadce0; border-radius: 4px;
+  font-family: inherit; font-size: 0.9375rem; font-weight: 600;
+}
+.btn-google:hover { background: #f7f8f8; }
+.auth-enlaces { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+.auth-enlace {
+  background: none; border: none; cursor: pointer; padding: 0.25rem;
+  color: rgba(255,255,255,0.65); font-family: inherit; font-size: 0.8125rem;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.auth-enlace:hover { color: #fff; }
+/* El mismo hueco dice lo que sale bien y lo que sale mal: dos cajas
+   distintas harían que la de arriba se leyera como un fallo. */
+.auth-error.ok { color: #2FA968; border-color: rgba(47,169,104,0.4); background: rgba(47,169,104,0.08); }

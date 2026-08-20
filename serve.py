@@ -26,7 +26,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # el resto de rutas de la SPA Equipos/Sesiones: /sesiones (M2),
         # /partidos (M6) y /dossier (M7). Sin esto, recargar o pegar el
         # enlace de una ficha da 404 (la navegación con pushState sí iba).
-        elif path.startswith(('/sesiones', '/partidos', '/dossier')):
+        elif path.startswith(('/sesiones', '/partidos', '/dossier', '/inicio', '/perfil', '/admin')):
             self.path = '/equipos/index.html'
         return super().do_GET()
 

@@ -67,6 +67,31 @@
   to   = "/equipos/index.html"
   status = 200
 
+# Inicio, perfil y administración (Tramos 4.9, 4.10, 4.11): las tres son
+# rutas de la MISMA SPA. Sin estas reglas, recargar /inicio en producción
+# —que es la pantalla a la que cae todo lo que no se reconoce— devuelve
+# 404, y eso deja la app inservible al primer refresco.
+[[redirects]]
+  from = "/inicio"
+  to   = "/equipos/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/perfil"
+  to   = "/equipos/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to   = "/equipos/index.html"
+  status = 200
+
+# La página donde cae el enlace de «no me acuerdo de la clave» (4.10)
+[[redirects]]
+  from = "/clave"
+  to   = "/clave.html"
+  status = 200
+
 # Headers de seguridad para todos los archivos
 [[headers]]
   for = "/*"

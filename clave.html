@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nueva contraseña · Playbook CBP</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800;900&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/auth.css">
+  <script type="importmap">
+  { "imports": { "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2" } }
+  </script>
+</head>
+<body class="auth-page">
+
+  <!-- ============================================================
+       clave.html — donde cae el enlace de «no me acuerdo» (Tramo 4.10).
+
+       Es una página aparte y no un trozo del login por una razón: aquí
+       se llega con una SESIÓN DE RECUPERACIÓN abierta por el enlace del
+       correo, y mezclar eso con el formulario de entrar lleva a la
+       situación en que alguien teclea su contraseña vieja en un
+       formulario que en realidad está esperando la nueva.
+       ============================================================ -->
+
+  <div class="auth-bg" aria-hidden="true"></div>
+
+  <div class="auth-shell" id="auth-shell">
+    <header class="auth-head">
+      <h1 class="auth-title">
+        <span class="solid">Nueva</span>
+        <span class="ghost">contraseña</span>
+      </h1>
+      <p class="auth-sub" id="sub">Escribe la que quieras usar a partir de ahora.</p>
+    </header>
+
+    <form class="auth-form" id="form" novalidate>
+      <div id="auth-error" class="auth-error" role="alert" hidden></div>
+
+      <div class="field">
+        <label class="field-label-dark" for="clave">Contraseña nueva</label>
+        <input class="input-dark" type="password" id="clave" autocomplete="new-password"
+               placeholder="••••••••" minlength="6" required>
+      </div>
+
+      <div class="field">
+        <label class="field-label-dark" for="clave2">Otra vez, para estar seguros</label>
+        <input class="input-dark" type="password" id="clave2" autocomplete="new-password"
+               placeholder="••••••••" minlength="6" required>
+      </div>
+
+      <button type="submit" class="btn-enter" id="btn">
+        <span class="btn-label">Guardar</span>
+        <span class="arrow" aria-hidden="true">→</span>
+      </button>
+    </form>
+
+    <p class="auth-foot"><a href="/index.html">Volver a entrar</a></p>
+  </div>
+
+  <script type="module">
+    import { cambiarClave, getSession } from '/js/auth.js';
+
+    const form = document.getElementById('form');
+    const err = document.getElementById('auth-error');
+    const sub = document.getElementById('sub');
+    const a = document.getElementById('clave');
+    const b = document.getElementById('clave2');
+
+    const decir = (msg, ok = false) => {
+      err.textContent = msg; err.hidden = false; err.classList.toggle('ok', ok);
+    };
+
+    /* Sin sesión de recuperación no hay nada que cambiar. Se dice antes
+       de que alguien teclee una contraseña que no se iba a guardar. */
+    (async () => {
+      const s = await getSession();
+      if (!s) {
+        sub.textContent = 'Este enlace ya no vale.';
+        form.hidden = true;
+        decir('Vuelve a pedir el correo desde la pantalla de entrar: los enlaces caducan.');
+      }
+    })();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.hidden = true; err.classList.remove('ok');
+      if (a.value.length < 6) { decir('Al menos seis caracteres.'); return; }
+      if (a.value !== b.value) { decir('Las dos no coinciden.'); return; }
+      try {
+        await cambiarClave(a.value);
+        decir('Guardada. Ya puedes entrar con ella.', true);
+        form.hidden = true;
+        setTimeout(() => window.location.replace('/app.html'), 1500);
+      } catch (e2) { decir(e2.message || 'No se ha podido guardar.'); }
+    });
+  </script>
+</body>
+</html>

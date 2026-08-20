@@ -20,6 +20,7 @@ import * as partido from './views/partido.js';
 import * as convocatoria from './views/convocatoria.js';
 import * as inicio from './views/inicio.js';
 import * as admin from './views/admin.js';
+import * as perfil from './views/perfil.js';
 import * as dossier from './views/dossier.js';
 
 export const router = new Router();
@@ -47,6 +48,7 @@ router
   .on('/dossier/:teamId', (p) => show(dossier, p))
   .on('/inicio', () => show(inicio))
   .on('/admin', () => show(admin))
+  .on('/perfil', () => show(perfil))
   // el inicio es la pantalla de abrir la app (§5.11): lo que no se
   // reconozca cae ahí, y no en el calendario
   .otherwise(() => router.navigate('/inicio', { replace: true }));
