@@ -11,6 +11,8 @@ import { toast, toastDeshacer } from '../ui/toast.js';
 import { abrirModal, confirmar, pedirTexto } from '../ui/modal.js';
 import { puntoEquipo } from '../ui/components.js';
 import { getMisEquipos } from '../data/teams.js';
+import { urlImagenEquipo } from '../data/equipo-archivos.js';
+import { eventoDe as eventoConvocatoria } from '../data/convocatoria.js';
 import { getPeriodos } from '../data/schedules.js';
 import {
   getTemporadaActiva, getSesionesRango, crearSesionManual,
@@ -139,6 +141,48 @@ export function render(root) {
   };
   const reloj = setInterval(repasarEstados, 60000);
 
+  /** team_id → URL firmada de la imagen del equipo (Tramo 4.12). */
+  const imagenes = new Map();
+  /** team_id → día de la semana en que ese equipo manda la convocatoria. */
+  let diasConvocatoria = new Map();
+
+  /* Chip de convocatoria (Tramo 4.6). No es un evento guardado: es el
+     recordatorio de que ese día hay que mandarla, y por eso se pinta
+     con línea discontinua —igual que una sesión preliminar— en vez de
+     como algo que está pasando. */
+  const chipConvocatoria = (e) => h('button', {
+    class: 'eq-convo-chip' + (e.cerrada || e.cuantos ? ' hecha' : ''),
+    type: 'button',
+    style: { '--team-color': colores.get(e.partido.team_id) || 'var(--muted)' },
+    title: `Convocatoria · ${nombres.get(e.partido.team_id) || ''} · `
+      + `${e.partido.es_local ? 'vs' : '@'} ${e.partido.rival} el ${e.partido.fecha}`
+      + (e.cuantos ? ` · ${e.cuantos} convocados` : ' · sin rellenar'),
+    onClick: (ev) => { ev.stopPropagation(); router.navigate(`/partidos/${e.partido.id}`); },
+  },
+    h('span', { class: 'eq-convo-icono', 'aria-hidden': 'true' }, '✉'),
+    h('span', { class: 'eq-part-chip-rival' }, e.partido.rival),
+    e.cuantos ? h('span', { class: 'eq-part-chip-res' }, String(e.cuantos)) : null,
+  );
+
+  /* El escudo del equipo, o su punto de color si no hay imagen. Es la
+     misma pieza en los dos chips: así el ojo aprende UNA marca por
+     equipo y la reconoce igual en un entreno que en un partido. */
+  const marcaEquipo = (teamId) => {
+    const url = imagenes.get(teamId);
+    if (!url) return h('span', { class: 'eq-marca eq-marca-punto' });
+    /* Si la imagen no carga —enlace firmado caducado, fichero borrado a
+       mano en el bucket— se cae al punto de color en vez de dejar el
+       icono de imagen rota en cada chip del mes. La identidad del
+       equipo no puede depender de que un enlace siga vivo. */
+    return h('img', {
+      class: 'eq-marca', src: url, alt: '', loading: 'lazy',
+      onError: (e) => {
+        const punto = h('span', { class: 'eq-marca eq-marca-punto' });
+        e.target.replaceWith(punto);
+      },
+    });
+  };
+
   // ── chip de sesión ─────────────────────────────────────────
   const chip = (s) => h('button', {
     class: `eq-ses eq-ses-${estadoEfectivo(s)}`, type: 'button',
@@ -148,6 +192,7 @@ export function render(root) {
     // de la celda (que es donde se dan de alta sesiones y partidos)
     onClick: (e) => { e.stopPropagation(); router.navigate(`/sesiones/${s.id}`); },
   },
+    marcaEquipo(s.team_id),
     h('span', { class: 'eq-ses-hora' }, hhmm(s.hora_inicio) || '·'),
     h('span', { class: 'eq-ses-equipo' }, nombres.get(s.team_id) || '—'),
   );
@@ -166,6 +211,9 @@ export function render(root) {
       title: `${nombres.get(m.team_id) || ''} · ${m.es_local ? 'vs' : '@'} ${m.rival} · ${ESTADOS_PARTIDO[m.estado]}`,
       onClick: (e) => { e.stopPropagation(); router.navigate(`/partidos/${m.id}`); },
     },
+      marcaEquipo(m.team_id),
+      // el balón dice «esto es un partido» antes de leer nada
+      h('span', { class: 'eq-part-icono', 'aria-hidden': 'true' }, '●'),
       h('span', { class: 'eq-part-chip-vs' }, m.es_local ? 'vs' : '@'),
       h('span', { class: 'eq-part-chip-rival' }, m.rival),
       res ? h('span', { class: 'eq-part-chip-res' }, `${m.marcador_favor}-${m.marcador_contra}`) : null,
@@ -423,7 +471,7 @@ export function render(root) {
   }
 
   // ── celdas ─────────────────────────────────────────────────
-  const celdaDia = (fecha, { fueraDeMes = false, sesiones, partidos, periodos }) => {
+  const celdaDia = (fecha, { fueraDeMes = false, sesiones, partidos, convocatorias, periodos }) => {
     const esHoy = fecha === hoyISO();
     const sinEntreno = enPeriodo(fecha, periodos);
     const objs = objetivosEnFecha(fecha, objetivos);
@@ -444,6 +492,7 @@ export function render(root) {
         }))) : null,
       h('div', { class: 'eq-cal-chips' },
         (partidos || []).map(chipPartido),
+        (convocatorias || []).map(chipConvocatoria),
         (sesiones || []).map(chipVivo)),
     );
     celdas.set(fecha, celda);
@@ -476,6 +525,23 @@ export function render(root) {
     for (const m of partidos) {
       if (!partidosPorDia.has(m.fecha)) partidosPorDia.set(m.fecha, []);
       partidosPorDia.get(m.fecha).push(m);
+    }
+
+    /* Las convocatorias (Tramo 4.6) se DEDUCEN del partido y del día que
+       tenga puesto el equipo: no hay tabla que mantener al día, así que
+       mover un partido mueve su convocatoria sola.
+
+       Ojo con el borde del rango: la convocatoria de un partido cae
+       ANTES que el partido, así que la de un partido del día 3 puede
+       caer en el 28 del mes anterior. Se pintan solo las que caen
+       dentro de lo que se está mirando; la del mes de al lado se ve al
+       pasar de mes, que es donde se busca. */
+    const convosPorDia = new Map();
+    for (const m of partidos) {
+      const e = eventoConvocatoria(m, { diaSemana: diasConvocatoria.get(m.team_id) });
+      if (!e || e.fecha < r.desde || e.fecha > r.hasta) continue;
+      if (!convosPorDia.has(e.fecha)) convosPorDia.set(e.fecha, []);
+      convosPorDia.get(e.fecha).push(e);
     }
 
     const [y, m] = estado.cursor.split('-').map(Number);
@@ -526,6 +592,7 @@ export function render(root) {
             fueraDeMes: f < r.primero || f > r.ultimo,
             sesiones: porDia.get(f),
             partidos: partidosPorDia.get(f),
+            convocatorias: convosPorDia.get(f),
             periodos,
           }))),
       );
@@ -534,6 +601,7 @@ export function render(root) {
         ...diasEntre(r.desde, r.hasta).map((f) => {
           const del = porDia.get(f) || [];
           const delPartidos = partidosPorDia.get(f) || [];
+          const delConvos = convosPorDia.get(f) || [];
           const sinEntreno = enPeriodo(f, periodos);
           const objs = objetivosEnFecha(f, objetivos);
           const celda = h('div', {
@@ -545,8 +613,9 @@ export function render(root) {
             h('div', { class: 'eq-semana-fecha' },
               h('span', { class: 'eq-semana-dow' }, WEEKDAYS[isoWeekday(f) - 1].nombre),
               h('span', { class: 'eq-cal-num' }, Number(f.slice(8, 10)))),
-            (del.length || delPartidos.length)
-              ? h('div', { class: 'eq-semana-chips' }, delPartidos.map(chipPartido), del.map(chip))
+            (del.length || delPartidos.length || delConvos.length)
+              ? h('div', { class: 'eq-semana-chips' },
+                  delPartidos.map(chipPartido), delConvos.map(chipConvocatoria), del.map(chip))
               : h('span', { class: 'eq-semana-vacio' }, sinEntreno ? 'Sin entreno' : '—'),
             objs.length ? h('div', { class: 'eq-semana-objs' }, objs.slice(0, 3).map((o) =>
               h('span', { class: 'eq-semana-obj', title: o.titulo },
@@ -582,6 +651,8 @@ export function render(root) {
         h('span', { class: 'eq-leyenda-item eq-ses-cancelada' }, 'Cancelada'),
         h('span', { class: 'eq-leyenda-item eq-leyenda-part' },
           h('span', { class: 'eq-part-chip eq-leyenda-chip', 'aria-hidden': 'true' }, 'vs'), ' Partido'),
+        h('span', { class: 'eq-leyenda-item eq-leyenda-part' },
+          h('span', { class: 'eq-convo-chip eq-leyenda-chip', 'aria-hidden': 'true' }, '✉'), ' Convocatoria'),
         h('span', { class: 'eq-leyenda-item eq-leyenda-obj' }, h('span', { class: 'eq-cal-obj', 'aria-hidden': 'true' }), ' Objetivo'),
       ),
     );
@@ -611,6 +682,18 @@ export function render(root) {
       setState({ temporada, equipos });
       colores = new Map(equipos.map((t) => [t.id, t.color]));
       nombres = new Map(equipos.map((t) => [t.id, t.name]));
+      diasConvocatoria = new Map(equipos.map((t) => [t.id, t.dia_convocatoria]));
+      /* Las imágenes de equipo (Tramo 4.12) viven en un bucket privado,
+         así que hay que firmar una URL por equipo. Se firman TODAS antes
+         del primer pintado y en paralelo: hacerlo dentro del chip
+         dispararia una petición por celda del mes.
+
+         Y si alguna falla, se sigue: el calendario sin escudos es el
+         calendario de siempre, y sin calendario no hay pantalla. */
+      await Promise.all(equipos.filter((t) => t.imagen_path).map(async (t) => {
+        try { imagenes.set(t.id, await urlImagenEquipo(t.imagen_path)); }
+        catch { /* ese equipo se queda con su punto de color */ }
+      }));
       if (estado.filtro !== 'todos' && !colores.has(estado.filtro)) estado.filtro = 'todos';
       estado.cursor = cursorInicial();
       await refrescar();

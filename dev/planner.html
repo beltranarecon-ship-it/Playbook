@@ -200,7 +200,9 @@
       teams: [{ id: 't1', name: 'Cadete A',
                 category: new URLSearchParams(location.search).get('cat') || 'cadete',
                 team_coaches: [{ coach_id: 'u1', rol: 'principal', profiles: { full_name: 'Beltrán' } }],
-                team_settings: { color: '#1F6FEB', dia_convocatoria: 5 } }],
+                team_settings: { color: '#1F6FEB', dia_convocatoria: 5,
+                                 imagen_path: 't1/escudo.png', plantilla_path: null,
+                                 hora_convocatoria: '18:00:00' } }],
       session_blocks: [
         { id: 'sb1', session_id: 'demo', exercise_id: 'e5', orden: 0, titulo: 'Calentamiento articular', duracion_min: 8, intensidad: 1, notas: null },
         { id: 'sb2', session_id: 'demo', exercise_id: 'e1', orden: 1, titulo: 'Flecha de tiro', duracion_min: 14, intensidad: 3, notas: 'Ojo al pie de pivote' },
@@ -370,6 +372,19 @@
     window.fetch = function (entrada, opciones) {
       const url = typeof entrada === 'string' ? entrada : entrada.url;
       const cab = new Headers((opciones && opciones.headers) || (entrada && entrada.headers) || {});
+
+      /* STORAGE. La imagen del equipo (4.12) y el acta viven en buckets
+         privados y se piden con una URL firmada. El arnés devuelve un
+         PNG de 1x1 en base64 para poder comprobar que el escudo llega
+         al chip; un `<img>` no pasa por fetch, así que tiene que ser
+         una URL que el navegador pueda cargar sola. */
+      if (url.includes('/storage/v1/object/sign/')) {
+        const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+        console.log('[arnés] storage firma', url.split('/sign/')[1]);
+        return Promise.resolve(new Response(JSON.stringify({ signedURL: png }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        }));
+      }
 
       if (url.includes('/auth/v1/')) {
         return Promise.resolve(new Response(JSON.stringify({ error: 'dev' }), { status: 400, headers: { 'Content-Type': 'application/json' } }));

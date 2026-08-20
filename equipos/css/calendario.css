@@ -192,3 +192,37 @@
   .eq-ses-equipo { display: none; }        /* móvil: chip compacto solo hora */
   .eq-cal-titulo { font-size: 1.125rem; }
 }
+
+/* ── Marca del equipo e identidad visual (Tramo 4.12) ───── */
+/* La MISMA pieza en el chip de entreno y en el de partido: así el ojo
+   aprende una marca por equipo y la reconoce en los dos sitios. Si el
+   equipo no tiene imagen, un punto de su color hace el mismo trabajo. */
+.eq-marca {
+  flex: 0 0 auto; width: 0.875rem; height: 0.875rem;
+  object-fit: contain; border-radius: 2px;
+}
+.eq-marca-punto {
+  width: 0.5rem; height: 0.5rem; border-radius: 50%;
+  background: var(--team-color, var(--muted));
+}
+/* En el chip oscuro del partido, el punto tiene que verse sobre carbón. */
+.eq-part-chip .eq-marca-punto { box-shadow: 0 0 0 1px rgba(255,255,255,0.35); }
+/* El balón: dice «partido» antes de que se lea nada. */
+.eq-part-icono { font-size: 0.5rem; opacity: 0.8; }
+
+/* ── Convocatoria en el calendario (Tramo 4.6) ───────── */
+/* No es algo que pase ese día: es un recordatorio de que hay que
+   mandarla. Por eso va en discontinuo, como una sesión preliminar, y no
+   compite con el partido de verdad. */
+.eq-convo-chip {
+  display: flex; align-items: baseline; gap: 0.25rem;
+  width: 100%; text-align: left; padding: 1px 5px;
+  background: transparent; color: var(--ink);
+  border: 1px dashed var(--team-color, var(--muted));
+  border-radius: 2px; font-size: 0.6875rem; line-height: 1.3;
+  cursor: pointer; transition: background var(--t-fast);
+}
+.eq-convo-chip:hover { background: var(--bone); }
+/* Ya rellenada: deja de pedir atención. */
+.eq-convo-chip.hecha { opacity: 0.55; }
+.eq-convo-icono { font-size: 0.625rem; opacity: 0.7; }
