@@ -20,6 +20,9 @@ import { getTemporadas } from '../data/seasons.js';
 import { getPartidosEquipo } from '../data/matches.js';
 import { getEstadisticasDePartidos } from '../data/estadisticas.js';
 import {
+  subirImagenEquipo, subirPlantilla, urlImagenEquipo, borrarArchivoEquipo,
+} from '../data/equipo-archivos.js';
+import {
   acumular, tabla as tablaTemporada, reparto, textoReparto, conUnDecimal,
 } from '../data/temporada-stats.js';
 import {
@@ -1247,10 +1250,76 @@ export function render(root, params) {
       color: s.color || null, dia_convocatoria: s.dia_convocatoria || null,
       asistencia_activa: s.asistencia_activa !== false,
       reflexion_activa: s.reflexion_activa !== false,
+      // 030: la imagen del equipo (4.12), la plantilla PDF y la hora
+      // del aviso de convocatoria (4.6 y 4.8)
+      imagen_path: s.imagen_path || null,
+      plantilla_path: s.plantilla_path || null,
+      hora_convocatoria: s.hora_convocatoria || null,
     };
     // null = la reflexión aún no existe en esta BD (015 sin aplicar)
     let preguntas = null;
     try { preguntas = await getPreguntas(teamId); } catch { preguntas = null; }
+
+    /* Un fichero del equipo (imagen o plantilla), en el bucket privado
+       'equipos' de la 030. Se sube al elegirlo y se guarda la ruta en
+       el momento: dejarlo para el botón «Guardar ajustes» significaría
+       que un fichero subido y no guardado se queda huérfano en el
+       bucket para siempre. */
+    function archivoEquipo({ etiqueta, ayuda, clave, acepta, subir, conVistaPrevia }) {
+      const zona = h('div', { class: 'field-group eq-arch' });
+
+      const pinta = async () => {
+        const path = m0[clave];
+        if (!path) {
+          mount(zona,
+            h('label', { class: 'field-label' }, etiqueta),
+            h('label', { class: 'btn btn-secondary eq-acta-subir' }, 'Subir',
+              h('input', {
+                type: 'file', accept: acepta, class: 'eq-acta-input',
+                onChange: async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const nueva = await subir(teamId, file);
+                    await guardarAjustes(teamId, { [clave]: nueva });
+                    m0[clave] = nueva;
+                    invalidarEquipos(); toast('Guardado'); pinta();
+                  } catch (err) { toast('Error: ' + err.message, 'error'); }
+                },
+              })),
+            h('p', { class: 'eq-ayuda' }, ayuda),
+          );
+          return;
+        }
+        let url = null;
+        if (conVistaPrevia) { try { url = await urlImagenEquipo(path); } catch { /* enlace fallido */ } }
+        mount(zona,
+          h('label', { class: 'field-label' }, etiqueta),
+          h('div', { class: 'eq-arch-hay' },
+            url
+              ? h('img', { class: 'eq-arch-img', src: url, alt: '' })
+              : h('span', { class: 'eq-obj-badge eq-obj-badge-ok' }, 'Subida'),
+            h('button', {
+              class: 'btn btn-secondary eq-btn-mini eq-btn-peligro', type: 'button',
+              onClick: async () => {
+                if (!(await confirmar({ titulo: 'Quitar', mensaje: `Se borrará: ${etiqueta.toLowerCase()}.`, textoOk: 'Quitar' }))) return;
+                try {
+                  const vieja = m0[clave];
+                  await guardarAjustes(teamId, { [clave]: null });
+                  m0[clave] = null;
+                  // la fila ya no la referencia: ahora sí se puede borrar
+                  await borrarArchivoEquipo(vieja).catch(() => {});
+                  invalidarEquipos(); pinta();
+                } catch (err) { toast('Error: ' + err.message, 'error'); }
+              },
+            }, 'Quitar'),
+          ),
+          h('p', { class: 'eq-ayuda' }, ayuda),
+        );
+      };
+      pinta();
+      return zona;
+    }
 
     // ── preguntas de reflexión (plantilla del equipo) ────────
     const nuevo = { etiqueta: '', tipo: 'estrellas', ambito: 'equipo' };
@@ -1398,7 +1467,35 @@ export function render(root, params) {
         h('div', { class: 'field-group' },
           h('label', { class: 'field-label' }, `Día de convocatoria${m0.dia_convocatoria ? ` · ${weekdayNombre(m0.dia_convocatoria)}` : ''}`),
           diaChips(m0.dia_convocatoria, (d) => { m0.dia_convocatoria = d; }),
+          h('label', { class: 'field-group eq-conv-hora' },
+            h('span', { class: 'field-label' }, 'Hora del aviso'),
+            h('input', {
+              class: 'field-input', type: 'time',
+              value: (m0.hora_convocatoria || '').slice(0, 5),
+              // a esta hora, ese día, sale el aviso de «convocatoria sin
+              // rellenar» (§5.8). Sin hora no se avisa: mejor callarse
+              // que despertar a alguien a las siete de la mañana.
+              onInput: (e) => { m0.hora_convocatoria = e.target.value || null; },
+            }),
+          ),
         ),
+        archivoEquipo({
+          etiqueta: 'Imagen del equipo',
+          ayuda: 'Se ve en el calendario y en la convocatoria. JPG, PNG o WebP.',
+          clave: 'imagen_path',
+          acepta: 'image/jpeg,image/png,image/webp',
+          subir: subirImagenEquipo,
+          conVistaPrevia: true,
+        }),
+        archivoEquipo({
+          etiqueta: 'Plantilla de convocatoria (PDF)',
+          ayuda: 'El papel del club, por si hay que entregarlo en la mesa. La app compone '
+            + 'su propio documento aparte, con el rival, el día, la hora y la lista.',
+          clave: 'plantilla_path',
+          acepta: 'application/pdf,image/jpeg,image/png,image/webp',
+          subir: subirPlantilla,
+          conVistaPrevia: false,
+        }),
         h('div', { class: 'field-group' },
           h('label', { class: 'field-label' }, 'Al cerrar una sesión'),
           h('label', { class: 'eq-check' },
@@ -1424,6 +1521,7 @@ export function render(root, params) {
                 await guardarAjustes(teamId, {
                   color: m0.color, dia_convocatoria: m0.dia_convocatoria,
                   asistencia_activa: m0.asistencia_activa, reflexion_activa: m0.reflexion_activa,
+                  hora_convocatoria: m0.hora_convocatoria || null,
                 });
                 invalidarEquipos(); refrescar(); toast('Ajustes guardados');
               } catch (e) { toast('Error: ' + e.message, 'error'); }

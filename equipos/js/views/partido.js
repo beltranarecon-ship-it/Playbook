@@ -28,7 +28,8 @@ import { puntoEquipo, estrellas } from '../ui/components.js';
 import { getMisEquipos } from '../data/teams.js';
 import { getJugadores } from '../data/players.js';
 import {
-  getPartido, actualizarPartido, borrarPartido, subirActa, urlActa, borrarActa, hayActa,
+  getPartido, actualizarPartido, borrarPartido, subirActa, urlActa, borrarActa,
+  hayActa, hayConvocatoria,
 } from '../data/matches.js';
 import {
   getEstadisticas, guardarEstadisticas, borrarEstadisticas, hayTabla,
@@ -41,6 +42,10 @@ import {
   armarEnvio, volcar, resumen as resumenPuente, avisos as avisosPuente,
 } from '../data/acta-chat.js';
 import { comprobar, veredicto, textoReglas } from '../data/reglamento.js';
+import {
+  CONVOCADOS_MAX, convocadosDe, convocables, alternar as alternarConv,
+  loQueFalta as loQueFaltaConv,
+} from '../data/convocatoria.js';
 import {
   EJES_VALORACION, ESTADOS_PARTIDO, VALORACION_MAX,
   resultadoPartido, diferencia, mediaValoracion, validaPartido,
@@ -373,6 +378,92 @@ export function render(root, params) {
     marcaSucio(); pintaAvisos(); pintaReglamento();
   }
 
+  // ── la convocatoria (4.6) ──────────────────────────────────
+  /* El evento del calendario no se guarda: se deduce del partido y del
+     día de convocatoria del equipo (§5.9 dice «se crea sola», y una
+     tabla que hay que mantener al día se olvida a la primera). Aquí
+     solo se elige a quién, dónde y a qué hora. */
+  const nodoConv = h('div', { class: 'eq-conv-editor' });
+
+  function pintaConvocatoria() {
+    const marcados = convocadosDe(p);
+    const lista = convocables(jugadores);
+    const falta = loQueFaltaConv(p);
+
+    const chip = (j) => {
+      const dentro = marcados.includes(String(j.id));
+      return h('button', {
+        class: 'eq-conv-chip' + (dentro ? ' sel' : ''), type: 'button',
+        role: 'checkbox', 'aria-checked': String(dentro),
+        onClick: () => {
+          const antes = convocadosDe(p).length;
+          p.convocados = alternarConv(p, j.id);
+          if (!dentro && p.convocados.length === antes) {
+            // se ha llegado al tope: se dice y no se echa a nadie por cuenta propia
+            toast(`En el acta caben ${CONVOCADOS_MAX}. Quita a alguien primero.`, 'error');
+            return;
+          }
+          marcaSucio(); pintaConvocatoria();
+        },
+      },
+        j.dorsal != null ? h('span', { class: 'eq-conv-chip-d' }, String(j.dorsal)) : null,
+        h('span', {}, j.nombre),
+      );
+    };
+
+    mount(nodoConv,
+      h('div', { class: 'eq-zona-head' },
+        h('span', { class: 'eq-ayuda' },
+          `${marcados.length} de ${lista.length} · caben ${CONVOCADOS_MAX}`),
+        h('div', { class: 'eq-clasi-acciones' },
+          h('button', {
+            class: 'btn btn-secondary eq-btn-mini', type: 'button',
+            onClick: () => {
+              // los primeros que quepan, en el orden del acta: es el
+              // punto de partida más común y se corrige a mano
+              p.convocados = lista.slice(0, CONVOCADOS_MAX).map((j) => String(j.id));
+              marcaSucio(); pintaConvocatoria();
+            },
+          }, 'Convocar a todos'),
+          h('a', {
+            class: 'btn btn-primary eq-btn-mini',
+            href: `/partidos/${matchId}/convocatoria`, 'data-link': true,
+            onClick: (e) => {
+              e.preventDefault(); e.stopPropagation();
+              // el documento lee de la BASE DE DATOS, así que lo que no
+              // esté guardado no saldría: se avisa en vez de mentir
+              if (sucio) { toast('Guarda primero, que el documento lee lo guardado', 'error'); return; }
+              router.navigate(`/partidos/${matchId}/convocatoria`);
+            },
+          }, 'Ver el documento'),
+        ),
+      ),
+      h('div', { class: 'eq-conv-chips' }, ...lista.map(chip)),
+      h('div', { class: 'eq-conv-quedar' },
+        h('label', { class: 'field-group' },
+          h('span', { class: 'field-label' }, 'Dónde se queda'),
+          h('input', {
+            class: 'field-input', type: 'text', maxlength: 120,
+            placeholder: 'Puerta del pabellón, aparcamiento…',
+            value: p.convocatoria_lugar || '',
+            onInput: (e) => { p.convocatoria_lugar = e.target.value; marcaSucio(); },
+          }),
+        ),
+        h('label', { class: 'field-group eq-conv-hora' },
+          h('span', { class: 'field-label' }, 'A qué hora'),
+          h('input', {
+            class: 'field-input', type: 'time',
+            value: (p.convocatoria_hora || '').slice(0, 5),
+            onInput: (e) => { p.convocatoria_hora = e.target.value || null; marcaSucio(); },
+          }),
+        ),
+      ),
+      falta.length
+        ? h('p', { class: 'eq-ayuda' }, `Falta por poner: ${falta.join(', ')}.`)
+        : h('p', { class: 'eq-acta-ok' }, 'La convocatoria está lista.'),
+    );
+  }
+
   // ── el reglamento de la categoría (4.3) ──────────────
   /* Aritmética pura sobre lo que el acta demuestra (decisión #29). Va
      al pie porque se mira cuando el acta ya está puesta, no mientras se
@@ -626,6 +717,9 @@ export function render(root, params) {
         tiempos_muertos: soloCeros(p.tiempos_muertos) ? [] : p.tiempos_muertos,
         periodos: p.periodos ?? null,
         acta_origen: p.acta_origen || (hayAlgoDelActa() ? 'mano' : null),
+        convocados: convocadosDe(p),
+        convocatoria_lugar: p.convocatoria_lugar?.trim() || null,
+        convocatoria_hora: p.convocatoria_hora || null,
       });
       if (conActa) await guardaFilas();
       sucio = false;
@@ -686,6 +780,14 @@ export function render(root, params) {
             onClick: () => { p.es_local = v; marcaSucio(); pinta(); },
           }, txt)),
         ),
+      ),
+
+      h('section', { class: 'eq-cierre-seccion' },
+        h('h2', { class: 'eq-zona-titulo' }, 'Convocatoria'),
+        hayConvocatoria()
+          ? nodoConv
+          : h('p', { class: 'eq-ayuda' },
+              'Para la convocatoria falta aplicar la migración 030 en la base de datos.'),
       ),
 
       h('section', { class: 'eq-cierre-seccion' },
@@ -774,6 +876,7 @@ export function render(root, params) {
     // los nodos del acta viven fuera del árbol que `pinta` reconstruye
     // (para no perder el foco al teclear), así que se rellenan aquí
     if (conActa) pintaActa();
+    if (hayConvocatoria()) pintaConvocatoria();
   }
 
   (async () => {

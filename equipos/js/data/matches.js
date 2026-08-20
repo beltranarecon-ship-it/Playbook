@@ -19,32 +19,56 @@ const COLS_BASE = 'id, team_id, season_id, fecha, hora, lugar, rival, es_local, 
    `marcador_cuartos` NO va aquí: existe desde la 016. */
 let sin028 = false;
 const COLS_028 = 'periodos, faltas_equipo, tiempos_muertos, acta_origen';
-const COLS = () => (sin028 ? COLS_BASE : `${COLS_BASE}, ${COLS_028}`);
+/* Y la 030 añade la convocatoria (Tramo 4.6). Se degrada igual y por
+   separado: quien haya aplicado una y no la otra sigue teniendo el
+   resto de la pantalla. */
+let sin030 = false;
+const COLS_030 = 'convocados, convocatoria_lugar, convocatoria_hora';
+const COLS = () => [COLS_BASE, sin028 ? null : COLS_028, sin030 ? null : COLS_030]
+  .filter(Boolean).join(', ');
 
 /** Si la 028 está aplicada. La pantalla lo usa para no ofrecer lo que no se
  *  puede guardar, en vez de dejar que el guardado falle con un error crudo. */
 export const hayActa = () => !sin028;
+/** Si la 030 está aplicada (la convocatoria). */
+export const hayConvocatoria = () => !sin030;
 
-const falta028 = (error) => {
-  if (error?.code === '42703' || error?.code === 'PGRST204') return true;
+const esColumnaQueFalta = (error) => error?.code === '42703' || error?.code === 'PGRST204';
+const nombra = (error, columnas) => {
   const m = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
-  return m.includes('column')
-    && ['periodos', 'faltas_equipo', 'tiempos_muertos', 'acta_origen'].some((c) => m.includes(c));
+  return m.includes('column') && columnas.some((c) => m.includes(c));
 };
+const COL_028 = ['periodos', 'faltas_equipo', 'tiempos_muertos', 'acta_origen'];
+const COL_030 = ['convocados', 'convocatoria_lugar', 'convocatoria_hora'];
+
+const falta028 = (error) => nombra(error, COL_028) || (esColumnaQueFalta(error) && !nombra(error, COL_030));
+const falta030 = (error) => nombra(error, COL_030) || (esColumnaQueFalta(error) && !nombra(error, COL_028));
 
 /* Pide, y si lo que faltaba eran las columnas de la 028, vuelve a pedir sin
    ellas. Una sola vez: `sin028` se queda puesto para el resto de la sesión. */
 async function conReintento(pide) {
   let r = await pide();
-  if (r.error && falta028(r.error)) { sin028 = true; r = await pide(); }
+  /* Hasta dos vueltas: puede faltar la 028, la 030 o las dos. Cuando el
+     error no dice qué columna es —PostgREST a veces solo da el código—
+     se quitan las dos tandas y se sigue, que es preferible a dejar la
+     pantalla sin abrir por no saber cuál de las dos falta. */
+  for (let vuelta = 0; vuelta < 2 && r.error; vuelta++) {
+    const a = falta028(r.error) && !sin028;
+    const b = falta030(r.error) && !sin030;
+    if (!a && !b) break;
+    if (a) sin028 = true;
+    if (b) sin030 = true;
+    r = await pide();
+  }
   return r;
 }
 
 /** Quita del patch lo que la base de datos todavía no tiene. */
 const saneaPatch = (patch) => {
-  if (!sin028) return patch;
-  const { periodos, faltas_equipo, tiempos_muertos, acta_origen, ...resto } = patch;
-  return resto;
+  const out = { ...patch };
+  if (sin028) for (const k of COL_028) delete out[k];
+  if (sin030) for (const k of COL_030) delete out[k];
+  return out;
 };
 
 /** Partidos que caen en un rango de fechas (calendario). */
@@ -106,7 +130,14 @@ export async function actualizarPartido(id, patch) {
   let { error } = await manda(patch);
   // el reintento va con el patch YA saneado: si se reenviara entero volvería
   // a fallar por lo mismo y el guardado se perdería igual
-  if (error && falta028(error)) { sin028 = true; ({ error } = await manda(patch)); }
+  for (let vuelta = 0; vuelta < 2 && error; vuelta++) {
+    const a = falta028(error) && !sin028;
+    const b = falta030(error) && !sin030;
+    if (!a && !b) break;
+    if (a) sin028 = true;
+    if (b) sin030 = true;
+    ({ error } = await manda(patch));
+  }
   if (error) throw error;
 }
 

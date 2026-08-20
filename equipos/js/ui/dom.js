@@ -12,7 +12,19 @@ export function h(tag, attrs = {}, ...children) {
     if (v == null || v === false) continue;
     if (k === 'class') el.setAttribute('class', v);
     else if (k === 'dataset') Object.assign(el.dataset, v);
-    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    // Object.assign sobre el.style IGNORA en silencio las variables CSS:
+    // `style['--x'] = v` no es una propiedad de CSSStyleDeclaration y se
+    // pierde sin error. Las siete llamadas del módulo que pasan
+    // `--team-color` no llegaban al DOM, y el calendario y las listas
+    // caían al gris de reserva creyendo que el equipo no tenía color.
+    // (El mismo arreglo que ya lleva taller/js/ui/dom.js.)
+    else if (k === 'style' && typeof v === 'object') {
+      for (const [prop, val] of Object.entries(v)) {
+        if (val == null) continue;
+        if (prop.startsWith('--')) el.style.setProperty(prop, String(val));
+        else el.style[prop] = val;
+      }
+    }
     else if (k === 'html') el.innerHTML = v;
     else if (k === 'ref' && typeof v === 'function') v(el);
     // <textarea> NO tiene atributo `value`: su contenido es el nodo de texto

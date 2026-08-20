@@ -17,6 +17,7 @@ import * as planner from './views/sesion-planner.js';
 import * as cierre from './views/sesion-cierre.js';
 import * as sesionActiva from './views/sesion-activa.js';
 import * as partido from './views/partido.js';
+import * as convocatoria from './views/convocatoria.js';
 import * as dossier from './views/dossier.js';
 
 export const router = new Router();
@@ -39,6 +40,7 @@ router
   .on('/sesiones/:sessionId/cierre', (p) => show(cierre, p))
   .on('/sesiones/:sessionId', (p) => show(planner, p))
   .on('/sesiones', () => show(calendario))
+  .on('/partidos/:matchId/convocatoria', (p) => show(convocatoria, p))
   .on('/partidos/:matchId', (p) => show(partido, p))
   .on('/dossier/:teamId', (p) => show(dossier, p))
   .otherwise(() => router.navigate('/sesiones', { replace: true }));
