@@ -197,6 +197,21 @@
       /* `?cat=minibasket` cambia la categoría del equipo. El reglamento
          (Tramo 4.3) depende de ella, y de cadete para arriba no hay
          regla de reparto: sin esto no se puede ver la mitad que importa. */
+      /* Dos entrenadores en el mismo equipo, para el aviso de 4.13: el
+         que cambia algo (u1) y el que se tiene que enterar (u2). */
+      team_coaches: [
+        { team_id: 't1', coach_id: 'u1', rol: 'principal', profiles: { full_name: 'Beltrán' } },
+        { team_id: 't1', coach_id: 'u2', rol: 'ayudante', profiles: { full_name: 'Marta' } },
+      ],
+      /* Un aviso sin leer para el que está mirando (u1), que es lo que
+         hace visible la bandeja de §5.8 —la que sirve en el iPhone sin
+         la app instalada, donde el push no llega nunca—. */
+      avisos: [{
+        id: 'av1', user_id: 'u1', tipo: 'equipo', clave: 'equipo:t1:el plan del jueves:2026-08-20T19:20',
+        titulo: 'Marta ha tocado el plan del jueves', cuerpo: 'Cadete A',
+        url: '/sesiones/demo', enviado_at: null, leido_at: null,
+      }],
+      push_suscripciones: [],
       teams: [{ id: 't1', name: 'Cadete A',
                 category: new URLSearchParams(location.search).get('cat') || 'cadete',
                 team_coaches: [{ coach_id: 'u1', rol: 'principal', profiles: { full_name: 'Beltrán' } }],
@@ -234,7 +249,10 @@
         /* Uno individual (Tramo 3.10): del jugador 3, con su diana. */
         { id: 'o3', team_id: 't1', season_id: 's1', player_id: 'p3', titulo: 'Pasar de «con ayuda» a «solo» en bote', descripcion: null, categoria: 'técnico', fecha_inicio: '2026-08-01', fecha_fin: '2026-10-31', estado: 'activo', created_at: '2026-08-01T00:00:00Z', dianas: ['accion:bote'] },
       ],
-      profiles: [{ id: 'u1', full_name: 'Beltrán', role: 'coach' }],
+      profiles: [
+        { id: 'u1', full_name: 'Beltrán', role: 'coach' },
+        { id: 'u2', full_name: 'Marta', role: 'coach' },
+      ],
       // Un vídeo ya guardado por el club (Tramo 3.3), para poder
       // comprobar que se reutiliza sin pegar el enlace otra vez.
       /* Las columnas de verdad de `seasons` (data/seasons.js): label,
@@ -387,6 +405,16 @@
       }
 
       if (url.includes('/auth/v1/')) {
+        /* `getUser()` sí contesta: hay cosas que preguntan quién eres
+           antes de escribir —el aviso al otro entrenador (4.13), el
+           alta de suscripción push— y sin usuario se quedan a medias
+           sin decir por qué. El resto de auth sigue negado. */
+        if (url.includes('/auth/v1/user')) {
+          return Promise.resolve(new Response(JSON.stringify({
+            id: 'u1', aud: 'authenticated', role: 'authenticated', email: 'dev@local',
+            app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z',
+          }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        }
         return Promise.resolve(new Response(JSON.stringify({ error: 'dev' }), { status: 400, headers: { 'Content-Type': 'application/json' } }));
       }
       if (!url.includes('/rest/v1/')) return real(entrada, opciones);

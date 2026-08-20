@@ -42,6 +42,7 @@ import {
   armarEnvio, volcar, resumen as resumenPuente, avisos as avisosPuente,
 } from '../data/acta-chat.js';
 import { comprobar, veredicto, textoReglas } from '../data/reglamento.js';
+import { avisarAlEquipo } from '../data/avisar.js';
 import {
   CONVOCADOS_MAX, convocadosDe, convocables, alternar as alternarConv,
   loQueFalta as loQueFaltaConv,
@@ -725,6 +726,14 @@ export function render(root, params) {
       sucio = false;
       estadoBD = p.estado;             // ya está persistido: el botón puede fiarse
       toast('Partido guardado');
+      /* Y al otro entrenador del equipo (Tramo 4.13). Va sin await: el
+         partido ya está guardado y el aviso no puede hacer esperar a
+         nadie delante de una pantalla. */
+      avisarAlEquipo(p.team_id, {
+        que: `el partido contra ${p.rival}`,
+        url: `/partidos/${matchId}`,
+        nombreEquipo,
+      });
       if (volver) router.navigate(`/sesiones?equipo=${p.team_id}`);
       else pinta();
     } catch (e) { toast('Error al guardar: ' + e.message, 'error'); }

@@ -13,6 +13,7 @@
 
 import { h, mount, icon } from '../ui/dom.js';
 import { toast } from '../ui/toast.js';
+import { avisarAlEquipo } from '../data/avisar.js';
 import { abrirModal, pedirTexto } from '../ui/modal.js';
 import { puntoEquipo } from '../ui/components.js';
 import { crearVisor } from '../ui/visor.js';
@@ -1301,6 +1302,15 @@ export function render(root, params) {
     cont.prepend(barra);
   }
 
+  /* «el plan del martes 22» — lo que se lee en el aviso al compañero. */
+  const fechaLegible = (f) => {
+    if (!f) return 'la sesión';
+    const d = new Date(`${f}T12:00:00`);
+    const dow = d.getDay() === 0 ? 7 : d.getDay();
+    const dias = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+    return `${dias[dow - 1]} ${d.getDate()}`;
+  };
+
   async function guardar({ callado = false } = {}) {
     if (soloLectura) return true;
     const libreSinTitulo = bloques.find((b) => !b.exercise_id && !(b.titulo || '').trim());
@@ -1313,6 +1323,14 @@ export function render(root, params) {
       if (esPreliminar) await promoverSesion(sessionId);
       sucio = false;
       borrarBorrador(CLAVE_BORRADOR);
+      /* Al otro entrenador del equipo (Tramo 4.13). También cuando se
+         guarda en silencio —autoguardado—: el cambio es igual de real
+         y el compañero se merece enterarse igual. Sin await: el plan ya
+         está guardado. */
+      avisarAlEquipo(sesion.team_id, {
+        que: `el plan de ${fechaLegible(sesion.fecha)}`,
+        url: `/sesiones/${sessionId}`,
+      });
       if (callado) return true;
       toast(esPreliminar ? 'Sesión planificada y confirmada' : 'Plan guardado');
       router.navigate(`/sesiones?equipo=${sesion.team_id}`);
