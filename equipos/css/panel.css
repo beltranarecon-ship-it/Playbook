@@ -753,6 +753,43 @@ input.eq-acta-duda, .eq-acta-x.eq-acta-duda {
   padding: 0.375rem 0.625rem; border-radius: var(--radius);
 }
 
+/* ── El reglamento de la categoría (Tramo 4.3) ────────── */
+/* Al pie del acta, y con tres tonos que significan cosas distintas:
+   rojo es «esto no cuadra con la regla», ámbar es «míralo» y gris es
+   «el acta no da para saberlo». Que un «no lo sé» se pinte como una
+   infracción sería justo el error que el módulo evita. */
+.eq-regl {
+  margin-top: 1.25rem; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--white); overflow: hidden;
+}
+.eq-regl-cab {
+  display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.5rem 0.875rem; border-left: 3px solid var(--muted);
+}
+.eq-regl-titulo {
+  font-family: var(--font-display); font-size: 0.8125rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.06em; margin: 0;
+}
+.eq-regl-veredicto { font-size: 0.8125rem; }
+.eq-regl-cumple { border-left-color: var(--success); background: color-mix(in srgb, var(--success) 7%, var(--white)); }
+.eq-regl-cumple .eq-regl-veredicto { color: var(--success); }
+.eq-regl-incumple { border-left-color: var(--error); background: color-mix(in srgb, var(--error) 7%, var(--white)); }
+.eq-regl-incumple .eq-regl-veredicto { color: var(--error); font-weight: 600; }
+.eq-regl-a_medias { border-left-color: var(--papaya); background: var(--papaya-soft); }
+.eq-regl-a_medias .eq-regl-veredicto { color: var(--papaya-deep); }
+.eq-regl-sin { background: var(--bone); }
+.eq-regl-sin .eq-regl-veredicto { color: var(--muted); }
+.eq-regl-cual { padding: 0.375rem 0.875rem 0; margin: 0; }
+.eq-regl-lista { list-style: none; margin: 0; padding: 0.5rem 0.875rem 0.75rem; }
+.eq-regl-lista li {
+  font-size: 0.8125rem; line-height: 1.45; padding-left: 1rem; position: relative;
+}
+.eq-regl-lista li + li { margin-top: 0.25rem; }
+.eq-regl-lista li::before { content: '2'; position: absolute; left: 0; }
+.eq-regl-mal { color: var(--error); }
+.eq-regl-ojo { color: var(--papaya-deep); }
+.eq-regl-falta { color: var(--muted); }
+
 /* El puente al chat */
 .eq-puente { display: flex; flex-direction: column; gap: 1rem; }
 .eq-puente-cab { display: flex; align-items: center; justify-content: space-between; gap: 0.875rem; }

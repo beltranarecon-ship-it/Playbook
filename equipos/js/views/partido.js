@@ -40,6 +40,7 @@ import {
 import {
   armarEnvio, volcar, resumen as resumenPuente, avisos as avisosPuente,
 } from '../data/acta-chat.js';
+import { comprobar, veredicto, textoReglas } from '../data/reglamento.js';
 import {
   EJES_VALORACION, ESTADOS_PARTIDO, VALORACION_MAX,
   resultadoPartido, diferencia, mediaValoracion, validaPartido,
@@ -58,7 +59,7 @@ export function render(root, params) {
   const cont = h('div', { class: 'eq-page eq-partido' });
   mount(root, cont);
 
-  let p = null, color = 'var(--muted)', nombreEquipo = '—';
+  let p = null, color = 'var(--muted)', nombreEquipo = '—', categoria = null;
   /* El acta. `filas` lleva UNA por jugador de la plantilla, aunque no
      jugara: la rejilla se rellena marcando, no dando de alta a nadie.
      `teniaFila` recuerda quién estaba ya guardado, para poder BORRAR al
@@ -139,6 +140,7 @@ export function render(root, params) {
   const nodoPeriodos = h('div', { class: 'eq-acta-bloque' });
   const nodoFilas = h('div', { class: 'eq-acta-bloque' });
   const nodoAvisos = h('div', { class: 'eq-acta-avisos' });
+  const nodoReglamento = h('div', { class: 'eq-regl' });
 
   const P = () => periodosDe(p);
   const num = (x) => { const v = Math.round(Number(x)); return Number.isFinite(v) && v > 0 ? v : 0; };
@@ -170,12 +172,12 @@ export function render(root, params) {
       alCambiar(v === '' ? 0 : Math.max(0, Math.min(max, Math.round(Number(v)) || 0)));
       // tocar el campo ES mirarlo: el ámbar de ese número se apaga
       if (duda && dudosos.delete(duda)) { e.target.classList.remove('eq-acta-duda'); e.target.removeAttribute('title'); }
-      marcaSucio(); pintaAvisos();
+      marcaSucio(); pintaAvisos(); pintaReglamento();
     },
   });
 
   /** Repinta el acta entera: cambia la FORMA de las dos rejillas. */
-  function pintaActa() { pintaCuantos(); pintaPeriodos(); pintaFilas(); pintaAvisos(); }
+  function pintaActa() { pintaCuantos(); pintaPeriodos(); pintaFilas(); pintaAvisos(); pintaReglamento(); }
 
   function pintaCuantos() {
     mount(nodoCuantos,
@@ -368,7 +370,38 @@ export function render(root, params) {
     for (let i = 0; i < n; i++) if (cel[i]) cel[i].textContent = String(enPista(filas, i + 1));
     if (cel[n]) cel[n].textContent = String(t.puntos);
     if (cel[n + 1]) cel[n + 1].textContent = String(t.faltas);
-    marcaSucio(); pintaAvisos();
+    marcaSucio(); pintaAvisos(); pintaReglamento();
+  }
+
+  // ── el reglamento de la categoría (4.3) ──────────────
+  /* Aritmética pura sobre lo que el acta demuestra (decisión #29). Va
+     al pie porque se mira cuando el acta ya está puesta, no mientras se
+     rellena: un recuadro rojo desde el primer número es ruido. */
+  function pintaReglamento() {
+    const r = comprobar(p, filas, { categoria });
+    const v = veredicto(r);
+    const linea = (t, clase) => h('li', { class: clase }, t);
+    mount(nodoReglamento,
+      h('div', { class: `eq-regl-cab eq-regl-${v.estado}` },
+        h('h3', { class: 'eq-regl-titulo' }, 'Reglamento'),
+        h('span', { class: 'eq-regl-veredicto' }, v.texto),
+      ),
+      r.reglas
+        ? h('p', { class: 'eq-ayuda eq-regl-cual' }, textoReglas(r.reglas, categoria))
+        : null,
+      /* Lo que ya dice el titular no se repite debajo: un recuadro que
+         dice dos veces lo mismo se lee la mitad de veces. */
+      (() => {
+        const falta = r.noSePuede.filter((t) => t !== v.texto);
+        return (r.incumple.length || r.avisa.length || falta.length)
+          ? h('ul', { class: 'eq-regl-lista' },
+              ...r.incumple.map((x) => linea(x.texto, 'eq-regl-mal')),
+              ...r.avisa.map((x) => linea(x.texto, 'eq-regl-ojo')),
+              ...falta.map((t) => linea(t, 'eq-regl-falta')),
+            )
+          : null;
+      })(),
+    );
   }
 
   // ── el puente al chat (4.2) ────────────────────────────────
@@ -674,6 +707,7 @@ export function render(root, params) {
               nodoPeriodos,
               nodoFilas,
               nodoAvisos,
+              nodoReglamento,
             )
           : h('p', { class: 'eq-ayuda' },
               'Para apuntar el acta (marcador por periodo, alineaciones y estadísticas) '
@@ -750,6 +784,7 @@ export function render(root, params) {
       const eq = equipos.find((t) => t.id === p.team_id);
       color = eq?.color || 'var(--muted)';
       nombreEquipo = eq?.name || 'Nosotros';
+      categoria = eq?.category || null;   // las reglas de 4.3 dependen de ella
 
       /* El acta: la plantilla manda el orden y las estadísticas guardadas
          rellenan lo que haya. Se listan TODOS los jugadores, también los

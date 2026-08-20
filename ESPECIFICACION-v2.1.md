@@ -1904,6 +1904,71 @@ baja después del partido no se puede casar por dorsal —sale como «no hay nad
 dorsal»—. Se dice, no se falsea, pero un acta vieja de alguien que ya no está hay que
 apuntarla antes de archivarlo.
 
+### Estado de 4.3 (hecha)
+
+`equipos/js/data/reglamento.js` — módulo puro, con su banco (`eval-reglamento.mjs`,
+**26 pruebas**). Sin migración: no guarda nada, lee el acta que ya está en pantalla. Un
+recuadro al pie del acta, con tres tonos que significan cosas distintas.
+
+**Aritmética, y nada más que aritmética** (decisión #29). Comprueba lo que el acta
+*demuestra*: cuántos periodos de los cinco primeros jugó y descansó cada uno, cuántos
+venían inscritos, las faltas de equipo por periodo y la diferencia final. No opina sobre el
+partido, no sabe si alguien estaba lesionado y no juzga al árbitro.
+
+**Una alineación indebida se explica.** Cada incumplimiento dice **quién, qué periodos y
+cuál es la regla**, en ese orden: *«Jugador 2 jugó 1 de los 5 primeros periodos (solo el
+P1) y el mínimo son 2»*. Eso se puede llevar a una reunión; «alineación indebida» no.
+
+**Y antes de acusar, se mira si la regla cabía.** Es lo que más me gusta de esta fila,
+porque sale solo de contar: en los cinco primeros periodos hay 5 en pista, o sea **25
+puestos**. Si cada jugador puede jugar como mucho 3 —porque tiene que descansar 2—, con 8
+inscritos solo se llega a 24 y **alguien tiene que incumplir**; y con 13 no hay 26 puestos
+para dar dos a cada uno. Cuando la regla no cabe, el recuadro dice eso —*«Con 8 en el acta
+no llega: hay 25 puestos y cada uno puede jugar como mucho 3. Con esos números la regla no
+se puede cumplir, así que no miro quién se pasa»*— y **no señala a ningún crío**. De ahí
+salen, además, el mínimo y el máximo de inscritos: no son un capricho, son esa cuenta.
+
+| Tono | Qué es | Ejemplo |
+|---|---|---|
+| Rojo | no cuadra con la regla | menos inscritos de los que pide la categoría · alguien fuera de los dos periodos · más de 50 de diferencia |
+| Ámbar | míralo, pero no es una falta | la regla no cabía con esos inscritos · una columna que no suma 5 en pista · llegamos al bonus en el P1 |
+| Gris | el acta no da para saberlo | sin la rejilla no se puede mirar la regla de los cinco primeros · faltas de equipo sin apuntar |
+
+**Lo que no se puede comprobar se dice.** Un acta dictada al chat (4.2) da el total de
+periodos y no la rejilla; ahí la regla de los cinco primeros no se mira y el recuadro lo
+dice. Contestar «todo bien» sería mentir, y es la mentira más cara de todas: la que hace
+que se deje de mirar el papel.
+
+**Y un acta sin empezar no dice nada más que eso.** Enumerarle a alguien las cuatro cosas
+que le faltan un sábado por la tarde, antes de escribir el primer número, es ruido; de esa
+cuenta ya se encarga el «Falta por apuntar» del acta.
+
+#### Los números, y de dónde salen
+
+Viven en **una sola tabla**, `REGLAS`, con una entrada por categoría, y la pantalla enseña
+siempre cuál ha usado: *«minibasket · 5 en pista · 2 jugados y 2 descansados de los 5
+primeros · 10 a 12 inscritos · tope de 50»*. Corregir una temporada es tocar ahí y nada más.
+
+De minibasket para abajo (babybasket, premini, minibasket, alevín): 6 periodos, la regla de
+los dos de cinco, 10 a 12 inscritos, bonus a la quinta falta de equipo y tope de 50. De
+infantil para arriba: `rotacion: null`, que **no es un hueco por rellenar** —en cadete se
+juega a ganar y el reparto lo decide el entrenador— y sin tope de diferencia.
+
+**La regla de los dos periodos de los cinco primeros viene de §5.9 tal cual.** El resto de
+números son los que se usan habitualmente en minibasket, y hay que **contrastarlos con las
+bases de competición de la temporada** antes de fiarse: un falso «alineación indebida» es
+peor que no comprobar nada. Una categoría que no esté en la tabla no se inventa: se dice
+que no se conoce y no se acusa a nadie.
+
+**Comprobado** en el arnés (`?cat=minibasket` cambia la categoría del equipo falso): un
+acta legal de diez sale en verde; con el 5 jugando solo el P1 y el 4 jugando cuatro de los
+cinco primeros salen las **dos** líneas en rojo con su nombre y sus periodos; con ocho
+inscritos sale el mínimo en rojo y la imposibilidad en ámbar, sin señalar a nadie; 92-30 en
+minibasket saca *«62 de diferencia, y en esta categoría el marcador no pasa de 50»*; y el
+mismo acta en **cadete** no dice nada de rotación ni de diferencia, porque ahí no hay regla.
+El recuadro se repinta al marcar una × o teclear un número: pasar de 8 a 9 y a 10 inscritos
+va cambiando el veredicto en vivo. En móvil (375 px) cabe y no desborda.
+
 ## Fuera de la v2.1 (marcados «no imprescindible»)
 
 Miniaturas de más calidad · uso sin conexión · identidad visual y estética general ·

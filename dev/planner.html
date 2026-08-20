@@ -194,7 +194,11 @@
 
     let TABLAS = {
       sessions: [SESION, ...PREVIAS],
-      teams: [{ id: 't1', name: 'Cadete A', category: 'cadete',
+      /* `?cat=minibasket` cambia la categoría del equipo. El reglamento
+         (Tramo 4.3) depende de ella, y de cadete para arriba no hay
+         regla de reparto: sin esto no se puede ver la mitad que importa. */
+      teams: [{ id: 't1', name: 'Cadete A',
+                category: new URLSearchParams(location.search).get('cat') || 'cadete',
                 team_coaches: [{ coach_id: 'u1', rol: 'principal', profiles: { full_name: 'Beltrán' } }],
                 team_settings: { color: '#1F6FEB', dia_convocatoria: 5 } }],
       session_blocks: [
