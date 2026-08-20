@@ -75,10 +75,12 @@ export const CATEGORIAS_EQUIPO = [
 
    Cómo se generan (una vez, y valen para siempre):
 
-     npx web-push generate-vapid-keys
+     node tools/vapid.mjs
 
-   La pública se pega aquí; la privada, en Netlify → Site settings →
-   Environment variables, como VAPID_PRIVATE_KEY.
+   Sin instalar nada: son un par ECDSA P-256 y Node los saca de su
+   propio módulo `crypto`. La pública se pega aquí; la privada, en
+   Netlify → Site settings → Environment variables, como
+   VAPID_PRIVATE_KEY.
 
    Vacía = no hay avisos. La pantalla lo dice («falta la clave pública»)
    en vez de enseñar un botón que no funciona.
