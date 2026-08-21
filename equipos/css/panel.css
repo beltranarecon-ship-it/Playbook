@@ -8,36 +8,9 @@
 .eq-page { animation: riseIn 0.35s var(--ease) both; }
 .eq-page-estrecha { max-width: 720px; }
 
-/* ── Tab-bar inferior (móvil) ─────────────────────────────── */
-.eq-tabbar {
-  position: fixed; inset: auto 0 0 0; z-index: 40;
-  display: flex; justify-content: space-around;
-  background: var(--carbon);
-  padding: 0.375rem 0 calc(0.375rem + env(safe-area-inset-bottom));
-  box-shadow: var(--shadow-lg);
-}
-.eq-tab {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  min-width: 44px; min-height: 44px; justify-content: center;
-  /* Con cuatro destinos (Tramo 4.11) el relleno fijo de 1.25rem sacaba
-     la barra de un móvil de 360 px. Reparto por igual y sin desbordar. */
-  flex: 1 1 0; padding: 0.25rem 0.5rem;
-  color: rgba(255,255,255,0.55);
-  font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
-  transition: color var(--t-fast);
-}
-.eq-tab.active, .eq-tab:hover { color: var(--papaya); }
-@media (min-width: 720px) {
-  .eq-tabbar { display: none; }
-  .eq-main { padding-bottom: 3rem; }
-}
-/* En móvil manda la tab-bar de abajo: la navegación de la topbar no
-   cabía en 375 px y empujaba la página a 426, con scroll horizontal en
-   TODAS las vistas del módulo. Se oculta solo aquí (.eq-body), no en la
-   app raíz, que no tiene tab-bar que la sustituya. */
-@media (max-width: 719px) {
-  .eq-body .topbar-nav { display: none; }
-}
+/* La tab-bar inferior se ha mudado a css/app.css: la biblioteca
+   (/app.html) también la necesita y solo carga ese fichero. Una sola
+   definición, para que las dos SPA no puedan discrepar. */
 
 /* ── Tarjetas de equipo ───────────────────────────────────── */
 .eq-grid {
@@ -297,7 +270,25 @@
     position: sticky; top: 1.5rem;
     max-height: calc(100dvh - 3rem);
   }
-  .eq-planner-visor .eq-visor { max-height: calc(100dvh - 3rem); }
+  /* El visor no puede RECORTAR: con la pista en retrato, una columna de
+     400 px pide 566 de alto solo para la pista, más cabecera, controles
+     y pestañas. Con `overflow: hidden` heredado, todo eso desaparecía
+     por abajo —la pista cortada y los botones a medias—.
+
+     Dos cosas: la pista se limita en ALTO y calcula su ancho desde ahí
+     (con `aspect-ratio`, `width: auto` hace justo eso), y lo que aún no
+     quepa se desliza en vez de perderse. */
+  .eq-planner-visor .eq-visor { max-height: calc(100dvh - 3rem); overflow-y: auto; }
+  /* El ancho sale del ALTO que se le deja, no al revés: `--court-aspect`
+     es ancho/alto, así que `alto × aspecto` da el ancho que respeta la
+     proporción, y el `min()` con el 100 % impide que se salga cuando la
+     columna es lo estrecho. Con `max-height` a secas, `aspect-ratio`
+     cede y la pista se dibuja aplastada; con `width: auto` se colapsa
+     a cero. */
+  .eq-planner-visor .court {
+    width: min(100%, calc(48vh * var(--court-aspect, 0.707)));
+    margin: 0 auto;
+  }
 }
 
 .eq-planner-top {
@@ -502,6 +493,22 @@
 .modal-picker .modal { max-width: 1060px; }
 .modal-visor .modal { max-width: 560px; }
 .modal-visor .modal-body { padding: 0; }
+/* La pista, acotada también por el ALTO de la ventana.
+
+   El modal ya se limita a 90dvh y se desliza, pero la pista no sabía
+   nada de eso: en retrato pide 1,41 veces su ancho, o sea 622 px en una
+   columna de 440, y en un portátil de 620 de alto eso deja fuera el
+   final de la pista y los controles. Se veía la cancha cortada por
+   abajo y los botones a medias.
+
+   El ancho sale del alto disponible: `--court-aspect` es ancho/alto,
+   así que `alto × aspecto` es el ancho que respeta la proporción. El
+   55dvh deja sitio para la cabecera, los controles y las pestañas, que
+   es lo que se mira justo después de la pista. */
+.modal-visor .court {
+  width: min(100%, calc(55dvh * var(--court-aspect, 0.707)));
+  margin: 0 auto;
+}
 
 .eq-picker { display: grid; grid-template-columns: 1fr; gap: 1rem; }
 @media (min-width: 860px) {

@@ -43,11 +43,14 @@ async function init() {
 // ── Topbar ───────────────────────────────────────────────
 
 function renderTopbar() {
+  /* El nombre y las iniciales vivían en la barra. Ahora la barra lleva
+     los mismos cuatro destinos que la otra SPA y el nombre está en el
+     perfil, que es donde se va a cambiarlo. Se dejan por si vuelven. */
   const name = currentProfile?.full_name ?? currentUser.email;
-  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-
-  document.getElementById('user-name').textContent = name.split(' ')[0];
-  document.getElementById('user-avatar').textContent = initials;
+  const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  const puesto = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  puesto('user-name', name.split(' ')[0]);
+  puesto('user-avatar', initials);
 }
 
 function setupNavigation() {

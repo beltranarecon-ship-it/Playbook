@@ -43,8 +43,24 @@
         + 'Arnés de desarrollo. Solo funciona en localhost.</body>';
       throw new Error('dev harness fuera de localhost');
     }
+    /* Le dice al limpiador de sesiones (js/sesion-sana.js) que la
+       sesión de mentira de aquí abajo es suya y no hay que borrarla:
+       el arnés intercepta `fetch`, así que ese token no llega a
+       Supabase. Fuera del arnés la bandera no existe y la sesión se
+       limpia, que es lo que hace falta al volver a la app de verdad. */
+    window.__ARNES_DEV__ = true;
+
     const AHORA = Math.floor(Date.now() / 1000);
+    /* La sesión falsa vive en el localStorage REAL, así que al volver a
+       la app de verdad en este mismo navegador seguía ahí y rompía
+       todas las consultas. Se marca para poder reconocerla, y la app
+       la borra sola al arrancar (js/sesion-sana.js). Aquí además se
+       limpia al cerrar la pestaña, que cubre el camino normal. */
+    window.addEventListener('pagehide', () => {
+      try { localStorage.removeItem('cbp-auth'); } catch { /* da igual */ }
+    });
     localStorage.setItem('cbp-auth', JSON.stringify({
+      es_del_arnes: true,
       access_token: 'dev', token_type: 'bearer', expires_in: 31536000,
       expires_at: AHORA + 31536000, refresh_token: 'dev',
       user: { id: 'u1', aud: 'authenticated', role: 'authenticated', email: 'dev@local',
@@ -190,6 +206,10 @@
     const PREVIAS = [
       { ...SESION, id: 'prev1', fecha: '2026-08-17', estado: 'realizada' },
       { ...SESION, id: 'prev2', fecha: '2026-08-11', estado: 'realizada' },
+      /* Una cancelada, para poder comprobar que se puede BORRAR: hasta
+         la 033 se quedaba tachada en el calendario para siempre. */
+      { ...SESION, id: 'cancel1', fecha: '2026-08-19', estado: 'cancelada',
+        motivo_cancelacion: 'Pabellón cerrado' },
     ];
 
     let TABLAS = {
@@ -266,7 +286,11 @@
       /* Las columnas de verdad de `seasons` (data/seasons.js): label,
          start_date, end_date, is_active. Estaban en castellano y por eso
          la pestaña de partidos decía «Partidos · undefined». */
-      seasons: [{ id: 's1', label: '2026/27', start_date: '2026-08-24', end_date: '2027-06-30', is_active: true }],
+      seasons: [
+        { id: 's1', label: '2026/27', start_date: '2026-08-24', end_date: '2027-06-30', is_active: true },
+        // una vieja y VACÍA, para poder probar el borrado de temporada (4.9)
+        { id: 's0', label: '2025/26', start_date: '2025-09-01', end_date: '2026-06-30', is_active: false },
+      ],
       /* Asistencia y estrellas de tres meses, para que Progresión (3.8)
          tenga algo que dibujar. */
       attendance: [
@@ -555,8 +579,18 @@
       console.log('[arnés]', tabla, u.search, '→', filas.length, 'filas');
       const objeto = (cab.get('Accept') || '').includes('pgrst.object');
       const cuerpo = objeto ? (filas[0] ?? null) : filas;
+
+      /* RECUENTOS. `select('id', { count: 'exact', head: true })` pide el
+         número de filas y lo recibe en la cabecera `Content-Range`, no en
+         el cuerpo. Sin ella, `data.count` llega nulo, y lo que decide si
+         se puede borrar una temporada o un equipo es justamente ese
+         número: el arnés decía «no sé cuántos hay» a algo que sí sabe. */
+      const cabeceras = { 'Content-Type': 'application/json' };
+      if ((cab.get('Prefer') || '').includes('count=')) {
+        cabeceras['Content-Range'] = `0-${Math.max(0, filas.length - 1)}/${filas.length}`;
+      }
       return Promise.resolve(new Response(JSON.stringify(cuerpo), {
-        status: 200, headers: { 'Content-Type': 'application/json' },
+        status: 200, headers: cabeceras,
       }));
     };
 

@@ -26,7 +26,7 @@ import { toast } from '../ui/toast.js';
 import { confirmar } from '../ui/modal.js';
 import { getState } from '../store.js';
 import { isAdmin } from '/js/auth.js';
-import { getMisEquipos } from '../data/teams.js';
+import { getMisEquipos, borrarEquipo, queHayEnEquipo } from '../data/teams.js';
 import {
   getInvitaciones, invitar, retirar, problemaDelCorreo, estadoDe, normaliza,
 } from '../data/invitaciones.js';
@@ -55,6 +55,71 @@ export function render(root) {
     }
 
     const nodoInv = h('div', { class: 'eq-inv' });
+
+    /* Los equipos, con su borrado. Va aparte porque la lista se repinta
+       sola al borrar uno, y porque antes de ofrecer el botón hay que
+       preguntar qué historia tiene: un equipo con entrenamientos o
+       partidos NO se borra, se archiva. */
+    const nodoEquipos = h('div', {});
+
+    function pintaEquipos() {
+      mount(nodoEquipos,
+        equipos.length
+          ? h('div', { class: 'eq-inv-lista' }, ...equipos.map((t) => h('div', { class: 'eq-inv-fila' },
+              h('a', {
+                class: 'eq-inv-mail', href: `/equipos/${t.id}`, 'data-link': true,
+                onClick: (e) => { e.preventDefault(); router.navigate(`/equipos/${t.id}`); },
+              }, t.name),
+              h('span', { class: 'eq-ayuda' }, t.category || 'sin categoría'),
+              h('span', { class: 'eq-ayuda' }, (t.coaches || []).join(', ') || 'sin entrenadores'),
+              h('button', {
+                class: 'eq-btn-icono', type: 'button',
+                title: `Borrar ${t.name}`, 'aria-label': `Borrar el equipo ${t.name}`,
+                onClick: async () => {
+                  let dentro;
+                  try { dentro = await queHayEnEquipo(t.id); }
+                  catch (e) { toast('Error: ' + e.message, 'error'); return; }
+
+                  /* null = no se ha podido contar. No se bloquea —la policy de
+             la 033 rechaza igual lo que no se puede borrar— pero
+             tampoco se afirma que esté vacío. */
+          if (dentro.sesiones || dentro.partidos) {
+                    toast(`No se puede borrar: ${t.name} tiene `
+                      + [dentro.sesiones && `${dentro.sesiones} entrenamiento(s)`,
+                         dentro.partidos && `${dentro.partidos} partido(s)`].filter(Boolean).join(' y ')
+                      + '. Eso es el histórico del club.', 'error');
+                    return;
+                  }
+                  /* Los jugadores SÍ dejan borrar, pero se dicen: pegar la
+                     plantilla es lo primero que se hace al crear un equipo
+                     y también lo primero que se hace mal. */
+                  const noSeSabe = dentro.sesiones === null || dentro.partidos === null;
+                  const conJugadores = dentro.jugadores
+                    ? ` Se borrarán también sus ${dentro.jugadores} jugador(es), sus horarios y sus objetivos.`
+                    : '';
+                  if (!(await confirmar({
+                    titulo: `Borrar ${t.name}`,
+                    mensaje: noSeSabe
+                      ? 'No he podido comprobar qué tiene dentro. Si ha entrenado o jugado, la base de datos lo va a impedir.'
+                      : `Nunca ha entrenado ni jugado un partido.${conJugadores}`,
+                    textoOk: 'Borrar',
+                  }))) return;
+                  try {
+                    if (!(await borrarEquipo(t.id))) {
+                      toast('No se ha borrado: solo el administrador puede, y solo si no tiene historia', 'error');
+                      return;
+                    }
+                    equipos = equipos.filter((x) => x.id !== t.id);
+                    pintaEquipos();
+                    toast(`${t.name} borrado`);
+                  } catch (e) { toast('Error: ' + e.message, 'error'); }
+                },
+              }, '×'),
+            )))
+          : h('p', { class: 'eq-ayuda' }, 'Todavía no hay equipos.'),
+      );
+    }
+    pintaEquipos();
 
     /* El formulario de invitar. Los equipos se eligen aquí porque
        asignarlos DESPUÉS obliga a acordarse de una segunda tarea que
@@ -188,16 +253,7 @@ export function render(root) {
 
       h('section', { class: 'eq-cierre-seccion' },
         h('h2', { class: 'eq-zona-titulo' }, 'Equipos'),
-        equipos.length
-          ? h('div', { class: 'eq-inv-lista' }, ...equipos.map((t) => h('a', {
-              class: 'eq-inv-fila', href: `/equipos/${t.id}`, 'data-link': true,
-              onClick: (e) => { e.preventDefault(); router.navigate(`/equipos/${t.id}`); },
-            },
-            h('span', { class: 'eq-inv-mail' }, t.name),
-            h('span', { class: 'eq-ayuda' }, t.category || 'sin categoría'),
-            h('span', { class: 'eq-ayuda' }, (t.coaches || []).join(', ') || 'sin entrenadores'),
-          )))
-          : h('p', { class: 'eq-ayuda' }, 'Todavía no hay equipos.'),
+        nodoEquipos,
         h('p', { class: 'eq-ayuda' },
           'Los periodos sin entrenamiento se definen dentro de cada equipo, en Horarios: '
           + 'dependen de cuándo entrena cada uno.'),

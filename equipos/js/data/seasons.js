@@ -65,3 +65,40 @@ export async function activarTemporada(id) {
     .from('seasons').update({ is_active: true }).eq('id', id);
   if (e2) throw e2;
 }
+
+/* ── Borrar (Tramo 4.9 / §5.10) ──────────────────── */
+
+/**
+ * Cuánto hay dentro de una temporada. Se pregunta ANTES de ofrecer el
+ * borrado: «se borrará la temporada 2025/26» y «se borrará la temporada
+ * 2025/26, con 112 entrenamientos y 18 partidos» son la misma frase para
+ * la base de datos y dos decisiones muy distintas para una persona.
+ */
+export async function queHayEn(seasonId) {
+  const [ses, par] = await Promise.all([
+    supabase.from('sessions').select('id', { count: 'exact', head: true }).eq('season_id', seasonId),
+    supabase.from('matches').select('id', { count: 'exact', head: true }).eq('season_id', seasonId),
+  ]);
+  /* `count` puede venir nulo si el servidor no manda el `Content-Range`.
+     Un recuento DESCONOCIDO no es cero: leerlo como vacío ofrecería
+     borrar una temporada llena. Se devuelve null y quien pregunta lo
+     trata como «no lo sé». La puerta de verdad es la policy de la 033,
+     que rechaza el borrado igual. */
+  return { sesiones: ses.count, partidos: par.count };
+}
+
+/**
+ * Borra una temporada VACÍA.
+ *
+ * La policy de la 033 solo deja borrar al administrador y solo si no
+ * tiene ni sesiones ni partidos. Un DELETE que la policy rechaza NO da
+ * error: filtra la fila y responde 0. Por eso se cuenta lo que
+ * realmente se ha borrado, como en `borrarPreliminar`.
+ *
+ * @returns true si se borró; false si la policy la protegió
+ */
+export async function borrarTemporada(id) {
+  const { data, error } = await supabase.from('seasons').delete().eq('id', id).select('id');
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}

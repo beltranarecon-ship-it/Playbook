@@ -16,7 +16,14 @@
 .court {
   position: relative;
   width: 100%;
-  aspect-ratio: var(--court-aspect, 1.414);
+  /* El MISMO valor por defecto que taller/css/canvas.css. Aquí ponía
+     1.414 —apaisado— y allí .707 —retrato—, para la misma variable y la
+     misma pista. `CourtView.setPista` la fija bien en cuanto se dibuja,
+     pero hasta ese momento —y en cualquier camino que no pase por ahí—
+     la caja salía tumbada y la pista, que es de retrato, se veía
+     aplastada y cortada por abajo. Dos defectos para una cosa acaban
+     siendo dos comportamientos. */
+  aspect-ratio: var(--court-aspect, 0.707);
   background: #0b2330;                       /* madera oscura del arte */
   overflow: hidden;
   touch-action: none;

@@ -114,3 +114,38 @@ export async function guardarAjustes(teamId, campos) {
   if (error && falta030(error)) { sin030 = true; ({ error } = await manda()); }
   if (error) throw error;
 }
+
+/* ── Borrar un equipo (Tramo 4.9) ────────────────── */
+
+/**
+ * Qué historia tiene un equipo. Se pregunta antes de ofrecer el borrado.
+ *
+ * Los JUGADORES se cuentan aparte y no impiden borrar: pegar la
+ * plantilla es lo primero que se hace al crear un equipo, y también lo
+ * primero que se hace mal. Lo que impide borrar es que haya PASADO
+ * algo —un entrenamiento o un partido—.
+ */
+export async function queHayEnEquipo(teamId) {
+  const [ses, par, jug] = await Promise.all([
+    supabase.from('sessions').select('id', { count: 'exact', head: true }).eq('team_id', teamId),
+    supabase.from('matches').select('id', { count: 'exact', head: true }).eq('team_id', teamId),
+    supabase.from('players').select('id', { count: 'exact', head: true }).eq('team_id', teamId),
+  ]);
+  /* `count` nulo = no se sabe, que NO es cero: leerlo como vacío
+     ofrecería borrar un equipo con temporadas dentro. La puerta de
+     verdad es la policy de la 033, que lo rechaza igual. */
+  return { sesiones: ses.count, partidos: par.count, jugadores: jug.count };
+}
+
+/**
+ * Borra un equipo SIN historia. Se lleva por delante, en cascada, sus
+ * ajustes, jugadores, horarios, objetivos y entrenadores: sin equipo no
+ * significan nada.
+ *
+ * @returns true si se borró; false si la policy lo protegió
+ */
+export async function borrarEquipo(id) {
+  const { data, error } = await supabase.from('teams').delete().eq('id', id).select('id');
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}

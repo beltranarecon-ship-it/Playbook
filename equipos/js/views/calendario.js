@@ -17,6 +17,7 @@ import { getPeriodos } from '../data/schedules.js';
 import {
   getTemporadaActiva, getSesionesRango, crearSesionManual,
   reprogramarSesion, promoverSesion, cancelarSesion, restaurarSesion, descartarOcurrencia,
+  borrarPreliminar,
 } from '../data/sessions.js';
 import { getState, setState, esAdmin } from '../store.js';
 import { diasEntre, isoWeekday, enPeriodo, temporadaCubre } from '../data/programacion.js';
@@ -321,6 +322,28 @@ export function render(root) {
         // hasta ahora una cancelada solo se podía recuperar desde el "deshacer"
         // del aviso, que dura unos segundos. Pasado eso, se quedaba tachada
         // para siempre. Vuelve a 'programada', nunca a preliminar (guard 010).
+        /* Y para la que no se va a reabrir nunca: borrarla. Antes una
+           cancelada se quedaba tachada en el calendario para siempre,
+           porque la policy de borrado solo alcanzaba a las preliminares
+           (arreglado en la 033). Solo si no dejó rastro: con lista o
+           reflexión guardadas, la base de datos lo impide y aquí se
+           dice en vez de fingir que se ha borrado. */
+        s.estado === 'cancelada' ? h('button', {
+          class: 'btn btn-secondary eq-btn-mini eq-btn-peligro', type: 'button',
+          onClick: async () => {
+            if (!(await confirmar({
+              titulo: 'Borrar del calendario',
+              mensaje: 'Se quita definitivamente. Solo se puede si no tiene lista ni reflexión guardadas.',
+              textoOk: 'Borrar',
+            }))) return;
+            const fue = await borrarPreliminar(s.id);
+            md.cerrar(); refrescar();
+            toast(fue
+              ? 'Sesión borrada'
+              : 'No se pudo borrar: ya tiene lista o reflexión guardadas',
+              fue ? undefined : 'error');
+          },
+        }, 'Borrar') : null,
         s.estado === 'cancelada' ? h('button', {
           class: 'btn btn-primary eq-btn-mini', type: 'button',
           onClick: async () => {

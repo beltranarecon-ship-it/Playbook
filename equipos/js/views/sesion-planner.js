@@ -14,13 +14,13 @@
 import { h, mount, icon } from '../ui/dom.js';
 import { toast } from '../ui/toast.js';
 import { avisarAlEquipo } from '../data/avisar.js';
-import { abrirModal, pedirTexto } from '../ui/modal.js';
+import { abrirModal, pedirTexto, confirmar } from '../ui/modal.js';
 import { puntoEquipo } from '../ui/components.js';
 import { crearVisor } from '../ui/visor.js';
 import { badgeCategoria } from './objetivo-form.js';
 import { getMisEquipos } from '../data/teams.js';
 import {
-  getSesion, promoverSesion, cancelarSesion, guardarCabeceraSesion,
+  getSesion, promoverSesion, cancelarSesion, descartarOcurrencia, guardarCabeceraSesion,
 } from '../data/sessions.js';
 import {
   getBloques, guardarBloques, getObjetivosSesion, guardarObjetivosSesion,
@@ -1240,6 +1240,29 @@ export function render(root, params) {
         (sesion.estado === 'preliminar' || sesion.estado === 'programada') ? h('button', {
           class: 'btn btn-secondary eq-btn-peligro', type: 'button',
           onClick: async () => {
+            /* Una PRELIMINAR se quita, no se cancela (fila 1.7: «borrado
+               si no estaba programada, tachada y reabrible si sí»). El
+               calendario ya lo hacía así; aquí no, y por eso una
+               preliminar cancelada desde esta pantalla se quedaba
+               tachada para siempre —y sin forma de quitarla, porque la
+               policy de borrado solo alcanzaba a las preliminares—. */
+            if (esPreliminar) {
+              if (!(await confirmar({
+                titulo: 'Quitar del calendario',
+                mensaje: 'Este entrenamiento no llegó a programarse: se quita y no vuelve a generarse.',
+                textoOk: 'Quitar',
+              }))) return;
+              try {
+                const fue = await descartarOcurrencia(sesion);
+                sucio = false;
+                toast(fue
+                  ? 'Entrenamiento quitado'
+                  : 'No se pudo quitar: ya tiene lista o reflexión guardadas',
+                  fue ? undefined : 'error');
+                if (fue) router.navigate(`/sesiones?equipo=${sesion.team_id}`);
+              } catch (e) { toast('Error: ' + e.message, 'error'); }
+              return;
+            }
             const motivo = await pedirTexto({
               titulo: 'Cancelar sesión', etiqueta: 'Motivo (obligatorio)',
               placeholder: 'Lluvia, pabellón cerrado…',
@@ -1251,7 +1274,7 @@ export function render(root, params) {
               router.navigate(`/sesiones?equipo=${sesion.team_id}`);
             } catch (e) { toast('Error: ' + e.message, 'error'); }
           },
-        }, 'Cancelar sesión') : null,
+        }, esPreliminar ? 'Quitar del calendario' : 'Cancelar sesión') : null,
         sesion.fecha <= hoyISO() ? h('button', {
           class: 'btn btn-secondary', type: 'button', onClick: irCierre,
         }, 'Pasar lista') : null,

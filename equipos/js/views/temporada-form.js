@@ -10,7 +10,9 @@
 import { h } from '../ui/dom.js';
 import { toast } from '../ui/toast.js';
 import { abrirModal, confirmar } from '../ui/modal.js';
-import { getTemporadas, crearTemporada, activarTemporada } from '../data/seasons.js';
+import {
+  getTemporadas, crearTemporada, activarTemporada, borrarTemporada, queHayEn,
+} from '../data/seasons.js';
 import { estadoTemporada, proponerTemporada } from '../data/programacion.js';
 import { invalidarTemporada, esAdmin } from '../store.js';
 
@@ -85,6 +87,49 @@ export function modalTemporada({ onCambiada } = {}) {
               } catch (e) { toast('Error: ' + e.message, 'error'); }
             },
           }, 'Trabajar en esta'),
+      /* Borrar (§5.10: «crear y eliminar temporadas: solo el
+         administrador»). La de trabajo NO se ofrece: borrar el suelo
+         que pisas deja la app sin calendario y sin saber dónde está.
+         Cambia primero a otra y después bórrala. */
+      (!t.is_active && esAdmin()) ? h('button', {
+        class: 'eq-btn-icono', type: 'button',
+        title: `Borrar la temporada ${t.label}`, 'aria-label': `Borrar la temporada ${t.label}`,
+        onClick: async () => {
+          let dentro;
+          try { dentro = await queHayEn(t.id); }
+          catch (e) { toast('Error: ' + e.message, 'error'); return; }
+
+          /* Se dice lo que hay DENTRO antes de preguntar. «Se borrará la
+             temporada 2025/26» y «… con 112 entrenamientos y 18
+             partidos» son la misma frase para la base de datos y dos
+             decisiones muy distintas para una persona. */
+          /* null = no se ha podido contar. No se bloquea —la policy de
+             la 033 rechaza igual lo que no se puede borrar— pero
+             tampoco se afirma que esté vacío. */
+          if (dentro.sesiones || dentro.partidos) {
+            toast(`No se puede borrar: ${t.label} tiene `
+              + [dentro.sesiones && `${dentro.sesiones} entrenamiento(s)`,
+                 dentro.partidos && `${dentro.partidos} partido(s)`].filter(Boolean).join(' y ')
+              + '. Eso es el histórico del club.', 'error');
+            return;
+          }
+          if (!(await confirmar({
+            titulo: `Borrar ${t.label}`,
+            mensaje: (dentro.sesiones === null || dentro.partidos === null)
+              ? 'No he podido comprobar qué tiene dentro. Si tiene entrenamientos o partidos, la base de datos lo va a impedir.'
+              : 'Está vacía: no tiene entrenamientos ni partidos. Se borrarán también sus horarios y objetivos.',
+            textoOk: 'Borrar',
+          }))) return;
+          try {
+            if (!(await borrarTemporada(t.id))) {
+              toast('No se ha borrado: solo el administrador puede, y solo si está vacía', 'error');
+              return;
+            }
+            toast(`${t.label} borrada`);
+            await refrescarLista(); onCambiada?.();
+          } catch (e) { toast('Error: ' + e.message, 'error'); }
+        },
+      }, '×') : null,
     )));
   };
 
