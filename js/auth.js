@@ -80,7 +80,10 @@ export function mensajeDeAlta(error) {
 export async function entrarConGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/app.html` },
+    // al inicio, como el login con contraseña (§5.11). Con /app.html
+    // entrar con Google te dejaba en la biblioteca, que es justo lo que
+    // se corrigió en el otro camino: dos puertas al mismo sitio.
+    options: { redirectTo: `${window.location.origin}/inicio` },
   });
   if (error) throw error;
 }
