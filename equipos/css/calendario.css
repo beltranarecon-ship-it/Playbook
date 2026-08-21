@@ -28,8 +28,14 @@
 
 /* ── Vista MES ────────────────────────────────────────────── */
 .eq-cal { background: var(--white); border: 1px solid var(--line); }
+/* `minmax(0, 1fr)` y no `1fr`: un `1fr` a secas NO baja del tamaño
+   mínimo de su contenido, así que el día con el chip más largo estiraba
+   su columna —155 px de siete— y empujaba el mes entero fuera de un
+   móvil de 375. Con minmax(0, …) las siete columnas se reparten por
+   igual y es el contenido el que se recorta, que es lo que ya sabe
+   hacer con su ellipsis. */
 .eq-cal-cabecera {
-  display: grid; grid-template-columns: repeat(7, 1fr);
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--line);
 }
 .eq-cal-cabecera span {
@@ -37,7 +43,7 @@
   font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--muted);
 }
-.eq-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.eq-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .eq-cal-dia {
   min-height: 88px; padding: 0.375rem;
   border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
@@ -226,3 +232,11 @@
 /* Ya rellenada: deja de pedir atención. */
 .eq-convo-chip.hecha { opacity: 0.55; }
 .eq-convo-icono { font-size: 0.625rem; opacity: 0.7; }
+
+/* Y dentro de la celda, que los chips se dejen recortar. Sin `min-width:
+   0` un elemento de flex no baja de su contenido, y el ellipsis de
+   `.eq-part-chip-rival` no llega a aplicarse nunca. */
+.eq-cal-dia, .eq-cal-chips, .eq-semana-chips { min-width: 0; }
+.eq-ses, .eq-part-chip, .eq-convo-chip { min-width: 0; max-width: 100%; }
+.eq-ses-hora, .eq-convo-icono, .eq-part-icono { flex: 0 0 auto; }
+.eq-ses-equipo, .eq-part-chip-rival { min-width: 0; }

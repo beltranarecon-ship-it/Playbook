@@ -444,16 +444,16 @@ Objetivo: que la temporada 2026/27 pueda arrancar el 24 de agosto sin pelear con
 
 | # | Tarea | Ficheros | Cómo se comprueba |
 |---|---|---|---|
-| 1.1 | Aplicar migraciones 016 y 017 | `supabase/migrations/` | Las columnas existen; la pantalla de partido deja de fallar |
-| 1.2 | Confirmar el diagnóstico del calendario | — | Se ve qué temporada está activa y con qué fechas |
-| 1.3 | Script de copia + borrado de temporadas, equipos y sesiones | `tools/` | El fichero de copia existe y el recuento cuadra antes de borrar |
-| 1.4 | Temporada 2026/27 (24/08/2026 – 30/06/2027) con sus 11 periodos de vacaciones | `tools/` | El calendario sombrea Navidad, Semana Santa y los festivos |
-| 1.5 | Formato de fecha `dd/mm/aaaa` al pegar periodos | `equipos/js/data/schedules.js` | Se pega una lista con ese formato y entra |
-| 1.6 | Horarios: cajitas del color del equipo, «Editar» en vez de «Regenerar», rango de fechas elegible, vista previa con conflictos | `equipos/js/views/equipo-detalle.js`, `data/schedules.js` | Guardar horarios genera sesiones en el rango pedido sin mover nada programado |
-| 1.7 | Cancelar sesión: borrado si no estaba programada, tachada y reabrible si sí | `equipos/js/data/sessions.js`, `views/calendario.js` | Las dos rutas se comportan distinto y ninguna da error |
-| 1.8 | Arreglar el `null` de la pantalla de partido | `equipos/js/views/partido.js` | Un partido sin marcador no escribe `null` |
-| 1.9 | Alta de partido con el formulario completo y botón naranja | `equipos/js/views/calendario.js` | Equipo, rival, lugar, hora, local/visitante |
-| 1.10 | Pinchar una sesión abre su plan; el panel del día solo al pinchar fuera | `equipos/js/views/calendario.js` | Dos zonas de clic distintas |
+| 1.1 ✅ | Aplicar migraciones 016 y 017 | `supabase/migrations/` | Las columnas existen; la pantalla de partido deja de fallar |
+| 1.2 ✅ | Confirmar el diagnóstico del calendario | — | Se ve qué temporada está activa y con qué fechas |
+| 1.3 ✅ | Script de copia + borrado de temporadas, equipos y sesiones | `tools/` | El fichero de copia existe y el recuento cuadra antes de borrar |
+| 1.4 ✅ | Temporada 2026/27 (24/08/2026 – 30/06/2027) con sus 11 periodos de vacaciones | `tools/` | El calendario sombrea Navidad, Semana Santa y los festivos |
+| 1.5 ✅ | Formato de fecha `dd/mm/aaaa` al pegar periodos | `equipos/js/data/schedules.js` | Se pega una lista con ese formato y entra |
+| 1.6 ✅ | Horarios: cajitas del color del equipo, «Editar» en vez de «Regenerar», rango de fechas elegible, vista previa con conflictos | `equipos/js/views/equipo-detalle.js`, `data/schedules.js` | Guardar horarios genera sesiones en el rango pedido sin mover nada programado |
+| 1.7 ✅ | Cancelar sesión: borrado si no estaba programada, tachada y reabrible si sí | `equipos/js/data/sessions.js`, `views/calendario.js` | Las dos rutas se comportan distinto y ninguna da error |
+| 1.8 ✅ | Arreglar el `null` de la pantalla de partido | `equipos/js/views/partido.js` | Un partido sin marcador no escribe `null` |
+| 1.9 ✅ | Alta de partido con el formulario completo y botón naranja | `equipos/js/views/calendario.js` | Equipo, rival, lugar, hora, local/visitante |
+| 1.10 ✅ | Pinchar una sesión abre su plan; el panel del día solo al pinchar fuera | `equipos/js/views/calendario.js` | Dos zonas de clic distintas |
 
 **Riesgo del tramo:** 1.3 es irreversible. No se ejecuta sin copia verificada.
 

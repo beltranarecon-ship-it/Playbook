@@ -1581,3 +1581,12 @@ a.eq-inv-fila:hover { border-color: var(--ink); }
 .eq-perfil-fila { display: flex; gap: 0.875rem; align-items: flex-end; flex-wrap: wrap; }
 .eq-perfil-fila .field-input, .eq-perfil-fila .field-group { flex: 1; min-width: 11rem; }
 .eq-perfil-avisos { display: flex; flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+
+/* ── Que nada empuje la página de lado en un móvil ─────── */
+/* Un botón con una frase dentro —«El club: invitaciones, temporadas y
+   equipos»— no cabe en 375 px y, sin permiso para partir la línea,
+   arrastra la página entera. Los botones son lo último que debería
+   decidir el ancho de una pantalla. */
+.eq-page .btn { max-width: 100%; white-space: normal; text-align: center; }
+.eq-planner-barra, .eq-planner-barra-sec { flex-wrap: wrap; min-width: 0; }
+.eq-planner-barra .btn { min-width: 0; }
