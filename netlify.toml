@@ -2,6 +2,26 @@
   publish = "."
   functions = "netlify/functions"
 
+# El escáner de secretos de Netlify avisa cuando el VALOR de una variable
+# de entorno aparece en los ficheros publicados. Dos de las nuestras
+# aparecen a propósito y no son secretos:
+#
+#   SUPABASE_URL      la URL del proyecto. Viaja en cada petición que
+#                     hace el navegador, igual que la clave anónima que
+#                     está a su lado en js/config.js. Lo que protege los
+#                     datos es la RLS, no que esa URL sea desconocida.
+#
+#   VAPID_PUBLIC_KEY  pública por definición: el navegador la necesita
+#                     para suscribirse a los avisos y viaja dentro de
+#                     cada suscripcion (Tramo 4.7).
+#
+# SUPABASE_SERVICE_ROLE y VAPID_PRIVATE_KEY NO se ponen aquí, y es lo
+# importante de esta lista: hoy no están en el repositorio, pero el día
+# que una se cuele en un commit este escáner es lo único que lo va a
+# decir. Silenciarlas sería quedarse sin ese aviso para siempre.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,VAPID_PUBLIC_KEY"
+
 # Arneses de desarrollo (/dev/*): están en el repo a propósito —abren vistas
 # con datos inventados y sin cuenta— pero NO se sirven en producción. El
 # propio arnés ya se niega a arrancar fuera de localhost; esto es la segunda

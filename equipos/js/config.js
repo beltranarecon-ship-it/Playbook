@@ -85,7 +85,7 @@ export const CATEGORIAS_EQUIPO = [
    Vacía = no hay avisos. La pantalla lo dice («falta la clave pública»)
    en vez de enseñar un botón que no funciona.
    ============================================================ */
-export const VAPID_PUBLIC_KEY = '';
+export const VAPID_PUBLIC_KEY = 'BNXigVdbT7Rpc-ssIzhG_mw4I4eNPwFUI05SeVt5yRYaK1dbfxytH3EKmNpHklZXKZZBMtq1MJ5PlHADYfldPcc';
 
 /** A quién contesta el servicio de push si algo va mal. */
 export const VAPID_CONTACTO = 'mailto:playbook@cbpalencia.es';
