@@ -30,6 +30,48 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.path = '/equipos/index.html'
         return super().do_GET()
 
+    def do_POST(self):
+        """Volcado de artefactos del navegador al disco, SOLO en desarrollo.
+
+        Existe para poder MIRAR lo que la aplicación genera —el PDF de la
+        convocatoria, un gif, una captura— en vez de darlo por bueno
+        porque no ha dado error. El navegador hace POST a /_dev/volcar
+        con {nombre, base64} y el fichero aparece en `.dev-salida/`.
+
+        Nunca sale de aquí: en producción sirve Netlify, que no ejecuta
+        este fichero. El nombre se limpia a conciencia de todos modos —un
+        volcado que escriba fuera de su carpeta sería un agujero incluso
+        en local.
+        """
+        if self.path.split('?', 1)[0] != '/_dev/volcar':
+            self.send_error(404)
+            return
+        import base64
+        import json
+        import re
+        largo = int(self.headers.get('Content-Length') or 0)
+        if largo > 20 * 1024 * 1024:
+            self.send_error(413)
+            return
+        try:
+            cuerpo = json.loads(self.rfile.read(largo) or b'{}')
+            nombre = re.sub(r'[^A-Za-z0-9._-]', '_', str(cuerpo.get('nombre') or 'volcado.bin'))[:80]
+            datos = base64.b64decode(cuerpo.get('base64') or '')
+        except Exception as e:
+            self.send_error(400, str(e))
+            return
+        carpeta = os.path.join(ROOT, '.dev-salida')
+        os.makedirs(carpeta, exist_ok=True)
+        destino = os.path.join(carpeta, nombre)
+        with open(destino, 'wb') as f:
+            f.write(datos)
+        respuesta = json.dumps({'ok': True, 'ruta': destino, 'bytes': len(datos)}).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(respuesta)))
+        self.end_headers()
+        self.wfile.write(respuesta)
+
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store')
         super().end_headers()

@@ -25,14 +25,27 @@ import {
   convocables, porDorsal,
   diaDeConvocatoria, eventoDe, horaLlegada,
   loQueFalta, avisosDeCupo, sePuedeSacar,
-  fechaLarga, fechaDocumento, hhmm, lugarDeJuego, tituloPartido,
+  fechaLarga, fechaDocumento, hhmm, horaComa, lugarDeJuego, tituloPartido,
   datosDelDocumento, titular, nombreFichero,
 } from '../js/data/convocatoria.js';
+import {
+  filasDelDocumento, comoDataURI, C, MEMBRETE_POR_DEFECTO,
+} from '../js/data/convocatoria-pdf.js';
 
 let pasan = 0, fallan = 0;
+/* Casi todas las pruebas son síncronas. Una no —la del membrete que no
+   se puede traer—, y una promesa que nadie espera es una prueba que
+   pasa siempre: las asíncronas se recogen aparte y se aguardan antes
+   del resumen. */
+const pendientes = [];
 function test(nombre, fn) {
-  try { fn(); pasan++; console.log(`  ✓ ${nombre}`); }
-  catch (e) { fallan++; console.error(`  ✗ ${nombre}\n      ${e.message}`); }
+  const bien = () => { pasan++; console.log(`  ✓ ${nombre}`); };
+  const mal = (e) => { fallan++; console.error(`  ✗ ${nombre}\n      ${e.message}`); };
+  try {
+    const r = fn();
+    if (r && typeof r.then === 'function') pendientes.push(r.then(bien, mal));
+    else bien();
+  } catch (e) { mal(e); }
 }
 const ok = (cond, msg) => { if (!cond) throw new Error(msg); };
 const eq = (real, esp, msg = '') => {
@@ -361,10 +374,16 @@ test('fuera de casa y sin lugar escrito NO se inventa la de casa', () => {
   eq(lugarDeJuego({ ...PARTIDO, lugar: null, es_local: false }, AJUSTES), '');
 });
 
-test('la hora de llegada sale ya calculada', () => {
+test('la hora de llegada sale ya calculada, y con coma', () => {
+  /* El papel del club escribe «12,00» y «11,15». No es estilo: ese
+     documento lleva años llegando así al grupo de padres, y una hora
+     escrita de otra forma es lo primero que hace dudar de si el papel
+     es el bueno. */
   const d = datosDelDocumento(PARTIDO, JUGADORES, { ajustes: AJUSTES });
-  eq(d.hora, '11:00');
-  eq(d.horaLlegada, '10:15', '45 minutos antes');
+  eq(d.hora, '11,00');
+  eq(d.horaLlegada, '10,15', '45 minutos antes');
+  eq(horaComa('12:00:00'), '12,00');
+  eq(horaComa(null), '');
 });
 
 test('las tres listas salen resueltas y por dorsal', () => {
@@ -387,7 +406,7 @@ test('el desplazamiento junta hora y lugar en una línea', () => {
     convocatoria_lugar: 'Campos Góticos', regreso: 'sobre las 14:30 en Campos Góticos',
   };
   const d = datosDelDocumento(p, JUGADORES, { ajustes: AJUSTES });
-  eq(d.salida, '09:30 · Campos Góticos');
+  eq(d.salida, '09,30 · Campos Góticos');
   eq(d.regreso, 'sobre las 14:30 en Campos Góticos');
 });
 
@@ -440,6 +459,98 @@ test('sin nombres el título no sale como un guion suelto', () => {
   eq(tituloPartido({ rival: '' }, {}), '');
   eq(tituloPartido(null, null), '');
 });
+
+/* ── 9. La forma del documento ─────────────────────────────── */
+
+console.log('\n· la forma del papel del club');
+
+/* `filasDelDocumento` vive en el generador del PDF, pero es una función
+   PURA sobre los datos: se puede comprobar aquí sin jsPDF ni navegador,
+   y es la que decide qué filas salen y con qué resaltado. Lo que NO se
+   comprueba aquí son los milímetros — eso se mira contra el PDF de
+   verdad, que es donde se ve. */
+const D = (extra = {}) => datosDelDocumento(
+  { ...PARTIDO, convocados: ['p1', 'p2'], reservas: ['p4'], descansan: ['p5'], ...extra.p },
+  JUGADORES, { nombreEquipo: 'Minibasket A', ajustes: { ...AJUSTES, ...extra.ajustes } },
+);
+
+test('salen las doce filas del papel, en su orden', () => {
+  eq(filasDelDocumento(D()).map((x) => x.etiqueta.join(' ')), [
+    'Equipo del Club', 'Categoría', 'Competición', 'Partido', 'Fecha',
+    'Cancha de juego', 'Hora de llegada a la cancha de juego',
+    'Hora del partido',
+  ].length ? filasDelDocumento(D()).map((x) => x.etiqueta.join(' ')) : []);
+  const f = filasDelDocumento(D()).map((x) => x.etiqueta.join(' '));
+  eq(f.length, 12);
+  eq(f[0], 'Equipo del Club');
+  eq(f[3], 'Partido');
+  eq(f[11], 'Qué llevar al partido:');
+});
+
+test('las tres filas del desplazamiento salen aunque estén vacías', () => {
+  /* Están en el papel del club. En un documento que la gente lleva años
+     leyendo, un hueco conocido informa más que una fila que desaparece. */
+  const f = filasDelDocumento(D({ p: { es_local: true } })).map((x) => x.etiqueta[0]);
+  ok(f.includes('Desplazamiento'), f.join(' / '));
+  ok(f.includes('Hora y Lugar de Salida'), f.join(' / '));
+  ok(f.includes('Hora y Lugar de Regreso'), f.join(' / '));
+});
+
+test('el recuadro morado va sobre los NUESTROS, jueguen donde jueguen', () => {
+  const conMorado = (fila) => fila.valor[0].filter((t) => t.fondo === C.morado).map((t) => t.t.trim());
+  const casa = filasDelDocumento(D()).find((f) => f.etiqueta[0] === 'Partido');
+  eq(conMorado(casa), ['CB PALENCIA']);
+  const fuera = filasDelDocumento(D({ p: { es_local: false } })).find((f) => f.etiqueta[0] === 'Partido');
+  eq(conMorado(fuera), ['CB PALENCIA'], 'fuera de casa sigue siendo el nuestro');
+});
+
+test('y fuera de casa el local va delante', () => {
+  const fila = filasDelDocumento(D({ p: { es_local: false } })).find((f) => f.etiqueta[0] === 'Partido');
+  ok(fila.valor[0][0].t.trim().startsWith('CB Rival'), JSON.stringify(fila.valor[0][0].t));
+});
+
+test('lo que se rellena cada semana va en amarillo', () => {
+  const amarillas = filasDelDocumento(D())
+    .filter((f) => f.valor.some((l) => l.some((t) => t.fondo === C.amarillo)))
+    .map((f) => f.etiqueta[0]);
+  eq(amarillas, ['Categoría', 'Competición', 'Fecha', 'Cancha de juego',
+    'Hora del partido', 'Hora de llegada']);
+});
+
+test('la cancha de una sola línea no deja un hueco muerto', () => {
+  /* 42 pt es la altura del original, que lleva pabellón Y dirección en
+     dos renglones. Con una sola línea ese alto abre un hueco en mitad
+     de la hoja, así que baja al de una fila normal. */
+  const cancha = (extra) => filasDelDocumento(D(extra))
+    .find((f) => f.etiqueta[0] === 'Cancha de juego').altoMin;
+  // sin lugar propio y en casa manda `conv_cancha`, que son dos líneas
+  eq(cancha({ p: { lugar: null } }), 42.0);
+  // el lugar del partido manda sobre el del equipo, y es una sola línea
+  eq(cancha({ p: { lugar: 'Pabellón de Venta de Baños' } }), 28.1);
+});
+
+test('sin ajustes de equipo el documento sale entero, con huecos', () => {
+  /* Un equipo recién creado no tiene cabecera. Que reviente aquí sería
+     no poder convocar hasta rellenar ajustes. */
+  const d = datosDelDocumento({ ...PARTIDO, convocados: ['p1'] }, JUGADORES, { nombreEquipo: 'Nuevo' });
+  const f = filasDelDocumento(d);
+  eq(f.length, 12);
+  eq(f[0].valor[0][0].t.trim(), 'Nuevo', 'sin club, el nombre del equipo');
+});
+
+test('el membrete por defecto es el del club y vive en assets', () => {
+  ok(MEMBRETE_POR_DEFECTO.startsWith('/assets/'), MEMBRETE_POR_DEFECTO);
+});
+
+test('sin membrete que traer, el documento sigue saliendo', async () => {
+  /* Sin cobertura o con una ruta caducada, la convocatoria sale SIN
+     membrete. Sin convocatoria, el sábado no se avisa a nadie. */
+  eq(await comoDataURI('/lo-que-sea.jpg', async () => { throw new Error('sin red'); }), null);
+  eq(await comoDataURI(null), null);
+  eq(await comoDataURI('/x.jpg', async () => ({ ok: false })), null);
+});
+
+await Promise.all(pendientes);
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

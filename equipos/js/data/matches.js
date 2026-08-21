@@ -28,7 +28,7 @@ const COLS_030 = 'convocados, convocatoria_lugar, convocatoria_hora';
    del papel —reserva y descanso— y el desplazamiento. Tercera tanda,
    mismo trato. */
 let sin034 = false;
-const COLS_034 = 'reservas, descansan, salida_hora, regreso';
+const COLS_034 = 'reservas, descansan, desplazamiento, salida_hora, regreso';
 const COLS = () => [
   COLS_BASE,
   sin028 ? null : COLS_028,
@@ -51,7 +51,7 @@ const nombra = (error, columnas) => {
 };
 const COL_028 = ['periodos', 'faltas_equipo', 'tiempos_muertos', 'acta_origen'];
 const COL_030 = ['convocados', 'convocatoria_lugar', 'convocatoria_hora'];
-const COL_034 = ['reservas', 'descansan', 'salida_hora', 'regreso'];
+const COL_034 = ['reservas', 'descansan', 'desplazamiento', 'salida_hora', 'regreso'];
 
 /* Cuando el error NO dice qué columna es —PostgREST a veces solo manda
    el código— se dan por malas TODAS las tandas que no estén ya

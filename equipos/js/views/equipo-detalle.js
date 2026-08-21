@@ -20,7 +20,7 @@ import { getTemporadas } from '../data/seasons.js';
 import { getPartidosEquipo } from '../data/matches.js';
 import { getEstadisticasDePartidos } from '../data/estadisticas.js';
 import {
-  subirImagenEquipo, subirPlantilla, urlImagenEquipo, borrarArchivoEquipo,
+  subirImagenEquipo, subirPlantilla, subirMembrete, urlImagenEquipo, borrarArchivoEquipo,
 } from '../data/equipo-archivos.js';
 import {
   acumular, tabla as tablaTemporada, reparto, textoReparto, conUnDecimal,
@@ -1274,6 +1274,9 @@ export function render(root, params) {
       conv_cancha: s.conv_cancha || '',
       conv_llevar: s.conv_llevar || '',
       conv_minutos_antes: s.conv_minutos_antes ?? null,
+      conv_oficina: s.conv_oficina || '',
+      conv_email: s.conv_email || '',
+      conv_membrete_path: s.conv_membrete_path || null,
     };
     const campoTexto = (etiqueta, clave, ejemplo) => h('label', { class: 'field-group' },
       h('span', { class: 'field-label' }, etiqueta),
@@ -1559,6 +1562,20 @@ export function render(root, params) {
           campoArea('Qué llevar al partido', 'conv_llevar',
             'DNI original, equipaciones de juego del club morada y blanca, y cubre del club.',
             null),
+          h('div', { class: 'eq-form-fila' },
+            campoTexto('Dirección de la oficina', 'conv_oficina',
+              'Calle San Antonio, 1 (Piscinas Climatizadas, Eras de Santa Marina)'),
+            campoTexto('Correo del club', 'conv_email', 'cbpalencia@gmail.com'),
+          ),
+          archivoEquipo({
+            etiqueta: 'Membrete de la convocatoria',
+            ayuda: 'La banda con el logo que encabeza el documento, a todo el ancho de la '
+              + 'hoja (unos 1300 × 265 puntos). Si no subes ninguno se usa el del club.',
+            clave: 'conv_membrete_path',
+            acepta: 'image/jpeg,image/png,image/webp',
+            subir: subirMembrete,
+            conVistaPrevia: true,
+          }),
         ),
         archivoEquipo({
           etiqueta: 'Plantilla de convocatoria (PDF)',
@@ -1601,6 +1618,8 @@ export function render(root, params) {
                   conv_cancha: m0.conv_cancha.trim() || null,
                   conv_llevar: m0.conv_llevar.trim() || null,
                   conv_minutos_antes: Number.isFinite(m0.conv_minutos_antes) ? m0.conv_minutos_antes : null,
+                  conv_oficina: m0.conv_oficina.trim() || null,
+                  conv_email: m0.conv_email.trim() || null,
                 });
                 invalidarEquipos(); refrescar(); toast('Ajustes guardados');
               } catch (e) { toast('Error: ' + e.message, 'error'); }

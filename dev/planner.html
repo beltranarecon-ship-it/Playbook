@@ -253,7 +253,10 @@
                                  conv_competicion: 'FASE 1.',
                                  conv_cancha: 'Polideportivo CAMPOS GÓTICOS\nAVD/. Campos Góticos, s/n 34003 – PALENCIA',
                                  conv_llevar: 'DNI original, equipaciones de juego del club morada y blanca, y cubre del club.',
-                                 conv_minutos_antes: 45 } }],
+                                 conv_minutos_antes: 45,
+                                 conv_oficina: 'Calle San Antonio, 1 (Piscinas Climatizadas, Eras de Santa Marina)',
+                                 conv_email: 'cbpalencia@gmail.com',
+                                 conv_membrete_path: null } }],
       session_blocks: [
         { id: 'sb1', session_id: 'demo', exercise_id: 'e5', orden: 0, titulo: 'Calentamiento articular', duracion_min: 8, intensidad: 1, notas: null },
         { id: 'sb2', session_id: 'demo', exercise_id: 'e1', orden: 1, titulo: 'Flecha de tiro', duracion_min: 14, intensidad: 3, notas: 'Ojo al pie de pivote' },
@@ -322,7 +325,8 @@
           convocatoria_cerrada: false,
           periodos: null, faltas_equipo: [], tiempos_muertos: [], acta_origen: null,
           convocados: [], reservas: [], descansan: [],
-          convocatoria_lugar: null, convocatoria_hora: null, salida_hora: null, regreso: null,
+          convocatoria_lugar: null, convocatoria_hora: null,
+          desplazamiento: null, salida_hora: null, regreso: null,
         },
         // dos más ya cerrados, para que los acumulados (4.4) tengan de qué sumar
         { id: 'm2', team_id: 't1', season_id: 's1', fecha: '2026-08-15', hora: '11:00:00',
@@ -332,7 +336,8 @@
           claves: null, acta_path: null, valorada_at: null, convocatoria_cerrada: false,
           periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: 'mano',
           convocados: [], reservas: [], descansan: [],
-          convocatoria_lugar: null, convocatoria_hora: null, salida_hora: null, regreso: null },
+          convocatoria_lugar: null, convocatoria_hora: null,
+          desplazamiento: null, salida_hora: null, regreso: null },
         { id: 'm3', team_id: 't1', season_id: 's1', fecha: '2026-08-08', hora: '12:30:00',
           lugar: 'Pabellón Municipal', rival: 'CB Ejemplo A', es_local: true, estado: 'jugado',
           marcador_favor: 31, marcador_contra: 52, marcador_cuartos: [],
@@ -340,7 +345,8 @@
           claves: null, acta_path: null, valorada_at: null, convocatoria_cerrada: false,
           periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: 'mano',
           convocados: [], reservas: [], descansan: [],
-          convocatoria_lugar: null, convocatoria_hora: null, salida_hora: null, regreso: null },
+          convocatoria_lugar: null, convocatoria_hora: null,
+          desplazamiento: null, salida_hora: null, regreso: null },
       ],
       /* Tres partidos jugados con acta, para los acumulados (4.4). El
          reparto es feo a propósito: del que más al que menos hay ocho

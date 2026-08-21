@@ -41,6 +41,9 @@ ALTER TABLE public.matches
   -- el que esa jornada no juega. Sale en el documento a propósito: a un
   -- niño le importa leer su nombre aunque sea para saber que descansa
   ADD COLUMN IF NOT EXISTS descansan  jsonb NOT NULL DEFAULT '[]'::jsonb,
+  -- «Desplazamiento»: cómo se va. «Autobús del club», «cada uno por su
+  -- cuenta». Es una fila del papel y tenía que poder rellenarse
+  ADD COLUMN IF NOT EXISTS desplazamiento text,
   -- «Hora y Lugar de Salida»: la hora. El lugar ya es
   -- `convocatoria_lugar` de la 030, que significa justo eso
   ADD COLUMN IF NOT EXISTS salida_hora time,
@@ -66,7 +69,19 @@ ALTER TABLE public.team_settings
   -- «Qué llevar al partido»: DNI, equipaciones, agua…
   ADD COLUMN IF NOT EXISTS conv_llevar        text,
   -- cuánto antes hay que estar en la cancha (45 en el modelo del club)
-  ADD COLUMN IF NOT EXISTS conv_minutos_antes smallint;
+  ADD COLUMN IF NOT EXISTS conv_minutos_antes smallint,
+  /* La línea morada de debajo del membrete, en dos campos. Van
+     separados porque en el papel las etiquetas («Oficina:», «e-mail:»)
+     son del sistema y van en redonda, y los datos son del club y van
+     en negrita: partir una frase suelta para adivinar dónde empieza
+     cada cosa se rompe el día que alguien la escriba de otra forma. */
+  ADD COLUMN IF NOT EXISTS conv_oficina       text,
+  ADD COLUMN IF NOT EXISTS conv_email         text,
+  /* El membrete, en el bucket 'equipos'. La app trae el de CB Palencia
+     como imagen por defecto (assets/convocatoria/), que es el club para
+     el que se ha hecho; esta columna existe para que otro club no se
+     quede encerrado con un membrete ajeno. */
+  ADD COLUMN IF NOT EXISTS conv_membrete_path text;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'team_settings_conv_minutos') THEN
@@ -80,3 +95,5 @@ COMMENT ON COLUMN public.team_settings.conv_minutos_antes IS
   'Cuánto antes del partido hay que estar en la cancha. 45 en el modelo del club.';
 COMMENT ON COLUMN public.team_settings.conv_cancha IS
   'Pabellón de casa con su dirección, tal y como va en el documento.';
+COMMENT ON COLUMN public.team_settings.conv_membrete_path IS
+  'Membrete del club para la convocatoria (bucket equipos). Sin él se usa el de CB Palencia que trae la app.';

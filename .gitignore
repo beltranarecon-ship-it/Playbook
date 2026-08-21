@@ -31,3 +31,6 @@ Desktop.ini
 # megas y son un volcado de datos, no código)
 tools/biblioteca/copias/
 tools/biblioteca/manifiestos/
+
+# Volcados del servidor de desarrollo (serve.py → /_dev/volcar)
+.dev-salida/

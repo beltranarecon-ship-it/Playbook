@@ -28,6 +28,10 @@ async function subir(teamId, file, permitidas, queEs) {
 
 export const subirImagenEquipo = (teamId, file) => subir(teamId, file, EXT_IMAGEN, 'La imagen');
 export const subirPlantilla = (teamId, file) => subir(teamId, file, EXT_PLANTILLA, 'La plantilla');
+/* El membrete que encabeza la convocatoria (034). Solo imagen: va
+   dentro del PDF que compone la app, y un PDF no se puede meter dentro
+   de otro sin traer media librería más. */
+export const subirMembrete = (teamId, file) => subir(teamId, file, EXT_IMAGEN, 'El membrete');
 
 /**
  * URL temporal para verla. El bucket es privado, así que caduca; la
@@ -41,6 +45,7 @@ export async function urlImagenEquipo(path, segundos = 3600) {
   return data?.signedUrl ?? null;
 }
 export const urlPlantilla = urlImagenEquipo;
+export const urlMembrete = urlImagenEquipo;
 
 export async function borrarArchivoEquipo(path) {
   if (!path) return;

@@ -23,8 +23,9 @@ const COLS_030 = ['plantilla_path', 'imagen_path', 'hora_convocatoria'];
    abrir por una migración pendiente es mucho peor que una convocatoria
    con la cabecera en blanco. */
 let sin034 = false;
-const AJUSTES_034 = 'conv_club, conv_categoria, conv_competicion, conv_cancha, conv_llevar, conv_minutos_antes';
-const COLS_034 = ['conv_club', 'conv_categoria', 'conv_competicion', 'conv_cancha', 'conv_llevar', 'conv_minutos_antes'];
+const AJUSTES_034 = 'conv_club, conv_categoria, conv_competicion, conv_cancha, conv_llevar, conv_minutos_antes, conv_oficina, conv_email, conv_membrete_path';
+const COLS_034 = ['conv_club', 'conv_categoria', 'conv_competicion', 'conv_cancha', 'conv_llevar',
+  'conv_minutos_antes', 'conv_oficina', 'conv_email', 'conv_membrete_path'];
 
 const ajustes = (extra = '') => `${AJUSTES_BASE}${extra ? ', ' + extra : ''}`
   + (sin030 ? '' : `, ${AJUSTES_030}`)
@@ -64,6 +65,9 @@ export function cabeceraConvocatoria(settings) {
     conv_cancha: s.conv_cancha ?? null,
     conv_llevar: s.conv_llevar ?? null,
     conv_minutos_antes: s.conv_minutos_antes ?? null,
+    conv_oficina: s.conv_oficina ?? null,
+    conv_email: s.conv_email ?? null,
+    conv_membrete_path: s.conv_membrete_path ?? null,
   };
 }
 

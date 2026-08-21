@@ -2264,7 +2264,7 @@ peor estaba.
 
 | # | Qué | Depende de | Se da por hecha cuando |
 |---|---|---|---|
-| 5.1 ✅ | La convocatoria de verdad: tres grupos, cabecera del equipo y PDF descargable | 4.6 | Sale un PDF de una hoja igual que el papel del club |
+| 5.1 ✅ | La convocatoria de verdad: tres grupos, cabecera del equipo y PDF descargable | 4.6 | Sale un PDF de una hoja **igual** que el papel del club |
 | 5.2 | Valoración por jugador tras el partido y estrellas al rival | 4.1 | Se valora a tres críos y al rival en menos de un minuto |
 | 5.3 | Las claves del partido enganchadas a los objetivos | 3.9 | Un objetivo del equipo se mueve con lo que pasó el sábado |
 | 5.4 | La rejilla de periodos que ayuda ANTES, no el lunes | 4.3 | Propone un reparto que ya cumple y avisa en el banquillo |
@@ -2274,9 +2274,9 @@ peor estaba.
 `equipos/js/data/convocatoria.js` reescrito (puro, **49 pruebas**),
 `equipos/js/data/convocatoria-pdf.js` (nuevo) y la pantalla
 `/partidos/:id/convocatoria`, que ahora es donde se hace la convocatoria entera. Migración
-**034**: `matches.reservas`, `descansan`, `salida_hora` y `regreso`; en `team_settings`, la
+**034**: `matches.reservas`, `descansan`, `desplazamiento`, `salida_hora` y `regreso`; en `team_settings`, la
 cabecera fija (`conv_club`, `conv_categoria`, `conv_competicion`, `conv_cancha`,
-`conv_llevar`, `conv_minutos_antes`).
+`conv_llevar`, `conv_minutos_antes`, `conv_oficina`, `conv_email`, `conv_membrete_path`).
 
 **El documento manda sobre el modelo.** El papel del club tiene **tres** grupos —CONVOCADOS,
 RESERVA, DESCANSO— y una cabecera que no cambia de un sábado a otro. El modelo es ese papel.
@@ -2305,17 +2305,53 @@ equipo que **no** había fijado los minutos daba «cero minutos antes» —o sea
 del partido—: catorce familias llegando cuando ya ha empezado. Es el mismo tropiezo que dio
 un periodo en vez de seis en el acta (4.1).
 
-**Comprobado** en el arnés (`/dev/planner.html?ruta=/partidos/m1/convocatoria`): se convoca a
-doce, el decimotercero **rebota** con su aviso y entra en reserva; el pie dice «12 de 12
-convocados · 1 de reserva · 1 descansa»; la hoja sale con los dorsales 4…15 en orden y la
-reserva como «16.- Jugador 13». Con los nombres y dorsales del papel de verdad, el PDF sale
-**en una hoja** —tanto en casa como fuera, que lleva dos filas más—, con sus 36 rectángulos
-de rejilla, los acentos correctos (`Categoría`, `Antolín`, `Álvaro`) y el último renglón a
-148 pt del borde. En móvil (375 px) los tres botones se apilan a lo ancho, 44 px de alto, y
-la página no se va de lado.
+### El PDF, clavado sobre el papel del club
 
-**Lo que sigue sin estar**: la clasificación automática de la FBCyL (falta el enlace) y la
-plantilla PDF rellenada campo a campo, que se descartó a propósito arriba.
+La primera versión de esta fila dibujaba «un documento parecido»: una tabla con recuadros,
+sin membrete y sin resaltados. Decía lo mismo y **no se parecía en nada**. Con el PDF real
+del club delante (`CONVOCATORIA partido MINIBASKET.pdf`) se rehízo entero.
+
+**Las medidas se leyeron del original, no se eligieron.** Posiciones, tamaños de letra,
+colores de resaltado y grosores de línea salen de abrir ese PDF y medirlo. En
+`convocatoria-pdf.js` cada constante lleva al lado el valor del que sale: la columna de
+etiquetas en `x = 53.3`, la de valores en `188.2`, las rayas de `48.0` a `182.7` y de
+`183.2` a `551.5`, el morado `#800080`, el amarillo `#ffff00`, el gris del título `#d3d3d3`.
+
+| | |
+|---|---|
+| Membrete | Imagen a todo el ancho (`assets/convocatoria/membrete-cbp.jpg`, extraída del propio PDF). Cualquier equipo puede subir el suyo encima (`conv_membrete_path`) |
+| La línea de la oficina | Dos campos, no una cadena: las etiquetas («Oficina:», «e-mail:») son del sistema y van en redonda, los datos son del club y van en negrita |
+| Alturas de fila | Las doce del original, de raya a raya, como **mínimo**. Un documento normal sale renglón por renglón donde el suyo; una dirección de cuatro líneas empuja la fila en vez de salirse |
+| Horas | Con coma —«12,00», «11,15»—, que es como las escribe el club |
+| Lo que no cabe | Se **encoge**, nunca se corta: un rival de cuatro palabras, un nombre largo en la rejilla, una etiqueta que invade la columna de al lado |
+
+**El tropiezo que costó dos vueltas.** El primer ajuste se hizo persiguiendo el `y0` que
+reporta un lector de PDF, y cuadraba en los números y fallaba en el papel: el original
+lleva la Arial incrustada y este documento usa la Helvetica de serie, y cada uno deduce el
+alto de la caja de forma distinta. El texto acababa medio punto más abajo de la cuenta, lo
+justo para que la raya de la fila cruzara «(aproximado)» y el amarillo cortara los números
+por la mitad. **Los números decían que estaba bien y la hoja decía que no.** Se rehízo
+anclando todo a la línea base con las métricas de la fuente (`ASCENDENTE`, `DESCENDENTE`),
+que es lo que de verdad manda.
+
+**Comprobado** en el arnés (`/dev/planner.html?ruta=/partidos/m1/convocatoria`): se convoca
+a doce, el decimotercero **rebota** con su aviso y entra en reserva; el pie dice «12 de 12
+convocados · 1 de reserva · 1 descansa»; la hoja sale con los dorsales en orden y la reserva
+como «16.- Jugador 13». En móvil (375 px) los tres botones se apilan a lo ancho, 44 px de
+alto, y la página no se va de lado.
+
+Y el PDF **se ha mirado**, no solo generado. `serve.py` gana un volcado de desarrollo
+(`POST /_dev/volcar` → `.dev-salida/`) para poder sacar del navegador lo que la aplicación
+produce y abrirlo. Con los nombres y dorsales del papel de verdad, el documento sale en una
+hoja y **cae encima del original**: comparando texto a texto, todas las columnas coinciden
+al décimo de punto y ningún renglón se desvía más de un punto. Se probaron además tres
+casos que el original no cubre —partido fuera con desplazamiento, equipo sin ajustes
+rellenados, y nombres y rival muy largos—: los tres caben en una hoja y nada se sale de la
+caja. Dos fallos salieron de ahí y se corrigieron: «Hora y Lugar de Regreso» se comía los
+cinco puntos que la separan de la columna del valor, y el rival largo se cortaba contra el
+borde derecho.
+
+**Lo que sigue sin estar**: la clasificación automática de la FBCyL (falta el enlace).
 
 ---
 

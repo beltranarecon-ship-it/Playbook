@@ -25,13 +25,15 @@ import { toast } from '../ui/toast.js';
 import { getPartido, actualizarPartido, hayGruposConvocatoria } from '../data/matches.js';
 import { getMisEquipos } from '../data/teams.js';
 import { getJugadores } from '../data/players.js';
-import { urlImagenEquipo } from '../data/equipo-archivos.js';
+import { urlImagenEquipo, urlMembrete } from '../data/equipo-archivos.js';
 import {
   GRUPOS, GRUPO_LABEL, CONVOCADOS_MAX,
   datosDelDocumento, titular, loQueFalta, avisosDeCupo,
   gruposDe, grupoDe, moverA, convocables, porDorsal, hhmm,
 } from '../data/convocatoria.js';
-import { descargarPDF } from '../data/convocatoria-pdf.js';
+import {
+  descargarPDF, filasDelDocumento, MEMBRETE_POR_DEFECTO, C,
+} from '../data/convocatoria-pdf.js';
 import { router } from '../main.js';
 
 export function render(root, params) {
@@ -43,7 +45,7 @@ export function render(root, params) {
      que se dio de baja DESPUÉS de convocarlo. `elegibles` lleva solo
      los activos, porque que un jugador de baja salga en el selector es
      exactamente la manera de convocarlo por error. */
-  let p = null, equipo = null, ajustes = {}, jugadores = [], elegibles = [], escudo = null;
+  let p = null, equipo = null, ajustes = {}, jugadores = [], elegibles = [], escudo = null, membrete = null;
   let sucio = false, guardando = false;
 
   const marcaSucio = () => { sucio = true; pinta(); };
@@ -58,6 +60,7 @@ export function render(root, params) {
         convocados: p.convocados, reservas: p.reservas, descansan: p.descansan,
         convocatoria_hora: p.convocatoria_hora || null,
         convocatoria_lugar: p.convocatoria_lugar?.trim() || null,
+        desplazamiento: p.desplazamiento?.trim() || null,
         salida_hora: p.salida_hora || null,
         regreso: p.regreso?.trim() || null,
       });
@@ -84,7 +87,8 @@ export function render(root, params) {
   }
 
   const datos = () => datosDelDocumento(p, jugadores, {
-    nombreEquipo: equipo?.name || '', escudo, ajustes,
+    nombreEquipo: equipo?.name || '', escudo,
+    ajustes: { ...ajustes, conv_membrete: membrete },
   });
 
   /* ── El selector de los tres grupos ───────────────────────── */
@@ -122,54 +126,66 @@ export function render(root, params) {
   );
 
   /* ── La hoja: lo mismo que va al PDF ──────────────────────── */
+  /* Se pinta con las MISMAS filas que dibuja el generador
+     (`filasDelDocumento`), no con una copia a mano. Si la pantalla
+     enseñara una cosa y el fichero otra, el que se entera es el que ya
+     lo ha mandado al grupo. */
 
   function hoja(d) {
-    const fila = (etiqueta, valor) => (String(valor ?? '').trim()
-      ? h('div', { class: 'eq-hoja-fila' },
-          h('div', { class: 'eq-hoja-et' }, etiqueta),
-          h('div', { class: 'eq-hoja-val' },
-            ...String(valor).split('\n').map((t) => h('div', {}, t))),
+    const trozo = (tr) => {
+      const est = {};
+      if (tr.fondo === C.amarillo) est.background = '#ffff00';
+      if (tr.fondo === C.morado) { est.background = '#800080'; est.color = '#fff'; est.padding = '0 .25em'; }
+      if (tr.size >= 16) est.fontSize = '1.28em';
+      else if (tr.size >= 13.5) est.fontSize = '1.12em';
+      return h('span', { class: 'eq-hoja-tr', style: est }, tr.t);
+    };
+
+    const filaTabla = (f) => h('div', { class: 'eq-hoja-fila' },
+      h('div', { class: 'eq-hoja-et' }, ...f.etiqueta.map((l) => h('div', {}, l))),
+      h('div', { class: 'eq-hoja-val' },
+        ...f.valor.map((linea) => h('div', { class: 'eq-hoja-linea' },
+          ...linea.map(trozo))),
+      ),
+    );
+
+    const sueltos = (rotulo, gente) => (gente.length
+      ? h('div', { class: 'eq-hoja-aparte' },
+          h('div', { class: 'eq-hoja-rotulo eq-hoja-rotulo--amarillo' }, rotulo),
+          ...gente.map((j) => h('div', { class: 'eq-hoja-suelto' },
+            `${j.dorsal == null ? '' : `${j.dorsal}.- `}${j.nombre}`)),
         )
       : null);
-
-    const lista = (titulo, gente, numerada) => (gente.length
-      ? h('section', { class: 'eq-hoja-grupo' },
-          h('h3', { class: 'eq-hoja-sub' }, `${titulo}:`),
-          numerada
-            ? h('div', { class: 'eq-hoja-rejilla' },
-                ...gente.flatMap((j) => [
-                  h('div', { class: 'eq-hoja-dorsal' }, j.dorsal == null ? '—' : String(j.dorsal)),
-                  h('div', { class: 'eq-hoja-jug' }, j.nombre),
-                ]))
-            : h('ul', { class: 'eq-hoja-sueltos' },
-                ...gente.map((j) => h('li', {},
-                  `${j.dorsal == null ? '' : `${j.dorsal}.- `}${j.nombre}`))),
-        )
-      : null);
-
-    const conDesplazamiento = d.donde === 'fuera' || d.salida || d.regreso;
 
     return h('article', { class: 'eq-hoja' },
-      h('header', { class: 'eq-hoja-cab' },
-        escudo ? h('img', { class: 'eq-conv-escudo', src: escudo, alt: '' }) : null,
-        h('h2', { class: 'eq-hoja-tit' }, 'Convocatoria de partido'),
+      h('header', { class: 'eq-hoja-membrete' },
+        h('img', {
+          class: 'eq-hoja-logo', alt: '',
+          src: d.membrete || MEMBRETE_POR_DEFECTO,
+          // sin membrete no se enseña un icono roto: se quita y ya
+          onError: (e) => { e.target.style.display = 'none'; },
+        }),
+        (d.oficina || d.email) ? h('p', { class: 'eq-hoja-oficina' },
+          d.oficina ? h('span', {}, 'Oficina: ', h('b', {}, d.oficina)) : null,
+          d.email ? h('span', {}, d.oficina ? ' · ' : '', 'e-mail: ', h('b', {}, d.email)) : null,
+        ) : null,
       ),
-      h('div', { class: 'eq-hoja-tabla' },
-        fila('Equipo del Club', d.club || d.equipo),
-        fila('Categoría', d.categoria),
-        fila('Competición', d.competicion),
-        fila('Partido', d.partido),
-        fila('Fecha', d.fecha),
-        fila('Cancha de juego', d.cancha),
-        fila('Hora del partido', d.hora),
-        fila('Hora de llegada a la cancha de juego', d.horaLlegada),
-        conDesplazamiento ? fila('Hora y Lugar de Salida', d.salida) : null,
-        conDesplazamiento ? fila('Hora y Lugar de Regreso (aproximado)', d.regreso) : null,
-        fila('Qué llevar al partido', d.llevar),
+      h('h2', { class: 'eq-hoja-tit' }, 'Convocatoria de partido'),
+      h('div', { class: 'eq-hoja-tabla' }, ...filasDelDocumento(d).map(filaTabla)),
+      h('div', { class: 'eq-hoja-rotulo eq-hoja-rotulo--morado' }, 'CONVOCADOS:'),
+      h('div', { class: 'eq-hoja-abajo' },
+        d.convocados.length
+          ? h('div', { class: 'eq-hoja-rejilla' },
+              ...d.convocados.flatMap((j) => [
+                h('div', { class: 'eq-hoja-dorsal' }, j.dorsal == null ? '—' : String(j.dorsal)),
+                h('div', { class: 'eq-hoja-jug' }, j.nombre),
+              ]))
+          : h('p', { class: 'eq-ayuda no-imprimir' }, 'Todavía no hay nadie convocado.'),
+        h('div', { class: 'eq-hoja-columna' },
+          sueltos('RESERVA:', d.reservas),
+          sueltos('DESCANSO:', d.descansan),
+        ),
       ),
-      lista('CONVOCADOS', d.convocados, true),
-      lista('RESERVA', d.reservas, false),
-      lista('DESCANSO', d.descansan, false),
     );
   }
 
@@ -243,6 +259,13 @@ export function render(root, params) {
             ajustes.conv_minutos_antes != null && !p.convocatoria_hora
               ? `En blanco sale ${d.horaLlegada || '—'}: ${ajustes.conv_minutos_antes} minutos antes, como dicen los ajustes del equipo.`
               : 'Si se deja en blanco se calcula sola con los minutos que ponga en ajustes del equipo.'),
+          fuera ? campo('Desplazamiento',
+            h('input', {
+              class: 'field-input', type: 'text', maxlength: 120,
+              value: p.desplazamiento || '', placeholder: 'Autobús del club',
+              onInput: (e) => { p.desplazamiento = e.target.value; sucio = true; },
+              onChange: () => marcaSucio(),
+            })) : null,
           fuera ? campo('Hora de salida',
             h('input', {
               class: 'field-input', type: 'time', value: hhmm(p.salida_hora),
@@ -307,6 +330,12 @@ export function render(root, params) {
       jugadores = await getJugadores(p.team_id, { incluirBajas: true });
       elegibles = convocables(jugadores);
       if (equipo?.imagen_path) escudo = await urlImagenEquipo(equipo.imagen_path).catch(() => null);
+      /* El membrete del club, si lo ha subido. Si no, el que trae la
+         app. Que falle la firma de la URL no puede dejar sin
+         convocatoria: se cae al de por defecto. */
+      if (equipo?.conv_membrete_path) {
+        membrete = await urlMembrete(equipo.conv_membrete_path).catch(() => null);
+      }
     } catch (e) {
       mount(cont, h('div', { class: 'empty-state' },
         h('p', { class: 'empty-state-display' }, 'No se pudo abrir la convocatoria'),

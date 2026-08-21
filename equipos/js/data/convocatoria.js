@@ -201,6 +201,14 @@ export function eventoDe(partido, { diaSemana } = {}) {
 /** «11:00» — sin los segundos que trae Postgres. */
 export const hhmm = (t) => (t ? String(t).slice(0, 5) : '');
 
+/**
+ * «12,00» — con coma, que es como las escribe el club en su papel.
+ * No es un capricho de estilo: el documento va a un grupo de padres que
+ * lleva años recibiéndolo así, y una hora escrita de otra forma es lo
+ * primero que hace dudar de si el papel es el bueno.
+ */
+export const horaComa = (t) => hhmm(t).replace(':', ',');
+
 /** 'HH:MM' → minutos desde medianoche, o null. */
 function enMinutos(t) {
   const m = /^(\d{1,2}):(\d{2})/.exec(String(t || ''));
@@ -337,27 +345,38 @@ export function datosDelDocumento(partido, jugadores, { nombreEquipo = '', escud
 
   const desconocidos = GRUPOS.reduce((n, k) => n + g[k].filter((id) => !porId.has(id)).length, 0);
 
+  const nuestro = (a.conv_club || '').trim() || nombreEquipo;
+  const rival = (partido?.rival || '').trim();
+
   return {
-    // cabecera fija del equipo
+    // membrete y cabecera fija del equipo
     club: (a.conv_club || '').trim(),
     equipo: nombreEquipo,
     escudo,
+    membrete: a.conv_membrete || null,
+    oficina: (a.conv_oficina || '').trim(),
+    email: (a.conv_email || '').trim(),
     categoria: (a.conv_categoria || '').trim(),
     competicion: (a.conv_competicion || '').trim(),
     llevar: (a.conv_llevar || '').trim(),
-    // el partido
+    // el partido. Las dos mitades van sueltas además de juntas: en el
+    // papel el nombre del club lleva su recuadro morado y el del rival
+    // no, así que quien pinta necesita saber cuál es cuál.
     partido: tituloPartido(partido, { ...a, nombreEquipo }),
-    rival: partido?.rival || '',
+    nuestroNombre: nuestro,
+    rival,
+    localPrimero: partido?.es_local !== false,
     donde: partido?.es_local === false ? 'fuera' : 'en casa',
     fecha: fechaDocumento(partido?.fecha),
     fechaISO: partido?.fecha || '',
-    hora: hhmm(partido?.hora),
+    hora: horaComa(partido?.hora),
     cancha: lugarDeJuego(partido, a),
-    horaLlegada: horaLlegada(partido, { minutosAntes: a.conv_minutos_antes }),
+    horaLlegada: horaComa(horaLlegada(partido, { minutosAntes: a.conv_minutos_antes })),
     // desplazamiento (solo tiene sentido fuera de casa, pero se
     // devuelve siempre: quien pinta decide si lo enseña)
-    salida: [hhmm(partido?.salida_hora), (partido?.convocatoria_lugar || '').trim()]
+    salida: [horaComa(partido?.salida_hora), (partido?.convocatoria_lugar || '').trim()]
       .filter(Boolean).join(' · '),
+    desplazamiento: (partido?.desplazamiento || '').trim(),
     regreso: (partido?.regreso || '').trim(),
     // las tres listas
     convocados: resuelve(g.convocados),
@@ -372,7 +391,9 @@ export function datosDelDocumento(partido, jugadores, { nombreEquipo = '', escud
 export function titular(d) {
   return [
     d.rival ? `${d.donde === 'en casa' ? 'vs' : '@'} ${d.rival}` : null,
-    (d.fechaISO ? fechaLarga(d.fechaISO) : ''), d.hora,
+    (d.fechaISO ? fechaLarga(d.fechaISO) : ''),
+    // en la cabecera de la PANTALLA, con dos puntos: es la app, no el papel
+    d.hora ? d.hora.replace(',', ':') : '',
   ].filter(Boolean).join(' · ');
 }
 

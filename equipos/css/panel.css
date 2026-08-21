@@ -928,39 +928,67 @@ input.eq-acta-duda, .eq-acta-x.eq-acta-duda {
 .eq-conv-escudo { width: 3.5rem; height: 3.5rem; object-fit: contain; }
 
 /* ── La hoja ─────────────────────────────────────────── */
+/* Clavada sobre el papel del club: membrete arriba, título sobre banda
+   gris, tabla de dos columnas SOLO con rayas horizontales, resaltados
+   amarillo y morado, y abajo la rejilla a la izquierda con reserva y
+   descanso a la derecha. Los colores son los del original y no salen
+   de la paleta de la app a propósito: este documento no es la app, es
+   el papel que el club lleva años colgando en el grupo. */
 .eq-conv-vista { background: var(--bone); }
 .eq-hoja {
-  background: var(--white); border: 1px solid var(--line);
-  max-width: 46rem; margin: 0 auto; padding: 2rem 2.25rem;
-  display: flex; flex-direction: column; gap: 1.25rem;
+  --amarillo: #ffff00;
+  --morado: #800080;
+  background: #fff; color: #000;
+  border: 1px solid var(--line);
+  max-width: 46rem; margin: 0 auto; padding: 0 0 2rem;
+  font-family: Arial, Helvetica, sans-serif; font-size: 0.8125rem; line-height: 1.35;
 }
-.eq-hoja-cab { display: flex; align-items: center; gap: 1rem; }
+.eq-hoja-membrete { display: flex; flex-direction: column; }
+.eq-hoja-logo { display: block; width: 100%; height: auto; }
+.eq-hoja-oficina {
+  margin: 0.2rem 0 0; padding: 0 0.5rem;
+  color: var(--morado); font-weight: 400; font-size: 0.78rem; line-height: 1.25;
+}
 .eq-hoja-tit {
-  font-family: var(--font-display); font-weight: 900; font-size: 1.5rem;
-  text-transform: uppercase; letter-spacing: 0.02em; margin: 0; line-height: 1;
+  font-family: Arial, Helvetica, sans-serif; font-weight: 700; text-transform: none;
+  font-size: 1.7rem; line-height: 1.1; letter-spacing: 0;
+  background: #d3d3d3; align-self: flex-start;
+  margin: 1rem auto 1.1rem; padding: 0.1rem 0.4rem; width: max-content; max-width: 100%;
 }
-/* La rejilla de dos columnas del papel del club. */
-.eq-hoja-tabla { display: flex; flex-direction: column; border: 1px solid var(--line); border-bottom: none; }
-.eq-hoja-fila { display: grid; grid-template-columns: minmax(0, 12rem) minmax(0, 1fr); border-bottom: 1px solid var(--line); }
-.eq-hoja-et { padding: 0.5rem 0.75rem; font-size: 0.8125rem; color: var(--muted); border-right: 1px solid var(--line); }
-.eq-hoja-val { padding: 0.5rem 0.75rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
-.eq-hoja-grupo { display: flex; flex-direction: column; gap: 0.5rem; }
-.eq-hoja-sub {
-  font-family: var(--font-display); font-size: 1rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: 0.05em; margin: 0;
+.eq-hoja-tabla { display: flex; flex-direction: column; padding: 0 1.5rem; }
+.eq-hoja-fila {
+  display: grid; grid-template-columns: minmax(0, 10.5rem) minmax(0, 1fr);
+  gap: 0 0.5rem; border-bottom: 1px solid #000; padding: 0.36rem 0;
+  min-height: 2rem;
+}
+.eq-hoja-et { color: #000; }
+.eq-hoja-val { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.eq-hoja-linea { min-height: 1.15em; }
+.eq-hoja-tr { }
+.eq-hoja-rotulo {
+  font-weight: 700; width: max-content; padding: 0 0.15em;
+  margin: 1rem 0 0.9rem; margin-left: 11rem;
+}
+.eq-hoja-rotulo--amarillo { background: var(--amarillo); color: #000; margin-left: 0; }
+.eq-hoja-rotulo--morado { background: var(--morado); color: #fff; }
+.eq-hoja-abajo {
+  display: grid; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr);
+  gap: 0 2rem; padding: 0 1.5rem; align-items: start;
 }
 .eq-hoja-rejilla {
-  display: grid; grid-template-columns: 3rem minmax(0, 1fr);
-  border: 1px solid var(--line); border-bottom: none;
+  display: grid; grid-template-columns: 2.4rem minmax(0, 1fr);
+  border: 1px solid #000; border-right: none; border-bottom: none;
 }
-.eq-hoja-dorsal, .eq-hoja-jug { padding: 0.375rem 0.75rem; border-bottom: 1px solid var(--line); font-weight: 600; }
-.eq-hoja-dorsal {
-  font-family: var(--font-mono); text-align: center; border-right: 1px solid var(--line);
-  font-variant-numeric: tabular-nums;
+.eq-hoja-dorsal, .eq-hoja-jug {
+  padding: 0.12rem 0.4rem; border-bottom: 1px solid #000; border-right: 1px solid #000;
+  font-weight: 700;
 }
+.eq-hoja-dorsal { text-align: center; font-variant-numeric: tabular-nums; }
 .eq-hoja-jug { min-width: 0; overflow-wrap: anywhere; }
-.eq-hoja-sueltos { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.25rem; }
-.eq-hoja-sueltos li { font-weight: 600; }
+.eq-hoja-columna { display: flex; flex-direction: column; gap: 1.6rem; padding-top: 0.1rem; }
+.eq-hoja-aparte { display: flex; flex-direction: column; gap: 0.15rem; }
+.eq-hoja-aparte .eq-hoja-rotulo { margin: 0 0 0.5rem; }
+.eq-hoja-suelto { font-weight: 700; padding-left: 0.4rem; }
 
 @media (max-width: 34rem) {
   /* De pie y con una mano: el nombre arriba, los tres botones debajo
@@ -969,9 +997,14 @@ input.eq-acta-duda, .eq-acta-x.eq-acta-duda {
   .eq-conv-btns { width: 100%; }
   /* 44 px: esto se toca de pie, con una mano y a veces con frío. */
   .eq-conv-btn { flex: 1; min-height: 2.75rem; }
-  .eq-hoja { padding: 1.25rem 1rem; }
-  .eq-hoja-fila { grid-template-columns: 1fr; }
-  .eq-hoja-et { border-right: none; border-bottom: 1px dotted var(--line); }
+  .eq-hoja { font-size: 0.75rem; }
+  .eq-hoja-tabla, .eq-hoja-abajo { padding: 0 0.75rem; }
+  .eq-hoja-fila { grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr); }
+  /* En vertical las dos columnas de abajo no caben una al lado de otra:
+     la rejilla primero y reserva/descanso debajo. */
+  .eq-hoja-abajo { grid-template-columns: 1fr; gap: 1.5rem; }
+  .eq-hoja-rotulo { margin-left: 7.5rem; }
+  .eq-hoja-tit { font-size: 1.3rem; }
 }
 
 @media print {
