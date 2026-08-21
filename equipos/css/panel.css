@@ -53,6 +53,18 @@
 .eq-form-seccion:not(:first-child) { margin-top: 0.75rem; }
 .eq-form-acciones { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem; }
 .eq-form-vertical { display: flex; flex-direction: column; gap: 1rem; }
+/* Dos campos por línea que se apilan solos en el móvil. */
+.eq-form-fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+/* Un grupo de ajustes con su título: la cabecera de la convocatoria son
+   seis campos que solo tienen sentido juntos. */
+.eq-ajustes-grupo {
+  border: 1px solid var(--line); padding: 1rem 1.125rem; margin: 0;
+  display: flex; flex-direction: column; gap: 0.875rem;
+}
+.eq-ajustes-legend {
+  font-family: var(--font-display); font-weight: 800; font-size: 0.8125rem;
+  text-transform: uppercase; letter-spacing: 0.06em; padding: 0 0.4rem;
+}
 .eq-ayuda { font-size: 0.8125rem; color: var(--muted); }
 .eq-aviso {
   font-size: 0.8125rem; color: var(--papaya-deep);
@@ -872,58 +884,103 @@ input.eq-acta-duda, .eq-acta-x.eq-acta-duda {
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--white);
 }
 
-/* ── El documento de la convocatoria ──────────────── */
-/* Una hoja, no una pantalla: se compone aquí y el navegador la imprime
-   a PDF, que es lo que hay en el móvil y en el ordenador. */
-.eq-conv-hoja { max-width: 46rem; margin: 0 auto; padding: 1.25rem; }
-.eq-conv-barra { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-.eq-conv {
-  background: var(--white); border: 1px solid var(--line);
-  padding: 2rem 2.25rem; border-radius: var(--radius);
+/* ── La convocatoria: elegir, rellenar y ver la hoja ─ */
+/* Una sola pantalla. Arriba se marca y se escribe; abajo, la hoja tal
+   y como va a salir en el PDF. Al imprimir solo queda la hoja. */
+.eq-conv-pantalla { display: flex; flex-direction: column; gap: 1.25rem; }
+.eq-conv-barra { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.eq-conv-acciones { display: flex; gap: 0.5rem; }
+.eq-conv-falta { font-style: italic; }
+
+/* El selector. Filas del alto de un dedo: esto se hace de pie. */
+.eq-conv-plantilla { display: flex; flex-direction: column; }
+.eq-conv-fila {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.5rem 0.25rem; border-bottom: 1px solid var(--line);
+  min-height: 3rem;
 }
-.eq-conv-cab { display: flex; align-items: center; gap: 1rem; border-bottom: 2px solid var(--carbon); padding-bottom: 0.875rem; }
+.eq-conv-fila:last-child { border-bottom: none; }
+/* El estado se lee en la fila entera, no solo en el botón pulsado:
+   de un vistazo se ve quién falta por colocar. */
+.eq-conv-fila.es-convocados { background: color-mix(in srgb, var(--papaya) 7%, transparent); }
+.eq-conv-fila.es-reservas   { background: color-mix(in srgb, var(--carbon) 5%, transparent); }
+.eq-conv-fila.es-descansan  { opacity: 0.6; }
+.eq-conv-num {
+  font-family: var(--font-mono); font-weight: 700; font-size: 0.9375rem;
+  min-width: 2.25rem; text-align: right; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.eq-conv-fila.es-convocados .eq-conv-num { color: var(--ink); }
+.eq-conv-nombre { flex: 1; min-width: 0; font-weight: 600; }
+.eq-conv-btns { display: flex; gap: 0.25rem; flex: 0 0 auto; }
+.eq-conv-btn {
+  font-family: var(--font-body); font-size: 0.75rem; font-weight: 600;
+  padding: 0.4rem 0.6rem; min-height: 2.25rem;
+  background: var(--white); border: 1px solid var(--line); color: var(--muted);
+  cursor: pointer; transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+}
+.eq-conv-btn:hover { border-color: var(--ink); color: var(--ink); }
+.eq-conv-btn.is-on { background: var(--carbon); border-color: var(--carbon); color: var(--white); }
+.eq-conv-fila.es-convocados .eq-conv-btn.is-on { background: var(--papaya); border-color: var(--papaya); }
+
+.eq-conv-resumen { display: flex; flex-direction: column; gap: 0.5rem; }
+.eq-conv-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
 .eq-conv-escudo { width: 3.5rem; height: 3.5rem; object-fit: contain; }
-.eq-conv-tit {
-  font-family: var(--font-display); font-weight: 900; font-size: 1.75rem;
+
+/* ── La hoja ─────────────────────────────────────────── */
+.eq-conv-vista { background: var(--bone); }
+.eq-hoja {
+  background: var(--white); border: 1px solid var(--line);
+  max-width: 46rem; margin: 0 auto; padding: 2rem 2.25rem;
+  display: flex; flex-direction: column; gap: 1.25rem;
+}
+.eq-hoja-cab { display: flex; align-items: center; gap: 1rem; }
+.eq-hoja-tit {
+  font-family: var(--font-display); font-weight: 900; font-size: 1.5rem;
   text-transform: uppercase; letter-spacing: 0.02em; margin: 0; line-height: 1;
 }
-.eq-conv-equipo { margin: 0.125rem 0 0; color: var(--muted); font-size: 0.9375rem; }
-.eq-conv-titular {
-  font-family: var(--font-display); font-weight: 800; font-size: 1.25rem;
-  margin: 1rem 0 1.25rem;
-}
-.eq-conv-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.75rem 1.5rem; margin: 0 0 1.5rem; }
-.eq-conv-datos div { display: flex; flex-direction: column; gap: 0.125rem; }
-.eq-conv-datos dt {
-  font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
-}
-.eq-conv-datos dd { margin: 0; font-weight: 600; }
-/* La hora de quedar es lo que se busca con el dedo en el grupo. */
-.eq-conv-quedada dd { font-family: var(--font-display); font-size: 1.125rem; }
-.eq-conv-sub {
+/* La rejilla de dos columnas del papel del club. */
+.eq-hoja-tabla { display: flex; flex-direction: column; border: 1px solid var(--line); border-bottom: none; }
+.eq-hoja-fila { display: grid; grid-template-columns: minmax(0, 12rem) minmax(0, 1fr); border-bottom: 1px solid var(--line); }
+.eq-hoja-et { padding: 0.5rem 0.75rem; font-size: 0.8125rem; color: var(--muted); border-right: 1px solid var(--line); }
+.eq-hoja-val { padding: 0.5rem 0.75rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.eq-hoja-grupo { display: flex; flex-direction: column; gap: 0.5rem; }
+.eq-hoja-sub {
   font-family: var(--font-display); font-size: 1rem; font-weight: 800;
-  text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 0.5rem;
-  border-top: 1px solid var(--line); padding-top: 0.875rem;
+  text-transform: uppercase; letter-spacing: 0.05em; margin: 0;
 }
-.eq-conv-lista { margin: 0; padding: 0; list-style: none; columns: 2; column-gap: 2rem; }
-.eq-conv-lista li {
-  display: flex; align-items: baseline; gap: 0.625rem;
-  padding: 0.25rem 0; border-bottom: 1px dotted var(--line); break-inside: avoid;
+.eq-hoja-rejilla {
+  display: grid; grid-template-columns: 3rem minmax(0, 1fr);
+  border: 1px solid var(--line); border-bottom: none;
 }
-.eq-conv-dorsal {
-  font-family: var(--font-mono); font-weight: 700; min-width: 1.75rem;
-  color: var(--muted); text-align: right;
+.eq-hoja-dorsal, .eq-hoja-jug { padding: 0.375rem 0.75rem; border-bottom: 1px solid var(--line); font-weight: 600; }
+.eq-hoja-dorsal {
+  font-family: var(--font-mono); text-align: center; border-right: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
 }
-.eq-conv-pie { margin-top: 1.5rem; padding-top: 0.875rem; border-top: 1px solid var(--line); }
-.eq-conv-pie p { margin: 0; font-size: 0.8125rem; color: var(--muted); }
+.eq-hoja-jug { min-width: 0; overflow-wrap: anywhere; }
+.eq-hoja-sueltos { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.25rem; }
+.eq-hoja-sueltos li { font-weight: 600; }
+
+@media (max-width: 34rem) {
+  /* De pie y con una mano: el nombre arriba, los tres botones debajo
+     y a lo ancho, en vez de tres botones de 4 mm apretados al borde. */
+  .eq-conv-fila { flex-wrap: wrap; }
+  .eq-conv-btns { width: 100%; }
+  /* 44 px: esto se toca de pie, con una mano y a veces con frío. */
+  .eq-conv-btn { flex: 1; min-height: 2.75rem; }
+  .eq-hoja { padding: 1.25rem 1rem; }
+  .eq-hoja-fila { grid-template-columns: 1fr; }
+  .eq-hoja-et { border-right: none; border-bottom: 1px dotted var(--line); }
+}
 
 @media print {
   /* Lo que no es el documento no se imprime. */
-  .no-imprimir, .topbar, .app-nav { display: none !important; }
+  .no-imprimir, .topbar, .app-nav, .eq-tabbar, .eq-planner-barra { display: none !important; }
   body, .app-layout, .app-main { background: #fff !important; margin: 0; padding: 0; }
-  .eq-conv-hoja { max-width: none; padding: 0; }
-  .eq-conv { border: none; padding: 0; }
-  .eq-conv-lista { columns: 2; }
+  .eq-conv-pantalla { gap: 0; }
+  .eq-conv-vista { background: #fff !important; padding: 0 !important; border: none !important; }
+  .eq-hoja { max-width: none; border: none; padding: 0; }
 }
 .eq-puente { display: flex; flex-direction: column; gap: 1rem; }
 .eq-puente-cab { display: flex; align-items: center; justify-content: space-between; gap: 0.875rem; }

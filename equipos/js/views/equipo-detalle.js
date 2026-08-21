@@ -1266,7 +1266,32 @@ export function render(root, params) {
       imagen_path: s.imagen_path || null,
       plantilla_path: s.plantilla_path || null,
       hora_convocatoria: s.hora_convocatoria || null,
+      // 034: la cabecera fija del documento de convocatoria. Se escribe
+      // una vez por equipo y sale sola en cada partido
+      conv_club: s.conv_club || '',
+      conv_categoria: s.conv_categoria || '',
+      conv_competicion: s.conv_competicion || '',
+      conv_cancha: s.conv_cancha || '',
+      conv_llevar: s.conv_llevar || '',
+      conv_minutos_antes: s.conv_minutos_antes ?? null,
     };
+    const campoTexto = (etiqueta, clave, ejemplo) => h('label', { class: 'field-group' },
+      h('span', { class: 'field-label' }, etiqueta),
+      h('input', {
+        class: 'field-input', type: 'text', maxlength: 120,
+        value: m0[clave], placeholder: ejemplo,
+        onInput: (e) => { m0[clave] = e.target.value; },
+      }),
+    );
+    const campoArea = (etiqueta, clave, ejemplo, ayuda) => h('label', { class: 'field-group' },
+      h('span', { class: 'field-label' }, etiqueta),
+      h('textarea', {
+        class: 'field-textarea', rows: 2, maxlength: 400, placeholder: ejemplo,
+        onInput: (e) => { m0[clave] = e.target.value; },
+      }, m0[clave]),
+      ayuda ? h('span', { class: 'eq-ayuda' }, ayuda) : null,
+    );
+
     // null = la reflexión aún no existe en esta BD (015 sin aplicar)
     let preguntas = null;
     try { preguntas = await getPreguntas(teamId); } catch { preguntas = null; }
@@ -1498,10 +1523,47 @@ export function render(root, params) {
           subir: subirImagenEquipo,
           conVistaPrevia: true,
         }),
+        /* La cabecera del documento de convocatoria (034). Va aquí y no
+           en cada partido porque no cambia de un sábado a otro: cambia
+           cuando cambia la fase o el pabellón. */
+        h('fieldset', { class: 'eq-ajustes-grupo' },
+          h('legend', { class: 'eq-ajustes-legend' }, 'Cabecera de la convocatoria'),
+          h('p', { class: 'eq-ayuda' },
+            'Lo que sale igual en todas las convocatorias de este equipo. '
+            + 'Se escribe una vez.'),
+          h('div', { class: 'eq-form-fila' },
+            campoTexto('Equipo del club', 'conv_club', 'CB PALENCIA'),
+            campoTexto('Categoría', 'conv_categoria', 'MINIBASKET AUTONÓMICO MASCULINO'),
+          ),
+          h('div', { class: 'eq-form-fila' },
+            campoTexto('Competición', 'conv_competicion', 'FASE 1.'),
+            h('label', { class: 'field-group eq-conv-hora' },
+              h('span', { class: 'field-label' }, 'Estar en la cancha, minutos antes'),
+              h('input', {
+                class: 'field-input', type: 'number', min: '0', max: '240', step: '5',
+                value: m0.conv_minutos_antes == null ? '' : String(m0.conv_minutos_antes),
+                placeholder: '45',
+                /* Con esto la hora de llegada se calcula sola en cada
+                   partido. En blanco NO significa cero: significa que
+                   hay que escribirla a mano cada vez. */
+                onInput: (e) => {
+                  const v = e.target.value.trim();
+                  m0.conv_minutos_antes = v === '' ? null : Number(v);
+                },
+              }),
+            ),
+          ),
+          campoArea('Cancha de juego', 'conv_cancha',
+            'Polideportivo CAMPOS GÓTICOS\nAVD/. Campos Góticos, s/n 34003 – PALENCIA',
+            'El pabellón de casa con su dirección. En los partidos fuera manda el lugar del partido.'),
+          campoArea('Qué llevar al partido', 'conv_llevar',
+            'DNI original, equipaciones de juego del club morada y blanca, y cubre del club.',
+            null),
+        ),
         archivoEquipo({
           etiqueta: 'Plantilla de convocatoria (PDF)',
-          ayuda: 'El papel del club, por si hay que entregarlo en la mesa. La app compone '
-            + 'su propio documento aparte, con el rival, el día, la hora y la lista.',
+          ayuda: 'El papel original del club, por si hay que entregarlo en la mesa. '
+            + 'La convocatoria que se manda al grupo la compone la app y se descarga en PDF.',
           clave: 'plantilla_path',
           acepta: 'application/pdf,image/jpeg,image/png,image/webp',
           subir: subirPlantilla,
@@ -1533,6 +1595,12 @@ export function render(root, params) {
                   color: m0.color, dia_convocatoria: m0.dia_convocatoria,
                   asistencia_activa: m0.asistencia_activa, reflexion_activa: m0.reflexion_activa,
                   hora_convocatoria: m0.hora_convocatoria || null,
+                  conv_club: m0.conv_club.trim() || null,
+                  conv_categoria: m0.conv_categoria.trim() || null,
+                  conv_competicion: m0.conv_competicion.trim() || null,
+                  conv_cancha: m0.conv_cancha.trim() || null,
+                  conv_llevar: m0.conv_llevar.trim() || null,
+                  conv_minutos_antes: Number.isFinite(m0.conv_minutos_antes) ? m0.conv_minutos_antes : null,
                 });
                 invalidarEquipos(); refrescar(); toast('Ajustes guardados');
               } catch (e) { toast('Error: ' + e.message, 'error'); }

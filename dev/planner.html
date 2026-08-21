@@ -245,7 +245,15 @@
                 team_coaches: [{ coach_id: 'u1', rol: 'principal', profiles: { full_name: 'Beltrán' } }],
                 team_settings: { color: '#1F6FEB', dia_convocatoria: 5,
                                  imagen_path: 't1/escudo.png', plantilla_path: null,
-                                 hora_convocatoria: '18:00:00' } }],
+                                 hora_convocatoria: '18:00:00',
+                                 /* Cabecera de la convocatoria (034), con los
+                                    valores del modelo real del club. */
+                                 conv_club: 'CB PALENCIA',
+                                 conv_categoria: 'MINIBASKET AUTONÓMICO MASCULINO',
+                                 conv_competicion: 'FASE 1.',
+                                 conv_cancha: 'Polideportivo CAMPOS GÓTICOS\nAVD/. Campos Góticos, s/n 34003 – PALENCIA',
+                                 conv_llevar: 'DNI original, equipaciones de juego del club morada y blanca, y cubre del club.',
+                                 conv_minutos_antes: 45 } }],
       session_blocks: [
         { id: 'sb1', session_id: 'demo', exercise_id: 'e5', orden: 0, titulo: 'Calentamiento articular', duracion_min: 8, intensidad: 1, notas: null },
         { id: 'sb2', session_id: 'demo', exercise_id: 'e1', orden: 1, titulo: 'Flecha de tiro', duracion_min: 14, intensidad: 3, notas: 'Ojo al pie de pivote' },
@@ -313,6 +321,8 @@
           val_global: null, claves: null, acta_path: null, valorada_at: null,
           convocatoria_cerrada: false,
           periodos: null, faltas_equipo: [], tiempos_muertos: [], acta_origen: null,
+          convocados: [], reservas: [], descansan: [],
+          convocatoria_lugar: null, convocatoria_hora: null, salida_hora: null, regreso: null,
         },
         // dos más ya cerrados, para que los acumulados (4.4) tengan de qué sumar
         { id: 'm2', team_id: 't1', season_id: 's1', fecha: '2026-08-15', hora: '11:00:00',
@@ -320,13 +330,17 @@
           marcador_favor: 44, marcador_contra: 38, marcador_cuartos: [],
           val_defensa: 4, val_ataque: 3, val_actitud: 5, val_acierto: 3, val_global: 4,
           claves: null, acta_path: null, valorada_at: null, convocatoria_cerrada: false,
-          periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: 'mano' },
+          periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: 'mano',
+          convocados: [], reservas: [], descansan: [],
+          convocatoria_lugar: null, convocatoria_hora: null, salida_hora: null, regreso: null },
         { id: 'm3', team_id: 't1', season_id: 's1', fecha: '2026-08-08', hora: '12:30:00',
           lugar: 'Pabellón Municipal', rival: 'CB Ejemplo A', es_local: true, estado: 'jugado',
           marcador_favor: 31, marcador_contra: 52, marcador_cuartos: [],
           val_defensa: 2, val_ataque: 2, val_actitud: 4, val_acierto: 2, val_global: 2,
           claves: null, acta_path: null, valorada_at: null, convocatoria_cerrada: false,
-          periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: 'mano' },
+          periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: 'mano',
+          convocados: [], reservas: [], descansan: [],
+          convocatoria_lugar: null, convocatoria_hora: null, salida_hora: null, regreso: null },
       ],
       /* Tres partidos jugados con acta, para los acumulados (4.4). El
          reparto es feo a propósito: del que más al que menos hay ocho

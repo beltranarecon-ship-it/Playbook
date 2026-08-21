@@ -24,14 +24,25 @@ const COLS_028 = 'periodos, faltas_equipo, tiempos_muertos, acta_origen';
    resto de la pantalla. */
 let sin030 = false;
 const COLS_030 = 'convocados, convocatoria_lugar, convocatoria_hora';
-const COLS = () => [COLS_BASE, sin028 ? null : COLS_028, sin030 ? null : COLS_030]
-  .filter(Boolean).join(', ');
+/* Y la 034 la convierte en el documento de verdad: los otros dos grupos
+   del papel —reserva y descanso— y el desplazamiento. Tercera tanda,
+   mismo trato. */
+let sin034 = false;
+const COLS_034 = 'reservas, descansan, salida_hora, regreso';
+const COLS = () => [
+  COLS_BASE,
+  sin028 ? null : COLS_028,
+  sin030 ? null : COLS_030,
+  sin034 ? null : COLS_034,
+].filter(Boolean).join(', ');
 
 /** Si la 028 está aplicada. La pantalla lo usa para no ofrecer lo que no se
  *  puede guardar, en vez de dejar que el guardado falle con un error crudo. */
 export const hayActa = () => !sin028;
 /** Si la 030 está aplicada (la convocatoria). */
 export const hayConvocatoria = () => !sin030;
+/** Si la 034 está aplicada (reserva, descanso y desplazamiento). */
+export const hayGruposConvocatoria = () => !sin034;
 
 const esColumnaQueFalta = (error) => error?.code === '42703' || error?.code === 'PGRST204';
 const nombra = (error, columnas) => {
@@ -40,9 +51,17 @@ const nombra = (error, columnas) => {
 };
 const COL_028 = ['periodos', 'faltas_equipo', 'tiempos_muertos', 'acta_origen'];
 const COL_030 = ['convocados', 'convocatoria_lugar', 'convocatoria_hora'];
+const COL_034 = ['reservas', 'descansan', 'salida_hora', 'regreso'];
 
-const falta028 = (error) => nombra(error, COL_028) || (esColumnaQueFalta(error) && !nombra(error, COL_030));
-const falta030 = (error) => nombra(error, COL_030) || (esColumnaQueFalta(error) && !nombra(error, COL_028));
+/* Cuando el error NO dice qué columna es —PostgREST a veces solo manda
+   el código— se dan por malas TODAS las tandas que no estén ya
+   descartadas. Perder columnas de más es un partido con media pantalla;
+   no reintentar es un partido que no se abre. */
+const otras = (error, propia) => [COL_028, COL_030, COL_034]
+  .filter((c) => c !== propia).some((c) => nombra(error, c));
+const falta028 = (error) => nombra(error, COL_028) || (esColumnaQueFalta(error) && !otras(error, COL_028));
+const falta030 = (error) => nombra(error, COL_030) || (esColumnaQueFalta(error) && !otras(error, COL_030));
+const falta034 = (error) => nombra(error, COL_034) || (esColumnaQueFalta(error) && !otras(error, COL_034));
 
 /* Pide, y si lo que faltaba eran las columnas de la 028, vuelve a pedir sin
    ellas. Una sola vez: `sin028` se queda puesto para el resto de la sesión. */
@@ -52,12 +71,14 @@ async function conReintento(pide) {
      error no dice qué columna es —PostgREST a veces solo da el código—
      se quitan las dos tandas y se sigue, que es preferible a dejar la
      pantalla sin abrir por no saber cuál de las dos falta. */
-  for (let vuelta = 0; vuelta < 2 && r.error; vuelta++) {
+  for (let vuelta = 0; vuelta < 3 && r.error; vuelta++) {
     const a = falta028(r.error) && !sin028;
     const b = falta030(r.error) && !sin030;
-    if (!a && !b) break;
+    const c = falta034(r.error) && !sin034;
+    if (!a && !b && !c) break;
     if (a) sin028 = true;
     if (b) sin030 = true;
+    if (c) sin034 = true;
     r = await pide();
   }
   return r;
@@ -68,6 +89,7 @@ const saneaPatch = (patch) => {
   const out = { ...patch };
   if (sin028) for (const k of COL_028) delete out[k];
   if (sin030) for (const k of COL_030) delete out[k];
+  if (sin034) for (const k of COL_034) delete out[k];
   return out;
 };
 
@@ -130,12 +152,14 @@ export async function actualizarPartido(id, patch) {
   let { error } = await manda(patch);
   // el reintento va con el patch YA saneado: si se reenviara entero volvería
   // a fallar por lo mismo y el guardado se perdería igual
-  for (let vuelta = 0; vuelta < 2 && error; vuelta++) {
+  for (let vuelta = 0; vuelta < 3 && error; vuelta++) {
     const a = falta028(error) && !sin028;
     const b = falta030(error) && !sin030;
-    if (!a && !b) break;
+    const c = falta034(error) && !sin034;
+    if (!a && !b && !c) break;
     if (a) sin028 = true;
     if (b) sin030 = true;
+    if (c) sin034 = true;
     ({ error } = await manda(patch));
   }
   if (error) throw error;

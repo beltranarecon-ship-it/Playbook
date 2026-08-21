@@ -1748,7 +1748,7 @@ del almacenamiento.
 | 4.3 ✅ | Comprobación de reglamento por categoría | 4.2 | Una alineación indebida se detecta y se explica |
 | 4.4 ✅ | Estadísticas por jugador y acumulados; periodos, no minutos | 4.2 | La ficha del jugador suma periodos y puntos |
 | 4.5 ✅ | Pantalla partidos y clasificación, con tabla manual | 4.1 | Se rellena a mano y se ve por equipo |
-| 4.6 ✅ | Convocatoria: plantilla PDF, evento automático, relleno desde la app | 4.1 | Sale el PDF con rival, día, hora y lista |
+| 4.6 ✅ | Convocatoria: plantilla PDF, evento automático, relleno desde la app | 4.1 | Sale el PDF con rival, día, hora y lista *(rehecha en 5.1 con el modelo real del club)* |
 | 4.7 ✅ | Suscripciones push + service worker + función programada | — | Llega un aviso con la app cerrada en Android |
 | 4.8 ✅ | Los seis avisos | 4.7, 3.5 | Cada uno llega cuando toca y abre donde toca |
 | 4.9 ✅ | Panel de administrador + lista de invitaciones + disparador de alta | — | Se invita a un entrenador y entra solo, con su clave |
@@ -2071,13 +2071,12 @@ que llega el sábado por la mañana no sirve de nada.
 Al llegar a los **doce** que caben en el acta no se desconvoca a nadie por cuenta propia: se
 dice y decide el entrenador. Quitar a un crío para meter a otro no es una decisión de la app.
 
-**Desviación de §5.9, dicha en su sitio.** El documento se compone como **página imprimible**
-y no rellenando la plantilla PDF del club. Rellenar un escaneado exige saber en qué
-coordenada exacta va cada campo de *ese* papel: hay que calibrarlo con el fichero delante,
-uno por club, y otra vez cada vez que la federación cambia el formato. Imprimir a PDF desde
-el navegador —«Guardar como PDF», que está en el móvil y en el ordenador— da el mismo
-documento, sale hoy y no trae ninguna librería (§9). La plantilla del club se guarda igual y
-se ofrece al lado, para quien tenga que entregar ese papel concreto en la mesa.
+**Desviación de §5.9 (resuelta después, ver «Estado de 5.1»).** Al cerrar esta fila el
+documento se componía como página imprimible y no rellenando la plantilla PDF del club. El
+entrenador mandó luego el modelo real (`CONVOCATORIA partido MINIBASKET.docx`) y con él
+delante la fila se rehízo: ahora la app **dibuja el PDF** con esa misma estructura y lo
+descarga. La plantilla del club se sigue guardando aparte, para quien tenga que entregar ese
+papel concreto en la mesa.
 
 **Y un fallo gordo que salió mapeando el código para esta fila**: `Object.assign` sobre
 `el.style` **ignora en silencio las variables CSS**, así que los siete `--team-color` del
@@ -2253,6 +2252,72 @@ Y lo que se le ha añadido a propósito: `?ruta=` para abrir cualquier pantalla,
 cambiar la categoría del equipo, `?sin028` para fingir una migración pendiente, upsert y
 borrado con filtros, firma de URL de Storage, y datos falsos de actas, clasificación,
 invitaciones, avisos y un segundo entrenador.
+
+---
+
+# Tramo 5 · El partido del sábado
+
+Sale de la **auditoría de las 84 peticiones del informe de cambios** contra el código, hecha
+cuando las 51 filas del plan ya estaban cerradas. De los quince huecos que aparecieron, el
+entrenador eligió empezar por los del partido: es lo que se usa cada fin de semana y lo que
+peor estaba.
+
+| # | Qué | Depende de | Se da por hecha cuando |
+|---|---|---|---|
+| 5.1 ✅ | La convocatoria de verdad: tres grupos, cabecera del equipo y PDF descargable | 4.6 | Sale un PDF de una hoja igual que el papel del club |
+| 5.2 | Valoración por jugador tras el partido y estrellas al rival | 4.1 | Se valora a tres críos y al rival en menos de un minuto |
+| 5.3 | Las claves del partido enganchadas a los objetivos | 3.9 | Un objetivo del equipo se mueve con lo que pasó el sábado |
+| 5.4 | La rejilla de periodos que ayuda ANTES, no el lunes | 4.3 | Propone un reparto que ya cumple y avisa en el banquillo |
+
+### Estado de 5.1 (hecha)
+
+`equipos/js/data/convocatoria.js` reescrito (puro, **49 pruebas**),
+`equipos/js/data/convocatoria-pdf.js` (nuevo) y la pantalla
+`/partidos/:id/convocatoria`, que ahora es donde se hace la convocatoria entera. Migración
+**034**: `matches.reservas`, `descansan`, `salida_hora` y `regreso`; en `team_settings`, la
+cabecera fija (`conv_club`, `conv_categoria`, `conv_competicion`, `conv_cancha`,
+`conv_llevar`, `conv_minutos_antes`).
+
+**El documento manda sobre el modelo.** El papel del club tiene **tres** grupos —CONVOCADOS,
+RESERVA, DESCANSO— y una cabecera que no cambia de un sábado a otro. El modelo es ese papel.
+Los tres grupos son excluyentes y se resuelven por orden: el mismo niño en dos listas saca un
+documento que se contradice a sí mismo, y eso lo lee un padre.
+
+**El número es el dorsal, no un contador.** El papel va 1, 2, 17, 20, 24, 33, 50, 67, 72, 77,
+81, 99: en la mesa se busca por número. Quien no tiene dorsal sale al final y **sin número
+inventado** — equivocar un dorsal es falta técnica, y que salga vacío es la señal de que falta
+ficharlo.
+
+**El cupo se avisa, no se impide.** Presentarse con menos de 10-12 se da por perdido 2-0
+aunque se gane, así que el número importa de verdad; pero el miércoles, decidiendo, es normal
+tener catorce marcados. Al llegar a doce no se desconvoca a nadie por cuenta propia.
+
+**La hora de llegada se deduce.** 12:00 con 45 minutos antes da 11:15, que es exactamente lo
+que dice el modelo del club. Escribirla cada sábado es una ocasión de equivocarse.
+
+**Una sola pantalla.** Antes se marcaba en la pantalla del partido y el documento se veía en
+otra; media docena de campos del papel no tenían dónde escribirse. Ahora la del partido solo
+**resume y entra**, y ya no guarda ningún campo de convocatoria: dos pestañas abiertas se
+pisaban la lista sin decir nada.
+
+**Un fallo que cazó el banco**: `Number(null)` es 0, no NaN. Sin comprobarlo a la entrada, un
+equipo que **no** había fijado los minutos daba «cero minutos antes» —o sea, la hora exacta
+del partido—: catorce familias llegando cuando ya ha empezado. Es el mismo tropiezo que dio
+un periodo en vez de seis en el acta (4.1).
+
+**Comprobado** en el arnés (`/dev/planner.html?ruta=/partidos/m1/convocatoria`): se convoca a
+doce, el decimotercero **rebota** con su aviso y entra en reserva; el pie dice «12 de 12
+convocados · 1 de reserva · 1 descansa»; la hoja sale con los dorsales 4…15 en orden y la
+reserva como «16.- Jugador 13». Con los nombres y dorsales del papel de verdad, el PDF sale
+**en una hoja** —tanto en casa como fuera, que lleva dos filas más—, con sus 36 rectángulos
+de rejilla, los acentos correctos (`Categoría`, `Antolín`, `Álvaro`) y el último renglón a
+148 pt del borde. En móvil (375 px) los tres botones se apilan a lo ancho, 44 px de alto, y
+la página no se va de lado.
+
+**Lo que sigue sin estar**: la clasificación automática de la FBCyL (falta el enlace) y la
+plantilla PDF rellenada campo a campo, que se descartó a propósito arriba.
+
+---
 
 ## Fuera de la v2.1 (marcados «no imprescindible»)
 

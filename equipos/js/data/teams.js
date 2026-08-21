@@ -15,22 +15,56 @@ import { supabase } from './_client.js';
 let sin030 = false;
 const AJUSTES_BASE = 'color, dia_convocatoria';
 const AJUSTES_030 = 'plantilla_path, imagen_path, hora_convocatoria';
+const COLS_030 = ['plantilla_path', 'imagen_path', 'hora_convocatoria'];
+
+/* La cabecera fija de la convocatoria la añade la 034: club, categoría,
+   competición, cancha, qué llevar y cuánto antes hay que estar. Mismo
+   trato que la 030 y por la misma razón — un equipo que no se puede
+   abrir por una migración pendiente es mucho peor que una convocatoria
+   con la cabecera en blanco. */
+let sin034 = false;
+const AJUSTES_034 = 'conv_club, conv_categoria, conv_competicion, conv_cancha, conv_llevar, conv_minutos_antes';
+const COLS_034 = ['conv_club', 'conv_categoria', 'conv_competicion', 'conv_cancha', 'conv_llevar', 'conv_minutos_antes'];
+
 const ajustes = (extra = '') => `${AJUSTES_BASE}${extra ? ', ' + extra : ''}`
-  + (sin030 ? '' : `, ${AJUSTES_030}`);
+  + (sin030 ? '' : `, ${AJUSTES_030}`)
+  + (sin034 ? '' : `, ${AJUSTES_034}`);
 
 export const hayArchivosEquipo = () => !sin030;
+export const hayCabeceraConvocatoria = () => !sin034;
 
-const falta030 = (error) => {
+const faltaAlguna = (error, columnas) => {
   if (error?.code === '42703' || error?.code === 'PGRST204') return true;
   const m = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
-  return m.includes('column')
-    && ['plantilla_path', 'imagen_path', 'hora_convocatoria'].some((c) => m.includes(c));
+  return m.includes('column') && columnas.some((c) => m.includes(c));
 };
+const falta030 = (error) => faltaAlguna(error, COLS_030);
+const falta034 = (error) => faltaAlguna(error, COLS_034);
 
+/* Se reintenta hasta DOS veces: con las dos migraciones pendientes, el
+   primer reintento quita la 034 y el segundo la 030. Un solo reintento
+   dejaba el error de la otra sin tratar y la pantalla en blanco. */
 async function conReintento(pide) {
   let r = await pide();
-  if (r.error && falta030(r.error)) { sin030 = true; r = await pide(); }
+  for (let i = 0; i < 2 && r.error; i++) {
+    if (!sin034 && falta034(r.error)) { sin034 = true; r = await pide(); continue; }
+    if (!sin030 && falta030(r.error)) { sin030 = true; r = await pide(); continue; }
+    break;
+  }
   return r;
+}
+
+/** Los ajustes de convocatoria de un equipo, ya con sus valores por defecto. */
+export function cabeceraConvocatoria(settings) {
+  const s = settings || {};
+  return {
+    conv_club: s.conv_club ?? null,
+    conv_categoria: s.conv_categoria ?? null,
+    conv_competicion: s.conv_competicion ?? null,
+    conv_cancha: s.conv_cancha ?? null,
+    conv_llevar: s.conv_llevar ?? null,
+    conv_minutos_antes: s.conv_minutos_antes ?? null,
+  };
 }
 
 export async function getMisEquipos() {
@@ -55,6 +89,7 @@ export async function getMisEquipos() {
       imagen_path: t.team_settings?.imagen_path ?? null,
       plantilla_path: t.team_settings?.plantilla_path ?? null,
       hora_convocatoria: t.team_settings?.hora_convocatoria ?? null,
+      ...cabeceraConvocatoria(t.team_settings),
       coaches: (t.team_coaches ?? []).map((c) => c.profiles?.full_name).filter(Boolean),
     }));
 }
@@ -104,14 +139,24 @@ export async function actualizarEquipo(teamId, { name, category }) {
 export async function guardarAjustes(teamId, campos) {
   // sin la 030 no se manda lo que la base de datos no tiene: el resto
   // de los ajustes se guardan igual
+  const quita = (c, columnas) => {
+    const out = { ...c };
+    for (const k of columnas) delete out[k];
+    return out;
+  };
   const sanea = (c) => {
-    if (!sin030) return c;
-    const { plantilla_path, imagen_path, hora_convocatoria, ...resto } = c;
-    return resto;
+    let out = c;
+    if (sin030) out = quita(out, COLS_030);
+    if (sin034) out = quita(out, COLS_034);
+    return out;
   };
   const manda = () => supabase.from('team_settings').update(sanea(campos)).eq('team_id', teamId);
   let { error } = await manda();
-  if (error && falta030(error)) { sin030 = true; ({ error } = await manda()); }
+  for (let i = 0; i < 2 && error; i++) {
+    if (!sin034 && falta034(error)) { sin034 = true; ({ error } = await manda()); continue; }
+    if (!sin030 && falta030(error)) { sin030 = true; ({ error } = await manda()); continue; }
+    break;
+  }
   if (error) throw error;
 }
 
