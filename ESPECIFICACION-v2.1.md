@@ -2266,9 +2266,10 @@ peor estaba.
 |---|---|---|---|
 | 5.1 ✅ | La convocatoria de verdad: tres grupos, cabecera del equipo y PDF descargable | 4.6 | Sale un PDF de una hoja **igual** que el papel del club |
 | 5.2 ✅ | Borrar equipos y temporadas con su historial, con doble confirmación | 033 | Se escribe el nombre y se borra; vacío sigue con una sola pregunta |
-| 5.3 | Valoración por jugador tras el partido y estrellas al rival | 4.1 | Se valora a tres críos y al rival en menos de un minuto |
-| 5.4 | Las claves del partido enganchadas a los objetivos | 3.9 | Un objetivo del equipo se mueve con lo que pasó el sábado |
-| 5.5 | La rejilla de periodos que ayuda ANTES, no el lunes | 4.3 | Propone un reparto que ya cumple y avisa en el banquillo |
+| 5.3 ✅ | Que una migración pendiente no impida crear equipos ni mienta sobre lo que pasó | — | Se crea el equipo y se dice qué migración falta |
+| 5.4 | Valoración por jugador tras el partido y estrellas al rival | 4.1 | Se valora a tres críos y al rival en menos de un minuto |
+| 5.5 | Las claves del partido enganchadas a los objetivos | 3.9 | Un objetivo del equipo se mueve con lo que pasó el sábado |
+| 5.6 | La rejilla de periodos que ayuda ANTES, no el lunes | 4.3 | Propone un reparto que ya cumple y avisa en el banquillo |
 
 ### Estado de 5.1 (hecha)
 
@@ -2424,6 +2425,44 @@ desaparece del formulario de invitar (antes se quedaba, invitando a asignar gent
 que ya no existe). Una temporada vacía sigue con una sola confirmación. Con `?sin035` no se
 borra nada y se dice que falta la migración. Y el chip del calendario abre
 `/partidos/m3/convocatoria`.
+
+### Estado de 5.3 (hecha) · Un paso que falla no puede negar el anterior
+
+Intentar crear un equipo daba esto:
+
+> «No se pudo crear el equipo: Could not find the table
+> `public.session_slot_exclusions` in the schema cache»
+
+Dos cosas mal, y la segunda mucho peor que la primera.
+
+**La frase no dice qué hacer.** Esa tabla la trae la **018**, y eso no lo sabe nadie
+mirando el mensaje. Módulo nuevo `data/migraciones.js` (puro, banco propio con 7 pruebas):
+traduce el error de PostgREST a una frase que nombra la migración, dice para qué sirve y
+añade que lo demás sigue funcionando. Comprueba el **nombre** de la tabla además del
+código, porque dar por ausente una tabla por un error que hablaba de otra apagaría media
+pantalla sin motivo.
+
+**Y el equipo SÍ se había creado.** Crear un equipo son tres pasos —el equipo, sus horarios
+y el calendario— y solo el primero es «crear el equipo». Un fallo en el tercero se contaba
+como «no se pudo crear», el entrenador lo intentaba otra vez, y así salen los equipos
+duplicados. Ahora el primer paso tiene su propio `try`: si falla, se dice y no se navega;
+si sale bien, **cualquier fallo posterior se cuenta como lo que es** y se entra al equipo
+igual:
+
+> «*Equipo roto* se ha creado, pero los horarios no: falta aplicar la migración 018 en
+> Supabase (es la de quitar entrenamientos del calendario sin que vuelvan a generarse).
+> Todo lo demás sigue funcionando. Puedes ponerlos desde la pestaña Horarios.»
+
+**Y sobre todo: sin la 018 ya no se rompe nada.** Una consulta de exclusiones que no
+encuentra su tabla significa «no hay ninguna ocurrencia descartada», que es una respuesta
+buena, no un motivo para tirar la pantalla. `getExclusiones` devuelve `[]` y lo anota en la
+consola; `descartarOcurrencia` quita la sesión igual —que es lo que se ha pedido— y avisa
+de que volverá al regenerar.
+
+**Comprobado** en el arnés, que gana `?sin018`: con la tabla fingida ausente el equipo se
+crea entero, sale el modal de calendario y se entra al equipo. Forzando un fallo en el
+guardado de horarios sale el mensaje de arriba y **se navega al equipo igual**, que es lo
+que evita el duplicado. Sin `?sin018` no cambia nada.
 
 ---
 

@@ -7,6 +7,7 @@
    ============================================================ */
 
 import { supabase } from './_client.js';
+import { faltaTabla } from './migraciones.js';
 import {
   expandirTemporada, planRegeneracion, parsearPeriodos, recortarTemporada,
 } from './programacion.js';
@@ -177,12 +178,25 @@ export async function borrarPeriodo(id) {
  * @returns { plan, resumen: {insertar, actualizar, borrar, saltadas} }
  */
 /** Ocurrencias que el entrenador descartó a mano (018): no vuelven a generarse. */
+let sin018 = false;
+export const hayExclusiones = () => !sin018;
+
 export async function getExclusiones(teamId, seasonId) {
+  if (sin018) return [];
   const { data, error } = await supabase
     .from('session_slot_exclusions')
     .select('id, slot_id, slot_date, motivo')
     .eq('team_id', teamId)
     .eq('season_id', seasonId);
+  /* Sin la tabla no hay NINGUNA ocurrencia descartada, que es una
+     respuesta perfectamente buena. Antes esto reventaba, y como
+     `previewRegeneracion` lo llama al crear un equipo, el equipo se
+     creaba y la pantalla decía «no se pudo crear el equipo». */
+  if (error && faltaTabla(error, 'session_slot_exclusions')) {
+    sin018 = true;
+    console.warn('[horarios] falta la migración 018: no hay ocurrencias descartadas que respetar.');
+    return [];
+  }
   if (error) throw error;
   return data ?? [];
 }

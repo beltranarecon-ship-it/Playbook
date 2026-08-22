@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { supabase } from './_client.js';
+import { faltaTabla } from './migraciones.js';
 
 // La temporada vive en seasons.js (crear/activar/leer con tolerancia); se
 // re-exporta aquí porque media app la importa desde este módulo.
@@ -158,8 +159,17 @@ export async function descartarOcurrencia(sesion, motivo = null) {
     const { error } = await supabase
       .from('session_slot_exclusions')
       .insert({ team_id, season_id, slot_id, slot_date, motivo: motivo || null });
-    if (error && error.code !== '23505') throw error;
-    anotadaAhora = !error;
+    /* Sin la 018 no hay dónde anotar la exclusión. La sesión se quita
+       igual —que es lo que el entrenador ha pedido— y volverá a
+       aparecer la próxima vez que se regeneren los horarios. Se avisa
+       en la consola; negarse a quitarla sería peor. */
+    if (error && faltaTabla(error, 'session_slot_exclusions')) {
+      console.warn('[sesiones] falta la migración 018: la sesión se quita, pero volverá al regenerar.');
+    } else if (error && error.code !== '23505') {
+      throw error;
+    } else {
+      anotadaAhora = !error;
+    }
   }
 
   const borrada = await borrarPreliminar(id);

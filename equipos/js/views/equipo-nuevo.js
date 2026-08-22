@@ -10,6 +10,7 @@ import { toast } from '../ui/toast.js';
 import { abrirModal } from '../ui/modal.js';
 import { colorPicker, diaChips, slotsEditor } from '../ui/components.js';
 import { crearEquipo } from '../data/teams.js';
+import { explica } from '../data/migraciones.js';
 import { guardarSlots, previewRegeneracion, getPeriodos } from '../data/schedules.js';
 import { getTemporadaActiva, aplicarPlan } from '../data/sessions.js';
 import { invalidarEquipos } from '../store.js';
@@ -31,9 +32,26 @@ export function render(root) {
     if (guardando) return;
     if (!modelo.name.trim()) { inputNombre.focus(); inputNombre.classList.add('animate-shake'); return; }
     guardando = true;
+
+    /* ── EL EQUIPO YA ESTÁ CREADO: NO SE PUEDE DECIR QUE NO ──────
+       Crear un equipo son tres pasos —el equipo, sus horarios y el
+       calendario— y solo el primero es «crear el equipo». Antes, un
+       fallo en el tercero se contaba como «No se pudo crear el equipo»,
+       y era mentira: el equipo estaba creado. El entrenador volvía a
+       intentarlo y acababa con dos. Desde aquí abajo, cualquier fallo
+       se cuenta como lo que es —un paso que no salió— y se entra al
+       equipo igual. */
+    let equipo = null;
     try {
-      const equipo = await crearEquipo(modelo);
+      equipo = await crearEquipo(modelo);
       invalidarEquipos();
+    } catch (e) {
+      toast('No se pudo crear el equipo: ' + explica(e), 'error');
+      guardando = false;
+      return;
+    }
+
+    try {
       const slots = editor.leer();
       const temporada = await getTemporadaActiva();
       if (slots.length) {
@@ -70,11 +88,14 @@ export function render(root) {
         });
       }
       toast(`Equipo «${equipo.name}» creado`);
-      router.navigate(`/equipos/${equipo.id}`);
     } catch (e) {
-      toast('No se pudo crear el equipo: ' + e.message, 'error');
-      guardando = false;
+      /* El equipo está creado; lo que ha fallado son los horarios o el
+         calendario. Se dice ASÍ y se entra al equipo, donde se pueden
+         arreglar. */
+      toast(`«${equipo.name}» se ha creado, pero los horarios no: `
+        + explica(e) + ' Puedes ponerlos desde la pestaña Horarios.', 'error');
     }
+    router.navigate(`/equipos/${equipo.id}`);
   }
 
   mount(root, h('div', { class: 'eq-page eq-page-estrecha' },

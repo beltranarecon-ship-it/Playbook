@@ -452,6 +452,7 @@
     const SIN028 = new URLSearchParams(location.search).has('sin028');
     const SIN034 = new URLSearchParams(location.search).has('sin034');
     const SIN035 = new URLSearchParams(location.search).has('sin035');
+    const SIN018 = new URLSearchParams(location.search).has('sin018');
 
     const real = window.fetch.bind(window);
     window.fetch = function (entrada, opciones) {
@@ -555,6 +556,17 @@
           console.log('[arnés] sin028: no existe matches.' + nueva);
           return fallo(400, { code: '42703', message: `column matches.${nueva} does not exist` });
         }
+      }
+
+      /* Con `?sin018`, como si faltara la tabla de exclusiones. Es el
+         caso que dejó a un entrenador sin poder crear equipos: la
+         creación se completaba y la pantalla decía que no. */
+      if (SIN018 && tabla === 'session_slot_exclusions') {
+        console.log('[arnés] sin018: no existe session_slot_exclusions');
+        return Promise.resolve(new Response(JSON.stringify({
+          code: 'PGRST205',
+          message: "Could not find the table 'public.session_slot_exclusions' in the schema cache",
+        }), { status: 404, headers: { 'Content-Type': 'application/json' } }));
       }
 
       /* Y con `?sin034`, como si faltara la 034: las columnas del
