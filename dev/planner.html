@@ -437,6 +437,7 @@
     }
 
     const SIN028 = new URLSearchParams(location.search).has('sin028');
+    const SIN034 = new URLSearchParams(location.search).has('sin034');
 
     const real = window.fetch.bind(window);
     window.fetch = function (entrada, opciones) {
@@ -495,6 +496,31 @@
         if (tabla === 'matches' && nueva) {
           console.log('[arnés] sin028: no existe matches.' + nueva);
           return fallo(400, { code: '42703', message: `column matches.${nueva} does not exist` });
+        }
+      }
+
+      /* Y con `?sin034`, como si faltara la 034: las columnas del
+         documento de convocatoria no existen, ni en `matches` ni en
+         `team_settings`. Sirve para comprobar lo que de verdad importa
+         de una migración pendiente — que la app lo DIGA en vez de
+         tragarse lo que el entrenador acaba de escribir. */
+      if (SIN034) {
+        const pedido = (u.searchParams.get('select') || '') + ' ' + ((opciones && opciones.body) || '');
+        const DE_034 = {
+          matches: ['reservas', 'descansan', 'desplazamiento', 'salida_hora', 'regreso'],
+          team_settings: ['conv_club', 'conv_categoria', 'conv_competicion', 'conv_cancha',
+            'conv_llevar', 'conv_minutos_antes', 'conv_oficina', 'conv_email', 'conv_membrete_path'],
+        };
+        // `teams` trae `team_settings` incrustado en el select
+        for (const [t, cols] of Object.entries(DE_034)) {
+          if (tabla !== t && !(tabla === 'teams' && t === 'team_settings')) continue;
+          const nueva = cols.find((c) => new RegExp('(^|[^_a-z])' + c + '($|[^_a-z])').test(pedido));
+          if (nueva) {
+            console.log('[arnés] sin034: no existe ' + t + '.' + nueva);
+            return Promise.resolve(new Response(
+              JSON.stringify({ code: '42703', message: `column ${t}.${nueva} does not exist` }),
+              { status: 400, headers: { 'Content-Type': 'application/json' } }));
+          }
         }
       }
 

@@ -2351,6 +2351,36 @@ caja. Dos fallos salieron de ahí y se corrigieron: «Hora y Lugar de Regreso» 
 cinco puntos que la separan de la columna del valor, y el rival largo se cortaba contra el
 borde derecho.
 
+### Y una migración pendiente deja de mentir
+
+Revisando esta fila con cuatro lentes independientes salieron **dos fallos de la misma
+raíz**, y los dos importan justo mientras la 034 esté sin aplicar:
+
+- **La pestaña de ajustes descartaba en silencio.** `guardarAjustes` quitaba del `UPDATE`
+  las columnas que la base de datos no tiene —que es correcto— y respondía sin error, así
+  que la pantalla cantaba «Ajustes guardados». El entrenador escribía la cabecera entera
+  —club, categoría, competición, pabellón, qué llevar, oficina, correo—, veía la
+  confirmación, y al recargar estaba todo en blanco. Ahora `guardarAjustes` **devuelve qué
+  se ha quedado fuera** y la pantalla lo dice, con el número de campos y la migración que
+  falta. Y avisa **antes** de escribir, no después de perderlo.
+- **El membrete se quedaba huérfano.** Se sube primero y se guarda la ruta después, a
+  propósito, para no dejar ficheros sueltos; pero sin la 034 el segundo paso descartaba la
+  única clave del patch y mandaba un `UPDATE` vacío que respondía que sí. El JPG se quedaba
+  en un bucket privado sin que ninguna fila lo apuntara, y desde la app ya no había forma
+  de borrarlo. Ahora, si la ruta no se puede guardar, **el fichero se recoge**; y
+  `guardarAjustes` no manda un `UPDATE` sin nada dentro, como ya hacía `sessions.js`.
+
+De paso, la detección de qué migración falta dejó de confundirse. Cuando el error no dice
+de qué columna se queja se prueba **empezando por la más antigua**: antes se quitaba la 034
+«por si acaso», y una base a la que solo le faltaba la 030 acababa con la cabecera de la
+convocatoria apagada el resto de la sesión aunque estuviera aplicada.
+
+El arnés gana `?sin034`, hermano de `?sin028`, para poder comprobarlo: con la migración
+fingida ausente sale el aviso antes de escribir, el guardado responde *«No se ha guardado
+todo: faltan columnas que trae la migración 034. Se han quedado fuera 8 campos»*, y
+`hayCabeceraConvocatoria()` es `false` mientras `hayArchivosEquipo()` sigue en `true` — las
+dos tandas ya no se contagian. Con la 034 puesta, ni un aviso y «Ajustes guardados».
+
 **Lo que sigue sin estar**: la clasificación automática de la FBCyL (falta el enlace).
 
 ---

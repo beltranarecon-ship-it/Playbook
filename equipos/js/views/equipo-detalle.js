@@ -9,7 +9,10 @@ import { h, mount } from '../ui/dom.js';
 import { toast, toastDeshacer } from '../ui/toast.js';
 import { abrirModal, confirmar } from '../ui/modal.js';
 import { colorPicker, diaChips, avatar, puntoEquipo } from '../ui/components.js';
-import { getEquipo, actualizarEquipo, guardarAjustes } from '../data/teams.js';
+import {
+  getEquipo, actualizarEquipo, guardarAjustes,
+  hayCabeceraConvocatoria, hayArchivosEquipo, textoDescartadas,
+} from '../data/teams.js';
 import { getJugadores, crearJugador, crearJugadoresBulk, actualizarJugador } from '../data/players.js';
 import {
   getSlots, guardarSlots, guardarSlot, desactivarSlot, reactivarSlot, previewRegeneracion,
@@ -1318,12 +1321,25 @@ export function render(root, params) {
                 onChange: async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  let nueva = null;
                   try {
-                    const nueva = await subir(teamId, file);
-                    await guardarAjustes(teamId, { [clave]: nueva });
+                    nueva = await subir(teamId, file);
+                    const { descartadas } = await guardarAjustes(teamId, { [clave]: nueva });
+                    /* Si la columna donde va la ruta todavía no existe,
+                       el fichero YA está en el bucket y nadie lo
+                       apunta: se recoge. Un JPG huérfano en un bucket
+                       privado no se puede borrar luego desde la app. */
+                    if (descartadas.includes(clave)) {
+                      await borrarArchivoEquipo(nueva).catch(() => {});
+                      toast(textoDescartadas(descartadas), 'error');
+                      return;
+                    }
                     m0[clave] = nueva;
                     invalidarEquipos(); toast('Guardado'); pinta();
-                  } catch (err) { toast('Error: ' + err.message, 'error'); }
+                  } catch (err) {
+                    if (nueva) await borrarArchivoEquipo(nueva).catch(() => {});
+                    toast('Error: ' + err.message, 'error');
+                  }
                 },
               })),
             h('p', { class: 'eq-ayuda' }, ayuda),
@@ -1518,6 +1534,11 @@ export function render(root, params) {
             }),
           ),
         ),
+        !hayArchivosEquipo()
+          ? h('p', { class: 'eq-acta-descuadre' },
+              'Falta aplicar la migración 030: la imagen del equipo, la plantilla y la hora '
+              + 'del aviso de convocatoria no se van a guardar todavía.')
+          : null,
         archivoEquipo({
           etiqueta: 'Imagen del equipo',
           ayuda: 'Se ve en el calendario y en la convocatoria. JPG, PNG o WebP.',
@@ -1531,6 +1552,15 @@ export function render(root, params) {
            cuando cambia la fase o el pabellón. */
         h('fieldset', { class: 'eq-ajustes-grupo' },
           h('legend', { class: 'eq-ajustes-legend' }, 'Cabecera de la convocatoria'),
+          /* Se avisa ANTES de escribir, no después de perderlo. Sin la
+             034 estos campos no tienen dónde guardarse, y rellenar ocho
+             cajas para que al recargar estén en blanco es peor que no
+             poder rellenarlas. */
+          !hayCabeceraConvocatoria()
+            ? h('p', { class: 'eq-acta-descuadre' },
+                'Falta aplicar la migración 034 en la base de datos: lo que escribas aquí '
+                + 'no se va a guardar todavía. El resto de los ajustes sí.')
+            : null,
           h('p', { class: 'eq-ayuda' },
             'Lo que sale igual en todas las convocatorias de este equipo. '
             + 'Se escribe una vez.'),
@@ -1608,7 +1638,7 @@ export function render(root, params) {
               try {
                 if (!m0.name.trim()) { toast('El nombre no puede quedar vacío', 'error'); return; }
                 await actualizarEquipo(teamId, { name: m0.name, category: m0.category });
-                await guardarAjustes(teamId, {
+                const { descartadas } = await guardarAjustes(teamId, {
                   color: m0.color, dia_convocatoria: m0.dia_convocatoria,
                   asistencia_activa: m0.asistencia_activa, reflexion_activa: m0.reflexion_activa,
                   hora_convocatoria: m0.hora_convocatoria || null,
@@ -1621,7 +1651,12 @@ export function render(root, params) {
                   conv_oficina: m0.conv_oficina.trim() || null,
                   conv_email: m0.conv_email.trim() || null,
                 });
-                invalidarEquipos(); refrescar(); toast('Ajustes guardados');
+                invalidarEquipos(); refrescar();
+                /* «Guardado» a secas cuando media pantalla se ha
+                   quedado fuera es una mentira que solo se descubre al
+                   recargar y verlo todo en blanco. */
+                toast(descartadas.length ? textoDescartadas(descartadas) : 'Ajustes guardados',
+                  descartadas.length ? 'error' : undefined);
               } catch (e) { toast('Error: ' + e.message, 'error'); }
             },
           }, 'Guardar ajustes'),

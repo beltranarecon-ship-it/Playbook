@@ -34,22 +34,40 @@ const ajustes = (extra = '') => `${AJUSTES_BASE}${extra ? ', ' + extra : ''}`
 export const hayArchivosEquipo = () => !sin030;
 export const hayCabeceraConvocatoria = () => !sin034;
 
-const faltaAlguna = (error, columnas) => {
-  if (error?.code === '42703' || error?.code === 'PGRST204') return true;
+/* ¿Es un error de «esta columna no existe»? */
+const esColumnaQueFalta = (error) => error?.code === '42703' || error?.code === 'PGRST204';
+/* ¿El error NOMBRA una columna de esta tanda? PostgREST casi siempre lo
+   dice; cuando no, hay que adivinar, y adivinar mal es lo que hay que
+   evitar. */
+const nombra = (error, columnas) => {
   const m = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
   return m.includes('column') && columnas.some((c) => m.includes(c));
 };
-const falta030 = (error) => faltaAlguna(error, COLS_030);
-const falta034 = (error) => faltaAlguna(error, COLS_034);
+const falta030 = (error) => nombra(error, COLS_030);
+const falta034 = (error) => nombra(error, COLS_034);
 
-/* Se reintenta hasta DOS veces: con las dos migraciones pendientes, el
-   primer reintento quita la 034 y el segundo la 030. Un solo reintento
-   dejaba el error de la otra sin tratar y la pantalla en blanco. */
+/* Pide, y si lo que faltaba eran columnas de una migración, vuelve a
+   pedir sin ellas.
+
+   ── POR QUÉ SE EMPIEZA POR LA MÁS ANTIGUA ───────────────────
+   Cuando el error no dice de qué columna se queja —PostgREST a veces
+   solo manda el código— hay que probar. Antes se probaba quitando la
+   034 primero, y eso tenía un efecto feo: una base a la que solo le
+   falta la 030 daba error, se quitaba la 034 «por si acaso», y a partir
+   de ahí la cabecera de la convocatoria quedaba apagada para el resto
+   de la sesión aunque SÍ estuviera aplicada. Empezando por la 030 —la
+   que de verdad puede faltar en una base vieja— la 034 solo se apaga si
+   el error persiste sin ella. */
 async function conReintento(pide) {
   let r = await pide();
-  for (let i = 0; i < 2 && r.error; i++) {
-    if (!sin034 && falta034(r.error)) { sin034 = true; r = await pide(); continue; }
+  for (let i = 0; i < 3 && r.error; i++) {
     if (!sin030 && falta030(r.error)) { sin030 = true; r = await pide(); continue; }
+    if (!sin034 && falta034(r.error)) { sin034 = true; r = await pide(); continue; }
+    if (esColumnaQueFalta(r.error)) {
+      // no dice cuál: se prueba primero sin la vieja, luego sin las dos
+      if (!sin030) { sin030 = true; r = await pide(); continue; }
+      if (!sin034) { sin034 = true; r = await pide(); continue; }
+    }
     break;
   }
   return r;
@@ -140,28 +158,68 @@ export async function actualizarEquipo(teamId, { name, category }) {
   if (error) throw error;
 }
 
+/**
+ * Guarda ajustes del equipo. Sin la migración correspondiente, lo que la
+ * base de datos no tiene NO se manda — pero **se dice qué se ha
+ * quedado fuera**.
+ *
+ * ── POR QUÉ DEVUELVE LO DESCARTADO ──────────────────────────
+ * Antes se descartaba en silencio y la pantalla cantaba «Ajustes
+ * guardados». El entrenador escribía la cabecera entera de la
+ * convocatoria —club, categoría, competición, el pabellón, qué
+ * llevar—, veía la confirmación, y al recargar estaba todo en blanco.
+ * Eso es exactamente lo contrario de la regla de la casa: lo que no
+ * cuadra se dice, no se calla. Ahora quien llama sabe qué no ha
+ * entrado y lo cuenta.
+ *
+ * @returns {descartadas: string[]} las columnas que no se han mandado
+ */
 export async function guardarAjustes(teamId, campos) {
-  // sin la 030 no se manda lo que la base de datos no tiene: el resto
-  // de los ajustes se guardan igual
-  const quita = (c, columnas) => {
+  const quita = (c, columnas, fuera) => {
     const out = { ...c };
-    for (const k of columnas) delete out[k];
+    for (const k of columnas) if (k in out) { delete out[k]; fuera.push(k); }
     return out;
   };
+  const descartadas = [];
   const sanea = (c) => {
+    descartadas.length = 0;
     let out = c;
-    if (sin030) out = quita(out, COLS_030);
-    if (sin034) out = quita(out, COLS_034);
+    if (sin030) out = quita(out, COLS_030, descartadas);
+    if (sin034) out = quita(out, COLS_034, descartadas);
     return out;
   };
-  const manda = () => supabase.from('team_settings').update(sanea(campos)).eq('team_id', teamId);
+  const manda = async () => {
+    const patch = sanea(campos);
+    /* Un UPDATE sin nada que actualizar no es un guardado: es una
+       petición que dice «sí» sin haber hecho nada. Mismo guard que
+       `guardarCabeceraSesion` en sessions.js. */
+    if (!Object.keys(patch).length) return { error: null, vacio: true };
+    return supabase.from('team_settings').update(patch).eq('team_id', teamId);
+  };
   let { error } = await manda();
-  for (let i = 0; i < 2 && error; i++) {
-    if (!sin034 && falta034(error)) { sin034 = true; ({ error } = await manda()); continue; }
+  for (let i = 0; i < 3 && error; i++) {
     if (!sin030 && falta030(error)) { sin030 = true; ({ error } = await manda()); continue; }
+    if (!sin034 && falta034(error)) { sin034 = true; ({ error } = await manda()); continue; }
+    if (esColumnaQueFalta(error)) {
+      if (!sin030) { sin030 = true; ({ error } = await manda()); continue; }
+      if (!sin034) { sin034 = true; ({ error } = await manda()); continue; }
+    }
     break;
   }
   if (error) throw error;
+  return { descartadas: [...descartadas] };
+}
+
+/** Cómo se le cuenta a una persona que faltó una migración. */
+export function textoDescartadas(descartadas) {
+  if (!descartadas || !descartadas.length) return '';
+  const dela34 = descartadas.some((c) => COLS_034.includes(c));
+  const dela30 = descartadas.some((c) => COLS_030.includes(c));
+  const cual = dela34 && dela30 ? 'las migraciones 030 y 034'
+    : dela34 ? 'la migración 034' : 'la migración 030';
+  const n = descartadas.length;
+  return `No se ha guardado todo: faltan columnas que trae ${cual}. `
+    + (n === 1 ? 'Se ha quedado fuera un campo.' : `Se han quedado fuera ${n} campos.`);
 }
 
 /* ── Borrar un equipo (Tramo 4.9) ────────────────── */
