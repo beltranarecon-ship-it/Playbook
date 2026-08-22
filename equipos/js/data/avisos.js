@@ -176,7 +176,9 @@ export function avisosDe({ ahora, ventanaMin = 15, sesiones = [], partidos = [],
         clave: `convocatoria:${m.id}`,
         titulo: 'Falta la convocatoria',
         cuerpo: `${eq.name} · ${m.es_local ? 'vs' : '@'} ${m.rival}`,
-        url: `/partidos/${m.id}`,
+        // «todo se puede hacer abriendo el aviso» (§5.8): el aviso de que
+        // falta la convocatoria abre la convocatoria, no el marcador
+        url: `/partidos/${m.id}/convocatoria`,
         para: eq.coaches || [],
       });
     }

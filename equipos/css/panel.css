@@ -1687,3 +1687,17 @@ a.eq-inv-fila:hover { border-color: var(--ink); }
 .eq-page .btn { max-width: 100%; white-space: normal; text-align: center; }
 .eq-planner-barra, .eq-planner-barra-sec { flex-wrap: wrap; min-width: 0; }
 .eq-planner-barra .btn { min-width: 0; }
+
+/* ── Borrado sin vuelta atrás ─────────────────────────────── */
+/* La lista de lo que se va a perder, con el rojo del peligro y no con
+   la papaya: papaya es el color de la acción, no el del susto. */
+.eq-borrar-lleva {
+  background: color-mix(in srgb, var(--error) 7%, transparent);
+  border-left: 3px solid var(--error);
+  padding: 0.75rem 0.9rem;
+}
+.eq-borrar-lleva p { margin: 0 0 0.4rem; font-weight: 600; font-size: 0.875rem; }
+.eq-borrar-lleva ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.eq-borrar-lleva li { font-size: 0.875rem; }
+/* El botón sigue apagado hasta que el nombre coincide: que se vea. */
+.modal-peligro .eq-btn-peligro[disabled] { opacity: 0.45; cursor: not-allowed; }

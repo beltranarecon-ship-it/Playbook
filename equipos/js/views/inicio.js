@@ -18,7 +18,7 @@ import { puntoEquipo } from '../ui/components.js';
 import { getMisEquipos } from '../data/teams.js';
 import { getTemporadaActiva, getSesionesRango } from '../data/sessions.js';
 import { getPartidosRango } from '../data/matches.js';
-import { eventoDe as eventoConvocatoria } from '../data/convocatoria.js';
+import { eventoDe as eventoConvocatoria, rutaConvocatoria } from '../data/convocatoria.js';
 import { secciones, semanas, iso as isoDe } from '../data/inicio.js';
 import { sinLeer, marcarLeido } from '../data/push.js';
 import { router } from '../main.js';
@@ -84,7 +84,10 @@ export function render(root) {
       const esConv = x.que === 'convocatoria';
       const m = esConv ? x.partido : x;
       const teamId = m.team_id;
-      const destino = x.que === 'sesion' ? `/sesiones/${x.id}` : `/partidos/${m.id}`;
+      /* La convocatoria lleva a la convocatoria, no al partido: quien
+         la toca viene a rellenarla, no a ver el marcador. */
+      const destino = x.que === 'sesion' ? `/sesiones/${x.id}`
+        : (esConv ? rutaConvocatoria(m.id) : `/partidos/${m.id}`);
       const que = x.que === 'sesion'
         ? (x.titulo || 'Entrenamiento')
         : (esConv ? `Convocatoria · ${m.es_local ? 'vs' : '@'} ${m.rival}` : `${m.es_local ? 'vs' : '@'} ${m.rival}`);

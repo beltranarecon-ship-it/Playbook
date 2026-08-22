@@ -301,6 +301,8 @@
         { id: 's1', label: '2026/27', start_date: '2026-08-24', end_date: '2027-06-30', is_active: true },
         // una vieja y VACÍA, para poder probar el borrado de temporada (4.9)
         { id: 's0', label: '2025/26', start_date: '2025-09-01', end_date: '2026-06-30', is_active: false },
+        // y otra vieja CON historia, para el borrado total (035)
+        { id: 's2', label: '2024/25', start_date: '2024-09-01', end_date: '2025-06-30', is_active: false },
       ],
       /* Asistencia y estrellas de tres meses, para que Progresión (3.8)
          tenga algo que dibujar. */
@@ -344,6 +346,17 @@
           val_defensa: 2, val_ataque: 2, val_actitud: 4, val_acierto: 2, val_global: 2,
           claves: null, acta_path: null, valorada_at: null, convocatoria_cerrada: false,
           periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: 'mano',
+          convocados: [], reservas: [], descansan: [],
+          convocatoria_lugar: null, convocatoria_hora: null,
+          desplazamiento: null, salida_hora: null, regreso: null },
+        // uno en la temporada vieja, para poder borrarla con historia (035)
+        { id: 'm4', team_id: 't1', season_id: 's2', fecha: '2025-02-15', hora: '11:00:00',
+          lugar: 'Pabellón Municipal', rival: 'CB Antiguo', es_local: true, estado: 'jugado',
+          marcador_favor: 40, marcador_contra: 35, marcador_cuartos: [],
+          val_defensa: null, val_ataque: null, val_actitud: null, val_acierto: null,
+          val_global: null, claves: null, acta_path: null, valorada_at: null,
+          convocatoria_cerrada: false,
+          periodos: 6, faltas_equipo: [], tiempos_muertos: [], acta_origen: null,
           convocados: [], reservas: [], descansan: [],
           convocatoria_lugar: null, convocatoria_hora: null,
           desplazamiento: null, salida_hora: null, regreso: null },
@@ -438,6 +451,7 @@
 
     const SIN028 = new URLSearchParams(location.search).has('sin028');
     const SIN034 = new URLSearchParams(location.search).has('sin034');
+    const SIN035 = new URLSearchParams(location.search).has('sin035');
 
     const real = window.fetch.bind(window);
     window.fetch = function (entrada, opciones) {
@@ -471,6 +485,50 @@
         return Promise.resolve(new Response(JSON.stringify({ error: 'dev' }), { status: 400, headers: { 'Content-Type': 'application/json' } }));
       }
       if (!url.includes('/rest/v1/')) return real(entrada, opciones);
+
+      /* LAS FUNCIONES DE BORRADO TOTAL (035). Son las únicas llamadas
+         RPC de la aplicación, y comprueban tres cosas que hay que poder
+         probar sin una base de datos delante: que solo pasa el
+         administrador, que el nombre escrito coincide, y que lo que
+         devuelven es el recuento de lo que se llevaron. Con `?sin035`
+         responden como si la migración no estuviera. */
+      if (url.includes('/rest/v1/rpc/')) {
+        const fn = url.split('/rest/v1/rpc/')[1].split('?')[0];
+        const arg = JSON.parse((opciones && opciones.body) || '{}');
+        const json = (estado, cuerpo) => Promise.resolve(new Response(JSON.stringify(cuerpo), {
+          status: estado, headers: { 'Content-Type': 'application/json' },
+        }));
+        if (SIN035) {
+          console.log('[arnés] sin035: no existe la función ' + fn);
+          return json(404, { code: 'PGRST202',
+            message: `Could not find the function public.${fn} in the schema cache` });
+        }
+        const esEquipo = fn === 'borrar_equipo_del_todo';
+        const lista = esEquipo ? TABLAS.teams : TABLAS.seasons;
+        const clave = esEquipo ? 'p_team_id' : 'p_season_id';
+        const fila = (lista || []).find((x) => x.id === arg[clave]);
+        if (!fila) return json(400, { code: 'P0002', message: 'Ya no existe.' });
+        const nombre = esEquipo ? fila.name : fila.label;
+        if (String(arg.p_confirmacion || '').trim() !== String(nombre).trim()) {
+          return json(400, { code: '23514',
+            message: `Para borrar «${nombre}» hay que escribir su nombre exacto.` });
+        }
+        const cuenta = (tabla, campo) => (TABLAS[tabla] || []).filter((x) => x[campo] === fila.id).length;
+        const campo = esEquipo ? 'team_id' : 'season_id';
+        const recibo = esEquipo
+          ? { nombre, sesiones: cuenta('sessions', campo), partidos: cuenta('matches', campo),
+              jugadores: cuenta('players', campo) }
+          : { nombre, sesiones: cuenta('sessions', campo), partidos: cuenta('matches', campo),
+              objetivos: cuenta('objectives', campo) };
+        // se borra de verdad del almacén en memoria, como haría la función
+        for (const t of ['sessions', 'matches', 'players', 'objectives']) {
+          if (TABLAS[t]) TABLAS[t] = TABLAS[t].filter((x) => x[campo] !== fila.id);
+        }
+        if (esEquipo) TABLAS.teams = TABLAS.teams.filter((x) => x.id !== fila.id);
+        else TABLAS.seasons = TABLAS.seasons.filter((x) => x.id !== fila.id);
+        console.log('[arnés] ' + fn, recibo);
+        return json(200, recibo);
+      }
 
       const u = new URL(url);
       const tabla = u.pathname.split('/rest/v1/')[1].split('?')[0];

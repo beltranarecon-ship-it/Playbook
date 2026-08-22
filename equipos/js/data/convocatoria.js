@@ -179,10 +179,18 @@ export function diaDeConvocatoria(partido, { diaSemana } = {}) {
 }
 
 /**
+ * A dónde lleva una convocatoria. Vive aquí y no en cada pantalla
+ * porque hay tres sitios que enlazan a ella —el inicio, el chip del
+ * calendario y el aviso push— y los tres llevaban al PARTIDO. Lo que
+ * quiere quien toca «convocatoria» es rellenarla, no ver el marcador.
+ */
+export const rutaConvocatoria = (matchId) => `/partidos/${matchId}/convocatoria`;
+
+/**
  * El evento de convocatoria de un partido, para el calendario.
  * Se DEDUCE: no hay tabla que mantener al día.
  *
- * @returns {fecha, partido, cerrada, cuantos} o null si no toca
+ * @returns {fecha, partido, cerrada, cuantos, url} o null si no toca
  */
 export function eventoDe(partido, { diaSemana } = {}) {
   if (!partido || partido.estado === 'cancelado') return null;
@@ -193,6 +201,7 @@ export function eventoDe(partido, { diaSemana } = {}) {
     partido,
     cerrada: !!partido.convocatoria_cerrada,
     cuantos: convocadosDe(partido).length,
+    url: rutaConvocatoria(partido.id),
   };
 }
 

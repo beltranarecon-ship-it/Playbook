@@ -102,3 +102,30 @@ export async function borrarTemporada(id) {
   if (error) throw error;
   return (data?.length ?? 0) > 0;
 }
+
+/**
+ * Borra una temporada CON todo lo que colgaba de ella: sesiones,
+ * partidos, actas, objetivos, horarios, notas y periodos.
+ *
+ * Casi todo apunta a `seasons` con ON DELETE RESTRICT —a propósito, para
+ * que nadie se lleve un año por descuido—, así que esto no se puede
+ * hacer con un DELETE: hay que ir tabla por tabla y en orden. Lo hace la
+ * función de la 035, que además solo atiende al administrador y exige
+ * el nombre escrito.
+ *
+ * @returns {nombre, sesiones, partidos, objetivos} — el recibo
+ */
+export async function borrarTemporadaConHistorial(id, confirmacion) {
+  const { data, error } = await supabase.rpc('borrar_temporada_del_todo', {
+    p_season_id: id, p_confirmacion: confirmacion,
+  });
+  if (error) {
+    const m = `${error?.message || ''} ${error?.details || ''}`;
+    if (error?.code === 'PGRST202' || /could not find the function|function .* does not exist/i.test(m)) {
+      throw new Error('Falta aplicar la migración 035 en la base de datos: '
+        + 'todavía no se puede borrar una temporada con historial.');
+    }
+    throw new Error(error?.message || 'No se ha podido borrar la temporada.');
+  }
+  return data;
+}

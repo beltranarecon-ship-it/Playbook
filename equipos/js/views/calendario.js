@@ -12,7 +12,7 @@ import { abrirModal, confirmar, pedirTexto } from '../ui/modal.js';
 import { puntoEquipo } from '../ui/components.js';
 import { getMisEquipos } from '../data/teams.js';
 import { urlImagenEquipo } from '../data/equipo-archivos.js';
-import { eventoDe as eventoConvocatoria } from '../data/convocatoria.js';
+import { eventoDe as eventoConvocatoria, rutaConvocatoria } from '../data/convocatoria.js';
 import { getPeriodos } from '../data/schedules.js';
 import {
   getTemporadaActiva, getSesionesRango, crearSesionManual,
@@ -158,7 +158,7 @@ export function render(root) {
     title: `Convocatoria · ${nombres.get(e.partido.team_id) || ''} · `
       + `${e.partido.es_local ? 'vs' : '@'} ${e.partido.rival} el ${e.partido.fecha}`
       + (e.cuantos ? ` · ${e.cuantos} convocados` : ' · sin rellenar'),
-    onClick: (ev) => { ev.stopPropagation(); router.navigate(`/partidos/${e.partido.id}`); },
+    onClick: (ev) => { ev.stopPropagation(); router.navigate(rutaConvocatoria(e.partido.id)); },
   },
     h('span', { class: 'eq-convo-icono', 'aria-hidden': 'true' }, '✉'),
     h('span', { class: 'eq-part-chip-rival' }, e.partido.rival),

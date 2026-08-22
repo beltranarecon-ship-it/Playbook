@@ -77,6 +77,60 @@ export function confirmar({ titulo, mensaje, textoOk = 'Confirmar', textoNo = 'C
 /** Pide un texto (p. ej. motivo de cancelación). resolve(string|null).
  *  Responde antes de cerrar, por lo mismo que `confirmar`: cerrar dispara
  *  `alCerrar`, y una promesa ya resuelta no se vuelve a resolver. */
+/**
+ * La segunda confirmación de un borrado sin vuelta atrás: hay que
+ * ESCRIBIR el nombre exacto de lo que se va a borrar.
+ *
+ * ── POR QUÉ ESCRIBIRLO Y NO OTRO «¿SEGURO?» ─────────────────
+ * Porque un segundo «¿seguro?» se pulsa con el mismo dedo y la misma
+ * inercia que el primero. Escribir «Alevín Tello Téllez» obliga a
+ * mirar QUÉ se está borrando, que es exactamente lo que hay que
+ * comprobar. El botón no se enciende hasta que el texto coincide, así
+ * que no hay forma de darle sin haber leído el nombre.
+ *
+ * @param nombre    lo que hay que teclear, tal cual
+ * @param queSeLleva lista de frases: «9 entrenamientos», «3 partidos»…
+ * @returns el texto escrito si coincide, o null si se cancela
+ */
+export function confirmarEscribiendo({ titulo, nombre, queSeLleva = [], aviso = null, textoOk = 'Borrar del todo' }) {
+  return new Promise((resolve) => {
+    let input, boton, dicho = false;
+    const responder = (v) => { if (!dicho) { dicho = true; resolve(v); } };
+    const coincide = () => input.value.trim() === String(nombre).trim();
+    const revisar = () => { boton.disabled = !coincide(); };
+    const enviar = () => { if (!coincide()) return; responder(input.value.trim()); m.cerrar(); };
+
+    const m = abrirModal({
+      titulo,
+      clase: 'modal-peligro',
+      cuerpo: h('div', { class: 'flow' },
+        queSeLleva.length
+          ? h('div', { class: 'eq-borrar-lleva' },
+              h('p', {}, 'Esto se va a perder y no se puede recuperar:'),
+              h('ul', {}, ...queSeLleva.map((x) => h('li', {}, x))))
+          : null,
+        aviso ? h('p', { class: 'eq-ayuda' }, aviso) : null,
+        h('div', { class: 'field-group' },
+          h('label', { class: 'field-label' },
+            'Escribe ', h('strong', {}, String(nombre)), ' para confirmar'),
+          input = h('input', {
+            class: 'field-input', type: 'text', autocomplete: 'off',
+            placeholder: String(nombre),
+            onInput: revisar,
+            onKeydown: (e) => { if (e.key === 'Enter') enviar(); },
+          }),
+        ),
+      ),
+      pie: [
+        h('button', { class: 'btn btn-secondary', type: 'button', onClick: () => { responder(null); m.cerrar(); } }, 'Cancelar'),
+        boton = h('button', { class: 'btn btn-secondary eq-btn-peligro', type: 'button', disabled: true, onClick: enviar }, textoOk),
+      ],
+      alCerrar: () => responder(null),
+    });
+    input.focus();
+  });
+}
+
 export function pedirTexto({ titulo, etiqueta, placeholder = '', obligatorio = true }) {
   return new Promise((resolve) => {
     let input, dicho = false;

@@ -9,9 +9,10 @@
 
 import { h } from '../ui/dom.js';
 import { toast } from '../ui/toast.js';
-import { abrirModal, confirmar } from '../ui/modal.js';
+import { abrirModal, confirmar, confirmarEscribiendo } from '../ui/modal.js';
 import {
-  getTemporadas, crearTemporada, activarTemporada, borrarTemporada, queHayEn,
+  getTemporadas, crearTemporada, activarTemporada,
+  borrarTemporada, borrarTemporadaConHistorial, queHayEn,
 } from '../data/seasons.js';
 import { estadoTemporada, proponerTemporada } from '../data/programacion.js';
 import { invalidarTemporada, esAdmin } from '../store.js';
@@ -102,32 +103,59 @@ export function modalTemporada({ onCambiada } = {}) {
           /* Se dice lo que hay DENTRO antes de preguntar. «Se borrará la
              temporada 2025/26» y «… con 112 entrenamientos y 18
              partidos» son la misma frase para la base de datos y dos
-             decisiones muy distintas para una persona. */
-          /* null = no se ha podido contar. No se bloquea —la policy de
-             la 033 rechaza igual lo que no se puede borrar— pero
-             tampoco se afirma que esté vacío. */
-          if (dentro.sesiones || dentro.partidos) {
-            toast(`No se puede borrar: ${t.label} tiene `
-              + [dentro.sesiones && `${dentro.sesiones} entrenamiento(s)`,
-                 dentro.partidos && `${dentro.partidos} partido(s)`].filter(Boolean).join(' y ')
-              + '. Eso es el histórico del club.', 'error');
-            return;
+             decisiones muy distintas para una persona.
+
+             null = no se ha podido contar: no se afirma que esté vacía. */
+          const noSeSabe = dentro.sesiones === null || dentro.partidos === null;
+          const conHistoria = !!(dentro.sesiones || dentro.partidos);
+
+          /* ── Vacía: una confirmación basta ──────────────────── */
+          if (!conHistoria && !noSeSabe) {
+            if (!(await confirmar({
+              titulo: `Borrar ${t.label}`,
+              mensaje: 'Está vacía: no tiene entrenamientos ni partidos. '
+                + 'Se borrarán también sus horarios y objetivos.',
+              textoOk: 'Borrar',
+            }))) return;
+            try {
+              if (await borrarTemporada(t.id)) {
+                toast(`${t.label} borrada`);
+                await refrescarLista(); onCambiada?.();
+                return;
+              }
+              // la policy la ha rechazado: se sigue por la puerta larga
+            } catch (e) { toast('Error: ' + e.message, 'error'); return; }
           }
+
+          /* ── Con historia: dos puertas ─────────────────────── */
           if (!(await confirmar({
-            titulo: `Borrar ${t.label}`,
-            mensaje: (dentro.sesiones === null || dentro.partidos === null)
-              ? 'No he podido comprobar qué tiene dentro. Si tiene entrenamientos o partidos, la base de datos lo va a impedir.'
-              : 'Está vacía: no tiene entrenamientos ni partidos. Se borrarán también sus horarios y objetivos.',
-            textoOk: 'Borrar',
+            titulo: `Borrar ${t.label} y todo lo suyo`,
+            mensaje: noSeSabe
+              ? 'No he podido comprobar qué tiene dentro, así que no puedo decirte qué se va a perder. '
+                + 'Se borrará la temporada entera con todo lo que cuelgue de ella.'
+              : `${t.label} tiene un año de trabajo dentro. Esto no se puede deshacer ni hay copia: `
+                + 'lo que se borre no vuelve.',
+            textoOk: 'Sí, quiero borrarla',
           }))) return;
+
+          const escrito = await confirmarEscribiendo({
+            titulo: `Borrar ${t.label} del todo`,
+            nombre: t.label,
+            queSeLleva: noSeSabe ? [] : [
+              dentro.sesiones && `${dentro.sesiones} entrenamiento${dentro.sesiones === 1 ? '' : 's'} de todos los equipos, con su lista y su reflexión`,
+              dentro.partidos && `${dentro.partidos} partido${dentro.partidos === 1 ? '' : 's'}, con su acta y sus estadísticas`,
+              'los horarios semanales, los objetivos, las notas y los periodos sin entrenamiento',
+            ].filter(Boolean),
+            aviso: 'Los equipos y sus jugadores NO se borran: siguen ahí para la temporada que viene.',
+          });
+          if (!escrito) return;
+
           try {
-            if (!(await borrarTemporada(t.id))) {
-              toast('No se ha borrado: solo el administrador puede, y solo si está vacía', 'error');
-              return;
-            }
-            toast(`${t.label} borrada`);
+            const r = await borrarTemporadaConHistorial(t.id, escrito);
+            toast(`${r.nombre} borrada · ${r.sesiones} entrenamiento(s), `
+              + `${r.partidos} partido(s) y ${r.objetivos} objetivo(s)`);
             await refrescarLista(); onCambiada?.();
-          } catch (e) { toast('Error: ' + e.message, 'error'); }
+          } catch (e) { toast(e.message, 'error'); }
         },
       }, '×') : null,
     )));

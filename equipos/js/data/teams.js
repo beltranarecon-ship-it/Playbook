@@ -256,3 +256,36 @@ export async function borrarEquipo(id) {
   if (error) throw error;
   return (data?.length ?? 0) > 0;
 }
+
+/**
+ * Borra un equipo CON toda su historia. Sesiones, partidos, actas,
+ * asistencias, reflexiones, objetivos y jugadores: todo.
+ *
+ * ── POR QUÉ PASA POR UNA FUNCIÓN Y NO POR UN DELETE ─────────
+ * Porque relajar la policy de la 033 abriría el borrado total a
+ * cualquier pantalla y a cualquier clic mal dado. La función de la 035
+ * solo atiende al administrador y EXIGE el nombre escrito, así que la
+ * puerta de todos los días sigue siendo la estrecha.
+ *
+ * @param confirmacion el nombre del equipo, tal cual lo escribió el usuario
+ * @returns {nombre, sesiones, partidos, jugadores} — el recibo de lo que se llevó
+ */
+export async function borrarEquipoConHistorial(id, confirmacion) {
+  const { data, error } = await supabase.rpc('borrar_equipo_del_todo', {
+    p_team_id: id, p_confirmacion: confirmacion,
+  });
+  if (error) throw new Error(traduceBorrado(error));
+  return data;
+}
+
+/* Los errores de la función vienen con el mensaje que ella escribe, que
+   ya está en castellano y dice qué hacer. Lo único que hay que tratar
+   es que la función NO EXISTA: eso significa que falta la migración, y
+   «404» no se lo dice a nadie. */
+function traduceBorrado(error) {
+  const m = `${error?.message || ''} ${error?.details || ''}`;
+  if (error?.code === 'PGRST202' || /could not find the function|function .* does not exist/i.test(m)) {
+    return 'Falta aplicar la migración 035 en la base de datos: todavía no se puede borrar con historial.';
+  }
+  return error?.message || 'No se ha podido borrar.';
+}

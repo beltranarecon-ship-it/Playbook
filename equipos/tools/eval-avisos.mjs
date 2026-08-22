@@ -182,7 +182,10 @@ test('el día y a la hora que diga el equipo', () => {
   const a = avisosDe({ ahora: A(2026, 10, 15, 18, 3), partidos: [m], equipos: [EQUIPO] });
   const x = a.find((v) => v.tipo === 'convocatoria');
   ok(x, JSON.stringify(a));
-  eq(x.url, '/partidos/m1');
+  /* Abre la CONVOCATORIA, no el marcador: §5.8 dice «todo se puede
+     hacer abriendo el aviso», y lo que hay que hacer aquí es
+     rellenarla. */
+  eq(x.url, '/partidos/m1/convocatoria');
   eq(x.clave, 'convocatoria:m1');
 });
 

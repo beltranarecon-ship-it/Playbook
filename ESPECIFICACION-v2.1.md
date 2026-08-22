@@ -2265,9 +2265,10 @@ peor estaba.
 | # | Qué | Depende de | Se da por hecha cuando |
 |---|---|---|---|
 | 5.1 ✅ | La convocatoria de verdad: tres grupos, cabecera del equipo y PDF descargable | 4.6 | Sale un PDF de una hoja **igual** que el papel del club |
-| 5.2 | Valoración por jugador tras el partido y estrellas al rival | 4.1 | Se valora a tres críos y al rival en menos de un minuto |
-| 5.3 | Las claves del partido enganchadas a los objetivos | 3.9 | Un objetivo del equipo se mueve con lo que pasó el sábado |
-| 5.4 | La rejilla de periodos que ayuda ANTES, no el lunes | 4.3 | Propone un reparto que ya cumple y avisa en el banquillo |
+| 5.2 ✅ | Borrar equipos y temporadas con su historial, con doble confirmación | 033 | Se escribe el nombre y se borra; vacío sigue con una sola pregunta |
+| 5.3 | Valoración por jugador tras el partido y estrellas al rival | 4.1 | Se valora a tres críos y al rival en menos de un minuto |
+| 5.4 | Las claves del partido enganchadas a los objetivos | 3.9 | Un objetivo del equipo se mueve con lo que pasó el sábado |
+| 5.5 | La rejilla de periodos que ayuda ANTES, no el lunes | 4.3 | Propone un reparto que ya cumple y avisa en el banquillo |
 
 ### Estado de 5.1 (hecha)
 
@@ -2382,6 +2383,47 @@ todo: faltan columnas que trae la migración 034. Se han quedado fuera 8 campos�
 dos tandas ya no se contagian. Con la 034 puesta, ni un aviso y «Ajustes guardados».
 
 **Lo que sigue sin estar**: la clasificación automática de la FBCyL (falta el enlace).
+
+### Estado de 5.2 (hecha) · Borrar de verdad, y la convocatoria donde toca
+
+Dos cosas que salieron usando la aplicación.
+
+**1 · El administrador puede borrar con historial.** La 033 dejaba borrar solo lo que no
+dejó rastro, y un equipo de pruebas con nueve entrenamientos inventados se quedaba para
+siempre. La regla por defecto se queda tal cual —es buena— y se añade **otra puerta**:
+
+- Migración **035**, dos funciones `SECURITY DEFINER` (`borrar_equipo_del_todo` y
+  `borrar_temporada_del_todo`) que solo atienden al administrador y **exigen escribir el
+  nombre**. Las políticas de la 033 siguen guardando la puerta de todos los días; ésta es
+  la de la caja fuerte. Relajar la policy habría abierto el borrado total a cualquier
+  pantalla y a cualquier clic mal dado.
+- Las temporadas **no se pueden borrar con un `DELETE`**: casi todo lo que apunta a
+  `seasons` lo hace con `ON DELETE RESTRICT`, a propósito. La función va tabla por tabla y
+  **en orden**: partidos y sesiones primero (sus cascadas se llevan actas, estadísticas,
+  bloques, asistencias y reflexiones), los objetivos después de las sesiones —
+  `session_objectives` los sujeta con RESTRICT— y los horarios los últimos, por
+  `sessions.slot_id`. Si un día aparece una tabla nueva sin meter en la lista, el `DELETE`
+  final falla diciendo cuál: mejor un error que dice qué falta que un borrado a medias.
+- **Doble confirmación de verdad.** La primera avisa de lo que hay dentro. La segunda pide
+  **escribir el nombre**, con el botón apagado hasta que coincide. Un segundo «¿seguro?» se
+  pulsa con el mismo dedo y la misma inercia que el primero; escribir «Alevín Tello Téllez»
+  obliga a mirar QUÉ se está borrando. Y la fricción **solo aparece cuando hay algo que
+  perder**: un equipo o una temporada vacíos siguen borrándose con una sola pregunta.
+- Al terminar sale el **recibo**: *«Cadete A borrado · 4 entrenamiento(s), 4 partido(s) y
+  15 jugador(es)»*. Es lo único que queda de una operación sin vuelta atrás.
+
+**2 · La convocatoria abre la convocatoria.** Los tres sitios que enlazan a ella —la
+pantalla de inicio, el chip del calendario y el aviso push— llevaban al **partido**. Quien
+toca «convocatoria» viene a rellenarla, no a ver el marcador. La ruta pasa a vivir en el
+módulo puro (`rutaConvocatoria`) para que no haya tres copias que se separen.
+
+**Comprobado** en el arnés, que gana `?sin035`: con un equipo con historia la primera
+puerta dice qué tiene dentro, la segunda enumera lo que se pierde y **el botón sigue
+apagado con el nombre mal escrito**; al borrar, el equipo desaparece de la lista y su chip
+desaparece del formulario de invitar (antes se quedaba, invitando a asignar gente a algo
+que ya no existe). Una temporada vacía sigue con una sola confirmación. Con `?sin035` no se
+borra nada y se dice que falta la migración. Y el chip del calendario abre
+`/partidos/m3/convocatoria`.
 
 ---
 

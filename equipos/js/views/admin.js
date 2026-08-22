@@ -23,10 +23,12 @@
 
 import { h, mount } from '../ui/dom.js';
 import { toast } from '../ui/toast.js';
-import { confirmar } from '../ui/modal.js';
+import { confirmar, confirmarEscribiendo } from '../ui/modal.js';
 import { getState } from '../store.js';
 import { isAdmin } from '/js/auth.js';
-import { getMisEquipos, borrarEquipo, queHayEnEquipo } from '../data/teams.js';
+import {
+  getMisEquipos, borrarEquipo, borrarEquipoConHistorial, queHayEnEquipo,
+} from '../data/teams.js';
 import {
   getInvitaciones, invitar, retirar, problemaDelCorreo, estadoDe, normaliza,
 } from '../data/invitaciones.js';
@@ -62,6 +64,15 @@ export function render(root) {
        partidos NO se borra, se archiva. */
     const nodoEquipos = h('div', {});
 
+    /* Los chips de equipo del formulario de invitar. Se declara aquí
+       arriba porque los botones de borrar —que están más arriba en la
+       pantalla— tienen que poder repintarlos: al borrar un equipo su
+       chip se quedaba en el formulario, invitando a asignar gente a algo
+       que ya no existe. La función que los pinta se define abajo, con
+       `chipEquipo` y la selección, que es de donde salen. */
+    const chipsEquipos = h('div', { class: 'eq-catchips' });
+    let pintaChipsEquipos = () => {};
+
     function pintaEquipos() {
       mount(nodoEquipos,
         equipos.length
@@ -80,39 +91,70 @@ export function render(root) {
                   try { dentro = await queHayEnEquipo(t.id); }
                   catch (e) { toast('Error: ' + e.message, 'error'); return; }
 
-                  /* null = no se ha podido contar. No se bloquea —la policy de
-             la 033 rechaza igual lo que no se puede borrar— pero
-             tampoco se afirma que esté vacío. */
-          if (dentro.sesiones || dentro.partidos) {
-                    toast(`No se puede borrar: ${t.name} tiene `
-                      + [dentro.sesiones && `${dentro.sesiones} entrenamiento(s)`,
-                         dentro.partidos && `${dentro.partidos} partido(s)`].filter(Boolean).join(' y ')
-                      + '. Eso es el histórico del club.', 'error');
-                    return;
-                  }
-                  /* Los jugadores SÍ dejan borrar, pero se dicen: pegar la
-                     plantilla es lo primero que se hace al crear un equipo
-                     y también lo primero que se hace mal. */
+                  /* null = no se ha podido contar. No se afirma que esté
+                     vacío: se dice que no se sabe. */
                   const noSeSabe = dentro.sesiones === null || dentro.partidos === null;
-                  const conJugadores = dentro.jugadores
-                    ? ` Se borrarán también sus ${dentro.jugadores} jugador(es), sus horarios y sus objetivos.`
-                    : '';
+                  const conHistoria = !!(dentro.sesiones || dentro.partidos);
+
+                  const lleva = [
+                    dentro.sesiones && `${dentro.sesiones} entrenamiento${dentro.sesiones === 1 ? '' : 's'}, con su lista y su reflexión`,
+                    dentro.partidos && `${dentro.partidos} partido${dentro.partidos === 1 ? '' : 's'}, con su acta y sus estadísticas`,
+                    dentro.jugadores && `${dentro.jugadores} jugador${dentro.jugadores === 1 ? '' : 'es'}, con su progresión`,
+                    'los horarios, los objetivos y los ajustes del equipo',
+                  ].filter(Boolean);
+
+                  /* ── Sin historia: una confirmación basta ──────── */
+                  if (!conHistoria && !noSeSabe) {
+                    if (!(await confirmar({
+                      titulo: `Borrar ${t.name}`,
+                      mensaje: `Nunca ha entrenado ni jugado un partido.`
+                        + (dentro.jugadores ? ` Se borrarán también sus ${dentro.jugadores} jugador(es), sus horarios y sus objetivos.` : ''),
+                      textoOk: 'Borrar',
+                    }))) return;
+                    try {
+                      if (await borrarEquipo(t.id)) {
+                        equipos = equipos.filter((x) => x.id !== t.id);
+                        pintaEquipos(); pintaChipsEquipos();
+                        toast(`${t.name} borrado`);
+                        return;
+                      }
+                      // la policy lo ha rechazado: se sigue por la puerta larga
+                    } catch (e) { toast('Error: ' + e.message, 'error'); return; }
+                  }
+
+                  /* ── Con historia: dos puertas ─────────────────
+                     La primera avisa de lo que hay dentro. La segunda
+                     pide escribir el nombre, que es la única
+                     confirmación que de verdad frena: un segundo
+                     «¿seguro?» se pulsa con la misma inercia que el
+                     primero. */
                   if (!(await confirmar({
-                    titulo: `Borrar ${t.name}`,
+                    titulo: `Borrar ${t.name} y toda su historia`,
                     mensaje: noSeSabe
-                      ? 'No he podido comprobar qué tiene dentro. Si ha entrenado o jugado, la base de datos lo va a impedir.'
-                      : `Nunca ha entrenado ni jugado un partido.${conJugadores}`,
-                    textoOk: 'Borrar',
+                      ? 'No he podido comprobar qué tiene dentro, así que no puedo decirte qué se va a perder. '
+                        + 'Se borrará el equipo entero con todo lo que cuelgue de él.'
+                      : `${t.name} tiene historial en el club. Esto no se puede deshacer ni hay copia: `
+                        + 'lo que se borre no vuelve.',
+                    textoOk: 'Sí, quiero borrarlo',
                   }))) return;
+
+                  const escrito = await confirmarEscribiendo({
+                    titulo: `Borrar ${t.name} del todo`,
+                    nombre: t.name,
+                    queSeLleva: noSeSabe ? [] : lleva,
+                    aviso: 'No hay papelera ni deshacer.',
+                  });
+                  if (!escrito) return;
+
                   try {
-                    if (!(await borrarEquipo(t.id))) {
-                      toast('No se ha borrado: solo el administrador puede, y solo si no tiene historia', 'error');
-                      return;
-                    }
+                    const r = await borrarEquipoConHistorial(t.id, escrito);
                     equipos = equipos.filter((x) => x.id !== t.id);
-                    pintaEquipos();
-                    toast(`${t.name} borrado`);
-                  } catch (e) { toast('Error: ' + e.message, 'error'); }
+                    pintaEquipos(); pintaChipsEquipos();
+                    /* El recuento de lo borrado es el único recibo que
+                       queda de algo que no tiene vuelta atrás. */
+                    toast(`${r.nombre} borrado · ${r.sesiones} entrenamiento(s), `
+                      + `${r.partidos} partido(s) y ${r.jugadores} jugador(es)`);
+                  } catch (e) { toast(e.message, 'error'); }
                 },
               }, '×'),
             )))
@@ -145,6 +187,18 @@ export function render(root) {
         },
       }, t.name);
 
+      pintaChipsEquipos = () => {
+        /* Un equipo borrado no puede seguir seleccionado: la invitación
+           saldría con un id que ya no existe. */
+        for (const id of [...seleccion]) {
+          if (!equipos.some((t) => t.id === id)) seleccion.delete(id);
+        }
+        mount(chipsEquipos, ...(equipos.length
+          ? equipos.map(chipEquipo)
+          : [h('p', { class: 'eq-ayuda' }, 'Todavía no hay equipos que asignar.')]));
+      };
+      pintaChipsEquipos();
+
       const chipRol = (v, txt) => h('button', {
         class: 'eq-catchip' + (rol === v ? ' sel' : ''), type: 'button',
         onClick: (e) => {
@@ -164,9 +218,10 @@ export function render(root) {
         ),
         h('div', { class: 'field-group' },
           h('span', { class: 'field-label' }, 'Entra en estos equipos'),
-          equipos.length
-            ? h('div', { class: 'eq-catchips' }, ...equipos.map(chipEquipo))
-            : h('p', { class: 'eq-ayuda' }, 'Todavía no hay equipos que asignar.'),
+          /* En su propio nodo para poder repintarlo: al borrar un equipo
+             su chip se quedaba aquí, invitando a asignar gente a algo
+             que ya no existe. */
+          chipsEquipos,
         ),
         h('button', {
           class: 'btn btn-primary', type: 'button',
