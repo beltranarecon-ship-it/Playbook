@@ -54,12 +54,25 @@
 /* ── 1. Reglamento, en metros ──────────────────────────────── */
 
 export const REGLAS = {
-  largo: 28,               // fondo a fondo, por dentro de las líneas
-  ancho: 15,               // banda a banda
-  banda: 2,                // zona libre exterior (mínimo FIBA)
+  /* ── DE DÓNDE SALEN ESTOS NÚMEROS ────────────────────────
+     De MEDIR los cuatro SVG que dibujó el entrenador, no de las bases
+     de competición. Sus pistas están trazadas a 10 unidades por metro
+     sobre un lienzo en milímetros, y son ELLAS las que mandan: la app
+     no puede decir que un jugador está en la línea de fondo y pintarlo
+     medio metro más allá.
+
+     Se comprobó buscando las líneas negras en el propio dibujo: fondo
+     a fondo 240 u, banda a banda 140 u, y la línea de medio campo
+     exactamente en el centro. Dos medidas independientes confirman la
+     escala — la zona FIBA sale 49 u (4,90 m reglamentarios) y la de
+     minibasket 80 u (8,00 m). */
+  largo: 24,               // fondo a fondo, por dentro de las líneas
+  ancho: 14,               // banda a banda
+  banda: 2,                // banda LATERAL (la de fondo va aparte, ver MARCOS)
+  bandaFondo: 1.5,         // tras la línea de fondo
   linea: 0.05,             // grosor de las líneas de marcaje
 
-  aroRetranqueo: 1.575,    // fondo → centro del aro
+  aroRetranqueo: 1.215,    // fondo → centro del aro, medido sobre el dibujo
   aroRadio: 0.225,         // aro de 45 cm de diámetro
   tableroAncho: 1.80,
   tableroFrente: 1.20,     // fondo → cara delantera del tablero
@@ -100,10 +113,10 @@ export const TRIPLE_CORTE = REGLAS.aroRetranqueo
  * zona libre reglamentaria, es sitio para colocar filas y conos.
  */
 export const PISTAS_M = {
-  entera:      { largoVisible: 28, orientacion: 'retrato', triple: false, canastas: ['norte', 'sur'] },
-  entera_fiba: { largoVisible: 28, orientacion: 'retrato', triple: true,  canastas: ['norte', 'sur'] },
-  media:       { largoVisible: 14, orientacion: 'paisaje', triple: false, canastas: ['norte'] },
-  media_fiba:  { largoVisible: 14, orientacion: 'paisaje', triple: true,  canastas: ['norte'] },
+  entera:      { largoVisible: 24, orientacion: 'retrato', triple: false, canastas: ['norte', 'sur'] },
+  entera_fiba: { largoVisible: 24, orientacion: 'retrato', triple: true,  canastas: ['norte', 'sur'] },
+  media:       { largoVisible: 12, orientacion: 'paisaje', triple: false, canastas: ['norte'] },
+  media_fiba:  { largoVisible: 12, orientacion: 'paisaje', triple: true,  canastas: ['norte'] },
 };
 
 export const PISTA_POR_DEFECTO = 'entera';
@@ -114,13 +127,36 @@ export const PISTA_POR_DEFECTO = 'entera';
  *   `ancho`/`alto` = tamaño del lienzo entero (pista + banda), en metros.
  *   `aspect` = ancho/alto, que es lo que va a `--court-aspect`.
  */
+/**
+ * El lienzo de cada pista, EN METROS, tal y como está dibujado.
+ *
+ * ── POR QUÉ UNA TABLA Y NO UNA FÓRMULA ──────────────────────
+ * Antes el marco se calculaba: «pista + 2 m de banda por los cuatro
+ * lados». Los dibujos del entrenador no son así — llevan 2 m a los
+ * lados pero 1,5 tras la línea de fondo, y las medias enseñan además
+ * un trozo de pista MÁS ALLÁ del medio campo, distinto en cada una
+ * (4,5 m la mini, 3,5 la FIBA). Una fórmula que valga para las cuatro
+ * no existe, y forzarla movería las líneas de sitio.
+ *
+ * `antes` y `despues` son la banda a cada lado del LARGO: `antes` es la
+ * que queda tras la línea de fondo (donde está la canasta), `despues`
+ * la del otro extremo. En la entera son iguales; en las medias, no.
+ */
+const MARCOS = {
+  entera:      { antes: 1.5, despues: 1.5, lados: 2 },
+  entera_fiba: { antes: 1.5, despues: 1.5, lados: 2 },
+  media:       { antes: 1.5, despues: 4.5, lados: 2 },
+  media_fiba:  { antes: 1.5, despues: 3.5, lados: 2 },
+};
+
 export function marcoDe(pista) {
-  const p = PISTAS_M[pista] || PISTAS_M[PISTA_POR_DEFECTO];
-  const b = REGLAS.banda;
-  const largo = p.largoVisible + 2 * b;
-  const ancho = REGLAS.ancho + 2 * b;
+  const k = pista in PISTAS_M ? pista : PISTA_POR_DEFECTO;
+  const p = PISTAS_M[k];
+  const m = MARCOS[k];
+  const largo = p.largoVisible + m.antes + m.despues;
+  const ancho = REGLAS.ancho + 2 * m.lados;
   const [w, hh] = p.orientacion === 'retrato' ? [ancho, largo] : [largo, ancho];
-  return { ...p, ancho: w, alto: hh, aspect: w / hh };
+  return { ...p, ...m, ancho: w, alto: hh, aspect: w / hh };
 }
 
 /* ── 3. Coordenadas ────────────────────────────────────────── */
@@ -140,14 +176,16 @@ export function marcoDe(pista) {
 /** PISTA → MARCO. */
 export function pistaAMarco(pista, d, l, canasta = 'norte') {
   const m = marcoDe(pista);
-  const b = REGLAS.banda;
-  const eje = b + REGLAS.ancho / 2 + l;
+  const eje = m.lados + REGLAS.ancho / 2 + l;
   if (m.orientacion === 'retrato') {
     // 'sur' se refleja en Y, no se gira 180°: izquierda sigue siendo
     // izquierda en pantalla, igual que en las anclas anteriores.
-    return [eje, canasta === 'sur' ? b + REGLAS.largo - d : b + d];
+    // La canasta sur mide su profundidad desde SU línea de fondo, que
+    // es la de abajo: `antes` arriba y `despues` abajo son iguales en
+    // la entera, y la media solo tiene norte.
+    return [eje, canasta === 'sur' ? m.antes + m.largoVisible - d : m.antes + d];
   }
-  return [b + d, eje];
+  return [m.antes + d, eje];
 }
 
 /** MARCO → NORMAL. */
@@ -177,9 +215,8 @@ export function pistaANorm(pista, d, l, canasta = 'norte') {
  */
 export function limitesCancha(pista) {
   const m = marcoDe(pista);
-  const b = REGLAS.banda;
-  const largo = [b, b + m.largoVisible];
-  const ancho = [b, b + REGLAS.ancho];
+  const largo = [m.antes, m.antes + m.largoVisible];
+  const ancho = [m.lados, m.lados + REGLAS.ancho];
   const [ejeX, ejeY] = m.orientacion === 'retrato' ? [ancho, largo] : [largo, ancho];
   return { x: [ejeX[0] / m.ancho, ejeX[1] / m.ancho], y: [ejeY[0] / m.alto, ejeY[1] / m.alto] };
 }
@@ -296,7 +333,7 @@ export const MATERIAL = {
 };
 
 /** Radio de referencia: el del jugador en la entera con el lienzo a 600 px. */
-const RADIO_REFERENCIA = (TAMANOS.jugador / 2) * (600 / (REGLAS.ancho + 2 * REGLAS.banda));
+const RADIO_REFERENCIA = (TAMANOS.jugador / 2) * (600 / marcoDe('entera').ancho);
 
 /**
  * Un desplazamiento de `metros` en la dirección `grados` (0° = hacia la
