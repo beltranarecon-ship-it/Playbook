@@ -57,6 +57,11 @@ export function render(root, params) {
   let ajustes = { asistencia_activa: true, reflexion_activa: true };
   let jugadores = [], filasBD = [], densas = [];
   let preguntas = [], items = [];
+  /* ¿Hay ya algo guardado de esta sesión? Cambia lo que dicen los
+     botones: «Guardar» promete crear algo, y cuando ya existe lo que
+     de verdad se está haciendo es EDITAR lo guardado. Decirlo mal es
+     lo que hace dudar de si se va a duplicar o a machacar. */
+  let yaGuardado = false;
   let bloques = [], objetivosSesion = [];
   let itemsJug = [];   // preguntas de jugador (Tramo 3.11)
   /* Requisitos de las fichas del plan (Tramo 3.1). Aquí los minutos
@@ -365,11 +370,14 @@ export function render(root, params) {
         sesion.estado = 'programada';
       }
       sucio = false;
+      // se mira ANTES de marcarlo: si no, el primer guardado ya diría «cambios»
+      const eraEdicion = yaGuardado;
+      yaGuardado = true;
       if (cerrar) {
         toast('Sesión cerrada');
         router.navigate(`/sesiones?equipo=${sesion.team_id}`);
       } else {
-        toast('Guardado');
+        toast(eraEdicion ? 'Cambios guardados' : 'Guardado');
         pinta();
       }
     } catch (e) {
@@ -403,11 +411,18 @@ export function render(root, params) {
         }, 'Reabrir sesión') : null,
       ),
       h('div', { class: 'eq-planner-barra-sec' },
-        h('button', { class: 'btn btn-secondary', type: 'button', onClick: () => guardar() }, 'Guardar'),
+        /* Cuando ya hay algo guardado, el botón dice que se están
+           guardando CAMBIOS. Y si además la sesión está cerrada ya no
+           hay «guardar y cerrar», así que éste pasa a ser el principal:
+           un botón secundario solitario parece que no hace nada. */
+        h('button', {
+          class: (yaRealizada ? 'btn btn-primary eq-planner-guardar' : 'btn btn-secondary'),
+          type: 'button', onClick: () => guardar(),
+        }, yaGuardado || yaRealizada ? 'Guardar cambios' : 'Guardar'),
         yaRealizada ? null : h('button', {
           class: 'btn btn-primary eq-planner-guardar', type: 'button',
           onClick: () => guardar({ cerrar: true }),
-        }, 'Guardar y cerrar sesión'),
+        }, yaGuardado ? 'Guardar cambios y cerrar sesión' : 'Guardar y cerrar sesión'),
       ),
     );
   }
@@ -655,6 +670,9 @@ export function render(root, params) {
       }).catch(() => {});
       densas = filasDensas(jugadores, filasBD);
       items = plantillaEfectiva(preguntas, rs);
+      /* Con lista pasada o con reflexión escrita, ya hay algo guardado:
+         lo que se va a hacer es editarlo. */
+      if ((rs && rs.length) || (fbd && fbd.length) || sesion.estado === 'realizada') yaGuardado = true;
       // las de jugador (Tramo 3.11), una por pregunta y crío
       itemsJug = itemsDeJugador(preguntas, rs, jugadores.filter((j) => j.estado !== 'baja'));
 

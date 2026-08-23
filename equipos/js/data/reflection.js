@@ -110,35 +110,70 @@ export async function getRespuestasSesiones(sessionIds) {
   return out;
 }
 
+/* ¿Es el error de «ese ON CONFLICT no cuadra con ningún índice»? */
+const sinIndiceUnico = (error) => error?.code === '42P10'
+  || /no unique or exclusion constraint matching/i.test(error?.message || '');
+
+let sin036 = false;
+
+/**
+ * Escribe las respuestas. Con la 036 va de un upsert; sin ella, fila a
+ * fila.
+ *
+ * ── POR QUÉ HAY PLAN B ──────────────────────────────────────
+ * Porque la migración se aplica cuando el entrenador entra en Supabase,
+ * y entre que sale esta versión y eso pasa puede haber días. Perder la
+ * reflexión de una sesión durante esos días —que es lo que hacía el
+ * upsert roto, y encima con un error en inglés que no dice nada— es
+ * mucho peor que hacer tres peticiones en vez de una.
+ */
+async function escribir(filas) {
+  if (!sin036) {
+    const { error } = await supabase
+      .from('reflection_answers')
+      .upsert(filas, { onConflict: 'session_id,clave_snapshot,player_id' });
+    if (!error) return;
+    if (!sinIndiceUnico(error)) throw error;
+    sin036 = true;
+    console.warn('[reflexión] falta la migración 036; se guarda fila a fila.');
+  }
+  /* Sin índice al que apuntar: se mira si ya está y se actualiza o se
+     inserta. Es lo que haría el upsert, dicho a mano. */
+  for (const f of filas) {
+    let q = supabase.from('reflection_answers').select('id')
+      .eq('session_id', f.session_id).eq('clave_snapshot', f.clave_snapshot);
+    q = f.player_id ? q.eq('player_id', f.player_id) : q.is('player_id', null);
+    const { data, error } = await q.limit(1);
+    if (error) throw error;
+    if (data && data.length) {
+      const { error: e2 } = await supabase.from('reflection_answers')
+        .update({ valor_num: f.valor_num ?? null, valor_texto: f.valor_texto ?? null })
+        .eq('id', data[0].id);
+      if (e2) throw e2;
+    } else {
+      const { error: e3 } = await supabase.from('reflection_answers').insert(f);
+      if (e3) throw e3;
+    }
+  }
+}
+
 /**
  * Escribe las respuestas con contenido y borra las que se han vaciado
  * (una respuesta en blanco no existe: no deja fila).
  */
 export async function guardarRespuestas(sessionId, { aGuardar, aBorrar }) {
-  /* Dos upserts, porque hay dos índices únicos (migración 027): las
-     del EQUIPO chocan por (sesión, clave) y las de un JUGADOR por
-     (sesión, clave, jugador). Un solo `onConflict` no puede apuntar a
-     los dos, y el que sobrara duplicaría filas en silencio. */
+  /* Un solo upsert por las tres columnas (migración 036). Antes eran
+     dos, uno por cada índice PARCIAL de la 027, y ninguno de los dos
+     funcionaba: un `ON CONFLICT` solo puede resolverse contra un índice
+     parcial si la sentencia repite su predicado, y eso desde la API
+     REST no se puede mandar. La reflexión no se guardaba nunca. */
   if (sin027) {
     // sin la 027 no hay preguntas de jugador: lo suyo no se puede guardar
     aGuardar = (aGuardar || []).filter((r) => !r.player_id).map(({ player_id, ...r }) => r);
     aBorrar = (aBorrar || []).filter((b) => !(typeof b === 'object' && b.player_id));
   }
-  const equipo = (aGuardar || []).filter((r) => !r.player_id);
-  const dePlayer = (aGuardar || []).filter((r) => r.player_id);
-
-  if (equipo.length) {
-    const { error } = await supabase
-      .from('reflection_answers')
-      .upsert(equipo, { onConflict: 'session_id,clave_snapshot' });
-    if (error) throw error;
-  }
-  if (dePlayer.length) {
-    const { error } = await supabase
-      .from('reflection_answers')
-      .upsert(dePlayer, { onConflict: 'session_id,clave_snapshot,player_id' });
-    if (error) throw error;
-  }
+  const filas = aGuardar || [];
+  if (filas.length) await escribir(filas);
 
   /* Borrar es por clave Y jugador: sin lo segundo, dejar en blanco la
      respuesta de un crío borraría la de todos los demás. */

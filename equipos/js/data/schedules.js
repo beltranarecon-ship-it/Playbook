@@ -106,6 +106,14 @@ export async function guardarSlot(teamId, seasonId, slot) {
         .insert({ ...campos, team_id: teamId, season_id: seasonId, created_by: user.id });
   const { data, error } = await q.select().single();
   if (error) throw error;
+  /* Sin fila devuelta no hay nada que hacer con ella, y quien llama
+     necesita su `id` para generar los entrenamientos. Antes esto se
+     descubría más abajo con un «Cannot read properties of null», que
+     no le dice nada a nadie. */
+  if (!data) {
+    throw new Error('El horario no se ha guardado: la base de datos no ha devuelto la fila. '
+      + 'Vuelve a intentarlo; si sigue igual, comprueba que tienes permiso sobre este equipo.');
+  }
   return data;
 }
 
