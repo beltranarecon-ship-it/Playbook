@@ -99,7 +99,7 @@
 
   <script type="module">
     import {
-      redirectIfAuthenticated, login, entrarConGoogle, registrarse,
+      redirectIfAuthenticated, login, entrarConGoogle, registrarse, resultadoDeAlta,
       recuperarClave, mensajeDeAlta,
     } from '/js/auth.js';
 
@@ -203,8 +203,14 @@
       }
       setLoading(true);
       try {
-        await registrarse(email, password);
-        showOk('Cuenta creada. Si el club te pide confirmar el correo, míralo y vuelve.');
+        const data = await registrarse(email, password);
+        const { entra, ok, mensaje } = resultadoDeAlta(data);
+        (ok ? showOk : showError)(mensaje);
+        /* Si el alta ya trae sesión, la persona ESTÁ dentro: hay que
+           llevarla al inicio igual que hace el login. Antes se quedaba
+           en esta misma pantalla leyendo «cuenta creada», que es la
+           forma más segura de que piense que no ha funcionado. */
+        if (entra) { window.location.replace('/inicio'); return; }
         setLoading(false);
       } catch (err) {
         showError(mensajeDeAlta(err));

@@ -1,5 +1,10 @@
 import { supabase } from './supabase-client.js';
 
+/* Las dos funciones que deciden QUÉ SE LE DICE a quien se da de alta
+   viven en un módulo puro para poder comprobarlas con un banco Node.
+   Se reexportan desde aquí: quien las importaba sigue igual. */
+export { mensajeDeAlta, resultadoDeAlta } from './alta.js';
+
 const LOGIN_URL = '/index.html';
 /* Al entrar se abre el INICIO, no la biblioteca (§5.11: «pantalla de
    inicio con lo de hoy arriba del todo»). La biblioteca es una de las
@@ -64,18 +69,6 @@ export async function logout() {
    ============================================================ */
 
 /** El mensaje del disparador llega envuelto; se saca para poder enseñarlo. */
-export function mensajeDeAlta(error) {
-  const t = `${error?.message || ''}`;
-  if (t.includes('no está invitado')) {
-    return 'Este correo no está invitado al Playbook del club. Pídele al administrador que te añada.';
-  }
-  if (t.includes('already registered') || t.includes('User already registered')) {
-    return 'Ese correo ya tiene cuenta. Entra con tu contraseña o usa «¿No te acuerdas?».';
-  }
-  if (t.includes('Password should be')) return 'La contraseña tiene que tener al menos seis caracteres.';
-  return t || 'No se ha podido completar.';
-}
-
 /** Entrar con Google. Vuelve a la app; si el correo no está invitado, el alta falla. */
 export async function entrarConGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
