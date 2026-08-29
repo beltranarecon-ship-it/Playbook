@@ -229,18 +229,30 @@ export function render(root) {
             const problema = problemaDelCorreo(email.value, { yaEstan: invitaciones.map((i) => i.email) });
             if (problema) { toast(problema, 'error'); return; }
             try {
-              const nueva = await invitar({
+              const r = await invitar({
                 email: email.value, rol, equipos: [...seleccion], nombre: nombre.value,
               });
-              invitaciones = [nueva, ...invitaciones];
-              pintaInvitaciones();
-              toast(`Invitado ${normaliza(nueva.email)}`);
+              /* La invitación puede quedar guardada aunque el correo no
+                 salga, así que la lista se repinta siempre que haya
+                 fila, no solo cuando todo va bien. */
+              if (r.invitacion) {
+                invitaciones = [r.invitacion, ...invitaciones.filter((x) => x.id !== r.invitacion.id)];
+                pintaInvitaciones();
+                email.value = '';
+              }
+              /* El aviso dura más cuando hay algo que HACER: leer «el
+                 correo no ha salido, avísale tú» en tres segundos no da
+                 tiempo, y es justo el caso en que hay que reaccionar. */
+              if (!r.ok) toast(r.mensaje, 'error', 7000);
+              else if (r.estado === 'enviado') toast(r.mensaje, 'success');
+              else toast(r.mensaje, 'aviso', 9000);
             } catch (e) { toast('Error: ' + e.message, 'error'); }
           },
         }, 'Invitar'),
         h('p', { class: 'eq-ayuda' },
-          'No se crea ninguna contraseña: la persona entra con Google o se registra '
-          + 'con este correo y elige la suya. Un correo que no esté en esta lista no entra.'),
+          'Le llega un correo con un enlace para poner su contraseña. Nadie más la ve. '
+          + 'Si el correo no sale, la invitación vale igual: puede entrar con «Tengo '
+          + 'invitación y es mi primera vez». Un correo que no esté en esta lista no entra.'),
       );
 
       const fila = (i) => h('div', { class: 'eq-inv-fila' },

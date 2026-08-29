@@ -462,6 +462,11 @@
 }
 .toast-success::before { background: var(--success); }
 .toast-error::before   { background: var(--error); }
+/* Ni bien ni mal: ha pasado algo y hay que hacer una cosa. El caso que
+   lo pide es «la invitación está guardada pero el correo no ha salido»,
+   donde en verde el administrador no se entera y en rojo cree que no ha
+   invitado a nadie. Es el mismo naranja del acento, a propósito. */
+.toast-aviso::before   { background: var(--papaya); }
 
 /* ── Vista placeholder (sesiones) ───────────────────── */
 

@@ -127,6 +127,63 @@ Para que el login funcione desde Netlify (y no solo en local):
 
 ---
 
+### B5. Que la invitación llegue por correo
+
+Cuando añades un correo en `/admin`, a esa persona le llega un enlace para poner su
+contraseña. Eso lo hace `netlify/functions/invitar.mjs`, y necesita tres cosas.
+
+**1 · La clave de servicio, en Netlify (no en el código)**
+
+En Netlify: **Site configuration** → **Environment variables** → **Add a variable**.
+
+| Variable | De dónde sale |
+|---|---|
+| `SUPABASE_URL` | Supabase → Settings → API → *Project URL* |
+| `SUPABASE_SERVICE_ROLE` | Supabase → Settings → API → *service_role* (la secreta) |
+
+> ⚠️ Esa clave se salta todas las reglas de seguridad de la base. **Solo** va aquí,
+> nunca en `config.js` ni en ningún fichero del repositorio. Si alguna vez se
+> escapa, se rota desde el mismo sitio.
+
+Si ya configuraste los avisos push, estas dos variables ya están puestas.
+
+**2 · La dirección de vuelta, en la lista blanca**
+
+En Supabase → **Authentication** → **URL Configuration** → **Redirect URLs**, añade:
+
+```
+https://playbook-cbp.netlify.app/clave.html
+```
+
+Sin esto Supabase se niega a mandar el correo, y la app lo dirá con esas palabras:
+*«la dirección de vuelta no está en la lista blanca»*.
+
+**3 · Un servidor de correo de verdad**
+
+Supabase trae uno incluido, pero **es para probar**: limita los correos por hora y no
+garantiza la entrega. Para un club con veinte personas puede bastar al principio; si
+ves que los correos no llegan o tardan, configura uno propio en
+**Authentication** → **Emails** → **SMTP Settings** (Resend, Brevo y SendGrid tienen
+plan gratuito suficiente).
+
+En **Authentication** → **Emails** → **Templates** → *Invite user* puedes cambiar el
+texto del correo. El enlace lo pone Supabase; no lo toques.
+
+**Cómo saber si funcionó.** Al pulsar *Invitar* la app dice una de estas cuatro cosas,
+y cada una pide algo distinto:
+
+| Lo que dice | Qué ha pasado |
+|---|---|
+| «Invitación mandada a…» | Todo bien, no hay que hacer nada más |
+| «…pero el correo no ha salido (motivo)» | La invitación **vale igual**: avisa tú a esa persona, que entre con *«Tengo invitación y es mi primera vez»* |
+| «…ya tiene cuenta» | No hacía falta invitarla; que entre directamente |
+| «Solo el administrador puede invitar» | Estás con una cuenta de entrenador |
+
+En local (`python serve.py`) no hay funciones de Netlify, así que siempre saldrá el
+segundo mensaje: la invitación se guarda pero el correo no sale. Es lo esperado.
+
+---
+
 ## PARTE C — Comprobar que todo funciona (hito de Fase 1)
 
 Abre tu URL de Netlify en el móvil o el navegador y verifica que puedes:

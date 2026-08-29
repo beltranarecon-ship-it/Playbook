@@ -74,14 +74,36 @@
       err.textContent = msg; err.hidden = false; err.classList.toggle('ok', ok);
     };
 
-    /* Sin sesión de recuperación no hay nada que cambiar. Se dice antes
-       de que alguien teclee una contraseña que no se iba a guardar. */
+    /* ── De dónde viene quien está leyendo esto ────────────────
+       Los dos enlaces caen aquí y abren la misma sesión, pero no es la
+       misma situación: uno ha olvidado su contraseña y el otro NUNCA ha
+       tenido una. Decirle «nueva contraseña» a quien acaba de ser
+       invitado le hace buscar la vieja.
+
+       El marcador va en la URL de vuelta (`?nueva=1`, que pone la
+       función de invitar) y no en el `type=` de Supabase: para cuando
+       este script corre, supabase-js ya se ha llevado el fragmento de
+       la URL al crear la sesión. */
+    const esPrimera = new URLSearchParams(location.search).get('nueva') === '1';
+    if (esPrimera) {
+      document.querySelector('.auth-title .solid').textContent = 'Tu';
+      document.querySelector('.auth-title .ghost').textContent = 'contraseña';
+      document.querySelector('label[for="clave"]').textContent = 'Elige una contraseña';
+      sub.textContent = 'Bienvenido al club. Elige la contraseña con la que vas a entrar.';
+      document.title = 'Elige tu contraseña · Playbook CBP';
+    }
+
+    /* Sin sesión abierta por el enlace no hay nada que cambiar. Se dice
+       antes de que alguien teclee una contraseña que no se iba a
+       guardar. */
     (async () => {
       const s = await getSession();
       if (!s) {
         sub.textContent = 'Este enlace ya no vale.';
         form.hidden = true;
-        decir('Vuelve a pedir el correo desde la pantalla de entrar: los enlaces caducan.');
+        decir(esPrimera
+          ? 'Los enlaces de invitación caducan. Pídele al administrador que te invite otra vez.'
+          : 'Vuelve a pedir el correo desde la pantalla de entrar: los enlaces caducan.');
       }
     })();
 
