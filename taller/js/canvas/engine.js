@@ -6,12 +6,11 @@
    ============================================================ */
 
 import { makeSampler, easeInOut } from './geometry.js';
-import { drawArrow, drawBloqueo } from './arrows.js';
+import { drawArrow, drawBloqueo, MOV_TO_ARROW } from './arrows.js';
 import { drawPlayer, drawBall, drawCone, drawFila, drawPelotaTenis, drawEscalera, drawZona, radii } from './symbols.js';
 import { zonaDesdeGuardada, contornoDe, centroDe as centroZona } from './zonas.js';
 import { COLORS, TAU } from './colors.js';
 
-const MOV_TO_ARROW = { carrera_con_balon: 'run', carrera_sin_balon: 'cut', corte: 'cut' };
 const clone = (m) => { const o = {}; for (const k in m) o[k] = { ...m[k] }; return o; };
 const lastNode = (path) => (path && path.length ? { x: path[path.length - 1].x, y: path[path.length - 1].y } : null);
 const numLabel = (j) => (j.dorsal ?? (String(j.id).match(/\d+/)?.[0] ?? j.id));

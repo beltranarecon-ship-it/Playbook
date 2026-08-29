@@ -8,7 +8,7 @@
 
 import { h } from '../ui/dom.js';
 import { CourtView, clamp01 } from './court.js';
-import { drawArrow } from './arrows.js';
+import { drawArrow, MOV_TO_ARROW } from './arrows.js';
 import { drawPlayer, drawBall, drawCone, radii } from './symbols.js';
 import { flattenPath, manejadoresTangentes } from './geometry.js';
 import { COLORS, TAU } from './colors.js';
@@ -19,7 +19,6 @@ import { restPositions, reanclarPaths, nodosFijos } from './rest-positions.js';
 // compatibilidad con quien la importara desde este archivo.
 export { restPositions };
 
-const MOV_TO_ARROW = { carrera_con_balon: 'run', carrera_sin_balon: 'cut', corte: 'cut' };
 const numLabel = (j) => (j.dorsal ?? (String(j.id).match(/\d+/)?.[0] ?? j.id));
 
 export class EditorCanvas {

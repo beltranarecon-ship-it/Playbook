@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Los gestos en el sitio</title>
+<!--
+  Arnés de comprobación (dev). NO se sirve en producción.
+
+  Las cinco acciones nuevas de la familia `gesto`, cada una animándose
+  sola sobre media pista. Sirve para mirar lo único que un banco no
+  puede comprobar: si el trazo se LEE como una finta, un pivote o una
+  parada, o si parece un garabato.
+
+  Lo que define un gesto es que acaba donde empezó. La ficha no se
+  mueve de sitio: lo que se ve es el amago.
+-->
+<link rel="stylesheet" href="/taller/css/tokens.css">
+<link rel="stylesheet" href="/taller/css/base.css">
+<link rel="stylesheet" href="/taller/css/canvas.css">
+<style>
+  body { background:#0f1115; color:#dde; font:13px/1.5 system-ui,sans-serif; margin:0; padding:1.2rem }
+  h1 { font-size:.95rem; text-transform:uppercase; letter-spacing:.05em; color:#9ab; margin:0 0 1.4rem }
+  .rejilla { display:flex; gap:1.2rem; flex-wrap:wrap; align-items:flex-start }
+  figure { margin:0; width:560px }
+  /* La regla de escritorio de canvas.css fija el ALTO y deja el ancho
+     libre; en una columna estrecha como ésta el resultado es una pista
+     aplastada. Aquí manda el ancho, que es lo que hace falta para poder
+     mirar las cinco a la vez. */
+  .court { width:100% !important; height:auto !important }
+  figcaption { font:12px/1.4 ui-monospace,monospace; color:#8fb; margin-top:.4rem }
+  figcaption b { color:#dde; font-family:system-ui,sans-serif; font-size:13px; display:block }
+  figcaption span { color:#7a8899 }
+</style>
+</head>
+<body>
+<h1>Los gestos en el sitio · familia «gesto»</h1>
+<div class="rejilla" id="donde"></div>
+<script type="module">
+import { CourtView } from '/taller/js/canvas/court.js';
+import { AnimationEngine } from '/taller/js/canvas/engine.js';
+import { compilarAnimacion } from '/taller/js/ia/compilador.js';
+import { CATALOGO_SISTEMA } from '/taller/js/ia/acciones.js';
+
+const PISTA = 'media';
+/* Un jugador a media altura, lejos del aro, para que el amago se vea
+   sobre el parqué y no encima de las líneas de la zona. */
+const ELEMENTOS = [{ kind: 'jugador', equipo: 'A', label: '1', x: 0.52, y: 0.5, dorsal: 4 }];
+
+const gestos = CATALOGO_SISTEMA.filter((a) => a.familia === 'gesto');
+const donde = document.getElementById('donde');
+const hechos = [];
+
+for (const acc of gestos) {
+  const anim = compilarAnimacion(
+    { canasta: 'norte', fases: [{ eventos: [{ jugador: 'A1', accion: acc.slug, args: {} }] }] },
+    ELEMENTOS, PISTA);
+
+  const fig = document.createElement('figure');
+  const cap = document.createElement('figcaption');
+  cap.innerHTML = `<b>${acc.nombre}</b>`
+    + `<span>${acc.slug} · ${acc.parametros.simbolo_gesto} · `
+    + `${acc.parametros.amplitud} m · ${anim.fases[0].duracion_ms} ms</span>`;
+
+  const v = new CourtView({ pista: PISTA });
+  fig.appendChild(v.root);
+  fig.appendChild(cap);
+  donde.appendChild(fig);
+  hechos.push({ acc, anim, engine: new AnimationEngine(v, anim, { autoplay: true, loop: true }) });
+}
+
+/* Congela las cinco en el mismo punto de su fase. Un gesto dura 700 ms:
+   dejándolas correr, la captura pilla cada una en un sitio distinto y no
+   se pueden comparar. A 0,88 el trazo ya está entero. */
+window.congelar = (f = 0.88) => {
+  for (const h of hechos) {
+    h.engine.k = 0;
+    h.engine.phaseElapsed = h.engine._dur() * f;
+    h.engine.pause();
+  }
+  return f;
+};
+
+window.GESTOS = hechos.map((h) => ({
+  slug: h.acc.slug,
+  nodos: h.anim.fases[0].movimientos[0]?.path.length ?? 0,
+  simbolo: h.anim.fases[0].movimientos[0]?.tipo_movimiento,
+}));
+</script>
+</body>
+</html>

@@ -1,13 +1,29 @@
 /* ============================================================
-   arrows.js — los 4 tipos de flecha (§9.2). Reciben la polilínea
+   arrows.js — los tipos de flecha (§9.2). Reciben la polilínea
    ya convertida a píxeles y un factor de escala.
      run  = carrera con balón  (blanca sólida 4.5, punta rellena)
      pass = pase / tiro         (naranja punteada 3.5, punta rellena)
      cut  = corte sin balón     (blanca discontinua 65%, punta hueca)
+     gesto = gesto en el sitio  (blanca fina, va y vuelve, punta hueca)
      bloqueo = rectángulo perpendicular (pick)
    ============================================================ */
 
 import { COLORS } from './colors.js';
+
+/* ── El símbolo de cada movimiento ────────────────────────────
+   Vive AQUÍ, con los tipos que dibuja, y no copiado en cada lienzo.
+   Estaba escrito dos veces —engine.js y editor-canvas.js— con las
+   mismas tres entradas: añadir un símbolo nuevo en uno y olvidarlo en
+   el otro se ve como que la flecha aparece al animar y desaparece al
+   editar, que es de las cosas más difíciles de atribuir.
+
+   Lo que no esté en el mapa cae en `run`, que es el trazo neutro. */
+export const MOV_TO_ARROW = {
+  carrera_con_balon: 'run',
+  carrera_sin_balon: 'cut',
+  corte: 'cut',
+  gesto_en_sitio: 'gesto',
+};
 
 function arrowhead(ctx, from, to, size, { fill, stroke, lineWidth }) {
   const ang = Math.atan2(to.y - from.y, to.x - from.x);
@@ -27,6 +43,10 @@ const STYLE = {
   run:  { w: 4.5, dash: [],     color: COLORS.arrowRun,  alpha: 1,    head: 'fill' },
   pass: { w: 3.5, dash: [3, 4], color: COLORS.arrowPass, alpha: 1,    head: 'fill' },
   cut:  { w: 3.5, dash: [8, 5], color: COLORS.arrowRun,  alpha: 0.65, head: 'hollow' },
+  /* El gesto va y vuelve al mismo sitio, así que su trazo se cruza
+     consigo mismo: fino y sin discontinuo para que las dos patas se
+     distingan, y punta hueca porque no llega a ningún sitio nuevo. */
+  gesto: { w: 2.6, dash: [],    color: COLORS.arrowRun,  alpha: 0.85, head: 'hollow' },
 };
 
 export function drawArrow(ctx, pts, type, scale = 1) {

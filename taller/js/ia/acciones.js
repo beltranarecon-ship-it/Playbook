@@ -272,6 +272,61 @@ export const CATALOGO_SISTEMA = [
     pide: ['companero'],
     simbolo: 'carrera_sin_balon',
   }),
+
+  /* ── Gestos en el sitio ──────────────────────────────────────
+     La familia estaba declarada con todos sus parámetros desde el
+     Tramo 2.5 y sin una sola acción, así que no se podía escribir. Y
+     es media biblioteca de trabajo individual: el juego de pies, el
+     manejo y la protección del balón pasan enteros por aquí.
+
+     Lo que las define es que ACABAN DONDE EMPEZARON. El compilador no
+     mueve la posición del jugador: dibuja el amago y lo devuelve. Un
+     gesto que desplaza es un desplazamiento, y va en la otra familia.
+
+     La `amplitud` está en METROS, como todo lo demás desde el Tramo
+     2.4: 0,8 m de finta se ven igual de grandes en la pista entera y
+     en la media, que es justo lo que no pasaba cuando esto se medía
+     en unidades de lienzo. */
+  A({
+    slug: 'finta', nombre: 'Finta', familia: 'gesto', tag: 'finta',
+    sinonimos: ['amaga', 'amago', 'finta de salida', 'engaña', 'finta de tiro', 'jab'],
+    descripcion: 'Amaga hacia un lado y vuelve. No se desplaza: acaba donde empezó.',
+    parametros: { duracion_ms: 700, amplitud: 0.8, hacia: null, simbolo_gesto: 'amago' },
+    pide: [],
+    simbolo: 'gesto_en_sitio',
+  }),
+  A({
+    slug: 'pivota', nombre: 'Pivota', familia: 'gesto', tag: 'pivote',
+    sinonimos: ['pivote', 'pivotar', 'gira', 'giro', 'se abre', 'reverso'],
+    descripcion: 'Gira sobre el pie de pivote sin cambiar de sitio.',
+    parametros: { duracion_ms: 800, amplitud: 0.55, hacia: null, simbolo_gesto: 'giro' },
+    pide: [],
+    simbolo: 'gesto_en_sitio',
+  }),
+  A({
+    slug: 'cambia_de_mano', nombre: 'Cambia de mano', familia: 'gesto', tag: 'cambio de mano',
+    sinonimos: ['cambio de mano', 'cambio', 'cruza', 'entre las piernas', 'por la espalda'],
+    descripcion: 'Pasa el balón de una mano a la otra en el sitio.',
+    parametros: { duracion_ms: 600, amplitud: 0.7, hacia: null, simbolo_gesto: 'amago' },
+    pide: [],
+    simbolo: 'gesto_en_sitio',
+  }),
+  A({
+    slug: 'protege', nombre: 'Protege el balón', familia: 'gesto', tag: 'bote de protección',
+    sinonimos: ['protege', 'proteger', 'de espaldas', 'aguanta el balón', 'bote de protección'],
+    descripcion: 'Se pone de espaldas y aguanta el balón lejos del defensor, sin avanzar.',
+    parametros: { duracion_ms: 900, amplitud: 0.5, hacia: null, simbolo_gesto: 'giro' },
+    pide: [],
+    simbolo: 'gesto_en_sitio',
+  }),
+  A({
+    slug: 'para', nombre: 'Para', familia: 'gesto', tag: 'parada',
+    sinonimos: ['parada', 'parar', 'se para', 'frena', 'parada en dos tiempos', 'parada en salto'],
+    descripcion: 'Frena y se queda. Acaba donde llegó, que es de lo que va el gesto.',
+    parametros: { duracion_ms: 500, amplitud: 0.35, hacia: null, simbolo_gesto: 'ninguno' },
+    pide: [],
+    simbolo: 'gesto_en_sitio',
+  }),
 ];
 
 /** Los nueve eventos del motor anterior. El banco comprueba la cobertura. */

@@ -20,7 +20,7 @@
 
    Los dos llegan aquí resueltos a lo mismo: { jugador, accion,
    familia, params }. Desde el Tramo 2.6 este fichero NO conoce ni un
-   verbo de baloncesto — sabe resolver cinco familias:
+   verbo de baloncesto — sabe resolver estas familias:
 
      desplazamiento  lleva a alguien a un destino
      balon           pasa, tira, suelta o recoge
@@ -214,6 +214,11 @@ const TIEMPOS = {
   pase: { duracion_ms: 1100, pausa_post_ms: 500 },
   vuelve: { duracion_ms: 1200, pausa_post_ms: 200 },
   movimiento: { duracion_ms: 1500, pausa_post_ms: 400 },
+  /* Un gesto es corto por definicion: si dura lo que un desplazamiento
+     de quince metros, se lee como cámara lenta y no como una finta. La
+     pausa detras es minima porque lo que viene despues es la consecuencia
+     del amago y se tiene que encadenar. */
+  gesto: { duracion_ms: 700, pausa_post_ms: 250 },
 };
 
 /**
@@ -481,6 +486,91 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
         movimientos.push({ elemento_id: ev.jugador, tipo_elemento: 'jugador', tipo_movimiento: ev.accion.simbolo, path });
         pos.set(ev.jugador, { x: destino.x, y: destino.y });
 
+      } else if (ev.familia === 'gesto') {
+        /* ── El gesto acaba donde empezó ────────────────────────
+           Ésa es toda su definición, y por eso `pos` NO se toca: si
+           un gesto moviera al jugador, la fase siguiente saldría de
+           un sitio equivocado y el error se arrastraría hasta el
+           final del ejercicio sin que nada lo dijera.
+
+           La familia estaba declarada desde el Tramo 2.5 y el
+           compilador no la resolvía —repartía en tres ramas y su
+           propia cabecera decía que resolvía cinco—, así que una
+           finta o un pivote se compilaban a nada: la fase salía
+           vacía y el jugador se quedaba quieto sin explicación. */
+        const pedida = Number.isFinite(p.amplitud) ? p.amplitud : 0.8;
+        const gesto = String(p.simbolo_gesto || 'ninguno');
+
+        /* ── Por qué el amago no puede ser tan corto como en la vida ──
+           La ficha de un jugador se dibuja de 1,30 m de diámetro, que no
+           es su tamaño real (0,5 m de hombros) sino el que se lee en un
+           proyector desde el fondo de la cancha — está decidido así en
+           medidas.js. Un amago de verdad son 0,80 m, o sea que la punta
+           quedaba 15 cm fuera del disco: el trazo se dibujaba ENTERO
+           debajo de la ficha y no se veía nada. La primera versión de
+           esto compilaba bien, pasaba los bancos y en pantalla no
+           enseñaba absolutamente nada.
+
+           Así que el gesto sale, como poco, un radio de jugador más un
+           palmo. El parámetro sigue significando metros de verdad; lo
+           que hace el motor es garantizar que se VEA, igual que la ficha
+           se dibuja más grande de lo que mide una persona. */
+        const minimoVisible = TAMANOS.jugador / 2 + 0.35;      // 1,00 m
+        const amplitud = Math.max(pedida, minimoVisible);
+
+        /* Hacia dónde amaga. Con `hacia` puesto, hacia ahí; si no,
+           hacia la canasta, que es la referencia por defecto de todo
+           el compilador y lo que hace un jugador de verdad. */
+        let dir;
+        const objetivo = p.hacia ? destinoDe({ ...ev, params: { ...p, destino: p.hacia } }, jp) : null;
+        if (objetivo && (objetivo.x !== jp.x || objetivo.y !== jp.y)) {
+          dir = Math.atan2(objetivo.y - jp.y, objetivo.x - jp.x);
+        } else {
+          const aro = haciaCanasta(jp, basket, 1);
+          dir = Math.atan2(aro.y - jp.y, aro.x - jp.x);
+        }
+        if (!Number.isFinite(dir)) dir = 0;
+
+        const grados = (dir * 180) / Math.PI;
+        // en METROS: 0,8 m de finta se ven igual en las cuatro pistas
+        const ida = pasoNorm(pista, grados, amplitud);
+        /* La anchura del lazo también tiene que salir del disco, y por el
+           mismo motivo que el largo: si las dos patas del amago van a 42
+           cm del eje, quedan las dos dentro de la ficha y lo único que
+           asoma es la punta de la flecha.
+
+           `abre` es lo cerrado que va el lazo según el gesto —una parada
+           no se abre como una finta—, y el mínimo se aplica DESPUÉS de
+           él: si no, un gesto cerrado se comía el margen y volvía a
+           quedarse dentro de la ficha, que era el problema de partida. */
+        const abre = gesto === 'ninguno' ? 0.45 : 1;
+        const anchoLazo = Math.max(amplitud * 0.42 * abre, TAMANOS.jugador / 2 + 0.2);
+        const lado = pasoNorm(pista, grados + 90, anchoLazo);
+
+        const P = (dx, dy) => ({ x: clamp01(jp.x + dx), y: clamp01(jp.y + dy), tipo_nodo: 'lineal' });
+        let path;
+        if (gesto === 'giro') {
+          /* Un giro se lee como un lazo alrededor del jugador, no como
+             una ida y vuelta: cuatro puntos alrededor y cierra. */
+          path = [
+            P(0, 0), P(ida.dx * 0.6 + lado.dx, ida.dy * 0.6 + lado.dy),
+            P(ida.dx, ida.dy), P(ida.dx * 0.6 - lado.dx, ida.dy * 0.6 - lado.dy), P(0, 0),
+          ];
+        } else {
+          /* Ida y vuelta, con las dos patas separadas por el costado:
+             si fueran la misma recta se taparían y el amago no se
+             vería, que es todo lo que hay que enseñar. */
+          path = [
+            P(0, 0),
+            P(ida.dx * 0.5 + lado.dx, ida.dy * 0.5 + lado.dy),
+            P(ida.dx, ida.dy),
+            P(ida.dx * 0.5 - lado.dx, ida.dy * 0.5 - lado.dy),
+            P(0, 0),
+          ];
+        }
+        movimientos.push({ elemento_id: ev.jugador, tipo_elemento: 'jugador', tipo_movimiento: ev.accion.simbolo, path });
+        // `pos` NO se actualiza: es lo que hace que sea un gesto.
+
       } else if (ev.familia === 'entre_dos') {
         // El ROL cuenta siempre, se mueva o no: un defensor que no se
         // mueve esta fase sigue siendo defensor.
@@ -602,10 +692,17 @@ export function compilarAnimacion(intent, elementos = [], pista = 'entera', opts
       if (jpFin && !viajo) posBalon.set(bId, { x: jpFin.x, y: jpFin.y });
     }
 
-    // timing por prioridad: tiro > pase > vuelve a la fila > movimiento genérico
+    /* timing por prioridad: tiro > pase > vuelve a la fila > gesto solo >
+       movimiento genérico. El gesto va DESPUÉS de comprobar que no haya
+       nadie desplazándose: una fase donde uno finta y otro corta la pista
+       entera dura lo que tarda el que corre, no lo que dura la finta. */
+    const soloGestos = eventos.length > 0
+      && eventos.every((e) => e.familia === 'gesto' || e.familia === 'entre_dos');
+    const hayGesto = eventos.some((e) => e.familia === 'gesto');
     const t = tiros.length ? TIEMPOS.tiro
       : pases.length ? TIEMPOS.pase
       : eventos.some((e) => e.accion.slug === 'vuelve_a_fila') ? TIEMPOS.vuelve
+      : (hayGesto && soloGestos) ? TIEMPOS.gesto
       : TIEMPOS.movimiento;
     /* La cabecera de cada fase del paso 2 (Tramo 2.9) puede fijar su
        duración y su pausa. Si no lo hace —y no lo hace ninguna de las
