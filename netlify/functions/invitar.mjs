@@ -102,11 +102,39 @@ export default async function handler(req) {
   let cuerpo;
   try { cuerpo = await req.json(); } catch { cuerpo = null; }
   const email = normaliza(cuerpo?.email);
-  if (!ES_CORREO.test(email)) return JSONR({ ok: false, estado: 'fallo', motivo: 'Eso no parece un correo.' }, 400);
+  /* El tope va aparte de la expresión: `[^\s@]+` acepta un correo de
+     cien mil caracteres, y aunque Supabase lo rechazaría después, no
+     hay razón para llevarlo hasta allí. 254 es lo que permite el
+     estándar del correo (RFC 5321), así que no deja fuera a nadie.
+
+     El `\s` de la expresión, además, es lo que impide colar un salto de
+     línea en la dirección: sin él se podrían inyectar cabeceras en el
+     correo que se manda. */
+  if (email.length > 254 || !ES_CORREO.test(email)) {
+    return JSONR({ ok: false, estado: 'fallo', motivo: 'Eso no parece un correo.' }, 400);
+  }
 
   const rol = cuerpo?.rol === 'admin' ? 'admin' : 'coach';
-  const equipos = Array.isArray(cuerpo?.equipos) ? cuerpo.equipos.filter((e) => typeof e === 'string') : [];
-  const nombre = (typeof cuerpo?.nombre === 'string' && cuerpo.nombre.trim()) ? cuerpo.nombre.trim() : null;
+
+  /* `equipos` va a una columna uuid[] y de ahí, por el disparador, a
+     team_coaches. Se filtra por FORMA de uuid y no solo por «es texto»:
+     con una cadena cualquiera el upsert revienta con un error de casteo
+     de PostgreSQL que se le acaba enseñando al administrador tal cual, y
+     ese mensaje no le dice nada a nadie. Los que no valen se tiran en
+     silencio porque solo pueden venir de un error de la pantalla, no de
+     algo que alguien haya escrito. */
+  const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const equipos = Array.isArray(cuerpo?.equipos)
+    ? [...new Set(cuerpo.equipos.filter((e) => typeof e === 'string' && ES_UUID.test(e)))].slice(0, 50)
+    : [];
+
+  /* El nombre acaba en profiles.full_name y en el metadata de la cuenta.
+     Se recorta a algo que quepa en una pantalla: no hay ninguna persona
+     que se llame con 200 caracteres, y sin tope esto es texto libre
+     yendo a dos sitios distintos de la base. */
+  const nombre = (typeof cuerpo?.nombre === 'string' && cuerpo.nombre.trim())
+    ? cuerpo.nombre.trim().slice(0, 120)
+    : null;
 
   // ── 3. La invitación, ANTES del correo ────────────────────
   /* `upsert` y no `insert`: reinvitar a alguien que ya estaba en la
