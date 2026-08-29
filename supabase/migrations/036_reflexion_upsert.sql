@@ -21,46 +21,100 @@
 --
 -- ── EL ARREGLO ──────────────────────────────────────────────
 -- Un solo índice sobre las tres columnas, con NULLS NOT DISTINCT
--- (PostgreSQL 15+, que es lo que corre Supabase). Con esa cláusula dos
--- filas con el mismo (sesión, clave) y `player_id` NULL SÍ colisionan,
--- que era justo lo que los índices parciales conseguían por separado.
---
--- Y como ya no es parcial, el upsert puede apuntarle con las tres
--- columnas y vale para los dos casos: la respuesta del equipo y la de
--- cada jugador.
+-- (PostgreSQL 15+). Con esa cláusula dos filas con el mismo (sesión,
+-- clave) y `player_id` NULL SÍ colisionan, que era justo lo que los
+-- índices parciales conseguían por separado. Y como ya no es parcial,
+-- el upsert puede apuntarle con las tres columnas y vale para los dos
+-- casos: la respuesta del equipo y la de cada jugador.
 --
 -- Lo que se protege sigue siendo lo mismo: una respuesta por sesión,
 -- pregunta y jugador. No se relaja nada.
 --
--- Idempotente. Depende de: 015, 027.
+-- ── POR QUÉ ESTA VERSIÓN GRITA ──────────────────────────────
+-- La primera redacción, cuando no podía seguir, hacía RAISE NOTICE y se
+-- volvía. El editor SQL de Supabase NO enseña los NOTICE. Y la línea
+-- del COMMENT quedaba FUERA del bloque, así que se ejecutaba igual, no
+-- encontraba el índice y tiraba abajo la migración entera por una línea
+-- de documentación. Entre las dos cosas, correrla no dejaba ni el
+-- arreglo ni una explicación: solo un `false` en la comprobación.
+--
+-- Aquí todo lo que impide seguir es un RAISE EXCEPTION que dice en
+-- castellano qué pasa y qué hacer, y el COMMENT va dentro. Un error
+-- rojo que se entiende vale infinitamente más que un «Success» que
+-- miente.
+--
+-- Y al final hay un SELECT: al terminar se ve cómo ha quedado, sin
+-- tener que ir a comprobarlo aparte.
+--
+-- Idempotente: correrla dos veces no cambia nada la segunda.
+-- Depende de: 015 (reflection_answers), 027 (player_id), 035.
 -- ============================================================
 
-DO $$
+DO $bloque$
+DECLARE
+  v_version int := current_setting('server_version_num')::int;
+  v_repes   int;
 BEGIN
-  /* NULLS NOT DISTINCT es de PostgreSQL 15. Si la base fuese anterior,
-     mejor quedarse con los índices parciales de la 027 —que protegen
-     igual, aunque el upsert tenga que ir a mano— que quedarse SIN
-     índice, que es lo que dejaría duplicar respuestas. */
-  IF current_setting('server_version_num')::int < 150000 THEN
-    RAISE NOTICE 'PostgreSQL < 15: se dejan los índices parciales de la 027.';
-    RETURN;
+  -- ── 1. ¿Está la tabla, y con su columna? ──────────────────
+  IF to_regclass('public.reflection_answers') IS NULL THEN
+    RAISE EXCEPTION
+      'Falta la migración 015: no existe la tabla reflection_answers. Aplica la 015 y la 027 antes que ésta.';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name   = 'reflection_answers'
+       AND column_name  = 'player_id'
+  ) THEN
+    RAISE EXCEPTION
+      'Falta la migración 027: reflection_answers no tiene la columna player_id. Aplica la 027 antes que ésta.';
+  END IF;
+
+  -- ── 2. ¿La base es lo bastante nueva? ─────────────────────
+  /* NULLS NOT DISTINCT es de PostgreSQL 15. Antes no existe, y sin ella
+     este arreglo no se puede hacer. Que se sepa: NO hay que buscarle
+     otra vuelta. La app tiene plan B —guarda fila a fila— así que la
+     reflexión se guarda igual, solo que con más peticiones. */
+  IF v_version < 150000 THEN
+    RAISE EXCEPTION
+      'Esta base es PostgreSQL % y NULLS NOT DISTINCT necesita la 15. No hay nada que aplicar: la app se da cuenta sola y guarda fila a fila, que funciona igual. Se dejan los índices de la 027 como están.',
+      current_setting('server_version');
+  END IF;
+
+  -- ── 3. ¿Hay respuestas repetidas que impidan el índice? ───
+  /* Un índice ÚNICO no se puede crear sobre datos que ya se repiten, y
+     el error de Postgres («could not create unique index») no dice
+     cuáles son. Se cuentan antes para poder decirlo. GROUP BY trata los
+     NULL como iguales, que es justo lo que hará el índice. */
+  SELECT count(*) INTO v_repes FROM (
+    SELECT 1 FROM public.reflection_answers
+     GROUP BY session_id, clave_snapshot, player_id
+    HAVING count(*) > 1
+  ) AS d;
+
+  IF v_repes > 0 THEN
+    RAISE EXCEPTION
+      'Hay % pregunta(s) con más de una respuesta guardada; el índice único no se puede crear encima. Míralas con: SELECT session_id, clave_snapshot, player_id, count(*) FROM reflection_answers GROUP BY 1,2,3 HAVING count(*) > 1;',
+      v_repes;
+  END IF;
+
+  -- ── 4. Ahora sí ───────────────────────────────────────────
   DROP INDEX IF EXISTS public.reflection_answers_equipo;
   DROP INDEX IF EXISTS public.reflection_answers_jugador;
 
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes
-    WHERE schemaname = 'public' AND indexname = 'reflection_answers_una_por_pregunta'
-  ) THEN
+  IF to_regclass('public.reflection_answers_una_por_pregunta') IS NULL THEN
     CREATE UNIQUE INDEX reflection_answers_una_por_pregunta
       ON public.reflection_answers (session_id, clave_snapshot, player_id)
       NULLS NOT DISTINCT;
   END IF;
-END $$;
 
-COMMENT ON INDEX public.reflection_answers_una_por_pregunta IS
-  'Una respuesta por sesión, pregunta y jugador. NULLS NOT DISTINCT para que las del EQUIPO (player_id NULL) también colisionen entre sí, que es lo que permite el upsert (036).';
+  /* El COMMENT va DENTRO del bloque a propósito: fuera se ejecutaba
+     siempre, también cuando el índice no llegaba a existir. */
+  EXECUTE 'COMMENT ON INDEX public.reflection_answers_una_por_pregunta IS '
+    || quote_literal('Una respuesta por sesión, pregunta y jugador. NULLS NOT DISTINCT para que las del EQUIPO (player_id NULL) también colisionen entre sí, que es lo que permite el upsert (036).');
+END
+$bloque$;
 
 -- ── La función de borrado, sin depender de la 018 ───────────
 /* `borrar_temporada_del_todo` (035) borra tabla por tabla, y una de
@@ -69,16 +123,16 @@ COMMENT ON INDEX public.reflection_answers_una_por_pregunta IS
    public.session_slot_exclusions does not exist» y no se podía borrar
    NADA — ni siquiera lo que sí existía.
 
-   Ahora cada borrado va dentro de su propio bloque: si la tabla no
-   está, se salta y sigue. Una tabla que no existe no tiene filas que
-   estorben, así que saltársela es exactamente lo correcto. */
+   Ahora cada borrado mira antes si la tabla está. Una tabla que no
+   existe no tiene filas que estorben, así que saltársela es justo lo
+   correcto. */
 CREATE OR REPLACE FUNCTION public.borrar_temporada_del_todo(
   p_season_id uuid,
   p_confirmacion text
 ) RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER SET search_path = public
-AS $$
+AS $fn$
 DECLARE
   v_label text;
   v_ses int; v_par int; v_obj int;
@@ -122,7 +176,16 @@ BEGIN
   RETURN jsonb_build_object(
     'nombre', v_label, 'sesiones', v_ses, 'partidos', v_par, 'objetivos', v_obj);
 END;
-$$;
+$fn$;
 
 REVOKE ALL ON FUNCTION public.borrar_temporada_del_todo(uuid, text) FROM public;
 GRANT EXECUTE ON FUNCTION public.borrar_temporada_del_todo(uuid, text) TO authenticated;
+
+-- ── Y se dice cómo ha quedado ───────────────────────────────
+SELECT
+  current_setting('server_version') AS postgres,
+  to_regclass('public.reflection_answers_una_por_pregunta') IS NOT NULL
+    AS indice_036_puesto,
+  to_regclass('public.reflection_answers_equipo')      IS NOT NULL
+    OR to_regclass('public.reflection_answers_jugador') IS NOT NULL
+    AS quedan_los_parciales_de_la_027;

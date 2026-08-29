@@ -28,8 +28,15 @@ export const TABLA_DE = {
   acciones: { migracion: '020', para: 'el catálogo de acciones del taller' },
   videos_accion: { migracion: '021', para: 'los vídeos de las acciones' },
   session_stars: { migracion: '023', para: 'la estrella rápida de la sesión activa' },
-  rubrica_niveles: { migracion: '024', para: 'la rúbrica de progresión' },
-  objetivos_individuales: { migracion: '026', para: 'los objetivos de cada jugador' },
+  /* La 024 trae DOS tablas y la app lee las dos. Ojo con los nombres:
+     aquí estuvo escrito `rubrica_niveles`, que no existe en ninguna
+     migración — un nombre inventado nunca casa con el error, así que
+     esta entrada era decoración: jamás se habría explicado la 024. */
+  rubrica_filas: { migracion: '024', para: 'las filas de la rúbrica de progresión' },
+  rubrica_valores: { migracion: '024', para: 'la rúbrica de progresión' },
+  /* La 026 NO va aquí: no trae tabla, añade la columna
+     `objectives.player_id`. Eso no da «no existe la tabla», da un error
+     de columna, y `objectives.js` ya lo resuelve reintentando sin ella. */
   partido_estadisticas: { migracion: '028', para: 'el acta del partido' },
   clasificacion: { migracion: '029', para: 'la clasificación de la liga' },
   avisos: { migracion: '031', para: 'los avisos' },
