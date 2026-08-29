@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-09.mjs — tiro (Bloque D).
 
@@ -57,7 +58,7 @@ export const TANDA_09 = [
       fases: [
         { eventos: [
           { jugador: 'A1', tipo: 'tiro' },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.184, y: 0.4501 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.1458, y: 0.4508 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'recoge' }] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A1' }] },
@@ -88,21 +89,21 @@ export const TANDA_09 = [
       criterio_exito: 'llegar al cono tres o más manteniendo el gesto, sin ningún tiro empujado desde el pecho',
     },
     tablero: () => [
-      jug('A', 1, 0.2182, 0.5031), jug('A', 2, 0.184, 0.6092),
-      cono(0.2182, 0.5031), cono(0.2865, 0.5031), cono(0.3548, 0.5031), cono(0.4231, 0.5031), cono(0.4915, 0.5031),
-      balon(0.2182, 0.5031),
+      jug('A', 1, 0.1751, 0.5031), jug('A', 2, 0.1458, 0.6076),
+      cono(0.1751, 0.5031), cono(0.2337, 0.5031), cono(0.2922, 0.5031), cono(0.3508, 0.5031), cono(0.4094, 0.5031),
+      balon(0.1751, 0.5031),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         { eventos: [
           { jugador: 'A1', tipo: 'tiro' },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.1954, y: 0.5473 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.1556, y: 0.5466 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'recoge' }] },
         // anotó: sube un escalón y recibe en el cono siguiente
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2865, y: 0.5031 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2337, y: 0.5031 } },
           { jugador: 'A2', tipo: 'pase', a: 'A1' },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
@@ -135,7 +136,7 @@ export const TANDA_09 = [
       criterio_exito: 'cinco tiros con los pies orientados antes de recibir, tapado o no',
     },
     tablero: () => [
-      jug('A', 1, 0.1954, 0.7506),
+      jug('A', 1, 0.1556, 0.7469),
       jug('A', 2, M.base[0], M.base[1]),
       balon(M.base[0], M.base[1]),
     ],
@@ -183,8 +184,8 @@ export const TANDA_09 = [
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.332, y: 0.5473 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'fila1', hacia: { x: 0.3776, y: 0.5915 } },
+          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2727, y: 0.5466 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'fila1', hacia: { x: 0.3118, y: 0.5901 } },
         ] },
         { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
@@ -226,12 +227,12 @@ export const TANDA_09 = [
       fases: [
         { eventos: [
           { jugador: 'A2', tipo: 'corte', hacia: 'codo_der' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4004, y: 0.618 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3313, y: 0.6163 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
         { eventos: [
           { jugador: 'A2', tipo: 'tiro' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3548, y: 0.6269 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2922, y: 0.625 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'recoge' }] },
       ],
@@ -317,12 +318,12 @@ export const TANDA_09 = [
       fases: [
         { eventos: [
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2979, y: 0.618 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2434, y: 0.6163 } },
         ] },
         // el cierre llega descolocado: se ataca por el lado que deja
         { eventos: [
           { jugador: 'A2', tipo: 'bote', hacia: 'aro' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2409, y: 0.5915 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.1946, y: 0.5901 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
@@ -355,9 +356,9 @@ export const TANDA_09 = [
     // más lejos deja de ser una finalización con contacto y pasa a ser
     // un tiro de media distancia con alguien empujando, que no es esto.
     tablero: () => [
-      jug('A', 1, 0.1726, 0.5517), jug('B', 1, 0.1726, 0.6048),
+      jug('A', 1, 0.136, 0.5509), jug('B', 1, 0.136, 0.6032),
       jug('A', 2, M.poste_bajo_izq[0] + 0.03, M.poste_bajo_izq[1]),
-      balon(0.1726, 0.5517),
+      balon(0.136, 0.5509),
     ],
     intent: {
       canasta: 'norte',
@@ -405,10 +406,10 @@ export const TANDA_09 = [
       canasta: 'norte',
       fases: [
         // el defensor muerde la finta y sube; el tirador espera
-        { eventos: [{ jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3434, y: 0.3616 } }] },
+        { eventos: [{ jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2824, y: 0.3637 } }] },
         { eventos: [
           { jugador: 'A1', tipo: 'tiro' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3093, y: 0.3616 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2532, y: 0.3637 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'recoge' }] },
       ],
@@ -447,7 +448,7 @@ export const TANDA_09 = [
       fases: [
         { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
         { eventos: [{ jugador: 'A2', tipo: 'recoge' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: { x: 0.5897, y: 0.5 } }] },
+        { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: { x: 0.5884, y: 0.5 } }] },
         { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: 'codo_der' }] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },

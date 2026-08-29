@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-17.mjs — manejo y juego de pies (Bloque D).
 
@@ -50,9 +51,9 @@ export const TANDA_17 = [
       aplicacion: 'la recogida de un balón suelto en el juego, donde esa misma velocidad de manos decide de quién es la posesión',
     },
     tablero: () => [
-      jug('A', 1, 0.6509, 0.3086), jug('A', 3, 0.5142, 0.3086),
-      jug('A', 2, 0.6509, 0.6622), jug('A', 4, 0.5142, 0.6622),
-      balon(0.6509, 0.3086), balon(0.6509, 0.6622),
+      jug('A', 1, 0.546, 0.3114), jug('A', 3, 0.4288, 0.3114),
+      jug('A', 2, 0.546, 0.6598), jug('A', 4, 0.4288, 0.6598),
+      balon(0.546, 0.3114), balon(0.546, 0.6598),
     ],
     // Trabajo EN EL SITIO: no hay nada que desplazar, y una animación
     // inventada contaría un ejercicio que no es. Queda el montaje, que
@@ -83,36 +84,36 @@ export const TANDA_17 = [
       criterio_exito: 'sesenta segundos sin perder el balón, sin chocar y cambiando a la primera en todas las señales',
     },
     tablero: () => [
-      jug('A', 1, 0.332, 0.3263), jug('A', 2, 0.332, 0.6445), jug('A', 3, 0.5142, 0.3263),
-      jug('A', 4, 0.5142, 0.6445), jug('A', 5, 0.6509, 0.4854),
-      balon(0.332, 0.3263), balon(0.332, 0.6445), balon(0.5142, 0.3263), balon(0.5142, 0.6445), balon(0.6509, 0.4854),
+      jug('A', 1, 0.2727, 0.3289), jug('A', 2, 0.2727, 0.6424), jug('A', 3, 0.4288, 0.3289),
+      jug('A', 4, 0.4288, 0.6424), jug('A', 5, 0.546, 0.4856),
+      balon(0.2727, 0.3289), balon(0.2727, 0.6424), balon(0.4288, 0.3289), balon(0.4288, 0.6424), balon(0.546, 0.4856),
     ],
     intent: {
       canasta: null,
       fases: [
         // «¡de lado!» — todos deslizándose sin juntar los pies
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.332, y: 0.2379 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.332, y: 0.733 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.5142, y: 0.2379 } },
-          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.5142, y: 0.733 } },
-          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.6509, y: 0.397 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2727, y: 0.2418 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.2727, y: 0.7295 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.4288, y: 0.2418 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.4288, y: 0.7295 } },
+          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.546, y: 0.3985 } },
         ] },
         // «¡de espaldas!» — se retrocede con el bote protegido
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4915, y: 0.2732 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4915, y: 0.6976 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.6737, y: 0.2732 } },
-          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.6737, y: 0.6976 } },
-          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.7648, y: 0.4501 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4094, y: 0.2766 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4094, y: 0.6947 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.5656, y: 0.2766 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.5656, y: 0.6947 } },
+          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.6436, y: 0.4508 } },
         ] },
         // «¡de frente!» — y se cruza el espacio otra vez
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2865, y: 0.3616 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.2865, y: 0.6092 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.4459, y: 0.3616 } },
-          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.4459, y: 0.6092 } },
-          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.5826, y: 0.4854 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2337, y: 0.3637 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.2337, y: 0.6076 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.3703, y: 0.3637 } },
+          { jugador: 'A4', tipo: 'bote', hacia: { x: 0.3703, y: 0.6076 } },
+          { jugador: 'A5', tipo: 'bote', hacia: { x: 0.4875, y: 0.4856 } },
         ] },
       ],
     },
@@ -144,22 +145,22 @@ export const TANDA_17 = [
        último caía en 0,90 y el medio campo acaba en 0,829, así que el
        que volvía a la fila se salía de la pista. */
     tablero: () => [
-      fila(0.6053, 0.5031, 4, 0),
-      cono(0.5142, 0.4324, 'rodear'), cono(0.4004, 0.5738, 'rodear'),
-      jug('B', 1, 0.2637, 0.5031),
-      balon(0.6053, 0.5031),
+      fila(0.5069, 0.5031, 4, 0),
+      cono(0.4288, 0.4334, 'rodear'), cono(0.3313, 0.5727, 'rodear'),
+      jug('B', 1, 0.2141, 0.5031),
+      balon(0.5069, 0.5031),
     ],
     intent: {
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.332, y: 0.5561 } },
+          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2727, y: 0.5553 } },
           { jugador: 'fila1', tipo: 'rodea_cono', cono_id: 'el_cono_2' },
           { jugador: 'fila1', tipo: 'rodea_cono', cono_id: 'el_cono_3' },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.2637, y: 0.4501 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.2141, y: 0.4508 } },
         ] },
         // el brazo señala un lado: se sale por el contrario
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2182, y: 0.6269 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.1751, y: 0.625 } }] },
         { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },
@@ -188,25 +189,25 @@ export const TANDA_17 = [
       criterio_exito: 'menos de cinco pases perdidos del grupo en noventa segundos',
     },
     tablero: () => [
-      jug('A', 1, 0.3548, 0.3263), jug('A', 2, 0.3548, 0.6622), jug('A', 3, 0.6281, 0.5031),
-      jug('A', 4, 0.4915, 0.2732), jug('A', 5, 0.4915, 0.7153), jug('A', 6, 0.2637, 0.5031),
-      balon(0.3548, 0.3263), balon(0.3548, 0.6622), balon(0.6281, 0.5031),
+      jug('A', 1, 0.2922, 0.3289), jug('A', 2, 0.2922, 0.6598), jug('A', 3, 0.5265, 0.5031),
+      jug('A', 4, 0.4094, 0.2766), jug('A', 5, 0.4094, 0.7121), jug('A', 6, 0.2141, 0.5031),
+      balon(0.2922, 0.3289), balon(0.2922, 0.6598), balon(0.5265, 0.5031),
     ],
     intent: {
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A4', tipo: 'corte', hacia: { x: 0.5826, y: 0.3086 } },
-          { jugador: 'A5', tipo: 'corte', hacia: { x: 0.4004, y: 0.7683 } },
-          { jugador: 'A6', tipo: 'corte', hacia: { x: 0.2409, y: 0.397 } },
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4231, y: 0.3793 } },
+          { jugador: 'A4', tipo: 'corte', hacia: { x: 0.4875, y: 0.3114 } },
+          { jugador: 'A5', tipo: 'corte', hacia: { x: 0.3313, y: 0.7643 } },
+          { jugador: 'A6', tipo: 'corte', hacia: { x: 0.1946, y: 0.3985 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3508, y: 0.3811 } },
         ] },
         // A4 levanta la mano y el balón sale en menos de un segundo
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A4' }] },
         { eventos: [
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4459, y: 0.6622 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.5598, y: 0.4501 } },
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.332, y: 0.4324 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.3703, y: 0.6598 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.4679, y: 0.4508 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2727, y: 0.4334 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A5' }] },
       ],
@@ -236,26 +237,26 @@ export const TANDA_17 = [
       criterio_exito: 'aguantar los treinta segundos sin que le saquen el balón más de una vez',
     },
     tablero: () => [
-      jug('A', 1, 0.4459, 0.3263), jug('B', 1, 0.537, 0.3263),
-      jug('A', 2, 0.4459, 0.6622), jug('B', 2, 0.537, 0.6622),
-      cono(0.3776, 0.2732), cono(0.6053, 0.2732), cono(0.3776, 0.397), cono(0.6053, 0.397),
-      cono(0.3776, 0.6092), cono(0.6053, 0.6092), cono(0.3776, 0.733), cono(0.6053, 0.733),
-      balon(0.4459, 0.3263), balon(0.4459, 0.6622),
+      jug('A', 1, 0.3703, 0.3289), jug('B', 1, 0.4484, 0.3289),
+      jug('A', 2, 0.3703, 0.6598), jug('B', 2, 0.4484, 0.6598),
+      cono(0.3118, 0.2766), cono(0.5069, 0.2766), cono(0.3118, 0.3985), cono(0.5069, 0.3985),
+      cono(0.3118, 0.6076), cono(0.5069, 0.6076), cono(0.3118, 0.7295), cono(0.5069, 0.7295),
+      balon(0.3703, 0.3289), balon(0.3703, 0.6598),
     ],
     intent: {
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4231, y: 0.3793 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.5028, y: 0.3705 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4231, y: 0.7153 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.5028, y: 0.7064 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3508, y: 0.3811 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4191, y: 0.3724 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.3508, y: 0.7121 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4191, y: 0.7033 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.537, y: 0.2909 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4573, y: 0.2998 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.537, y: 0.6269 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4573, y: 0.6357 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4484, y: 0.294 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3801, y: 0.3028 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4484, y: 0.625 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3801, y: 0.6337 } },
         ] },
       ],
     },
@@ -287,14 +288,14 @@ export const TANDA_17 = [
       aplicacion: 'el tiro tras bote con parada, donde esa misma parada es lo que permite que el tiro salga equilibrado',
     },
     tablero: () => [
-      fila(0.6509, 0.4501, 4, 0),
-      cono(0.3776, 0.4501),
-      balon(0.6509, 0.4501),
+      fila(0.546, 0.4508, 4, 0),
+      cono(0.3118, 0.4508),
+      balon(0.546, 0.4508),
     ],
     intent: {
       canasta: null,
       fases: [
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.4004, y: 0.4501 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.3313, y: 0.4508 } }] },
         { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },
@@ -323,19 +324,19 @@ export const TANDA_17 = [
       criterio_exito: 'seis paradas con la que tocaba y sin arrastrar el pie de pivote',
     },
     tablero: () => [
-      fila(0.6509, 0.5561, 4, 0),
-      jug('B', 1, 0.332, 0.5031),
-      cono(0.4004, 0.5561),
-      balon(0.6509, 0.5561),
+      fila(0.546, 0.5553, 4, 0),
+      jug('B', 1, 0.2727, 0.5031),
+      cono(0.3313, 0.5553),
+      balon(0.546, 0.5553),
     ],
     intent: {
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.4231, y: 0.5561 } },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.332, y: 0.5561 } },
+          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.3508, y: 0.5553 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.2727, y: 0.5553 } },
         ] },
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.4459, y: 0.6622 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.3703, y: 0.6598 } }] },
         { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },
@@ -364,26 +365,26 @@ export const TANDA_17 = [
       criterio_exito: 'las cuatro repeticiones con pivote hacia atrás, sin pasos y terminando con el balón fuera del alcance del defensor',
     },
     tablero: () => [
-      jug('A', 1, 0.5142, 0.3263), jug('B', 1, 0.4459, 0.3263),
-      jug('A', 2, 0.5142, 0.6622), jug('B', 2, 0.4459, 0.6622),
-      balon(0.5142, 0.3263), balon(0.5142, 0.6622),
+      jug('A', 1, 0.4288, 0.3289), jug('B', 1, 0.3703, 0.3289),
+      jug('A', 2, 0.4288, 0.6598), jug('B', 2, 0.3703, 0.6598),
+      balon(0.4288, 0.3289), balon(0.4288, 0.6598),
     ],
     intent: {
       canasta: null,
       fases: [
         // se pivota hacia atrás: el balón se aleja del defensor
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.5826, y: 0.2909 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.5142, y: 0.2998 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.5826, y: 0.6976 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.5142, y: 0.6887 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.4875, y: 0.294 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4288, y: 0.3028 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.4875, y: 0.6947 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4288, y: 0.6859 } },
         ] },
         // y solo entonces se abre el ángulo hacia un lado
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.6053, y: 0.3793 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.537, y: 0.3616 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.6053, y: 0.6092 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.537, y: 0.6269 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.5069, y: 0.3811 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4484, y: 0.3637 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.5069, y: 0.6076 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4484, y: 0.625 } },
         ] },
       ],
     },
@@ -420,10 +421,10 @@ export const TANDA_17 = [
       canasta: 'norte',
       fases: [
         // el defensor compra la finta y se abre a ese lado
-        { eventos: [{ jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.332, y: 0.6799 } }] },
+        { eventos: [{ jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2727, y: 0.6772 } }] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3093, y: 0.5385 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3093, y: 0.6269 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2532, y: 0.5379 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2532, y: 0.625 } },
         ] },
       ],
     },
@@ -452,16 +453,16 @@ export const TANDA_17 = [
       criterio_exito: 'dos vueltas con menos de dos errores según el compañero',
     },
     tablero: () => [
-      fila(0.6964, 0.3263, 3, 0),
-      cono(0.6964, 0.3263), cono(0.6964, 0.6799), cono(0.3548, 0.6799), cono(0.3548, 0.3263),
-      balon(0.6964, 0.3263),
+      fila(0.585, 0.3289, 3, 0),
+      cono(0.585, 0.3289), cono(0.585, 0.6772), cono(0.2922, 0.6772), cono(0.2922, 0.3289),
+      balon(0.585, 0.3289),
     ],
     intent: {
       canasta: null,
       fases: [
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.6964, y: 0.6622 } }] },
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.3776, y: 0.6799 } }] },
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.3548, y: 0.344 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.585, y: 0.6598 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.3118, y: 0.6772 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2922, y: 0.3463 } }] },
         { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
       ],
     },

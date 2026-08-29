@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-13.mjs — pase y recepción (Bloque D).
 
@@ -55,14 +56,14 @@ export const TANDA_13 = [
       fases: [
         // el defensor del receptor está en la línea: NO hay pase, se espera
         { eventos: [
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3548, y: 0.4058 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.332, y: 0.6269 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2922, y: 0.4072 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2727, y: 0.625 } },
         ] },
         // el receptor no se abre: sin bote, el hueco bueno está DENTRO,
         // y cortando saca al defensor de la línea de paso
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2409, y: 0.3793 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2979, y: 0.3616 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.1946, y: 0.3811 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2434, y: 0.3637 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
@@ -94,21 +95,21 @@ export const TANDA_13 = [
       aplicacion: 'el rondo 4c2, donde esa misma elección hay que hacerla con dos defensores moviéndose',
     },
     tablero: () => [
-      jug('A', 1, 0.6964, 0.3086), jug('A', 3, 0.4231, 0.3086), jug('B', 1, 0.5598, 0.3086),
-      jug('A', 2, 0.6964, 0.6445), jug('A', 4, 0.4231, 0.6445), jug('B', 2, 0.5598, 0.6445),
-      balon(0.6964, 0.3086), balon(0.6964, 0.6445),
+      jug('A', 1, 0.585, 0.3114), jug('A', 3, 0.3508, 0.3114), jug('B', 1, 0.4679, 0.3114),
+      jug('A', 2, 0.585, 0.6424), jug('A', 4, 0.3508, 0.6424), jug('B', 2, 0.4679, 0.6424),
+      balon(0.585, 0.3114), balon(0.585, 0.6424),
     ],
     intent: {
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.5712, y: 0.2909 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.5712, y: 0.6622 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4777, y: 0.294 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.4777, y: 0.6598 } },
           { jugador: 'A1', tipo: 'pase', a: 'A3' },
         ] },
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.5484, y: 0.3263 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.5484, y: 0.6269 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4582, y: 0.3289 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.4582, y: 0.625 } },
           { jugador: 'A3', tipo: 'pase', a: 'A1' },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A4' }] },
@@ -139,24 +140,24 @@ export const TANDA_13 = [
       criterio_exito: 'el intruso acierta menos de una de cada cuatro veces a quién va el pase',
     },
     tablero: () => [
-      jug('A', 1, 0.2637, 0.3086), jug('A', 2, 0.2637, 0.6976),
-      jug('A', 3, 0.6281, 0.3086), jug('A', 4, 0.6281, 0.6976),
-      jug('B', 1, 0.4459, 0.5031),
-      balon(0.2637, 0.3086),
+      jug('A', 1, 0.2141, 0.3114), jug('A', 2, 0.2141, 0.6947),
+      jug('A', 3, 0.5265, 0.3114), jug('A', 4, 0.5265, 0.6947),
+      jug('B', 1, 0.3703, 0.5031),
+      balon(0.2141, 0.3114),
     ],
     intent: {
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3548, y: 0.4324 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.2922, y: 0.4334 } },
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
         ] },
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3776, y: 0.6092 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3118, y: 0.6076 } },
           { jugador: 'A2', tipo: 'pase', a: 'A4' },
         ] },
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.537, y: 0.6092 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4484, y: 0.6076 } },
           { jugador: 'A4', tipo: 'pase', a: 'A3' },
         ] },
       ],
@@ -191,22 +192,22 @@ export const TANDA_13 = [
       criterio_exito: 'tres de cada cuatro viajes se completan sin que nadie frene ni bote',
     },
     tablero: () => [
-      jug('A', 1, 0.5004, 0.7734), jug('A', 2, 0.1971, 0.7734), jug('A', 3, 0.8037, 0.7734),
-      balon(0.5004, 0.7734),
+      jug('A', 1, 0.5004, 0.7777), jug('A', 2, 0.2016, 0.7777), jug('A', 3, 0.7992, 0.7777),
+      balon(0.5004, 0.7777),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.5004, y: 0.5911 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.1971, y: 0.5729 } },
-          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.8037, y: 0.5729 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.5004, y: 0.5925 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2016, y: 0.5741 } },
+          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.7992, y: 0.5741 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2328, y: 0.3724 } },
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.5004, y: 0.3724 } },
-          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.7681, y: 0.3724 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2368, y: 0.3704 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.5004, y: 0.3704 } },
+          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.7641, y: 0.3704 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: 'aro' }] },
@@ -239,7 +240,7 @@ export const TANDA_13 = [
     },
     tablero: () => [
       jug('A', 1, M.escolta_der[0], M.escolta_der[1]),
-      jug('A', 2, 0.2409, 0.2379),
+      jug('A', 2, 0.1946, 0.2418),
       jug('B', 1, M.codo_der[0] - 0.02, M.codo_der[1] - 0.02),
       balon(M.escolta_der[0], M.escolta_der[1]),
     ],
@@ -247,11 +248,11 @@ export const TANDA_13 = [
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.332, y: 0.5738 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2865, y: 0.5561 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2727, y: 0.5727 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2337, y: 0.5553 } },
         ] },
         // el compañero se mueve a buscar línea, no espera
-        { eventos: [{ jugador: 'A2', tipo: 'corte', hacia: { x: 0.332, y: 0.2556 } }] },
+        { eventos: [{ jugador: 'A2', tipo: 'corte', hacia: { x: 0.2727, y: 0.2592 } }] },
         // la repetición termina en el pase: lo que se entrena es salir
         // del bote, no lo que pase después
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
@@ -284,26 +285,26 @@ export const TANDA_13 = [
       criterio_exito: 'el balón entra en tres de cada cuatro saques sin que la defensa lo toque',
     },
     tablero: () => [
-      jug('A', 1, 0.4459, 0.8744), jug('A', 2, M.codo_der[0], M.codo_der[1]), jug('A', 3, M.base[0], M.base[1]),
-      jug('B', 1, 0.4459, 0.8214), jug('B', 2, M.codo_der[0] - 0.04, M.codo_der[1] - 0.03), jug('B', 3, M.base[0] - 0.05, M.base[1]),
-      balon(0.4459, 0.8744),
+      jug('A', 1, 0.3703, 0.8689), jug('A', 2, M.codo_der[0], M.codo_der[1]), jug('A', 3, M.base[0], M.base[1]),
+      jug('B', 1, 0.3703, 0.8166), jug('B', 2, M.codo_der[0] - 0.04, M.codo_der[1] - 0.03), jug('B', 3, M.base[0] - 0.05, M.base[1]),
+      balon(0.3703, 0.8689),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2637, y: 0.6622 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2979, y: 0.6445 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4459, y: 0.8302 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2141, y: 0.6598 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2434, y: 0.6424 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3703, y: 0.8253 } },
         ] },
         // se vende el corte hacia dentro y se sale a buscar el balón;
         // el segundo receptor también se mueve, porque un receptor
         // parado no da línea y el saque se queda sin opciones
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.4004, y: 0.7506 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.332, y: 0.6976 } },
-          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.4915, y: 0.6092 } },
-          { jugador: 'B3', tipo: 'defiende', marca: 'A3', hacia: { x: 0.4345, y: 0.5915 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.3313, y: 0.7469 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2727, y: 0.6947 } },
+          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.4094, y: 0.6076 } },
+          { jugador: 'B3', tipo: 'defiende', marca: 'A3', hacia: { x: 0.3605, y: 0.5901 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
       ],
@@ -342,8 +343,8 @@ export const TANDA_13 = [
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2409, y: 0.4324 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2865, y: 0.3882 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.1946, y: 0.4334 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2337, y: 0.3899 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
@@ -376,10 +377,10 @@ export const TANDA_13 = [
       criterio_exito: 'el equipo baja su número de pases entre la primera ronda y la última',
     },
     tablero: () => [
-      jug('A', 1, 0.215, 0.8281), jug('A', 2, 0.215, 0.5547), jug('A', 3, 0.215, 0.263),
-      jug('A', 4, 0.5004, 0.8281), jug('A', 5, 0.5004, 0.5547), jug('A', 6, 0.5004, 0.263),
-      jug('A', 7, 0.7859, 0.8281), jug('A', 8, 0.7859, 0.5547), jug('A', 9, 0.7859, 0.263),
-      balon(0.215, 0.8281), balon(0.5004, 0.8281), balon(0.7859, 0.8281),
+      jug('A', 1, 0.2192, 0.8333), jug('A', 2, 0.2192, 0.5556), jug('A', 3, 0.2192, 0.2592),
+      jug('A', 4, 0.5004, 0.8333), jug('A', 5, 0.5004, 0.5556), jug('A', 6, 0.5004, 0.2592),
+      jug('A', 7, 0.7817, 0.8333), jug('A', 8, 0.7817, 0.5556), jug('A', 9, 0.7817, 0.2592),
+      balon(0.2192, 0.8333), balon(0.5004, 0.8333), balon(0.7817, 0.8333),
     ],
     intent: {
       canasta: null,
@@ -387,17 +388,17 @@ export const TANDA_13 = [
         // el receptor SALE a buscar el balón: esperarlo parado es lo
         // que obliga a dar dos pases donde cabía uno
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.215, y: 0.6276 } },
-          { jugador: 'A5', tipo: 'corte', hacia: { x: 0.5004, y: 0.6276 } },
-          { jugador: 'A8', tipo: 'corte', hacia: { x: 0.7859, y: 0.6276 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2192, y: 0.6296 } },
+          { jugador: 'A5', tipo: 'corte', hacia: { x: 0.5004, y: 0.6296 } },
+          { jugador: 'A8', tipo: 'corte', hacia: { x: 0.7817, y: 0.6296 } },
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
           { jugador: 'A4', tipo: 'pase', a: 'A5' },
           { jugador: 'A7', tipo: 'pase', a: 'A8' },
         ] },
         { eventos: [
-          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.215, y: 0.3542 } },
-          { jugador: 'A6', tipo: 'corte', hacia: { x: 0.5004, y: 0.3542 } },
-          { jugador: 'A9', tipo: 'corte', hacia: { x: 0.7859, y: 0.3542 } },
+          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.2192, y: 0.3519 } },
+          { jugador: 'A6', tipo: 'corte', hacia: { x: 0.5004, y: 0.3519 } },
+          { jugador: 'A9', tipo: 'corte', hacia: { x: 0.7817, y: 0.3519 } },
           { jugador: 'A2', tipo: 'pase', a: 'A3' },
           { jugador: 'A5', tipo: 'pase', a: 'A6' },
           { jugador: 'A8', tipo: 'pase', a: 'A9' },
@@ -429,26 +430,26 @@ export const TANDA_13 = [
       criterio_exito: 'batir el récord de pases seguidos del grupo al menos una vez por serie',
     },
     tablero: () => [
-      jug('A', 1, 0.332, 0.344), jug('A', 2, 0.332, 0.6622), jug('A', 3, 0.6509, 0.5031),
-      jug('B', 1, 0.4459, 0.4677),
-      balon(0.332, 0.344),
+      jug('A', 1, 0.2727, 0.3463), jug('A', 2, 0.2727, 0.6598), jug('A', 3, 0.546, 0.5031),
+      jug('B', 1, 0.3703, 0.4682),
+      balon(0.2727, 0.3463),
     ],
     intent: {
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.4459, y: 0.7153 } },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4004, y: 0.4147 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.3703, y: 0.7121 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3313, y: 0.416 } },
           { jugador: 'A1', tipo: 'pase', a: 'A3' },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2637, y: 0.4501 } },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.537, y: 0.5031 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2141, y: 0.4508 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4484, y: 0.5031 } },
           { jugador: 'A3', tipo: 'pase', a: 'A2' },
         ] },
         { eventos: [
-          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.6053, y: 0.3616 } },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4687, y: 0.6092 } },
+          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.5069, y: 0.3637 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3898, y: 0.6076 } },
           { jugador: 'A2', tipo: 'pase', a: 'A1' },
         ] },
       ],

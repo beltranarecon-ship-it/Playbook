@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-04.mjs — pase, entrada, juego de dos y contraataque.
 
@@ -80,10 +81,10 @@ export const TANDA_04 = [
       criterio_exito: 'el receptor no tiene que frenar en cuatro de cada cinco pases',
     },
     tablero: () => [
-      jug('A', 1, E.esquina_der[0], 0.901),
-      jug('A', 2, E.alero_izq[0], 0.6823),
+      jug('A', 1, E.esquina_der[0], 0.9074),
+      jug('A', 2, E.alero_izq[0], 0.6852),
       jug('B', 1, E.centro[0], E.centro[1]),
-      balon(E.esquina_der[0], 0.901),
+      balon(E.esquina_der[0], 0.9074),
     ],
     intent: {
       canasta: 'norte',
@@ -119,10 +120,10 @@ export const TANDA_04 = [
       criterio_exito: 'batir el récord de pases seguidos del grupo al menos una vez por sesión',
     },
     tablero: () => [
-      jug('A', 1, 0.2637, 0.3086), jug('A', 2, 0.2637, 0.6976),
-      jug('A', 3, 0.6281, 0.3086), jug('A', 4, 0.6281, 0.6976),
-      jug('B', 1, 0.4004, 0.4501), jug('B', 2, 0.4915, 0.5738),
-      balon(0.2637, 0.3086),
+      jug('A', 1, 0.2141, 0.3114), jug('A', 2, 0.2141, 0.6947),
+      jug('A', 3, 0.5265, 0.3114), jug('A', 4, 0.5265, 0.6947),
+      jug('B', 1, 0.3313, 0.4508), jug('B', 2, 0.4094, 0.5727),
+      balon(0.2141, 0.3114),
     ],
     /* Tres pases DE LADO y ninguno de enfrente, que es literalmente lo
        que dicen las notas: el de enfrente casi nunca está. Los dos de
@@ -132,18 +133,18 @@ export const TANDA_04 = [
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3548, y: 0.5561 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.4459, y: 0.4501 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.2922, y: 0.5553 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.3703, y: 0.4508 } },
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
         ] },
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4231, y: 0.6445 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.3548, y: 0.5208 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.3508, y: 0.6424 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.2922, y: 0.5205 } },
           { jugador: 'A2', tipo: 'pase', a: 'A4' },
         ] },
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.5598, y: 0.5915 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.4687, y: 0.4854 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.4679, y: 0.5901 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.3898, y: 0.4856 } },
           { jugador: 'A4', tipo: 'pase', a: 'A3' },
         ] },
       ],
@@ -264,7 +265,7 @@ export const TANDA_04 = [
            el ancla del poste bajo, a 2,6 m, y desde ahí ya no es una
            mano cambiada, es un tiro. */
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'poste_bajo_der' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: { x: 0.168, y: 0.4633 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'corte', hacia: { x: 0.1321, y: 0.4638 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
       ],
     },
@@ -307,7 +308,7 @@ export const TANDA_04 = [
            la línea) y solo después se termina en el aro. Antes acababa en
            el ancla del poste bajo y tiraba desde 2,4 m, que no es una
            entrada por el fondo sino una parada a media distancia. */
-        { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: { x: 0.1567, y: 0.6445 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
+        { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: { x: 0.1224, y: 0.6424 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
         { eventos: [{ jugador: 'A2', tipo: 'bote', hacia: 'aro' }, { jugador: 'B1', tipo: 'defiende', marca: 'A2' }] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
@@ -509,7 +510,7 @@ export const TANDA_04 = [
       jug('A', 1, E.poste_bajo_der[0], E.poste_bajo_der[1]),
       jug('A', 2, E.poste_bajo_izq[0], E.poste_bajo_izq[1]),
       jug('A', 3, E.alero_izq[0], E.alero_izq[1]),
-      jug('B', 1, E.tiro_libre[0], 0.5911),
+      jug('B', 1, E.tiro_libre[0], 0.5925),
       balon(E.poste_bajo_der[0], E.poste_bajo_der[1]),
     ],
     intent: {
@@ -582,10 +583,10 @@ export const TANDA_04 = [
       criterio_exito: 'los tres llegan separados por más de tres metros en cuatro de cada cuatro subidas',
     },
     tablero: () => [
-      jug('A', 1, E.alero_izq[0], 0.7734), jug('A', 2, E.base[0], 0.8099), jug('A', 3, E.alero_der[0], 0.7734),
+      jug('A', 1, E.alero_izq[0], 0.7777), jug('A', 2, E.base[0], 0.8148), jug('A', 3, E.alero_der[0], 0.7777),
       jug('B', 1, E.tiro_libre[0], E.tiro_libre[1]),
       cono(E.alero_izq[0], E.centro[1]), cono(E.alero_der[0], E.centro[1]),
-      balon(E.base[0], 0.8099),
+      balon(E.base[0], 0.8148),
     ],
     intent: {
       canasta: 'norte',

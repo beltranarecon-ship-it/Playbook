@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-06.mjs — profundizar donde más falta: juego reducido, tiro,
    bote, 1c1 y defensa.
@@ -72,9 +73,9 @@ export const TANDA_06 = [
       criterio_exito: 'nadie se queda parado tras una canasta en ninguna de las transiciones',
     },
     tablero: () => [
-      jug('A', 1, E.base[0], 0.5911), jug('A', 2, E.alero_izq[0], 0.5), jug('A', 3, E.alero_der[0], 0.5),
-      jug('B', 1, E.base[0], 0.4089), jug('B', 2, E.escolta_izq[0], E.escolta_izq[1]), jug('B', 3, E.escolta_der[0], E.escolta_der[1]),
-      balon(E.base[0], 0.5911),
+      jug('A', 1, E.base[0], 0.5925), jug('A', 2, E.alero_izq[0], 0.5), jug('A', 3, E.alero_der[0], 0.5),
+      jug('B', 1, E.base[0], 0.4075), jug('B', 2, E.escolta_izq[0], E.escolta_izq[1]), jug('B', 3, E.escolta_der[0], E.escolta_der[1]),
+      balon(E.base[0], 0.5925),
     ],
     intent: null,
   },

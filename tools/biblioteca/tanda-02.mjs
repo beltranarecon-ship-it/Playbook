@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-02.mjs — tiro y bote (Bloque D).
 
@@ -169,9 +170,9 @@ export const TANDA_02 = [
       criterio_exito: 'el porcentaje de la cuarta ida y vuelta no baja más de un tiro respecto a la primera',
     },
     tablero: () => [
-      jug('A', 1, E.escolta_der[0], 0.7734),
+      jug('A', 1, E.escolta_der[0], 0.7777),
       jug('A', 2, E.codo_der[0], E.codo_der[1]),
-      balon(E.escolta_der[0], 0.7734),
+      balon(E.escolta_der[0], 0.7777),
     ],
     intent: {
       canasta: 'norte',
@@ -298,9 +299,9 @@ export const TANDA_02 = [
       aplicacion: 'el túnel, donde la cabeza levantada sirve para ver por dónde no viene nadie',
     },
     tablero: () => [
-      jug('A', 1, 0.2865, 0.3263), jug('A', 2, 0.5712, 0.3263),
-      jug('A', 3, 0.2865, 0.6799), jug('A', 4, 0.5712, 0.6799),
-      balon(0.2865, 0.3263), balon(0.2865, 0.6799),
+      jug('A', 1, 0.2337, 0.3289), jug('A', 2, 0.4777, 0.3289),
+      jug('A', 3, 0.2337, 0.6772), jug('A', 4, 0.4777, 0.6772),
+      balon(0.2337, 0.3289), balon(0.2337, 0.6772),
     ],
     intent: null,
   },
@@ -332,9 +333,9 @@ export const TANDA_02 = [
       aplicacion: 'dos contra uno continuo, donde ese bote de avance es el que sube el balón al contraataque',
     },
     tablero: () => [
-      fila(E.escolta_izq[0], 0.8281, 4, 270),
-      fila(E.escolta_der[0], 0.8281, 4, 270),
-      balon(E.escolta_izq[0], 0.8281), balon(E.escolta_der[0], 0.8281),
+      fila(E.escolta_izq[0], 0.8333, 4, 270),
+      fila(E.escolta_der[0], 0.8333, 4, 270),
+      balon(E.escolta_izq[0], 0.8333), balon(E.escolta_der[0], 0.8333),
     ],
     intent: {
       canasta: 'norte',
@@ -368,15 +369,15 @@ export const TANDA_02 = [
       criterio_exito: 'conservar el balón los veinte segundos completos en tres de cada cuatro intentos',
     },
     tablero: () => [
-      jug('A', 1, 0.4231, 0.5031), jug('B', 1, 0.4915, 0.5031),
-      cono(0.332, 0.5031), cono(0.5142, 0.5031), cono(0.4231, 0.4147), cono(0.4231, 0.5915),
-      balon(0.4231, 0.5031),
+      jug('A', 1, 0.3508, 0.5031), jug('B', 1, 0.4094, 0.5031),
+      cono(0.2727, 0.5031), cono(0.4288, 0.5031), cono(0.3508, 0.416), cono(0.3508, 0.5901),
+      balon(0.3508, 0.5031),
     ],
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.3776, y: 0.4501 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.4459, y: 0.5738 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.3118, y: 0.4508 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.3703, y: 0.5727 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
       ],
     },
@@ -444,10 +445,10 @@ export const TANDA_02 = [
       criterio_exito: 'cruzar tres de cada cuatro veces sin que le toquen el balón',
     },
     tablero: () => [
-      jug('A', 1, 0.7648, 0.3705), jug('A', 2, 0.7648, 0.6357),
-      jug('B', 1, 0.6053, 0.5031), jug('B', 2, 0.4459, 0.344), jug('B', 3, 0.2865, 0.6092),
-      cono(0.6053, 0.1495), cono(0.6053, 0.8567), cono(0.4459, 0.1495), cono(0.4459, 0.8567), cono(0.2865, 0.1495), cono(0.2865, 0.8567),
-      balon(0.7648, 0.3705), balon(0.7648, 0.6357),
+      jug('A', 1, 0.6436, 0.3724), jug('A', 2, 0.6436, 0.6337),
+      jug('B', 1, 0.5069, 0.5031), jug('B', 2, 0.3703, 0.3463), jug('B', 3, 0.2337, 0.6076),
+      cono(0.5069, 0.1547), cono(0.5069, 0.8514), cono(0.3703, 0.1547), cono(0.3703, 0.8514), cono(0.2337, 0.1547), cono(0.2337, 0.8514),
+      balon(0.6436, 0.3724), balon(0.6436, 0.6337),
     ],
     /* Una fase por franja, y el hueco lo dice el defensor: en la
        primera está en el medio y los dos salen por fuera; en la
@@ -458,19 +459,19 @@ export const TANDA_02 = [
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.537, y: 0.2909 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.537, y: 0.7506 } },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.6053, y: 0.397 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4484, y: 0.294 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4484, y: 0.7469 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.5069, y: 0.3985 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3776, y: 0.5738 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.3776, y: 0.733 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.4459, y: 0.4501 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3118, y: 0.5727 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.3118, y: 0.7295 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.3703, y: 0.4508 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.1954, y: 0.3616 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.1954, y: 0.2379 } },
-          { jugador: 'B3', tipo: 'defiende', hacia: { x: 0.2865, y: 0.5031 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.1556, y: 0.3637 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.1556, y: 0.2418 } },
+          { jugador: 'B3', tipo: 'defiende', hacia: { x: 0.2337, y: 0.5031 } },
         ] },
       ],
     },
@@ -539,9 +540,9 @@ export const TANDA_02 = [
       criterio_exito: 'anotar en tres de cada cuatro superioridades dentro de los seis segundos',
     },
     tablero: () => [
-      jug('A', 1, E.escolta_izq[0], 0.7005), jug('A', 2, E.base[0], 0.737), jug('A', 3, E.escolta_der[0], 0.7005),
+      jug('A', 1, E.escolta_izq[0], 0.7037), jug('A', 2, E.base[0], 0.7408), jug('A', 3, E.escolta_der[0], 0.7037),
       jug('B', 1, E.tiro_libre[0], E.tiro_libre[1]), jug('B', 2, E.poste_bajo_der[0], E.poste_bajo_der[1]),
-      balon(E.base[0], 0.737),
+      balon(E.base[0], 0.7408),
     ],
     intent: null,
   },

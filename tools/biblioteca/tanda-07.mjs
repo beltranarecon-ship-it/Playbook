@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-07.mjs — manejo, rebote, calentamiento y psicomotricidad.
 
@@ -36,11 +37,11 @@ export const TANDA_07 = [
       criterio_exito: 'acertar el cono en nueve de cada diez órdenes sin perder el balón',
     },
     tablero: () => [
-      jug('A', 1, 0.4231, 0.4501), jug('A', 2, 0.4231, 0.5561), jug('A', 3, 0.4915, 0.5031),
-      cono(0.2865, 0.5031), cono(0.332, 0.3793), cono(0.4231, 0.3086), cono(0.537, 0.3263),
-      cono(0.6053, 0.4324), cono(0.6053, 0.5738), cono(0.537, 0.6799), cono(0.4231, 0.6976),
-      cono(0.332, 0.6269),
-      balon(0.4231, 0.4501), balon(0.4231, 0.5561), balon(0.4915, 0.5031),
+      jug('A', 1, 0.3508, 0.4508), jug('A', 2, 0.3508, 0.5553), jug('A', 3, 0.4094, 0.5031),
+      cono(0.2337, 0.5031), cono(0.2727, 0.3811), cono(0.3508, 0.3114), cono(0.4484, 0.3289),
+      cono(0.5069, 0.4334), cono(0.5069, 0.5727), cono(0.4484, 0.6772), cono(0.3508, 0.6947),
+      cono(0.2727, 0.625),
+      balon(0.3508, 0.4508), balon(0.3508, 0.5553), balon(0.4094, 0.5031),
     ],
     /* Ida y vuelta: cada uno sale del centro hacia SU hora, la rodea
        por fuera y vuelve. Tres jugadores a tres horas distintas para
@@ -50,14 +51,14 @@ export const TANDA_07 = [
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4231, y: 0.2821 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.5484, y: 0.7064 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.6395, y: 0.4235 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3508, y: 0.2853 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4582, y: 0.7033 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.5362, y: 0.4246 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4231, y: 0.4501 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4231, y: 0.5561 } },
-          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.4915, y: 0.5031 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3508, y: 0.4508 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.3508, y: 0.5553 } },
+          { jugador: 'A3', tipo: 'bote', hacia: { x: 0.4094, y: 0.5031 } },
         ] },
       ],
     },
@@ -88,9 +89,9 @@ export const TANDA_07 = [
     },
     tablero: () => [
       // El que canta los números es compañero, no defensor.
-      jug('A', 1, 0.2865, 0.3263), jug('A', 3, 0.3548, 0.3263),
-      jug('A', 2, 0.2865, 0.6799), jug('A', 4, 0.3548, 0.6799),
-      balon(0.2865, 0.3263), balon(0.2865, 0.6799),
+      jug('A', 1, 0.2337, 0.3289), jug('A', 3, 0.2922, 0.3289),
+      jug('A', 2, 0.2337, 0.6772), jug('A', 4, 0.2922, 0.6772),
+      balon(0.2337, 0.3289), balon(0.2337, 0.6772),
     ],
     intent: null,
   },
@@ -119,9 +120,9 @@ export const TANDA_07 = [
       aplicacion: 'el bote de protección, donde ese mismo control bajo con la muñeca es lo único que salva el balón',
     },
     tablero: () => [
-      jug('A', 1, 0.332, 0.3086), jug('A', 2, 0.332, 0.5031), jug('A', 3, 0.332, 0.6976),
-      jug('A', 4, 0.537, 0.3086), jug('A', 5, 0.537, 0.5031),
-      balon(0.332, 0.3086), balon(0.332, 0.5031), balon(0.332, 0.6976), balon(0.537, 0.3086), balon(0.537, 0.5031),
+      jug('A', 1, 0.2727, 0.3114), jug('A', 2, 0.2727, 0.5031), jug('A', 3, 0.2727, 0.6947),
+      jug('A', 4, 0.4484, 0.3114), jug('A', 5, 0.4484, 0.5031),
+      balon(0.2727, 0.3114), balon(0.2727, 0.5031), balon(0.2727, 0.6947), balon(0.4484, 0.3114), balon(0.4484, 0.5031),
     ],
     intent: null,
   },
@@ -239,8 +240,8 @@ export const TANDA_07 = [
       aplicacion: 'el contraataque de tres carriles, que es lo mismo con defensa delante',
     },
     tablero: () => [
-      jug('A', 1, E.escolta_izq[0], 0.8464), jug('A', 2, E.escolta_der[0], 0.8464),
-      balon(E.escolta_izq[0], 0.8464),
+      jug('A', 1, E.escolta_izq[0], 0.8519), jug('A', 2, E.escolta_der[0], 0.8519),
+      balon(E.escolta_izq[0], 0.8519),
     ],
     intent: {
       canasta: 'norte',
@@ -280,9 +281,9 @@ export const TANDA_07 = [
       criterio_exito: 'sostener dos balones en la cadena durante noventa segundos sin pérdidas',
     },
     tablero: () => [
-      jug('A', 1, 0.3093, 0.3263), jug('A', 2, 0.3093, 0.6799), jug('A', 3, 0.4915, 0.2732),
-      jug('A', 4, 0.4915, 0.733), jug('A', 5, 0.6281, 0.5031), jug('A', 6, 0.4004, 0.5031),
-      balon(0.3093, 0.3263), balon(0.4915, 0.733),
+      jug('A', 1, 0.2532, 0.3289), jug('A', 2, 0.2532, 0.6772), jug('A', 3, 0.4094, 0.2766),
+      jug('A', 4, 0.4094, 0.7295), jug('A', 5, 0.5265, 0.5031), jug('A', 6, 0.3313, 0.5031),
+      balon(0.2532, 0.3289), balon(0.4094, 0.7295),
     ],
     intent: null,
   },
@@ -313,10 +314,10 @@ export const TANDA_07 = [
       aplicacion: 'la entrada a canasta, donde el doble ritmo es exactamente un salto y una caída controlada',
     },
     tablero: () => [
-      jug('A', 1, 0.6737, 0.3263), jug('A', 2, 0.6737, 0.6799),
-      cono(0.5826, 0.2732), cono(0.537, 0.2732), cono(0.4459, 0.2732), cono(0.3776, 0.2732),
-      cono(0.5826, 0.733), cono(0.537, 0.733), cono(0.4459, 0.733), cono(0.3776, 0.733),
-      balon(0.6737, 0.3263), balon(0.6737, 0.6799),
+      jug('A', 1, 0.5656, 0.3289), jug('A', 2, 0.5656, 0.6772),
+      cono(0.4875, 0.2766), cono(0.4484, 0.2766), cono(0.3703, 0.2766), cono(0.3118, 0.2766),
+      cono(0.4875, 0.7295), cono(0.4484, 0.7295), cono(0.3703, 0.7295), cono(0.3118, 0.7295),
+      balon(0.5656, 0.3289), balon(0.5656, 0.6772),
     ],
     intent: null,
   },
@@ -345,9 +346,9 @@ export const TANDA_07 = [
       aplicacion: 'el espejo defensivo, que es el mismo desplazamiento lateral pero ya con un rival delante',
     },
     tablero: () => [
-      jug('A', 1, 0.4231, 0.4147), jug('A', 2, 0.4231, 0.5915), jug('A', 3, 0.5142, 0.5031),
-      cono(0.2865, 0.2909), cono(0.2865, 0.7153), cono(0.6281, 0.2909), cono(0.6281, 0.7153),
-      balon(0.4231, 0.4147), balon(0.4231, 0.5915), balon(0.5142, 0.5031),
+      jug('A', 1, 0.3508, 0.416), jug('A', 2, 0.3508, 0.5901), jug('A', 3, 0.4288, 0.5031),
+      cono(0.2337, 0.294), cono(0.2337, 0.7121), cono(0.5265, 0.294), cono(0.5265, 0.7121),
+      balon(0.3508, 0.416), balon(0.3508, 0.5901), balon(0.4288, 0.5031),
     ],
     intent: null,
   },
@@ -376,8 +377,8 @@ export const TANDA_07 = [
       aplicacion: 'todo el bloque de manejo: es el paso previo a controlar el balón botando',
     },
     tablero: () => [
-      jug('A', 1, 0.332, 0.3263), jug('A', 2, 0.332, 0.6799), jug('A', 3, 0.537, 0.3263), jug('A', 4, 0.537, 0.6799),
-      balon(0.332, 0.3263), balon(0.332, 0.6799), balon(0.537, 0.3263), balon(0.537, 0.6799),
+      jug('A', 1, 0.2727, 0.3289), jug('A', 2, 0.2727, 0.6772), jug('A', 3, 0.4484, 0.3289), jug('A', 4, 0.4484, 0.6772),
+      balon(0.2727, 0.3289), balon(0.2727, 0.6772), balon(0.4484, 0.3289), balon(0.4484, 0.6772),
     ],
     intent: null,
   },

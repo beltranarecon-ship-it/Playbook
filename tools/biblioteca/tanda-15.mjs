@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-15.mjs — juego de dos (Bloque D).
 
@@ -58,12 +59,12 @@ export const TANDA_15 = [
       fases: [
         { eventos: [
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.332, y: 0.6269 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2727, y: 0.625 } },
         ] },
         // el pasador corta: es el gesto entero del ejercicio
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2295, y: 0.5208 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2979, y: 0.5119 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.1848, y: 0.5205 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2434, y: 0.5117 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
@@ -107,14 +108,14 @@ export const TANDA_15 = [
       fases: [
         { eventos: [
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.332, y: 0.6269 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2727, y: 0.625 } },
         ] },
         // A1 corta y A3 ocupa el sitio que A1 acaba de dejar
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2295, y: 0.5385 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2979, y: 0.5296 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.1848, y: 0.5379 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2434, y: 0.5292 } },
           { jugador: 'A3', tipo: 'corte', hacia: { x: M.base[0], y: M.base[1] } },
-          { jugador: 'B3', tipo: 'defiende', marca: 'A3', hacia: { x: 0.3662, y: 0.4766 } },
+          { jugador: 'B3', tipo: 'defiende', marca: 'A3', hacia: { x: 0.302, y: 0.4769 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A3' }] },
       ],
@@ -154,8 +155,8 @@ export const TANDA_15 = [
       fases: [
         // el defensor mira el balón: se corta por detrás de él
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2409, y: 0.4147 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2979, y: 0.3793 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.1946, y: 0.416 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2434, y: 0.3811 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
@@ -199,12 +200,12 @@ export const TANDA_15 = [
       fases: [
         // aclarar: irse LEJOS y llevarse al defensor
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2182, y: 0.2025 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2637, y: 0.2379 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.1751, y: 0.2069 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2141, y: 0.2418 } },
         ] },
         { eventos: [
           { jugador: 'A1', tipo: 'bote', hacia: 'aro' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2637, y: 0.5915 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2141, y: 0.5901 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
       ],
@@ -235,9 +236,9 @@ export const TANDA_15 = [
     },
     tablero: () => [
       jug('A', 1, M.escolta_der[0], M.escolta_der[1]),
-      jug('A', 2, 0.2409, 0.2202),
+      jug('A', 2, 0.1946, 0.2243),
       jug('B', 1, M.escolta_der[0] - 0.05, M.escolta_der[1]),
-      jug('B', 2, 0.2751, 0.2556),
+      jug('B', 2, 0.2239, 0.2592),
       balon(M.escolta_der[0], M.escolta_der[1]),
     ],
     intent: {
@@ -245,13 +246,13 @@ export const TANDA_15 = [
       fases: [
         // el 1c1 no aparece: el defensor aguanta
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4004, y: 0.6092 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3662, y: 0.5915 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3313, y: 0.6076 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.302, y: 0.5901 } },
         ] },
         // el que aclaró sube EN LÍNEA a ofrecerse
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.4231, y: 0.2909 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.389, y: 0.3174 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.3508, y: 0.294 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3215, y: 0.3201 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
       ],
@@ -293,14 +294,14 @@ export const TANDA_15 = [
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.3434, y: 0.6092 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3776, y: 0.6269 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2824, y: 0.6076 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3118, y: 0.625 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
         // el que entrega no se queda: corta al aro
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2182, y: 0.5561 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2865, y: 0.5738 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.1751, y: 0.5553 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2337, y: 0.5727 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'pase', a: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
@@ -333,10 +334,10 @@ export const TANDA_15 = [
     tablero: () => [
       jug('A', 1, M.base[0], M.base[1]),
       jug('A', 2, M.codo_izq[0], M.codo_izq[1]),
-      jug('A', 3, 0.2182, 0.2202),
+      jug('A', 3, 0.1751, 0.2243),
       jug('B', 1, M.base[0] - 0.05, M.base[1]),
       jug('B', 2, M.codo_izq[0] - 0.05, M.codo_izq[1]),
-      jug('B', 3, 0.2637, 0.2556),
+      jug('B', 3, 0.2141, 0.2592),
       balon(M.base[0], M.base[1]),
     ],
     intent: {
@@ -345,13 +346,13 @@ export const TANDA_15 = [
         // el bloqueador se planta y el usuario sale rozándole
         { eventos: [
           { jugador: 'A2', tipo: 'bloqueo', bloqueado_id: 'A3' },
-          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.332, y: 0.3263 } },
-          { jugador: 'B3', tipo: 'defiende', marca: 'A3', hacia: { x: 0.2865, y: 0.2909 } },
+          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.2727, y: 0.3289 } },
+          { jugador: 'B3', tipo: 'defiende', marca: 'A3', hacia: { x: 0.2337, y: 0.294 } },
           // los otros dos defensores no se quedan de estatuas: uno
           // ajusta al balón y el del bloqueador tiene que decidir si
           // ayuda en el cruce o se queda con el suyo (D11)
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3776, y: 0.4943 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3093, y: 0.4147 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3118, y: 0.4944 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2532, y: 0.416 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A3' }] },
         { eventos: [{ jugador: 'A3', tipo: 'tiro' }] },
@@ -392,7 +393,7 @@ export const TANDA_15 = [
       // del todo, las dos fichas se dibujan una sobre otra y no se ve
       // dónde está el bloqueo, que es lo único que hay que mirar aquí
       jug('A', 1, M.escolta_der[0] + 0.04, M.escolta_der[1]),
-      jug('A', 2, 0.373, 0.5915),
+      jug('A', 2, 0.3078, 0.5901),
       jug('B', 1, M.escolta_der[0] - 0.02, M.escolta_der[1]),
       jug('B', 2, M.codo_der[0] - 0.03, M.codo_der[1] + 0.03),
       balon(M.escolta_der[0] + 0.04, M.escolta_der[1]),
@@ -402,13 +403,13 @@ export const TANDA_15 = [
       fases: [
         { eventos: [
           { jugador: 'A2', tipo: 'bloqueo', bloqueado_id: 'A1' },
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.332, y: 0.5738 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3662, y: 0.6092 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2727, y: 0.5727 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.302, y: 0.6076 } },
         ] },
         // el defensor del bloqueador SALE a por el balón: el bloqueador
         // queda libre y se va al aro, que es donde ya no hay nadie
         { eventos: [
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.2979, y: 0.5561 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.2434, y: 0.5553 } },
           { jugador: 'A2', tipo: 'corte', hacia: 'aro' },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
@@ -443,7 +444,7 @@ export const TANDA_15 = [
       // mismo motivo que en la ficha anterior: el bloqueador arranca
       // por encima del defensor del balón para que el bloqueo se vea
       jug('A', 1, M.escolta_izq[0] + 0.04, M.escolta_izq[1]),
-      jug('A', 2, 0.373, 0.4076),
+      jug('A', 2, 0.3078, 0.409),
       jug('B', 1, M.escolta_izq[0] - 0.02, M.escolta_izq[1]),
       jug('B', 2, M.codo_izq[0] - 0.03, M.codo_izq[1] - 0.03),
       balon(M.escolta_izq[0] + 0.04, M.escolta_izq[1]),
@@ -453,15 +454,15 @@ export const TANDA_15 = [
       fases: [
         { eventos: [
           { jugador: 'A2', tipo: 'bloqueo', bloqueado_id: 'A1' },
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.332, y: 0.4324 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3662, y: 0.397 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2727, y: 0.4334 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.302, y: 0.3985 } },
         ] },
         // el bloqueador rueda al aro de cara al balón, y llega HASTA el
         // aro: la continuación que se para a media distancia no es una
         // continuación, es un tiro sin nadie que lo haya generado
         { eventos: [
           { jugador: 'A2', tipo: 'corte', hacia: 'aro' },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2751, y: 0.4147 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2239, y: 0.416 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },

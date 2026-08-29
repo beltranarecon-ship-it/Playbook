@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Medir las pistas dibujadas</title>
+<!--
+  Arnés de medición (dev). NO se sirve en producción — /dev/* está
+  bloqueado en netlify.toml.
+
+  Los cuatro SVG vienen de Inkscape: transformaciones anidadas, un
+  rotate(90) y una imagen WebP de fondo. Medirlos leyendo el XML a mano
+  es pedir un error. Aquí los carga el navegador, que YA sabe componer
+  las matrices, y se le pregunta a cada elemento dónde cae de verdad
+  dentro del viewBox.
+
+  De aquí salen los números que van a canvas/medidas.js.
+-->
+<style>body{font:13px/1.4 monospace;padding:1rem;background:#111;color:#ddd}</style>
+</head>
+<body>
+<div id="donde"></div>
+<script>
+const PISTAS = {
+  entera:      '/taller/assets/pistas/pista-entera.svg',
+  entera_fiba: '/taller/assets/pistas/pista-entera-fiba.svg',
+  media:       '/taller/assets/pistas/pista-media.svg',
+  media_fiba:  '/taller/assets/pistas/pista-media-fiba.svg',
+};
+
+/* Caja de un elemento en unidades del viewBox del SVG raíz. getBBox da
+   coordenadas LOCALES; hay que pasarlas por la matriz acumulada hasta
+   la raíz, que es justo lo que devuelve getCTM encadenado. */
+function cajaEnRaiz(el, svg) {
+  let b;
+  try { b = el.getBBox(); } catch { return null; }
+  if (!b || (!b.width && !b.height)) return null;
+  const m = el.getScreenCTM();
+  const raiz = svg.getScreenCTM();
+  if (!m || !raiz) return null;
+  const rel = raiz.inverse().multiply(m);
+  const pt = (x, y) => {
+    const p = svg.createSVGPoint(); p.x = x; p.y = y;
+    const q = p.matrixTransform(rel);
+    return [q.x, q.y];
+  };
+  const esquinas = [pt(b.x, b.y), pt(b.x + b.width, b.y),
+                    pt(b.x, b.y + b.height), pt(b.x + b.width, b.y + b.height)];
+  const xs = esquinas.map((p) => p[0]), ys = esquinas.map((p) => p[1]);
+  return {
+    x1: Math.min(...xs), y1: Math.min(...ys),
+    x2: Math.max(...xs), y2: Math.max(...ys),
+  };
+}
+
+window.medir = async function () {
+  const salida = {};
+  for (const [nombre, url] of Object.entries(PISTAS)) {
+    const txt = await (await fetch(url)).text();
+    const cont = document.createElement('div');
+    cont.style.cssText = 'position:absolute;left:-9999px;width:900px';
+    cont.innerHTML = txt;
+    document.body.appendChild(cont);
+    const svg = cont.querySelector('svg');
+    const vb = svg.viewBox.baseVal;
+
+    const elems = [];
+    for (const el of svg.querySelectorAll('rect,circle,path,line,image,ellipse')) {
+      const c = cajaEnRaiz(el, svg);
+      if (!c) continue;
+      const st = getComputedStyle(el);
+      elems.push({
+        tag: el.tagName, id: el.id || '',
+        x1: +c.x1.toFixed(2), y1: +c.y1.toFixed(2),
+        x2: +c.x2.toFixed(2), y2: +c.y2.toFixed(2),
+        w: +(c.x2 - c.x1).toFixed(2), h: +(c.y2 - c.y1).toFixed(2),
+        fill: st.fill, stroke: st.stroke,
+        sw: +(+st.strokeWidth.replace('px', '') || 0).toFixed(2),
+        d: el.tagName === 'path' ? (el.getAttribute('d') || '').slice(0, 60) : '',
+      });
+    }
+    salida[nombre] = {
+      viewBox: [vb.x, vb.y, +vb.width.toFixed(3), +vb.height.toFixed(3)],
+      mm: [svg.getAttribute('width'), svg.getAttribute('height')],
+      n: elems.length, elems,
+    };
+    cont.remove();
+  }
+  return salida;
+};
+document.getElementById('donde').textContent = 'listo — llama a window.medir()';
+</script>
+</body>
+</html>

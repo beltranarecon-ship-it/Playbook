@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Las anclas sobre el dibujo</title>
+<!--
+  Arnés de comprobación (dev). NO se sirve en producción.
+
+  Pinta cada ancla de medidas.js encima del SVG que dibujó el
+  entrenador. Es la única prueba que vale: un banco puede decir que el
+  codo está a 2,45 m del eje y aun así caer fuera de la línea si el
+  número de partida está mal. Aquí se ve.
+
+  Verde = debería caer sobre una línea del dibujo (aro, tiro libre,
+  codo, centro). Naranja = puesto de perímetro, va POR FUERA del
+  triple. Azul = postes, dentro de la zona.
+-->
+<style>
+  body{font:13px/1.5 system-ui,sans-serif;background:#0f1115;color:#dde;margin:0;padding:1.2rem}
+  h1{font-size:1rem;margin:0 0 .8rem;letter-spacing:.04em;text-transform:uppercase;color:#9ab}
+  .fila{display:flex;flex-wrap:wrap;gap:1.2rem}
+  figure{margin:0}
+  figcaption{font-size:.78rem;color:#8a9;margin:.35rem 0 0;font-family:ui-monospace,monospace}
+  .lienzo{position:relative;background:#000;border:1px solid #2a2f3a;border-radius:4px;overflow:hidden}
+  .lienzo img{display:block;width:100%;height:auto}
+  .lienzo svg{position:absolute;inset:0;width:100%;height:100%}
+</style>
+</head>
+<body>
+<h1>Las anclas sobre el dibujo</h1>
+<div class="fila" id="donde"></div>
+<script type="module">
+import { anclasDe, marcoDe, limitesCancha, PISTAS_M } from '/taller/js/canvas/medidas.js';
+
+const SVG = {
+  entera:'/taller/assets/pistas/pista-entera.svg',
+  entera_fiba:'/taller/assets/pistas/pista-entera-fiba.svg',
+  media:'/taller/assets/pistas/pista-media.svg',
+  media_fiba:'/taller/assets/pistas/pista-media-fiba.svg',
+};
+/* Sobre qué se apoya cada ancla, para poder mirarlas por grupos. */
+const COLOR = (n) =>
+  /^(aro|tiro_libre|codo_|centro)/.test(n) ? '#3ddc84'
+  : /^(base|alero|escolta|esquina)/.test(n) ? '#ff8a3d'
+  : '#5ab8ff';
+
+const ANCHO = 330;
+const donde = document.getElementById('donde');
+const salida = {};
+
+for (const pista of Object.keys(PISTAS_M)) {
+  const m = marcoDe(pista);
+  const alto = Math.round(ANCHO / m.aspect);
+  const A = anclasDe(pista, 'norte');
+  const lim = limitesCancha(pista);
+  salida[pista] = { marco: [m.ancho, m.alto], anclas: A, limites: lim };
+
+  const marcas = Object.entries(A).map(([n, [x, y]]) => {
+    const cx = (x * ANCHO).toFixed(1), cy = (y * alto).toFixed(1);
+    return `<circle cx="${cx}" cy="${cy}" r="4" fill="none" stroke="${COLOR(n)}" stroke-width="1.6"/>`
+         + `<circle cx="${cx}" cy="${cy}" r="1" fill="${COLOR(n)}"/>`;
+  }).join('');
+  // la caja de la cancha, para ver que la banda queda fuera
+  const caja = `<rect x="${(lim.x[0]*ANCHO).toFixed(1)}" y="${(lim.y[0]*alto).toFixed(1)}"
+      width="${((lim.x[1]-lim.x[0])*ANCHO).toFixed(1)}" height="${((lim.y[1]-lim.y[0])*alto).toFixed(1)}"
+      fill="none" stroke="#e33" stroke-width="1" stroke-dasharray="4 3"/>`;
+
+  const fig = document.createElement('figure');
+  fig.innerHTML = `
+    <div class="lienzo" style="width:${ANCHO}px;height:${alto}px">
+      <img src="${SVG[pista]}" alt="">
+      <svg viewBox="0 0 ${ANCHO} ${alto}">${caja}${marcas}</svg>
+    </div>
+    <figcaption>${pista} · ${m.ancho}×${m.alto} m</figcaption>`;
+  donde.appendChild(fig);
+}
+window.ANCLAS = salida;
+</script>
+</body>
+</html>

@@ -61,42 +61,69 @@ export const REGLAS = {
      no puede decir que un jugador está en la línea de fondo y pintarlo
      medio metro más allá.
 
-     Se comprobó buscando las líneas negras en el propio dibujo: fondo
-     a fondo 240 u, banda a banda 140 u, y la línea de medio campo
-     exactamente en el centro. Dos medidas independientes confirman la
-     escala — la zona FIBA sale 49 u (4,90 m reglamentarios) y la de
-     minibasket 80 u (8,00 m). */
+     Cómo se midieron: `dev/medir-pistas.html` carga los cuatro SVG en
+     el navegador, deja que él componga las matrices de Inkscape —hay
+     un rotate(90) y translates anidados— y pregunta a cada elemento
+     dónde cae dentro del viewBox. Los arcos no se miden por su caja:
+     se muestrean y se les ajusta una circunferencia por mínimos
+     cuadrados. El error máximo del ajuste salió 0,01 u (0,1 mm): el
+     dibujo es geométricamente exacto, no está hecho a pulso.
+
+     Fondo a fondo 240 u, banda a banda 140 u, medio campo a 120 u.
+     Las cuatro pistas coinciden entre sí dentro de 3 cm.
+
+     ── DÓNDE SE SEPARA DE FIBA, Y POR QUÉ NO SE TOCA ────────
+     El dibujo NO es una cancha FIBA a escala, y decirlo importa más
+     que corregirlo:
+
+       ·  la pista mide 24 × 14 m       (FIBA: 28 × 15)
+       ·  el tiro libre está a 4,63 m   (FIBA: 5,80 — es la medida
+          de minibasket, 4,60, que es la categoría del club)
+       ·  el triple es un arco de 6,28 m centrado a 0,77 m del fondo,
+          no a 6,75 m del aro; así que la distancia al aro NO es la
+          misma en toda la línea: 5,83 m por arriba y 6,26 m en la
+          esquina
+       ·  el semicírculo de no carga tampoco está centrado en el aro:
+          su centro cae 20 cm por delante
+
+     Nada de esto se «arregla». La app no puede decir que un jugador
+     está en la línea de tiros libres y pintarlo medio metro más allá:
+     manda el dibujo. Lo que sí hace falta es que esté escrito, para
+     que nadie lea 6,28 y crea que es una errata de 6,75. */
   largo: 24,               // fondo a fondo, por dentro de las líneas
   ancho: 14,               // banda a banda
   banda: 2,                // banda LATERAL (la de fondo va aparte, ver MARCOS)
   bandaFondo: 1.5,         // tras la línea de fondo
+  medioCampo: 12,          // fondo → línea de medio campo
   linea: 0.05,             // grosor de las líneas de marcaje
 
-  aroRetranqueo: 1.215,    // fondo → centro del aro, medido sobre el dibujo
-  aroRadio: 0.225,         // aro de 45 cm de diámetro
-  tableroAncho: 1.80,
-  tableroFrente: 1.20,     // fondo → cara delantera del tablero
+  aroRetranqueo: 1.22,     // fondo → centro del aro
+  aroRadio: 0.40,          // radio del aro TAL Y COMO ESTÁ DIBUJADO
+  tableroAncho: 1.99,
+  tableroFrente: 0.67,     // fondo → cara delantera del tablero
 
-  zonaAncho: 4.90,         // ancho de la zona restringida
-  zonaFondo: 5.80,         // fondo → línea de tiros libres
-  tiroLibreLargo: 3.60,
-  circuloRadio: 1.80,      // vale para el de tiros libres y el central
-  noCargaRadio: 1.25,      // semicírculo de no carga, desde el centro del aro
+  zonaAncho: 4.90,         // ancho de la zona pintada
+  zonaAnchoMini: 8.00,     // la de 8 m, solo en las dos pistas sin triple
+  zonaFondo: 4.63,         // fondo → línea de tiros libres
+  circuloRadio: 1.61,      // círculo de tiros libres (y el central)
+  noCargaRadio: 1.32,      // semicírculo de no carga
+  noCargaCentro: 1.02,     // fondo → centro de ESE semicírculo (no es el aro)
 
-  tripleRadio: 6.75,       // desde el centro del aro
-  tripleBanda: 0.90,       // separación del tramo recto respecto a la banda
+  tripleRadio: 6.28,       // radio del arco de triple
+  tripleCentro: 0.77,      // fondo → centro del arco (tampoco es el aro)
+  tripleLateral: 6.14,     // eje largo → tramo recto del triple
 };
 
 /** Distancia del tramo recto del triple al eje largo de la pista. */
-export const TRIPLE_LATERAL = REGLAS.ancho / 2 - REGLAS.tripleBanda;   // 6,60
+export const TRIPLE_LATERAL = REGLAS.tripleLateral;
 
 /**
- * Hasta qué profundidad llega el tramo recto del triple: donde corta
- * el arco. Con radio 6,75 y lateral 6,60 sale a 2,99 m del fondo, que
- * es el número que publica FIBA — sirve de comprobación de que las
- * constantes de arriba son coherentes entre sí.
+ * Hasta qué profundidad llega el tramo recto del triple: donde corta el
+ * arco. Sale a 2,10 m del fondo. No es un dato suelto — es la
+ * comprobación de que el radio, el centro y el lateral de arriba son
+ * coherentes entre sí, y sobre el dibujo lo son al milímetro.
  */
-export const TRIPLE_CORTE = REGLAS.aroRetranqueo
+export const TRIPLE_CORTE = REGLAS.tripleCentro
   + Math.sqrt(REGLAS.tripleRadio ** 2 - TRIPLE_LATERAL ** 2);
 
 /* ── 2. Las cuatro pistas ──────────────────────────────────── */
@@ -240,23 +267,40 @@ export function escalaDe(pista) {
    cuatro pistas. Antes se medían a ojo sobre el render de cada SVG y
    no coincidían entre pistas; ahora hay una sola tabla.
 
-   Los cuatro puestos de perímetro se reparten sobre un arco de 7,00 m
-   desde el aro — un cuarto de metro por detrás de la línea de 6,75 —
-   salvo la esquina, que se pega al tramo recto porque ahí la línea no
-   es un arco: cae a 6,60 m clavados, que es la comprobación que pedía
-   la especificación.
+   ── SOBRE QUÉ SE APOYA CADA UNA ─────────────────────────────
+   Sobre un rasgo DIBUJADO, nunca sobre una medida de reglamento que
+   el dibujo no tenga. Es la corrección que trajo esta versión: las
+   anclas estaban puestas a 6,75/7,00 m del aro y a 5,80 de tiro
+   libre, medidas de una cancha FIBA. Sobre estas pistas caían fuera
+   de sus líneas — el codo quedaba un metro largo por detrás de la
+   línea de tiros libres, y la esquina, medio metro dentro del campo.
 
-   La zona tiene 4,90 m de ancho, o sea 2,45 a cada lado del eje: ese
-   es el `l` de postes y codos. Las tres profundidades salen de las
-   plazas de rebote reglamentarias y del fondo de la zona.
+     · aro, tiro_libre, codo y centro caen EXACTAMENTE sobre su línea;
+     · los postes reparten la zona dibujada (4,63 m de fondo) en las
+       mismas proporciones que antes repartían la de 5,80;
+     · los cuatro puestos de perímetro van sobre un arco CONCÉNTRICO
+       con el triple dibujado y 35 cm por detrás: así se ven fuera de
+       la línea en las dos pistas que la llevan, y siguen cayendo en
+       sitios sensatos en las dos que no.
+
+   La esquina va aparte, porque ahí la línea no es un arco sino el
+   tramo recto: se pega a él, 35 cm por fuera, a la altura del aro.
 */
 
 const MEDIA_ZONA = REGLAS.zonaAncho / 2;                    // 2,45
-const R_PERIMETRO = 7.00;                                   // arco de trabajo
+/** Cuánto se separan los puestos de perímetro de la línea de triple. */
+const DETRAS = 0.35;
+const R_PERIMETRO = REGLAS.tripleRadio + DETRAS;            // 6,63
 const grados = (g) => (g * Math.PI) / 180;
-/** Punto del arco de perímetro a `g` grados contados desde la línea de fondo. */
+/**
+ * Punto del arco de perímetro a `g` grados contados desde la línea de
+ * fondo. El centro es el del ARCO DE TRIPLE dibujado, no el aro: sobre
+ * estas pistas no son el mismo punto (hay 45 cm entre ellos), y usar el
+ * aro dejaba la base pisando la línea por un lado y a medio metro por
+ * el otro.
+ */
 const arco = (g) => ({
-  d: REGLAS.aroRetranqueo + R_PERIMETRO * Math.sin(grados(g)),
+  d: REGLAS.tripleCentro + R_PERIMETRO * Math.sin(grados(g)),
   l: R_PERIMETRO * Math.cos(grados(g)),
 });
 
@@ -264,17 +308,19 @@ const CENTRAL = {
   aro:         { d: REGLAS.aroRetranqueo, l: 0 },
   tiro_libre:  { d: REGLAS.zonaFondo,     l: 0 },
   base:        arco(90),
-  centro:      { d: REGLAS.largo / 2,     l: 0 },   // línea de medio campo
+  centro:      { d: REGLAS.medioCampo,    l: 0 },   // línea de medio campo
 };
 
 // { base: {d, l} } con `l` POSITIVO; el lado izquierdo lo genera el
 // espejo de abajo. Una sola definición por puesto, imposible que se
 // descuadren entre sí.
 const LATERAL = {
-  poste_bajo:  { d: 2.80,             l: MEDIA_ZONA },
-  poste_alto:  { d: 4.60,             l: MEDIA_ZONA },
+  /* 2,80 y 4,60 sobre una zona de 5,80 son el 48 % y el 79 % de su
+     fondo; se conservan esas proporciones sobre la zona dibujada. */
+  poste_bajo:  { d: 2.24,             l: MEDIA_ZONA },
+  poste_alto:  { d: 3.67,             l: MEDIA_ZONA },
   codo:        { d: REGLAS.zonaFondo, l: MEDIA_ZONA },
-  esquina:     { d: REGLAS.aroRetranqueo, l: TRIPLE_LATERAL },  // 6,60 m del aro
+  esquina:     { d: REGLAS.aroRetranqueo, l: TRIPLE_LATERAL + DETRAS },
   alero:       arco(38),
   escolta:     arco(62),
 };

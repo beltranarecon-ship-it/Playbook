@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-11.mjs — defensa (Bloque D).
 
@@ -48,32 +49,32 @@ export const TANDA_11 = [
       criterio_exito: 'treinta segundos sin cruzar los pies y sin que el atacante le vea mirar el balón',
     },
     tablero: () => [
-      jug('A', 1, 0.6281, 0.3263), jug('B', 1, 0.5142, 0.3263),
-      jug('A', 2, 0.6281, 0.6445), jug('B', 2, 0.5142, 0.6445),
-      cono(0.6964, 0.2379), cono(0.6964, 0.4501), cono(0.4459, 0.2379), cono(0.4459, 0.4501),
-      cono(0.6964, 0.5561), cono(0.6964, 0.7683), cono(0.4459, 0.5561), cono(0.4459, 0.7683),
-      balon(0.6281, 0.3263), balon(0.6281, 0.6445),
+      jug('A', 1, 0.5265, 0.3289), jug('B', 1, 0.4288, 0.3289),
+      jug('A', 2, 0.5265, 0.6424), jug('B', 2, 0.4288, 0.6424),
+      cono(0.585, 0.2418), cono(0.585, 0.4508), cono(0.3703, 0.2418), cono(0.3703, 0.4508),
+      cono(0.585, 0.5553), cono(0.585, 0.7643), cono(0.3703, 0.5553), cono(0.3703, 0.7643),
+      balon(0.5265, 0.3289), balon(0.5265, 0.6424),
     ],
     intent: {
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.6281, y: 0.2644 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.5142, y: 0.2644 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.6281, y: 0.5827 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.5142, y: 0.5827 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.5265, y: 0.2679 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4288, y: 0.2679 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.5265, y: 0.5815 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4288, y: 0.5815 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.6281, y: 0.4235 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.5142, y: 0.4235 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.6281, y: 0.7418 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.5142, y: 0.7418 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.5265, y: 0.4246 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4288, y: 0.4246 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.5265, y: 0.7382 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4288, y: 0.7382 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.5484, y: 0.344 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4573, y: 0.344 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.5484, y: 0.6622 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4573, y: 0.6622 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4582, y: 0.3463 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3801, y: 0.3463 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.4582, y: 0.6598 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3801, y: 0.6598 } },
         ] },
       ],
     },
@@ -102,24 +103,24 @@ export const TANDA_11 = [
       criterio_exito: 'el defensor consigue que tres de cada cuatro subidas pasen de cinco segundos, sin falta',
     },
     tablero: () => [
-      jug('A', 1, 0.322, 0.8281), jug('B', 1, 0.322, 0.7552),
-      jug('A', 2, 0.6789, 0.8281), jug('B', 2, 0.6789, 0.7552),
-      balon(0.322, 0.8281), balon(0.6789, 0.8281),
+      jug('A', 1, 0.3246, 0.8333), jug('B', 1, 0.3246, 0.7593),
+      jug('A', 2, 0.6762, 0.8333), jug('B', 2, 0.6762, 0.7593),
+      balon(0.3246, 0.8333), balon(0.6762, 0.8333),
     ],
     intent: {
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2507, y: 0.6823 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2685, y: 0.6185 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.7502, y: 0.6823 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.7324, y: 0.6185 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2544, y: 0.6852 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2719, y: 0.6204 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.7465, y: 0.6852 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.729, y: 0.6204 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.1793, y: 0.5182 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2061, y: 0.4635 } },
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.8216, y: 0.5182 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.7948, y: 0.4635 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.1841, y: 0.5185 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2105, y: 0.4629 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.8168, y: 0.5185 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.7904, y: 0.4629 } },
         ] },
       ],
     },
@@ -158,11 +159,11 @@ export const TANDA_11 = [
       fases: [
         { eventos: [
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.332, y: 0.3616 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2727, y: 0.3637 } },
         ] },
         { eventos: [
-          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.3093, y: 0.2732 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2751, y: 0.2998 } },
+          { jugador: 'A2', tipo: 'bote', hacia: { x: 0.2532, y: 0.2766 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2239, y: 0.3028 } },
         ] },
       ],
     },
@@ -205,18 +206,18 @@ export const TANDA_11 = [
       fases: [
         { eventos: [
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.332, y: 0.6269 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A3', hacia: { x: 0.3206, y: 0.4147 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2727, y: 0.625 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A3', hacia: { x: 0.2629, y: 0.416 } },
         ] },
         { eventos: [
           { jugador: 'A2', tipo: 'pase', a: 'A1' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3548, y: 0.6092 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A3', hacia: { x: 0.332, y: 0.4501 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2922, y: 0.6076 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A3', hacia: { x: 0.2727, y: 0.4508 } },
         ] },
         { eventos: [
           { jugador: 'A1', tipo: 'pase', a: 'A3' },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A3', hacia: { x: 0.332, y: 0.3616 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3206, y: 0.5738 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A3', hacia: { x: 0.2727, y: 0.3637 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2629, y: 0.5727 } },
         ] },
       ],
     },
@@ -254,12 +255,12 @@ export const TANDA_11 = [
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2182, y: 0.5561 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2637, y: 0.5031 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.1751, y: 0.5553 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2141, y: 0.5031 } },
         ] },
         { eventos: [
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2409, y: 0.5296 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.1946, y: 0.5292 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
@@ -290,28 +291,28 @@ export const TANDA_11 = [
     },
     tablero: () => [
       jug('A', 1, M.escolta_der[0], M.escolta_der[1]),
-      jug('A', 2, 0.2068, 0.2379),
+      jug('A', 2, 0.1654, 0.2418),
       jug('B', 1, M.escolta_der[0] - 0.05, M.escolta_der[1]),
-      jug('B', 2, 0.2409, 0.2909),
+      jug('B', 2, 0.1946, 0.294),
       balon(M.escolta_der[0], M.escolta_der[1]),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2182, y: 0.6445 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2637, y: 0.618 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.1751, y: 0.6424 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2141, y: 0.6163 } },
         ] },
         // el de la esquina sale a cortar el camino
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.184, y: 0.5738 } },
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.184, y: 0.4854 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2295, y: 0.5915 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.1458, y: 0.5727 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.1458, y: 0.4856 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.1848, y: 0.5901 } },
         ] },
         // y en cuanto el balón se suelta, vuelve con su par
         { eventos: [
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2295, y: 0.2821 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.1848, y: 0.2853 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
@@ -359,12 +360,12 @@ export const TANDA_11 = [
         // suena la voz: cada defensor gira y busca a su par, que
         // intenta escaparse hacia el aro
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.3206, y: 0.6976 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3434, y: 0.6622 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.3206, y: 0.3086 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3434, y: 0.344 } },
-          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.3434, y: 0.5031 } },
-          { jugador: 'B3', tipo: 'defiende', marca: 'A3', hacia: { x: 0.3662, y: 0.5031 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2629, y: 0.6947 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2824, y: 0.6598 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2629, y: 0.3114 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2824, y: 0.3463 } },
+          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.2824, y: 0.5031 } },
+          { jugador: 'B3', tipo: 'defiende', marca: 'A3', hacia: { x: 0.302, y: 0.5031 } },
         ] },
       ],
     },
@@ -395,20 +396,20 @@ export const TANDA_11 = [
     tablero: () => [
       jug('A', 1, M.poste_bajo_der[0] + 0.06, M.poste_bajo_der[1]),
       jug('A', 2, M.poste_bajo_izq[0] + 0.06, M.poste_bajo_izq[1]),
-      jug('A', 3, 0.4231, 0.8214),
+      jug('A', 3, 0.3508, 0.8166),
       jug('B', 1, M.poste_bajo_der[0] + 0.02, M.poste_bajo_der[1]),
       jug('B', 2, M.poste_bajo_izq[0] + 0.02, M.poste_bajo_izq[1]),
-      balon(0.2125, 0.5031),
+      balon(0.1702, 0.5031),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         // el tiro del entrenador ya está en el aire: primero el par
         { eventos: [
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2409, y: 0.6003 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2409, y: 0.4058 } },
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2751, y: 0.6622 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2751, y: 0.344 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.1946, y: 0.5988 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.1946, y: 0.4072 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2239, y: 0.6598 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2239, y: 0.3463 } },
         ] },
         { eventos: [{ jugador: 'B1', tipo: 'recoge' }] },
         { eventos: [{ jugador: 'B1', tipo: 'pase', a: 'A3' }] },
@@ -510,26 +511,26 @@ export const TANDA_11 = [
     },
     tablero: () => [
       jug('A', 1, M.escolta_der[0], M.escolta_der[1]),
-      jug('A', 2, 0.2295, 0.2732),
+      jug('A', 2, 0.1848, 0.2766),
       jug('B', 1, M.escolta_der[0] - 0.05, M.escolta_der[1]),
-      jug('B', 2, 0.2637, 0.3263),
+      jug('B', 2, 0.2141, 0.3289),
       balon(M.escolta_der[0], M.escolta_der[1]),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2637, y: 0.5915 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2979, y: 0.5738 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2141, y: 0.5901 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2434, y: 0.5727 } },
         ] },
         // «¡ayuda!» — sale el de abajo
         { eventos: [
-          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.2182, y: 0.5031 } },
+          { jugador: 'B2', tipo: 'defiende', hacia: { x: 0.1751, y: 0.5031 } },
           { jugador: 'A1', tipo: 'pase', a: 'A2' },
         ] },
         // «¡voy!» — y vuelve con el suyo
         { eventos: [
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2523, y: 0.3174 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2044, y: 0.3201 } },
           { jugador: 'A2', tipo: 'tiro' },
         ] },
       ],

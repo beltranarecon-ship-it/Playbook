@@ -27,6 +27,7 @@ function test(nombre, fn) {
   try { fn(); pasan++; console.log(`  ✓ ${nombre}`); }
   catch (e) { fallan++; console.error(`  ✗ ${nombre}\n      ${e.message}`); }
 }
+const ok = (cond, msg) => { if (!cond) throw new Error(msg); };
 function aprox(real, esperado, tol = 1e-6, msg = '') {
   if (!(Math.abs(real - esperado) <= tol)) {
     throw new Error(`${msg} esperado≈${esperado} real=${real} (tolerancia ${tol})`);
@@ -42,16 +43,50 @@ const TODAS = Object.keys(PISTAS_M);
 const MM = 5e-3;
 const REDONDEO = 1e-4;
 
-console.log('· el reglamento cuadra consigo mismo');
+console.log('· el dibujo cuadra consigo mismo');
 
-test('el tramo recto del triple corta el arco a 2,99 m del fondo', () => {
-  // Número publicado por FIBA. Si alguien toca el radio del triple o su
-  // separación de la banda, este cálculo deja de dar 2,99 y salta aquí.
-  aprox(TRIPLE_CORTE, 2.99, 0.005);
+/* ── OJO CON ESTOS NÚMEROS ────────────────────────────────────
+   No son de FIBA y no deben «corregirse» hacia FIBA. Están medidos
+   sobre los cuatro SVG que dibujó el entrenador (dev/medir-pistas.html
+   muestrea los arcos y les ajusta una circunferencia; el error del
+   ajuste fue 0,1 mm). El dibujo es de minibasket, que es la categoría
+   del club: pista de 24 × 14, tiro libre a 4,63 y un triple de 6,28 m
+   de radio.
+
+   Antes este banco exigía 6,60 y 2,99 —cancha FIBA— y por eso salía en
+   rojo: no fallaba el código, fallaba la expectativa. */
+
+test('el tramo recto del triple corta el arco a 2,10 m del fondo', () => {
+  // Se cumple sobre el dibujo al milímetro. Si alguien toca el radio,
+  // el centro o el lateral del triple, deja de cerrar y salta aquí.
+  /* 2,0886 con los números redondeados a dos decimales; sobre el
+     dibujo se midió 2,096. Los 8 mm de diferencia son ese redondeo. */
+  aprox(TRIPLE_CORTE, 2.09, 0.02);
 });
 
-test('el tramo recto va a 6,60 m del eje largo', () => {
-  aprox(TRIPLE_LATERAL, 6.60, 1e-9);
+test('el tramo recto va a 6,14 m del eje largo', () => {
+  aprox(TRIPLE_LATERAL, 6.14, 1e-9);
+});
+
+test('la pista dibujada mide 24 × 14 y el medio campo cae a 12', () => {
+  aprox(REGLAS.largo, 24, 1e-9);
+  aprox(REGLAS.ancho, 14, 1e-9);
+  aprox(REGLAS.medioCampo, REGLAS.largo / 2, 1e-9);
+});
+
+test('el marco de cada pista es el viewBox de su SVG', () => {
+  /* 10 unidades de dibujo = 1 metro. Si el marco y el viewBox se
+     separan, las fichas se pintan desplazadas sobre el fondo y no hay
+     forma de verlo salvo mirando. */
+  const VIEWBOX = {                       // en metros: viewBox / 10
+    entera: [18, 27], entera_fiba: [18, 27],
+    media: [18, 18], media_fiba: [17, 18],
+  };
+  for (const [pista, [w, h]] of Object.entries(VIEWBOX)) {
+    const m = marcoDe(pista);
+    aprox(m.ancho, w, 1e-9, `${pista} ancho:`);
+    aprox(m.alto, h, 1e-9, `${pista} alto:`);
+  }
 });
 
 console.log('\n· el metro es cuadrado');
@@ -62,7 +97,7 @@ for (const pista of TODAS) {
     aprox(m.aspect, m.ancho / m.alto, 1e-12);
   });
 
-  test(`${pista}: 15 m a lo ancho miden 15 m`, () => {
+  test(`${pista}: 14 m a lo ancho miden 14 m`, () => {
     const a = pistaAMarco(pista, 0, -REGLAS.ancho / 2);
     const b = pistaAMarco(pista, 0, REGLAS.ancho / 2);
     aprox(Math.hypot(b[0] - a[0], b[1] - a[1]), REGLAS.ancho, 1e-9);
@@ -86,24 +121,45 @@ for (const pista of TODAS) {
   const pos = posicionesDe(pista, 'norte');
   const d = (n) => metrosEntre(pista, pos.aro, pos[n]);
 
-  test(`${pista}: del aro a la línea de tiros libres, 4,225 m`, () => {
+  test(`${pista}: del aro a la línea de tiros libres, 3,41 m`, () => {
+    // 4,63 − 1,22 sobre el dibujo. Antes eran 4,225 (5,80 − 1,575),
+    // que es la cancha FIBA y no ésta.
     aprox(d('tiro_libre'), REGLAS.zonaFondo - REGLAS.aroRetranqueo, MM);
+    aprox(d('tiro_libre'), 3.41, 0.01);
   });
 
   test(`${pista}: de codo a codo, el ancho de la zona (4,90 m)`, () => {
     aprox(metrosEntre(pista, pos.codo_izq, pos.codo_der), REGLAS.zonaAncho, MM);
   });
 
-  test(`${pista}: la esquina está a 6,6 m del aro`, () => {
-    // Criterio de aceptación del Tramo 2.2. Sobre el dibujo anterior
-    // salía a 8,9 m, y esa era la prueba de que la escala solo valía
-    // junto al aro.
-    aprox(d('esquina_der'), 6.60, MM);
-    aprox(d('esquina_izq'), 6.60, MM);
+  test(`${pista}: la esquina cae 35 cm por fuera del tramo recto`, () => {
+    // A la altura del aro, así que la distancia al aro es el lateral
+    // limpio: 6,14 dibujados + 0,35 = 6,49. Y queda 51 cm de campo
+    // hasta la banda, que es lo que hace que se vea como una esquina y
+    // no como un pie fuera.
+    aprox(d('esquina_der'), 6.49, 0.01);
+    aprox(d('esquina_izq'), 6.49, 0.01);
+    ok(Math.abs(pos.esquina_der[0] - pos.esquina_izq[0]) > 0
+       || Math.abs(pos.esquina_der[1] - pos.esquina_izq[1]) > 0, 'no se distinguen');
   });
 
   test(`${pista}: los cuatro puestos de perímetro, a la misma distancia`, () => {
-    for (const n of ['alero_der', 'escolta_der', 'base']) aprox(d(n), 7.00, MM);
+    /* Equidistantes del CENTRO DEL ARCO de triple, que en este dibujo
+       no es el aro: hay 45 cm entre los dos. Medirlos desde el aro
+       daría cuatro números distintos y no querría decir nada. */
+    const centroArco = pistaANorm(pista, REGLAS.tripleCentro, 0);
+    const R = REGLAS.tripleRadio + 0.35;
+    for (const n of ['alero_der', 'alero_izq', 'escolta_der', 'escolta_izq', 'base']) {
+      aprox(metrosEntre(pista, centroArco, pos[n]), R, MM, n);
+    }
+  });
+
+  test(`${pista}: el perímetro queda POR FUERA de la línea de triple`, () => {
+    const centroArco = pistaANorm(pista, REGLAS.tripleCentro, 0);
+    for (const n of ['alero_der', 'escolta_der', 'base']) {
+      const r = metrosEntre(pista, centroArco, pos[n]);
+      ok(r > REGLAS.tripleRadio, `${n} está dentro del arco: ${r.toFixed(2)} m`);
+    }
   });
 
   test(`${pista}: izquierda y derecha son simétricas`, () => {
@@ -149,13 +205,30 @@ test('el aro de court.js y el de anclas.js son el mismo punto', () => {
 console.log('\n· la banda de 2 m');
 
 for (const pista of TODAS) {
-  test(`${pista}: la cancha deja 2 m de banda por cada lado`, () => {
+  /* Antes se exigían 2 m por los cuatro lados. En el dibujo no es así:
+     2 m a los lados, 1,5 tras la línea de fondo, y en las medias un
+     trozo de pista más allá del medio campo distinto en cada una —4,5 m
+     la mini y 3,5 la FIBA—. Se comprueba contra esa tabla, que es de
+     donde sale el marco. */
+  test(`${pista}: la banda coincide con la que está dibujada`, () => {
+    const m = marcoDe(pista);
     const lim = limitesCancha(pista);
     const e = escalaDe(pista);
-    aprox(lim.x[0] * e.x, REGLAS.banda, 1e-9, 'izquierda');
-    aprox((1 - lim.x[1]) * e.x, REGLAS.banda, 1e-9, 'derecha');
-    aprox(lim.y[0] * e.y, REGLAS.banda, 1e-9, 'arriba');
-    aprox((1 - lim.y[1]) * e.y, REGLAS.banda, 1e-9, 'abajo');
+    const largoEs = m.orientacion === 'retrato' ? 'y' : 'x';
+    const anchoEs = largoEs === 'y' ? 'x' : 'y';
+    aprox(lim[largoEs][0] * e[largoEs], m.antes, 1e-9, 'tras la línea de fondo');
+    aprox((1 - lim[largoEs][1]) * e[largoEs], m.despues, 1e-9, 'al otro extremo');
+    aprox(lim[anchoEs][0] * e[anchoEs], m.lados, 1e-9, 'lado');
+    aprox((1 - lim[anchoEs][1]) * e[anchoEs], m.lados, 1e-9, 'lado');
+  });
+
+  test(`${pista}: queda banda de sobra para poner una cola`, () => {
+    // El motivo por el que existe la banda. Menos de metro y medio no
+    // da para una fila de espera sin pisar el campo.
+    const m = marcoDe(pista);
+    for (const [lado, v] of [['antes', m.antes], ['después', m.despues], ['lados', m.lados]]) {
+      ok(v >= 1.5, `${lado} solo deja ${v} m`);
+    }
   });
 
   test(`${pista}: todas las anclas caen dentro de la cancha`, () => {

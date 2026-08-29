@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-03.mjs — 1c1, defensa y juego reducido (Bloque D).
 
@@ -83,14 +84,14 @@ export const TANDA_03 = [
       criterio_exito: 'salir del cuadrado en tres de cada cuatro intentos',
     },
     tablero: () => [
-      jug('A', 1, 0.537, 0.5031), jug('B', 1, 0.4687, 0.5031),
-      cono(0.6053, 0.4147), cono(0.6053, 0.5915), cono(0.4231, 0.4147), cono(0.4231, 0.5915),
-      balon(0.537, 0.5031),
+      jug('A', 1, 0.4484, 0.5031), jug('B', 1, 0.3898, 0.5031),
+      cono(0.5069, 0.416), cono(0.5069, 0.5901), cono(0.3508, 0.416), cono(0.3508, 0.5901),
+      balon(0.4484, 0.5031),
     ],
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.4687, y: 0.4147 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
+        { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.3898, y: 0.416 } }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }, { jugador: 'B1', tipo: 'defiende', marca: 'A1' }] },
         { eventos: [{ jugador: 'A1', tipo: 'tiro', hacia: 'canasta' }] },
       ],
@@ -236,8 +237,8 @@ export const TANDA_03 = [
       criterio_exito: 'treinta segundos sin cruzar los pies ni una vez, comprobado por la pareja',
     },
     tablero: () => [
-      jug('A', 1, 0.332, 0.3263), jug('B', 1, 0.4459, 0.3263),
-      jug('A', 2, 0.332, 0.6799), jug('B', 2, 0.4459, 0.6799),
+      jug('A', 1, 0.2727, 0.3289), jug('B', 1, 0.3703, 0.3289),
+      jug('A', 2, 0.2727, 0.6772), jug('B', 2, 0.3703, 0.6772),
     ],
     /* Un espejo parado no es un espejo. Tres desplazamientos —lateral
        a un lado, lateral al otro y uno adelante— con el defensor
@@ -248,22 +249,22 @@ export const TANDA_03 = [
       canasta: null,
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.332, y: 0.2556 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4459, y: 0.2556 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.332, y: 0.6092 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4459, y: 0.6092 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2727, y: 0.2592 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3703, y: 0.2592 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2727, y: 0.6076 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3703, y: 0.6076 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.332, y: 0.4147 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.4459, y: 0.4147 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.332, y: 0.7683 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.4459, y: 0.7683 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2727, y: 0.416 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3703, y: 0.416 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2727, y: 0.7643 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3703, y: 0.7643 } },
         ] },
         { eventos: [
-          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2751, y: 0.3263 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.389, y: 0.3263 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2751, y: 0.6799 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.389, y: 0.6799 } },
+          { jugador: 'A1', tipo: 'corte', hacia: { x: 0.2239, y: 0.3289 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3215, y: 0.3289 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2239, y: 0.6772 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3215, y: 0.6772 } },
         ] },
       ],
     },
@@ -552,9 +553,9 @@ export const TANDA_03 = [
       criterio_exito: 'la defensa en inferioridad evita la canasta fácil en la mitad de las jugadas',
     },
     tablero: () => [
-      jug('A', 1, E.escolta_izq[0], 0.6823), jug('A', 2, E.base[0], 0.7188), jug('A', 3, E.escolta_der[0], 0.6823),
+      jug('A', 1, E.escolta_izq[0], 0.6852), jug('A', 2, E.base[0], 0.7223), jug('A', 3, E.escolta_der[0], 0.6852),
       jug('B', 1, E.tiro_libre[0], E.tiro_libre[1]), jug('B', 2, E.poste_bajo_izq[0], E.poste_bajo_izq[1]),
-      balon(E.base[0], 0.7188),
+      balon(E.base[0], 0.7223),
     ],
     intent: null,
   },

@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-14.mjs — entrada a canasta (Bloque D).
 
@@ -47,9 +48,9 @@ export const TANDA_14 = [
       aplicacion: 'la entrada tras recepción en el 45, donde ese mismo ritmo de dos apoyos tiene que salir en carrera y con un pase de por medio',
     },
     tablero: () => [
-      fila(0.332, 0.6445, 3, 0),
-      cono(0.2637, 0.6092),
-      balon(0.332, 0.6445),
+      fila(0.2727, 0.6424, 3, 0),
+      cono(0.2141, 0.6076),
+      balon(0.2727, 0.6424),
     ],
     intent: {
       canasta: 'norte',
@@ -91,7 +92,7 @@ export const TANDA_14 = [
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2865, y: 0.397 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2337, y: 0.3985 } }] },
         { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'aro' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
@@ -123,14 +124,14 @@ export const TANDA_14 = [
       criterio_exito: 'cinco entradas recibiendo en movimiento y con un bote como máximo',
     },
     tablero: () => [
-      fila(0.2182, 0.8214, 4, 270),
+      fila(0.1751, 0.8166, 4, 270),
       jug('A', 1, M.base[0], M.base[1]),
       balon(M.base[0], M.base[1]),
     ],
     intent: {
       canasta: 'norte',
       fases: [
-        { eventos: [{ jugador: 'fila1', tipo: 'corte', hacia: { x: 0.332, y: 0.6622 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'corte', hacia: { x: 0.2727, y: 0.6598 } }] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'fila1' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: 'aro' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
@@ -173,13 +174,13 @@ export const TANDA_14 = [
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.3093, y: 0.6092 } },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.2068, y: 0.5296 } },
+          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2532, y: 0.6076 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.1654, y: 0.5292 } },
         ] },
         // el defensor ha ocupado el lado de dentro: se termina por fuera
         { eventos: [
           { jugador: 'fila1', tipo: 'bote', hacia: 'aro' },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.1954, y: 0.4943 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.1556, y: 0.4944 } },
         ] },
         { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
@@ -219,11 +220,11 @@ export const TANDA_14 = [
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2865, y: 0.5915 } },
-          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.1954, y: 0.5738 } },
+          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2337, y: 0.5901 } },
+          { jugador: 'B1', tipo: 'defiende', hacia: { x: 0.1556, y: 0.5727 } },
         ] },
         // se pasa por debajo del aro y se apoya al otro lado
-        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.1726, y: 0.4501 } }] },
+        { eventos: [{ jugador: 'fila1', tipo: 'bote', hacia: { x: 0.136, y: 0.4508 } }] },
         { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'vuelve_a_fila' }] },
@@ -255,19 +256,19 @@ export const TANDA_14 = [
     },
     tablero: () => [
       fila(M.escolta_izq[0] + 0.10, M.escolta_izq[1], 4, 180),
-      jug('B', 1, 0.2409, 0.4324),
+      jug('B', 1, 0.1946, 0.4334),
       balon(M.escolta_izq[0] + 0.10, M.escolta_izq[1]),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2865, y: 0.4147 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'fila1', hacia: { x: 0.2523, y: 0.4589 } },
+          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2337, y: 0.416 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'fila1', hacia: { x: 0.2044, y: 0.4595 } },
         ] },
         { eventos: [
           { jugador: 'fila1', tipo: 'bote', hacia: 'aro' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'fila1', hacia: { x: 0.2068, y: 0.4677 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'fila1', hacia: { x: 0.1654, y: 0.4682 } },
         ] },
         { eventos: [{ jugador: 'fila1', tipo: 'tiro' }] },
         { eventos: [{ jugador: 'fila1', tipo: 'recoge' }] },
@@ -303,15 +304,15 @@ export const TANDA_14 = [
     /* La cola arranca en 0,62 y no en 0,70: con cuatro esperando y paso
        de 0,06 el último caía en 0,94, y el medio campo acaba en 0,829. */
     tablero: () => [
-      fila(0.6509, 0.5031, 4, 0),
-      cono(0.537, 0.4501, 'rodear'), cono(0.4004, 0.5561, 'rodear'),
-      balon(0.6509, 0.5031),
+      fila(0.546, 0.5031, 4, 0),
+      cono(0.4484, 0.4508, 'rodear'), cono(0.3313, 0.5553, 'rodear'),
+      balon(0.546, 0.5031),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.3548, y: 0.5561 } },
+          { jugador: 'fila1', tipo: 'bote', hacia: { x: 0.2922, y: 0.5553 } },
           { jugador: 'fila1', tipo: 'rodea_cono', cono_id: 'el_cono_2' },
           { jugador: 'fila1', tipo: 'rodea_cono', cono_id: 'el_cono_3' },
         ] },
@@ -347,25 +348,25 @@ export const TANDA_14 = [
     },
     tablero: () => [
       jug('A', 1, M.escolta_der[0], M.escolta_der[1]),
-      jug('A', 2, 0.2068, 0.2556),
+      jug('A', 2, 0.1654, 0.2592),
       jug('B', 1, M.escolta_der[0] - 0.05, M.escolta_der[1]),
-      jug('B', 2, 0.2409, 0.3086),
+      jug('B', 2, 0.1946, 0.3114),
       balon(M.escolta_der[0], M.escolta_der[1]),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2637, y: 0.6092 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2979, y: 0.5915 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.2141, y: 0.6076 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2434, y: 0.5901 } },
         ] },
         // la ayuda NO sale: hay entrada. El compañero de la esquina se
         // abre igual, porque su trabajo es estar disponible por si sale
         { eventos: [
           { jugador: 'A1', tipo: 'bote', hacia: 'aro' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2409, y: 0.5738 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2865, y: 0.2202 } },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2751, y: 0.2644 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.1946, y: 0.5727 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.2337, y: 0.2243 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2239, y: 0.2679 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'tiro' }] },
       ],

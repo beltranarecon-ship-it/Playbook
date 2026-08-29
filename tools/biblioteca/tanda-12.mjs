@@ -1,3 +1,4 @@
+/* marco: 3 */
 /* ============================================================
    tanda-12.mjs — juego reducido (Bloque D).
 
@@ -48,23 +49,23 @@ export const TANDA_12 = [
       criterio_exito: 'tres de cada cuatro posesiones acaban en canasta dentro de la zona, y la decisión se toma en el tiro libre o más cerca',
     },
     tablero: () => [
-      jug('A', 1, 0.7192, 0.4324), jug('A', 2, 0.7192, 0.6092),
+      jug('A', 1, 0.6046, 0.4334), jug('A', 2, 0.6046, 0.6076),
       jug('B', 1, M.tiro_libre[0], M.tiro_libre[1]),
-      balon(0.7192, 0.4324),
+      balon(0.6046, 0.4334),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         // se ataca al defensor: el pase no vale hasta que se le compromete
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4004, y: 0.4677 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.4459, y: 0.6445 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3548, y: 0.4854 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3313, y: 0.4682 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.3703, y: 0.6424 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.2922, y: 0.4856 } },
         ] },
         { eventos: [{ jugador: 'A1', tipo: 'pase', a: 'A2' }] },
         { eventos: [
           { jugador: 'A2', tipo: 'bote', hacia: 'aro' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2865, y: 0.5738 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2337, y: 0.5727 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
@@ -94,32 +95,32 @@ export const TANDA_12 = [
       criterio_exito: 'siete de cada diez posesiones terminan en canasta cerca del aro sin más de dos botes',
     },
     tablero: () => [
-      jug('A', 1, 0.7192, 0.5031), jug('A', 2, 0.6964, 0.2556), jug('A', 3, 0.6964, 0.7506),
+      jug('A', 1, 0.6046, 0.5031), jug('A', 2, 0.585, 0.2592), jug('A', 3, 0.585, 0.7469),
       jug('B', 1, M.tiro_libre[0], M.tiro_libre[1]),
       jug('B', 2, M.poste_bajo_der[0] + 0.02, 0.5031),
-      balon(0.7192, 0.5031),
+      balon(0.6046, 0.5031),
     ],
     intent: {
       canasta: 'norte',
       fases: [
         // el balón por delante del de arriba, y los otros dos abiertos
         { eventos: [
-          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.4459, y: 0.5031 } },
-          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.4004, y: 0.2556 } },
-          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.4004, y: 0.7506 } },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.389, y: 0.5031 } },
+          { jugador: 'A1', tipo: 'bote', hacia: { x: 0.3703, y: 0.5031 } },
+          { jugador: 'A2', tipo: 'corte', hacia: { x: 0.3313, y: 0.2592 } },
+          { jugador: 'A3', tipo: 'corte', hacia: { x: 0.3313, y: 0.7469 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A1', hacia: { x: 0.3215, y: 0.5031 } },
         ] },
         { eventos: [
           { jugador: 'A1', tipo: 'pase', a: 'A3' },
-          { jugador: 'B2', tipo: 'defiende', marca: 'A3', hacia: { x: 0.2751, y: 0.6622 } },
+          { jugador: 'B2', tipo: 'defiende', marca: 'A3', hacia: { x: 0.2239, y: 0.6598 } },
         ] },
         { eventos: [
           { jugador: 'A3', tipo: 'pase', a: 'A2' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.3548, y: 0.3263 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2922, y: 0.3289 } },
         ] },
         { eventos: [
           { jugador: 'A2', tipo: 'bote', hacia: 'aro' },
-          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2637, y: 0.3793 } },
+          { jugador: 'B1', tipo: 'defiende', marca: 'A2', hacia: { x: 0.2141, y: 0.3811 } },
         ] },
         { eventos: [{ jugador: 'A2', tipo: 'tiro' }] },
       ],
@@ -191,7 +192,7 @@ export const TANDA_12 = [
       jug('A', 1, M.base[0], M.base[1]),
       jug('A', 2, M.escolta_der[0], M.escolta_der[1]),
       jug('A', 3, M.escolta_izq[0], M.escolta_izq[1]),
-      jug('A', 4, 0.2182, 0.7683),
+      jug('A', 4, 0.1751, 0.7643),
       jug('B', 1, M.base[0] - 0.05, M.base[1]),
       jug('B', 2, M.escolta_der[0] - 0.06, M.escolta_der[1]),
       jug('B', 3, M.escolta_izq[0] - 0.06, M.escolta_izq[1]),
@@ -326,13 +327,13 @@ export const TANDA_12 = [
       jug('A', 1, M.base[0], M.base[1]),
       jug('A', 2, M.escolta_der[0], M.escolta_der[1]),
       jug('A', 3, M.escolta_izq[0], M.escolta_izq[1]),
-      jug('A', 4, 0.2182, 0.7506),
+      jug('A', 4, 0.1751, 0.7469),
       jug('B', 1, M.base[0] - 0.05, M.base[1]),
       jug('B', 2, M.escolta_der[0] - 0.05, M.escolta_der[1]),
       jug('B', 3, M.escolta_izq[0] - 0.05, M.escolta_izq[1]),
-      jug('B', 4, 0.2523, 0.7153),
-      cono(0.1271, 0.3705), cono(0.5142, 0.3705), cono(0.8559, 0.3705),
-      cono(0.1271, 0.6445), cono(0.5142, 0.6445), cono(0.8559, 0.6445),
+      jug('B', 4, 0.2044, 0.7121),
+      cono(0.097, 0.3724), cono(0.4288, 0.3724), cono(0.7217, 0.3724),
+      cono(0.097, 0.6424), cono(0.4288, 0.6424), cono(0.7217, 0.6424),
       balon(M.base[0], M.base[1]),
     ],
     intent: null,
