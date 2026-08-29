@@ -249,11 +249,14 @@
 
 .exercise-card-thumb {
   position: relative;
-  /* La proporción de la pista (297:210), no un 16:10 genérico: la
-     miniatura se genera apaisada con esa misma proporción y así entra
-     entera. Con 16:10 y object-fit:cover se recortaban los laterales,
-     que es justo donde hay gente en medio ejercicio. */
-  aspect-ratio: 297 / 210;
+  /* La proporción de SU pista, que la pone app.js en --thumb-aspect.
+     thumbnail.js genera el póster con el aspecto de cada pista, así que
+     no hay uno solo: la entera sale 1,5:1 y la media, cuadrada. Aquí
+     estaba fijo en 297/210 —el folio A4 de las pistas antiguas— y con
+     object-fit:cover le recortaba casi un tercio por arriba y por abajo
+     a las 176 fichas de media pista, que es donde están las bandas y la
+     gente esperando. El respaldo es 1, la media, que es lo que más hay. */
+  aspect-ratio: var(--thumb-aspect, 1);
   margin: -0.25rem -0.25rem 0.875rem;
   border-radius: 10px;
   overflow: hidden;

@@ -34,7 +34,11 @@
 .pista-card:hover { border-color: var(--color-accent); }
 .pista-card.is-active { border-color: var(--color-accent); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-tint); }
 .pista-card__img {
-  aspect-ratio: var(--pista-aspect, .707);   /* la pone pistaPicker, por pista */
+  /* La pone pistaPicker, una por pista. El respaldo es la entera
+     (18/27); estaba en .707, el folio A4 de los SVG antiguos. Con
+     background-size:contain nada se deforma ni se recorta: lo único
+     que cambia es el hueco que se reserva. */
+  aspect-ratio: var(--pista-aspect, .6667);
   max-height: 150px;
   margin-inline: auto;
   width: 100%;

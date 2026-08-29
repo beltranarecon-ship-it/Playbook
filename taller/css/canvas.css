@@ -7,7 +7,7 @@
 .court {
   position: relative;
   width: 100%;
-  aspect-ratio: var(--court-aspect, .707);
+  aspect-ratio: var(--court-aspect, .6667);
   background: #0b2330;
   border: 1px solid var(--color-border);
   border-radius: var(--r-lg);
@@ -36,8 +36,8 @@
    cuanto una pista tiene otra proporción. */
 .court--landscape .court__bg {
   inset: auto; top: 50%; left: 50%;
-  width: calc(var(--court-bg-aspect, .7071) * 100%);
-  height: calc(100% / var(--court-bg-aspect, .7071));
+  width: calc(var(--court-bg-aspect, .6667) * 100%);
+  height: calc(100% / var(--court-bg-aspect, .6667));
   transform: translate(-50%, -50%) rotate(90deg);
 }
 

@@ -13,8 +13,9 @@
    soltaban el balón a metros del aro creyendo que lo dejaban dentro.
    ============================================================ */
 
+import { readFileSync } from 'node:fs';
 import {
-  REGLAS, PISTAS_M, TRIPLE_LATERAL, TRIPLE_CORTE,
+  REGLAS, PISTAS_M, PISTA_POR_DEFECTO, TRIPLE_LATERAL, TRIPLE_CORTE,
   marcoDe, pistaAMarco, pistaANorm, limitesCancha, escalaDe, radioPx, pasoNorm,
   escalaTrazo, pxPorMetro, TAMANOS, MATERIAL,
 } from '../js/canvas/medidas.js';
@@ -86,6 +87,66 @@ test('el marco de cada pista es el viewBox de su SVG', () => {
     const m = marcoDe(pista);
     aprox(m.ancho, w, 1e-9, `${pista} ancho:`);
     aprox(m.alto, h, 1e-9, `${pista} alto:`);
+  }
+});
+
+console.log('\n· el CSS no se queda con la proporción de otra pista');
+
+test('ningún fichero conserva la proporción del folio A4', () => {
+  /* ── DE DÓNDE SALE ESTA PRUEBA ────────────────────────────
+     Los SVG antiguos estaban encajados en una hoja A4, así que 0,707
+     y 297/210 acabaron escritos a mano por media docena de sitios:
+     valores de reserva de --court-aspect, el fondo girado del visor y
+     el ancho del proyector. Con las pistas dibujadas a mano ninguna de
+     las cuatro mide eso, y el proyector se salía 296 px por debajo del
+     borde con la media pista, que es el 86 % de las fichas.
+
+     El runtime siempre estuvo bien —court.js lee medidas.js—, pero un
+     número escrito a mano no avisa cuando deja de ser verdad. */
+  const A4 = /(?<![.\d])(?:0?\.707\d*|297\s*\/\s*210|210\s*\/\s*297|70\.71%|141\.42%)/;
+  const FICHEROS = [
+    'taller/css/canvas.css', 'taller/css/base.css', 'taller/css/detalle.css',
+    'taller/css/wizard.css', 'equipos/css/visor.css', 'equipos/css/panel.css',
+    'css/app.css', 'taller/js/ui/components.js',
+  ];
+  /* Los comentarios SÍ nombran el A4: cuentan por qué se quitó. Se
+     borran antes de mirar, conservando los saltos de línea para no
+     perder la numeración. Un comentario de bloque puede ocupar diez
+     líneas, así que no vale con partir cada línea por «/*». */
+  const sinComentarios = (txt) => txt
+    .replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (t, p) => p + ' '.repeat(t.length - p.length));
+
+  const malos = [];
+  for (const f of FICHEROS) {
+    const ruta = new URL(`../../${f}`, import.meta.url);
+    let txt;
+    try { txt = readFileSync(ruta, 'utf8'); } catch { continue; }
+    const limpio = sinComentarios(txt).split('\n');
+    txt.split('\n').forEach((linea, i) => {
+      if (A4.test(limpio[i] || '')) malos.push(`${f}:${i + 1}  ${linea.trim().slice(0, 70)}`);
+    });
+  }
+  ok(malos.length === 0, `queda proporción de A4 escrita a mano:\n      ${malos.join('\n      ')}`);
+});
+
+test('los valores de reserva son los de la pista por defecto', () => {
+  /* Solo se ven hasta que CourtView pone la variable, pero mientras
+     dura, la caja se reserva torcida y la pista salta al cargar. */
+  const m = marcoDe(PISTA_POR_DEFECTO);
+  const derecho = m.ancho / m.alto;            // retrato: 18/27 = 0,6667
+  const girado = m.alto / m.ancho;             // proyector: 1,5
+  const cerca = (v, esp) => Math.abs(v - esp) < 0.002;
+
+  const leer = (f) => readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8');
+  const reservas = [...leer('taller/css/canvas.css').matchAll(/--court-(?:bg-)?aspect,\s*([\d.]+)/g),
+                    ...leer('equipos/css/visor.css').matchAll(/--court-(?:bg-)?aspect,\s*([\d.]+)/g),
+                    ...leer('equipos/css/panel.css').matchAll(/--court-aspect,\s*([\d.]+)/g)]
+    .map((x) => Number(x[1]));
+  ok(reservas.length >= 6, `solo se han encontrado ${reservas.length} valores de reserva`);
+  for (const v of reservas) {
+    ok(cerca(v, derecho) || cerca(v, girado),
+      `${v} no es ni ${derecho.toFixed(4)} (retrato) ni ${girado.toFixed(4)} (girada)`);
   }
 });
 

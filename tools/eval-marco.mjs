@@ -24,9 +24,11 @@
      4. Que el sello de marco impida aplicar la migración dos veces.
    ============================================================ */
 
+import { readFileSync } from 'node:fs';
 import {
   recta, argumentos, migrarTexto, marcoDe, sellar, ES_NUMERO, LLAMADAS,
 } from '../tools/biblioteca/marco-comun.mjs';
+import { limitesCancha } from '../taller/js/canvas/medidas.js';
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -204,6 +206,156 @@ test('resellar un fichero con shebang tampoco lo mueve', () => {
 test('el sello no se pierde al migrar el texto', () => {
   const t = sellar("tipo_pista: 'entera'\nbalon(0.30, 0.40)", 2);
   ok(migra(t).startsWith('/* marco: 2 */'), 'se ha comido el sello');
+});
+
+console.log('\n· convertir la animación guardada en la base');
+
+/* La regla de migrar-marco-3-base.mjs: se convierte TODO objeto con `x`
+   e `y` numéricos. Se reimplanta aquí igual que allí —son ocho líneas—
+   porque ese script abre conexión a Supabase al importarse y un banco
+   no puede depender de la red ni de una clave. Si las dos se separan,
+   la última prueba de esta tanda lo dice. */
+const ajustarC = (v) => Number(Math.min(1, Math.max(0, v)).toFixed(4));
+function convertir(nodo, f, cuenta = { n: 0 }) {
+  if (!nodo || typeof nodo !== 'object') return cuenta.n;
+  if (Array.isArray(nodo)) { for (const v of nodo) convertir(v, f, cuenta); return cuenta.n; }
+  if (typeof nodo.x === 'number' && typeof nodo.y === 'number') {
+    nodo.x = ajustarC(f.x(nodo.x)); nodo.y = ajustarC(f.y(nodo.y)); cuenta.n += 1;
+  }
+  for (const v of Object.values(nodo)) convertir(v, f, cuenta);
+  return cuenta.n;
+}
+const F = { x: (v) => v + 0.1, y: (v) => v * 2 };
+
+test('convierte los pares x/y a cualquier profundidad', () => {
+  const a = { fases: [{ movimientos: [{ path: [{ x: 0.2, y: 0.3, tipo_nodo: 'lineal' }] }] }] };
+  eq(convertir(a, F), 1);
+  eq(a.fases[0].movimientos[0].path[0].x, 0.3);
+  eq(a.fases[0].movimientos[0].path[0].y, 0.6);
+  eq(a.fases[0].movimientos[0].path[0].tipo_nodo, 'lineal', 'ha tocado lo que no es coordenada:');
+});
+
+test('los tiradores del bezier también, que son absolutos', () => {
+  /* canvas/geometry.js los calcula como n.x ± algo y los recorta a
+     [0,1]: son sitios, no desplazamientos. Dejarlos sin convertir
+     deforma la curva sin mover sus extremos, que es peor que moverla. */
+  const a = { path: [{ x: 0.2, y: 0.3, handle_in: { x: 0.1, y: 0.2 }, handle_out: { x: 0.3, y: 0.4 } }] };
+  eq(convertir(a, F), 3);
+  eq(a.path[0].handle_in.x, 0.2);
+  eq(a.path[0].handle_out.y, 0.8);
+});
+
+test('NO toca números que no son un par x/y', () => {
+  /* Duraciones, grados y recuentos son números y están al lado. Una
+     lista de campos se equivoca en cuanto alguien añade uno; la regla
+     estructural, no. */
+  const a = {
+    fases: [{ duracion_ms: 800, pausa_post_ms: 200 }],
+    conos: [{ fila_config: { direccion_grados: 90, n_jugadores: 4 } }],
+    _ediciones: 3,
+  };
+  eq(convertir(a, F), 0);
+  eq(a.fases[0].duracion_ms, 800);
+  eq(a.conos[0].fila_config.direccion_grados, 90);
+  eq(a._ediciones, 3);
+});
+
+test('un objeto con solo x, o con x no numérica, se queda quieto', () => {
+  const a = { p: { x: 0.4 }, q: { x: '0.4', y: 0.5 }, r: { x: 0.4, y: null } };
+  eq(convertir(a, F), 0);
+  eq(a.p.x, 0.4); eq(a.q.x, '0.4'); eq(a.r.x, 0.4);
+});
+
+test('recorta a [0,1] y redondea a cuatro decimales', () => {
+  const a = { p: { x: 0.95, y: 0.9 } };          // x → 1.05, y → 1.8
+  convertir(a, F);
+  eq(a.p.x, 1); eq(a.p.y, 1);
+});
+
+test('una animación vacía o nula no revienta', () => {
+  for (const v of [null, undefined, {}, { fases: [] }, []]) {
+    eq(convertir(v, F), 0, JSON.stringify(v));
+  }
+});
+
+test('la conversión NO es idempotente: por eso hace falta la columna', () => {
+  /* Aplicarla dos veces mueve todo el doble y no hay vuelta atrás. Lo
+     que lo impide es `exercises.marco` (038), no un fichero suelto. */
+  const uno = { p: { x: 0.2, y: 0.3 } };
+  convertir(uno, F);
+  const primera = { ...uno.p };
+  convertir(uno, F);
+  ok(uno.p.x !== primera.x, 'sería idempotente y la columna sobraría');
+});
+
+test('la 038 pone la columna, su tope y el 3 por defecto', () => {
+  const sql = readFileSync(new URL('../supabase/migrations/038_exercises_marco.sql', import.meta.url), 'utf8');
+  ok(/ADD COLUMN IF NOT EXISTS marco smallint NOT NULL DEFAULT 2/.test(sql),
+    'las filas que ya están tienen que quedar marcadas como marco 2');
+  ok(/ALTER COLUMN marco SET DEFAULT 3/.test(sql), 'lo nuevo debe nacer en el 3');
+  ok(sql.indexOf('DEFAULT 2') < sql.indexOf('SET DEFAULT 3'),
+    'el DEFAULT 2 tiene que rellenar las filas existentes ANTES de pasar al 3');
+  ok(/CHECK \(marco IN \(1, 2, 3\)\)/.test(sql), 'falta el tope de valores');
+});
+
+test('el importador escribe el marco, o la otra herramienta duplicaría el mapa', () => {
+  const imp = readFileSync(new URL('../tools/biblioteca/importar.mjs', import.meta.url), 'utf8');
+  ok(/MARCO_ACTUAL = 3/.test(imp), 'importar.mjs no declara el marco');
+  ok(/'marco'/.test(imp), "'marco' no está en CAMPOS: no viajaría en el PATCH");
+});
+
+console.log('\n· el SQL dice lo mismo que el código');
+
+test('los coeficientes de la 037 salen de medidas.js, no de una libreta', () => {
+  /* ── POR QUÉ ESTE BANCO ──────────────────────────────────
+     La migración 037 lleva ocho números escritos a mano que tienen
+     que ser exactamente la misma recta que aplicó migrar-marco-3.mjs
+     a la biblioteca. Si se separan, las posiciones que marcó el
+     entrenador acaban en un sitio y las fichas en otro, sobre la
+     misma pista, y nada lo avisa.
+
+     Aquí se recalculan desde limitesCancha() y se comparan con lo que
+     hay escrito en el fichero .sql. */
+  const ENTERA_2 = { x: [2 / 19, 17 / 19], y: [2 / 32, 30 / 32] };
+  const MEDIA_2 = { x: [2 / 18, 16 / 18], y: [2 / 19, 17 / 19] };
+  const VIEJO = { entera: ENTERA_2, entera_fiba: ENTERA_2, media: MEDIA_2, media_fiba: MEDIA_2 };
+
+  const sql = readFileSync(new URL('../supabase/migrations/037_posiciones_marco_v3.sql', import.meta.url), 'utf8');
+
+  for (const [pista, viejo] of Object.entries(VIEJO)) {
+    const nuevo = limitesCancha(pista);
+    for (const eje of ['x', 'y']) {
+      const [o0, o1] = viejo[eje], [n0, n1] = nuevo[eje];
+      const b = (n1 - n0) / (o1 - o0);
+      const a = n0 - b * o0;
+
+      /* La línea del CASE de ese eje y esa pista. El SQL las separa en
+         dos bloques (uno por eje) y dentro van por pista. */
+      const bloque = sql.split(`${eje} = LEAST`)[1];
+      ok(bloque, `no se encuentra el bloque de ${eje} en la 037`);
+      const rx = new RegExp(`WHEN '${pista}'\\s+THEN\\s+(-?[\\d.]+)\\s*\\+\\s*([\\d.]+)\\s*\\*\\s*${eje}`);
+      const m = rx.exec(bloque.split('ELSE')[0]);
+      ok(m, `la 037 no tiene línea para ${pista} en el eje ${eje}`);
+
+      /* Tolerancia: el SQL lleva 6 decimales, así que medio millonésimo. */
+      const tol = 5e-7;
+      ok(Math.abs(Number(m[1]) - a) <= tol,
+        `${pista}.${eje} término independiente: sql=${m[1]} código=${a.toFixed(9)}`);
+      ok(Math.abs(Number(m[2]) - b) <= tol,
+        `${pista}.${eje} pendiente: sql=${m[2]} código=${b.toFixed(9)}`);
+    }
+  }
+});
+
+test('la 037 admite el marco 3 y lo pone por defecto', () => {
+  /* La 019 dejó CHECK (marco IN (1,2)): sin ampliarlo, el UPDATE de la
+     037 falla entero y no se entera nadie hasta que se aplica. */
+  const sql = readFileSync(new URL('../supabase/migrations/037_posiciones_marco_v3.sql', import.meta.url), 'utf8');
+  ok(/CHECK\s*\(marco IN \(1, 2, 3\)\)/.test(sql), 'no amplía la restricción a 3');
+  ok(/ALTER COLUMN marco SET DEFAULT 3/.test(sql), 'no cambia el valor por defecto');
+  ok(sql.indexOf('SET DEFAULT 3') < sql.indexOf('WHERE marco = 2'),
+    'el DEFAULT tiene que cambiarse ANTES del UPDATE, o una fila nueva se cuela en el marco 2');
+  ok(/WHERE marco = 2/.test(sql), 'no es idempotente: convertiría filas ya convertidas');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

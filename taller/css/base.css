@@ -327,7 +327,10 @@ h1, h2, h3, .display {
   background: var(--surface-2);
 }
 .canvas-stub {
-  aspect-ratio: 210 / 297;
+  /* El hueco que se reserva mientras no hay pista: la proporción de la
+     entera, que es la por defecto (18/27). Estaba en 210/297, el folio
+     A4 de los SVG antiguos. */
+  aspect-ratio: 18 / 27;
   display: grid;
   place-content: center;
   text-align: center;

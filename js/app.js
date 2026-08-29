@@ -5,6 +5,7 @@ import { getEjercicios, getThumbnailGif } from './modules/ejercicios.js';
 // con tres) y el mismo ejercicio se anunciaba distinto en la tarjeta y en
 // su ficha.
 import { dificultadDe } from '../taller/js/config.js';
+import { marcoDe } from '../taller/js/canvas/medidas.js';
 import { getDuracionesReales } from './modules/duraciones.js';
 import { duracionPropuesta } from '../taller/js/duracion.js';
 
@@ -141,6 +142,27 @@ function badgeDuracion(ej) {
   return `<span class="badge badge-duration${real ? ' badge-real' : ''}" title="${titulo}">${p.minutos} min${real ? ' reales' : ''}</span>`;
 }
 
+
+/**
+ * Proporcion de la miniatura de una ficha: la de SU pista.
+ *
+ * thumbnail.js genera el poster con `alto = ancho * pista.aspect`, asi
+ * que cada pista da una miniatura distinta: la entera sale 1,5:1 y la
+ * media, cuadrada. La tarjeta tenia la caja fija en 297/210 (1,414) con
+ * object-fit:cover, y 176 de las 204 fichas son de media pista: a la
+ * inmensa mayoria les recortaba casi un tercio por arriba y por abajo,
+ * que es justo donde estan las bandas y la gente esperando.
+ */
+function aspectoMiniatura(ej) {
+  const m = marcoDe(ej?.tipo_pista);
+  /* INVERTIDO a propósito. `thumbnail.js` dibuja el póster GIRADO 90°
+     y lo hace de `ancho × (ancho · aspect)`, con aspect = ancho/alto
+     del marco en retrato. La caja que ocupa esa imagen es, por tanto,
+     alto/ancho: 1,5 la entera, 1 la media. Ponerlo al derecho deja la
+     entera en vertical dentro de una tarjeta apaisada. */
+  return (m.alto / m.ancho).toFixed(4);
+}
+
 function renderEjerciciosGrid(data) {
   const grid = document.getElementById('exercises-grid');
 
@@ -158,7 +180,7 @@ function renderEjerciciosGrid(data) {
   grid.innerHTML = data.map((ej, i) => `
     <article class="exercise-card animate-fadeIn" data-id="${ej.id}"
       style="animation-delay:${i * 30}ms">
-      ${ej.poster ? `<div class="exercise-card-thumb"><img class="thumb-img" src="${ej.poster}" alt="" loading="lazy"></div>` : ''}
+      ${ej.poster ? `<div class="exercise-card-thumb" style="--thumb-aspect:${aspectoMiniatura(ej)}"><img class="thumb-img" src="${ej.poster}" alt="" loading="lazy"></div>` : ''}
       <div class="exercise-card-header">
         <h3 class="exercise-card-name">${escapeHtml(ej.name)}</h3>
       </div>

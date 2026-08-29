@@ -119,8 +119,19 @@ const CAMPOS = [
   'type', 'category', 'difficulty', 'intensidad', 'duration_min', 'duration_max',
   'description', 'tags', 'animacion', 'tipo_pista', 'categoria_rama',
   'categoria_nivel', 'objetivos', 'descripcion_texto', 'variantes', 'notas',
-  'requisitos', 'autor_nombre',
+  'requisitos', 'autor_nombre', 'marco',
 ];
+
+/* En qué dibujo de pista están las coordenadas que salen de las tandas.
+   Va como constante y no como campo de la ficha porque no es algo que
+   cada ficha decida: lo decide el repositorio entero, y las tandas ya
+   están selladas como marco 3 (tools/biblioteca/marco-comun.mjs).
+
+   Escribirlo importa: `migrar-marco-3-base.mjs` solo convierte filas en
+   marco 2. Si el importador dejara el marco viejo, esa herramienta
+   volvería a aplicar el mapa encima de coordenadas ya convertidas y las
+   movería el doble. La columna la trae la migración 038. */
+const MARCO_ACTUAL = 3;
 
 /* `?? null` y no `f[k]` a secas: JSON.stringify BORRA las claves con
    valor undefined, así que un campo que la ficha ya no tiene no viajaba
@@ -128,7 +139,8 @@ const CAMPOS = [
    Se veía como una actualización que decía "97 con cambios" una y otra
    vez después de haber escrito — el actualizador no podía VACIAR nada.
    Salió al mover el contenido de `variantes` a `requisitos.niveles`. */
-const contenidoDe = (f) => Object.fromEntries(CAMPOS.map((k) => [k, f[k] ?? null]));
+const contenidoDe = (f) => Object.fromEntries(
+  CAMPOS.map((k) => [k, k === 'marco' ? MARCO_ACTUAL : (f[k] ?? null)]));
 
 /* Comparación estable para saber qué ha cambiado de verdad.
    PostgreSQL guarda `jsonb` con las claves REORDENADAS (las suyas, no

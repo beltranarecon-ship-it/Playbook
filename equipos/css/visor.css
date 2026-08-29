@@ -23,7 +23,7 @@
      la caja salía tumbada y la pista, que es de retrato, se veía
      aplastada y cortada por abajo. Dos defectos para una cosa acaban
      siendo dos comportamientos. */
-  aspect-ratio: var(--court-aspect, 0.707);
+  aspect-ratio: var(--court-aspect, 0.6667);
   background: #0b2330;                       /* madera oscura del arte */
   overflow: hidden;
   touch-action: none;
@@ -39,11 +39,20 @@
 
 /* Apaisado: el lienzo invierte la relación de aspecto y los símbolos ya
    se dibujan rotados vía CourtView.toPx (quedan derechos). Solo hay que
-   girar la IMAGEN de fondo: se dimensiona como retrato (70.71% × 141.42%
-   de la caja apaisada) y se rota sobre su centro para rellenarla exacta. */
+   girar la IMAGEN de fondo: se dimensiona como retrato y se rota sobre
+   su centro para rellenar la caja exacta.
+
+   Los porcentajes salen de la proporción SIN invertir: ancho = aspect ×
+   100 % de la caja y alto = 100 % / aspect. Aquí estaban escritos a
+   fuego como 70.71 % y 141.42 %, que es esa cuenta para el A4 de las
+   pistas antiguas. El Taller ya los cambió por la variable; esta copia
+   se quedó atrás, y con las pistas dibujadas a mano el fondo salía
+   estirado — sobre todo en la media, que es cuadrada (100 % × 100 %) y
+   estaba pidiendo 70,71 × 141,42. */
 .court--landscape .court__bg {
   inset: auto; top: 50%; left: 50%;
-  width: 70.71%; height: 141.42%;
+  width: calc(var(--court-bg-aspect, .6667) * 100%);
+  height: calc(100% / var(--court-bg-aspect, .6667));
   transform: translate(-50%, -50%) rotate(90deg);
 }
 
@@ -121,9 +130,21 @@
   display: flex; align-items: center; justify-content: center;
 }
 /* La pista apaisada se hace tan grande como permita el viewport: la
-   limita el ancho (97vw) o la altura (alto × 297/210). */
+   limita el ancho (97vw) o la altura (alto × su propia proporción).
+
+   Aquí ponía 297/210 —el A4 de las pistas antiguas— escrito a mano, y
+   con las pistas dibujadas a mano eso se sale de la pantalla: girada,
+   la media es cuadrada (1,0) y la media FIBA 1,059, no 1,414. Medido a
+   1480×900: la media pedía 1196 px de alto para una ventana de 900. Se
+   iban casi 300 px por debajo del borde, justo en el proyector, que es
+   donde se mira la pista en el entrenamiento.
+
+   `--court-aspect` ya viene con la proporción GIRADA cuando la vista es
+   de proyector (CourtView.setPista invierte el aspect si rot = 90), así
+   que es exactamente el número que hace falta. El respaldo es la entera
+   girada (27/18 = 1,5), que es la pista por defecto. */
 .proyector--full .court {
-  width: min(97vw, calc(94vh * 297 / 210));
+  width: min(97vw, calc(94vh * var(--court-aspect, 1.5)));
   height: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.6);
 }

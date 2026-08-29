@@ -114,9 +114,13 @@
 /* Pista a pantalla completa en paisaje, sin barra lateral (§14). */
 .proyector--full { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--sp-4); }
 .proyector__stage { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-width: 0; width: 100%; }
-/* La pista apaisada (aspect 1.414) se hace tan grande como permita el viewport:
-   limitada por el ancho (97vw) o por la altura (la pista mide alto·1.414 de ancho). */
-.proyector--full .court { width: min(97vw, calc(94vh * 297 / 210)); height: auto; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+/* La pista apaisada se hace tan grande como permita el viewport: la limita el
+   ancho (97vw) o la altura (alto × su propia proporción). Iba con 297/210, el
+   A4 de las pistas antiguas, y ninguna de las cuatro actuales lo mide: girada,
+   la entera es 1,5, la media 1,0 y la media FIBA 1,059. Con 1,414 la media se
+   salía casi 300 px por debajo del borde. `--court-aspect` ya viene invertida
+   en modo proyector; el respaldo es la entera girada. */
+.proyector--full .court { width: min(97vw, calc(94vh * var(--court-aspect, 1.5))); height: auto; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
 /* Controles: barra flotante centrada abajo, se desvanece con la inactividad. */
 .proyector__controls {
   position: absolute; bottom: var(--sp-5); left: 50%; transform: translateX(-50%);

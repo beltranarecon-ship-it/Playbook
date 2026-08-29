@@ -57,7 +57,7 @@ export function pistaPicker(options, value, onChange) {
     // medio de una tarjeta vertical vacía
     h('span', {
       class: 'pista-card__img',
-      style: { backgroundImage: `url("${o.src}")`, '--pista-aspect': String(o.aspect ?? 210 / 297) },
+      style: { backgroundImage: `url("${o.src}")`, '--pista-aspect': String(o.aspect ?? 18 / 27) },
     }),
     h('span', { class: 'pista-card__label' }, h('b', null, o.label), h('small', null, o.sub)),
   )));

@@ -298,7 +298,7 @@
      cede y la pista se dibuja aplastada; con `width: auto` se colapsa
      a cero. */
   .eq-planner-visor .court {
-    width: min(100%, calc(48vh * var(--court-aspect, 0.707)));
+    width: min(100%, calc(48vh * var(--court-aspect, 0.6667)));
     margin: 0 auto;
   }
 }
@@ -518,7 +518,7 @@
    55dvh deja sitio para la cabecera, los controles y las pestañas, que
    es lo que se mira justo después de la pista. */
 .modal-visor .court {
-  width: min(100%, calc(55dvh * var(--court-aspect, 0.707)));
+  width: min(100%, calc(55dvh * var(--court-aspect, 0.6667)));
   margin: 0 auto;
 }
 

@@ -66,6 +66,14 @@ function apareceEn(texto, clase, obj) {
       return new RegExp(`CREATE UNIQUE INDEX (IF NOT EXISTS )?${esc(obj)}\\b`).test(texto);
     case 'politica':
       return texto.includes(`"${obj}"`);
+    case 'defecto': {
+      /* «tabla.columna=valor»: la migración fija el valor por defecto
+         de esa columna. Es la huella de una que no crea nada. */
+      const [tabla, resto] = obj.split('.');
+      const [col, valor] = resto.split('=');
+      return new RegExp(`ALTER COLUMN ${esc(col)} SET DEFAULT ${esc(valor)}\\b`).test(texto)
+        && corpus.includes(`public.${tabla}`);
+    }
     case 'columna': {
       /* Una columna o se añade con ALTER, o nace dentro del CREATE TABLE. */
       const [tabla, col] = obj.split('.');
@@ -99,7 +107,7 @@ test('todo objeto por el que se pregunta existe en SU migración', () => {
 test('las clases son las que el SQL sabe mirar', () => {
   /* Una clase con una errata cae en el ELSE del CASE y devuelve NULL:
      la migración saldría como no puesta sin haberla mirado. */
-  const CONOCIDAS = new Set(['tabla', 'vista', 'columna', 'funcion', 'indice', 'politica']);
+  const CONOCIDAS = new Set(['tabla', 'vista', 'columna', 'funcion', 'indice', 'politica', 'defecto']);
   const raras = [...new Set(filas.map((f) => f.clase))].filter((c) => !CONOCIDAS.has(c));
   ok(raras.length === 0, `clases que el CASE no contempla: ${raras.join(', ')}`);
 });
