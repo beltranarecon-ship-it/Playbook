@@ -168,7 +168,30 @@ const igual = (a, b) => JSON.stringify(estable(a ?? null)) === JSON.stringify(es
 
 if (process.argv.includes('--actualizar')) {
   const escribir = process.argv.includes('--confirmar');
-  const enBase = await (await pedir(`exercises?select=id,name,${CAMPOS.join(',')}`)).json();
+  /* `marco` entró en CAMPOS con la migración 038. Sin ella, PostgREST
+     rechaza el SELECT entero y Node escupe su volcado, que no le dice
+     a nadie qué hacer. Se traduce. */
+  let enBase;
+  try {
+    enBase = await (await pedir(`exercises?select=id,name,${CAMPOS.join(',')}`)).json();
+  } catch (e) {
+    if (/marco/.test(e.message)) {
+      console.error('\n  Falta la migración 038 (exercises.marco). Aplícala en Supabase antes de esto.\n');
+      /* Hay que PARAR aquí. Sin el corte, la ejecución seguía hacia la
+         ruta de ALTA de más abajo y acababa diciendo «204 fichas ya
+         existen, importar duplicaría la biblioteca» — un susto y un
+         camino que no tenía nada que ver con lo que se pidió.
+
+         El respiro antes de salir no es superstición: `process.exit()`
+         con el socket de la petición todavía cerrándose hace que libuv
+         suelte un «Assertion failed» de su cocina justo debajo del
+         mensaje, y lo último que se lee deja de ser la frase útil. */
+      await new Promise((r) => setTimeout(r, 120));
+      process.exit(1);
+    }
+    throw e;
+  }
+  {
   const porNombre = new Map(enBase.map((e) => [e.name, e]));
 
   const cambian = [];
@@ -211,6 +234,7 @@ if (process.argv.includes('--actualizar')) {
   }
   console.log(`\n  ${hechas} ficha(s) actualizadas, con sus ids intactos.\n`);
   process.exit(0);
+  }   // fin de «la 038 está puesta»
 }
 
 /* ---- 2 · autor --------------------------------------------------
