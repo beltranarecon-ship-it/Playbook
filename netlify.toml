@@ -1,6 +1,25 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+  # El frontend NO se compila (§9): `publish = "."` sirve los ficheros
+  # tal cual. Este comando existe SOLO para las funciones de servidor.
+  #
+  # ── QUÉ PASABA SIN ÉL ─────────────────────────────────────
+  # `netlify/functions/package.json` declara sus dependencias desde el
+  # primer día, pero sin comando de compilación Netlify no instala nada
+  # —ni en la raíz ni ahí dentro—, así que las funciones se desplegaban
+  # sin sus paquetes y reventaban al arrancar:
+  #
+  #   Cannot find package '@supabase/supabase-js' imported from
+  #   /var/task/invitar.mjs
+  #
+  # En `invitar` se ve enseguida: sale un 502 al invitar. En `avisos` no
+  # se ve NUNCA, porque es programada y su fallo solo aparece en el
+  # registro de Netlify: los avisos push llevaban desde que se
+  # escribieron sin salir, y nadie tenía forma de enterarse.
+  #
+  # Lo vigila tools/eval-funciones.mjs.
+  command = "npm --prefix netlify/functions install --no-audit --no-fund"
 
 # El escáner de secretos de Netlify avisa cuando el VALOR de una variable
 # de entorno aparece en los ficheros publicados. Tres de las nuestras
