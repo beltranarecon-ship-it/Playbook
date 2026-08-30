@@ -25,6 +25,32 @@
    borra en el momento: si no, se le manda un push a nadie en cada
    ejecución, para siempre.
 
+   ── QUIÉN PUEDE LLAMARLA ────────────────────────────────────
+   Hasta ahora, cualquiera. Esta función sostiene la CLAVE DE SERVICIO
+   —la que se salta todas las políticas— y no miraba nada: ni el
+   método, ni la cabecera; el manejador ni siquiera recibía la
+   petición. Lo único que la separaba de una URL pública era que
+   Netlify enruta las funciones programadas fuera del espacio HTTP, y
+   eso es configuración, no código: se cae al quitar el `schedule` para
+   depurar, o al correr con `netlify dev`.
+
+   No se le puede pedir el token que pide `invitar.mjs`: a esta la
+   llama el PLANIFICADOR cada diez minutos y un planificador no tiene
+   sesión. Así que pasan dos: el planificador y un administrador —para
+   poder lanzarla a mano y ver qué sale—. Al resto se le responde 404,
+   sin hacer nada y sin confirmarle que esto exista.
+
+   ── Y ANTE LA DUDA, SE DEJA PASAR ───────────────────────────
+   Los dos errores no cuestan lo mismo. Dejar entrar a un desconocido
+   cuesta cupo y que se vean tres recuentos —acosar no puede: el índice
+   único de la 031 hace que una segunda pasada seguida no tenga nada
+   que mandar—. Cerrarle la puerta al planificador deja al club sin
+   avisos EN SILENCIO, y eso tarda semanas en notarse.
+
+   Por eso, cuando no se puede saber quién llama, se responde
+   «planificador». Está en `_quien-llama.mjs`, con banco, para que no
+   se endurezca luego creyendo que se mejora.
+
    ── QUÉ HACE FALTA PARA QUE ESTO FUNCIONE ───────────────────
    Cuatro variables de entorno en Netlify (ninguna en el repositorio):
    SUPABASE_URL, SUPABASE_SERVICE_ROLE, VAPID_PUBLIC_KEY y
@@ -37,6 +63,7 @@ import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 import { avisosDe } from '../../equipos/js/data/avisos.js';
 import { diaDeConvocatoria } from '../../equipos/js/data/convocatoria.js';
+import { comoLlaman, cuerpoDe } from './_quien-llama.mjs';
 
 /* Cada cuánto corre. La ventana tiene que ser >= al intervalo o se
    pierden avisos entre dos ejecuciones. */
@@ -45,11 +72,49 @@ const VENTANA_MIN = 12;
 
 const iso = (d) => d.toISOString().slice(0, 10);
 
-export default async function handler() {
+export default async function handler(peticion) {
   const {
     SUPABASE_URL, SUPABASE_SERVICE_ROLE, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY,
     VAPID_CONTACTO = 'mailto:playbook@cbpalencia.es',
   } = process.env;
+
+  /* ── Quién llama ────────────────────────────────────────────
+     Esta función sostiene la clave de servicio y hasta ahora no miraba
+     nada: ni el método, ni la cabecera — el manejador ni siquiera
+     recibía la petición. Lo único que la separaba de una URL pública
+     era que Netlify enruta las funciones programadas fuera del espacio
+     HTTP, y eso es configuración, no código.
+
+     No se le puede pedir un token: el planificador no tiene sesión. Lo
+     que se hace es dejar pasar al planificador y a un administrador
+     —para poder lanzarla a mano y ver qué sale— y cerrarle la puerta al
+     resto. Ante la duda se deja pasar, a propósito: ver _quien-llama.mjs.
+
+     Va lo PRIMERO, antes incluso de mirar la configuración: a un
+     desconocido no se le cuenta qué variables de entorno faltan. */
+  const cuerpo = await cuerpoDe(peticion);
+  const llamada = comoLlaman(peticion, cuerpo);
+
+  if (llamada.quien === 'con-token') {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE) {
+      return new Response(JSON.stringify({ ok: false, motivo: 'sin configurar' }), { status: 500 });
+    }
+    const sbAuth = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { persistSession: false } });
+    const { data: quien } = await sbAuth.auth.getUser(llamada.token);
+    const { data: perfil } = quien?.user
+      ? await sbAuth.from('profiles').select('role').eq('id', quien.user.id).single()
+      : { data: null };
+    if (perfil?.role !== 'admin') {
+      console.warn('[avisos] llamada con token que no es de administrador; no se hace nada');
+      return new Response('No encontrado', { status: 404 });
+    }
+    console.log('[avisos] lanzada a mano por el administrador');
+  } else if (llamada.quien === 'anonimo') {
+    /* 404 y no 403: a quien no debería estar aquí no se le confirma que
+       esto exista. Se registra para que una llamada rara se pueda ver. */
+    console.warn(`[avisos] llamada anónima rechazada (${llamada.porque})`);
+    return new Response('No encontrado', { status: 404 });
+  }
 
   const faltan = Object.entries({ SUPABASE_URL, SUPABASE_SERVICE_ROLE, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY })
     .filter(([, v]) => !v).map(([k]) => k);
