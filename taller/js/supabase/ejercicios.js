@@ -4,6 +4,8 @@
    ============================================================ */
 
 import { supabase } from './client.js';
+import { alMarcoActual, MARCO_ACTUAL } from '../canvas/marco-lectura.js';
+import { limitesCancha } from '../canvas/medidas.js';
 import { aRegistro } from '../wizard/draft.js';
 import { generarThumbnail } from '../canvas/thumbnail.js';
 
@@ -60,10 +62,24 @@ export async function guardarEjercicio(draft, elementos = []) {
     descripcion_texto: r.descripcion_texto || null,
     requisitos: r.requisitos,
     favorito: false,
+    /* El dibujo de pista sobre el que estan estas coordenadas. Sin
+       esto, manana no habria forma de saber si una ficha hay que
+       recolocar o ya esta bien. La columna la trae la 038; si no
+       esta, se reintenta sin ella (abajo). */
+    marco: MARCO_ACTUAL,
   };
   await conMiniatura(row, animacion);
 
-  const { data, error } = await supabase.from('exercises').insert(row).select('id').single();
+  let { data, error } = await supabase.from('exercises').insert(row).select('id').single();
+  /* Sin la migración 038 no existe la columna `marco` y PostgREST
+     rechaza el insert entero. Se reintenta sin ella: es preferible
+     guardar el ejercicio sin sellar —y que se vea bien igual, porque
+     sin columna no se recoloca nada— a perder el trabajo de quien
+     acaba de dibujarlo. */
+  if (error && /marco/.test(error.message || '')) {
+    const { marco, ...sinMarco } = row;
+    ({ data, error } = await supabase.from('exercises').insert(sinMarco).select('id').single());
+  }
   if (error) throw error;
   return data; // { id }
 }
@@ -75,7 +91,17 @@ export async function getEjercicio(id) {
   if (DEV && window.__demoEjercicio && (id === 'demo' || window.__demoEjercicio.id === id)) return window.__demoEjercicio;
   const { data, error } = await supabase.from('exercises').select('*').eq('id', id).single();
   if (error) throw error;
-  return data;
+  /* Una ficha guardada sobre el dibujo ANTERIOR de la pista se pinta
+     hasta 2,66 m fuera de sitio: sus coordenadas son relativas a un
+     lienzo que ya no existe. Se recoloca AL LEER, sin tocar la base,
+     y al guardar sale sellada con el marco de ahora.
+
+     Sin la columna `marco` (migracion 038) no se toca nada: no hay
+     forma de distinguir una ficha vieja de una nueva, y recolocar una
+     que ya estaba bien la mueve el doble y sin vuelta atras. */
+  const { animacion } = alMarcoActual(
+    data.animacion, data.marco, limitesCancha(data.animacion?.pista || data.tipo_pista));
+  return { ...data, animacion };
 }
 
 /**
@@ -102,10 +128,17 @@ export async function actualizarEjercicio(id, draftOCampos, elementos = null) {
       dificultad_label: r.dificultad_label, autor_nombre: r.autor_nombre || null,
       objetivos: r.objetivos || null, notas: r.notas || null,
       descripcion_texto: r.descripcion_texto || null, requisitos: r.requisitos,
+      // se vuelve a sellar: lo que se acaba de dibujar esta en el marco de ahora
+      marco: MARCO_ACTUAL,
     };
   }
   if (campos.animacion) campos = await conMiniatura({ ...campos }, campos.animacion);
-  const { data, error } = await supabase.from('exercises').update(campos).eq('id', id).select('id').single();
+  let { data, error } = await supabase.from('exercises').update(campos).eq('id', id).select('id').single();
+  // sin la 038 no existe `marco`: se reintenta sin ella antes que perder la correccion
+  if (error && /marco/.test(error.message || '')) {
+    const { marco, ...sinMarco } = campos;
+    ({ data, error } = await supabase.from('exercises').update(sinMarco).eq('id', id).select('id').single());
+  }
   if (error) throw error;
   return data;
 }
