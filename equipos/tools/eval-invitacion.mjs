@@ -24,7 +24,7 @@
 
 import {
   problemaDelCorreo, normaliza, estadoDe,
-  resultadoDeInvitar, motivoDeCorreo, ESTADOS,
+  resultadoDeInvitar, motivoDeCorreo, ESTADOS, saneaInvitacion, correoValido,
 } from '../js/data/invitacion-envio.js';
 
 let pasan = 0, fallan = 0;
@@ -64,6 +64,54 @@ test('no se valida más de la cuenta', () => {
 
 test('un correo ya invitado se detecta con cualquier mayúscula', () => {
   ok(problemaDelCorreo(' NICO@X.ES ', { yaEstan: ['nico@x.es'] }), 'no ha visto el repetido');
+});
+
+console.log('\n· lo que se guarda, venga por donde venga');
+
+test('el rol solo puede ser uno de los dos', () => {
+  eq(saneaInvitacion({ rol: 'admin' }).rol, 'admin');
+  eq(saneaInvitacion({ rol: 'coach' }).rol, 'coach');
+  for (const raro of ['superadmin', '', null, 0, {}, 'ADMIN']) {
+    eq(saneaInvitacion({ rol: raro }).rol, 'coach', `«${JSON.stringify(raro)}» debería caer a coach:`);
+  }
+});
+
+test('los equipos que no son uuid se tiran', () => {
+  /* Van a una columna uuid[] y de ahí a team_coaches. Con una cadena
+     cualquiera el INSERT revienta con un error de casteo que no le dice
+     nada a nadie. */
+  const uuid = '3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6a7b';
+  eq(saneaInvitacion({ equipos: [uuid, 'DROP TABLE', 42, null, uuid] }).equipos.join(','), uuid);
+  eq(saneaInvitacion({ equipos: 'no es un array' }).equipos.length, 0);
+  eq(saneaInvitacion({}).equipos.length, 0);
+});
+
+test('el nombre y el correo tienen tope', () => {
+  eq(saneaInvitacion({ nombre: 'A'.repeat(500) }).nombre.length, 120);
+  eq(saneaInvitacion({ nombre: '   ' }).nombre, null);
+  eq(saneaInvitacion({ email: '  Nico@X.ES ' }).email, 'nico@x.es');
+});
+
+test('un correo con salto de línea NO pasa', () => {
+  /* Es como se inyectan cabeceras en el correo que se manda: sin esto,
+     «nico@x.es\\nbcc: otro@x.es» sería una dirección válida. */
+  ok(!correoValido('nico@x.es\nbcc: otro@x.es'), 'deja pasar un salto de línea');
+  ok(!correoValido('nico@x.es\r\nbcc: otro@x.es'), 'deja pasar un retorno de carro');
+  ok(!correoValido(`${'a'.repeat(300)}@x.es`), 'deja pasar uno de 300 caracteres');
+  ok(correoValido('nico@x.es'), 'rechaza uno normal');
+});
+
+test('las dos vías de escritura aplican LAS MISMAS reglas', () => {
+  /* Hay dos caminos a la tabla: la función de Netlify y el plan B del
+     navegador. Con las comprobaciones copiadas se separan, y lo que
+     entre por el camino que no valida acaba igual en la base. Por eso
+     `saneaInvitacion` vive en un módulo puro que importan los dos. */
+  const sucia = { email: ' A@B.ES ', rol: 'root', equipos: ['x'], nombre: ' ñ '.repeat(200) };
+  const a = saneaInvitacion(sucia);
+  const b = saneaInvitacion({ ...sucia });
+  eq(JSON.stringify(a), JSON.stringify(b), 'no es determinista:');
+  eq(a.email, 'a@b.es'); eq(a.rol, 'coach'); eq(a.equipos.length, 0);
+  ok(a.nombre.length <= 120, `nombre de ${a.nombre.length}`);
 });
 
 console.log('\n· los cuatro finales de invitar');

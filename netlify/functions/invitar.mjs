@@ -42,15 +42,19 @@
    ============================================================ */
 
 import { createClient } from '@supabase/supabase-js';
+/* Las mismas reglas que aplica el navegador cuando esta funcion no
+   esta (el plan B de invitaciones.js). Se IMPORTAN en vez de
+   copiarse: con dos copias, lo que entre por el camino que no
+   valida acaba igual en la tabla. El modulo no toca la red ni el
+   DOM, asi que vale en los dos lados — avisos.mjs ya hace lo mismo
+   con equipos/js/data/avisos.js. */
+import { saneaInvitacion, correoValido } from '../../equipos/js/data/invitacion-envio.js';
 
 const JSONR = (cuerpo, status = 200) => new Response(JSON.stringify(cuerpo), {
   status,
   headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
 });
 
-/** El correo, como se guarda y como se compara. */
-const normaliza = (email) => String(email || '').trim().toLowerCase();
-const ES_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /* Los motivos por los que Supabase no manda un correo, traducidos. De
    cuál sea depende qué hay que ir a configurar, así que NO se aplastan
@@ -74,14 +78,25 @@ export default async function handler(req) {
     return JSONR({ ok: false, estado: 'fallo', motivo: `falta configurar ${faltan.join(' y ')} en Netlify` }, 500);
   }
 
-  /* La rama de vista previa tiene su propia URL: si se usara la de
-     producción, el enlace del correo llevaría al sitio equivocado. */
-  const base = (DEPLOY_PRIME_URL || SITIO || '').replace(/\/$/, '');
+  /* Manda la URL CANÓNICA del sitio, no la del despliegue.
+     `DEPLOY_PRIME_URL` cambia en cada rama de vista previa
+     (deploy-preview-3--sitio.netlify.app), y esas direcciones no están
+     —ni deben estar— en la lista blanca de Supabase: obligaría a meter
+     un comodín, que es abrir la puerta a que un enlace de invitación
+     lleve a cualquier subdominio. Solo se usa si no hay otra. */
+  const base = (SITIO || DEPLOY_PRIME_URL || '').replace(/\/$/, '');
 
   // ── 1. ¿Quién llama? ──────────────────────────────────────
   const cabecera = req.headers.get('authorization') || '';
   const token = cabecera.startsWith('Bearer ') ? cabecera.slice(7).trim() : '';
-  if (!token) return JSONR({ ok: false, estado: 'fallo', motivo: 'Hace falta una sesión.' }, 401);
+  /* Se descarta aquí lo que ni siquiera tiene FORMA de JWT —tres
+     tramos separados por puntos— antes de salir a la red. Sin esto, un
+     bucle con `Bearer x` desde cualquier sitio provoca una consulta a
+     Supabase por cada llamada: no consigue nada, pero quema el cupo del
+     proyecto, y quedarse sin cupo es quedarse sin poder entrar. */
+  if (!token || token.split('.').length !== 3) {
+    return JSONR({ ok: false, estado: 'fallo', motivo: 'Hace falta una sesión.' }, 401);
+  }
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE, { auth: { persistSession: false } });
 
@@ -101,47 +116,26 @@ export default async function handler(req) {
   // ── 2. ¿Qué se pide? ──────────────────────────────────────
   let cuerpo;
   try { cuerpo = await req.json(); } catch { cuerpo = null; }
-  const email = normaliza(cuerpo?.email);
-  /* El tope va aparte de la expresión: `[^\s@]+` acepta un correo de
-     cien mil caracteres, y aunque Supabase lo rechazaría después, no
-     hay razón para llevarlo hasta allí. 254 es lo que permite el
-     estándar del correo (RFC 5321), así que no deja fuera a nadie.
-
-     El `\s` de la expresión, además, es lo que impide colar un salto de
-     línea en la dirección: sin él se podrían inyectar cabeceras en el
-     correo que se manda. */
-  if (email.length > 254 || !ES_CORREO.test(email)) {
+  /* `correoValido` comprueba forma Y tamaño. El tope importa porque
+     `[^\s@]+` acepta un correo de cien mil caracteres; y el `\s` de esa
+     expresión es lo que impide colar un salto de línea en la dirección,
+     que es como se inyectan cabeceras en un correo. */
+  if (!correoValido(cuerpo?.email)) {
     return JSONR({ ok: false, estado: 'fallo', motivo: 'Eso no parece un correo.' }, 400);
   }
-
-  const rol = cuerpo?.rol === 'admin' ? 'admin' : 'coach';
-
-  /* `equipos` va a una columna uuid[] y de ahí, por el disparador, a
-     team_coaches. Se filtra por FORMA de uuid y no solo por «es texto»:
-     con una cadena cualquiera el upsert revienta con un error de casteo
-     de PostgreSQL que se le acaba enseñando al administrador tal cual, y
-     ese mensaje no le dice nada a nadie. Los que no valen se tiran en
-     silencio porque solo pueden venir de un error de la pantalla, no de
-     algo que alguien haya escrito. */
-  const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const equipos = Array.isArray(cuerpo?.equipos)
-    ? [...new Set(cuerpo.equipos.filter((e) => typeof e === 'string' && ES_UUID.test(e)))].slice(0, 50)
-    : [];
-
-  /* El nombre acaba en profiles.full_name y en el metadata de la cuenta.
-     Se recorta a algo que quepa en una pantalla: no hay ninguna persona
-     que se llame con 200 caracteres, y sin tope esto es texto libre
-     yendo a dos sitios distintos de la base. */
-  const nombre = (typeof cuerpo?.nombre === 'string' && cuerpo.nombre.trim())
-    ? cuerpo.nombre.trim().slice(0, 120)
-    : null;
+  const { email, rol, equipos, nombre } = saneaInvitacion(cuerpo);
 
   // ── 3. La invitación, ANTES del correo ────────────────────
   /* `upsert` y no `insert`: reinvitar a alguien que ya estaba en la
      lista tiene que servir para volver a mandarle el correo, que es
-     justo lo que se hace cuando alguien dice «no me ha llegado». El
-     índice único es sobre lower(trim(email)), y el correo ya viene
-     normalizado. */
+     justo lo que se hace cuando alguien dice «no me ha llegado».
+
+     `onConflict: 'email'` necesita un índice único sobre esa COLUMNA.
+     La 032 lo había puesto sobre `lower(trim(email))` —una expresión— y
+     contra eso ON CONFLICT no puede resolverse: fallaba en TODAS las
+     invitaciones. Lo mueve la 039, que además garantiza con un CHECK
+     que la columna esté siempre normalizada, que es lo que hacía falta
+     para que el índice pelado proteja lo mismo que el de expresión. */
   const { data: invitacion, error: errInv } = await admin
     .from('invitaciones')
     .upsert({ email, rol, equipos, nombre, invita: quien.user.id }, { onConflict: 'email' })
@@ -152,7 +146,17 @@ export default async function handler(req) {
     if (errInv.code === '42P01' || errInv.code === 'PGRST205') {
       return JSONR({ ok: false, estado: 'fallo', email, motivo: 'Falta aplicar la migración 032 en Supabase.' }, 500);
     }
-    return JSONR({ ok: false, estado: 'fallo', email, motivo: errInv.message }, 500);
+    if (errInv.code === '42P10' || /no unique or exclusion constraint/i.test(errInv.message || '')) {
+      /* El upsert apunta a `email` y necesita un índice único sobre esa
+         columna. La 032 lo dejó sobre lower(trim(email)) —una expresión—
+         y ahí ON CONFLICT no puede resolverse. Lo arregla la 039. */
+      return JSONR({ ok: false, estado: 'fallo', email, motivo: 'Falta aplicar la migración 039 en Supabase.' }, 500);
+    }
+    /* El mensaje crudo de PostgreSQL cuenta nombres de restricciones y
+       de columnas. Va al registro de Netlify, donde sirve para
+       arreglarlo, y no a una pantalla, donde solo asusta. */
+    console.error('[invitar] fallo al guardar la invitación:', errInv.code, errInv.message);
+    return JSONR({ ok: false, estado: 'fallo', email, motivo: 'No se ha podido guardar la invitación. El motivo está en el registro de Netlify.' }, 500);
   }
 
   // ── 4. El correo ──────────────────────────────────────────

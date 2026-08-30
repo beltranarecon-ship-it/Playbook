@@ -112,7 +112,12 @@ WITH esperado(mig, trae, clase, obj) AS (
        en la misma transacción. */
     ('037', 'las posiciones, al dibujo hecho a mano', 'defecto', 'posiciones_pista.marco=3'),
     ('038', 'saber en qué dibujo está cada ejercicio', 'columna', 'exercises.marco'),
-    ('038', 'saber en qué dibujo está cada ejercicio', 'defecto', 'exercises.marco=3')
+    ('038', 'saber en qué dibujo está cada ejercicio', 'defecto', 'exercises.marco=3'),
+    /* Sin ésta, invitar por correo falla SIEMPRE: el upsert apunta a la
+       columna `email` y la 032 dejó el índice sobre lower(trim(email)),
+       que es una expresión y ON CONFLICT no puede resolverse contra
+       ella. Si sale «NO», nadie recibe su invitación. */
+    ('039', 'que se pueda invitar y reinvitar por correo', 'indice', 'invitaciones_email_unico')
 ),
 
 /* Cada clase se busca donde el catálogo de Postgres la guarda. Una

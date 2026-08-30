@@ -46,6 +46,47 @@ export function problemaDelCorreo(email, { yaEstan = [] } = {}) {
 /** Cómo se lee el estado de una invitación. */
 export const estadoDe = (inv) => (inv?.usada_at ? 'dentro' : 'pendiente');
 
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Deja una invitación en la forma exacta en que se guarda.
+ *
+ * ── POR QUÉ AQUÍ Y NO EN CADA SITIO ─────────────────────────
+ * Hay DOS caminos de escritura a `invitaciones`: la función de Netlify
+ * y el plan B del navegador cuando esa función no está. Con las
+ * comprobaciones copiadas en los dos, se separan; y lo que llega por el
+ * camino que no valida acaba igual en la tabla.
+ *
+ * Este módulo no toca la red ni el DOM, así que lo importan los dos:
+ * el navegador y la función de servidor. Una sola implementación.
+ *
+ * Lo que se descarta se descarta EN SILENCIO a propósito: solo puede
+ * venir de un error de la pantalla, no de algo que alguien haya
+ * escrito, y quien está delante no puede hacer nada con el aviso.
+ */
+export function saneaInvitacion({ email, rol, equipos, nombre } = {}) {
+  return {
+    email: normaliza(email),
+    // el CHECK de la tabla también lo sujeta; aquí se evita el error feo
+    rol: rol === 'admin' ? 'admin' : 'coach',
+    /* Van a una columna uuid[] y de ahí, por el disparador, a
+       team_coaches. Con una cadena cualquiera el INSERT revienta con un
+       error de casteo de PostgreSQL que no le dice nada a nadie. */
+    equipos: Array.isArray(equipos)
+      ? [...new Set(equipos.filter((e) => typeof e === 'string' && ES_UUID.test(e)))].slice(0, 50)
+      : [],
+    /* Acaba en profiles.full_name y en el metadata de la cuenta. No hay
+       ninguna persona que se llame con 200 caracteres. */
+    nombre: (typeof nombre === 'string' && nombre.trim()) ? nombre.trim().slice(0, 120) : null,
+  };
+}
+
+/** ¿Es un correo al que se le puede escribir? 254 es el tope del estándar. */
+export const correoValido = (email) => {
+  const e = normaliza(email);
+  return e.length > 0 && e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+};
+
 /** Los finales posibles. Se exportan para que el banco no los invente. */
 export const ESTADOS = ['enviado', 'sin_correo', 'ya_registrado', 'fallo'];
 

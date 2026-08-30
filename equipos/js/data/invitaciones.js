@@ -27,7 +27,7 @@
    ============================================================ */
 
 import { supabase } from './_client.js';
-import { resultadoDeInvitar, normaliza } from './invitacion-envio.js';
+import { resultadoDeInvitar, saneaInvitacion } from './invitacion-envio.js';
 
 /* Lo PURO vive en invitacion-envio.js —sin red, sin DOM— para que
    tenga banco en Node: este fichero importa el cliente de Supabase y
@@ -65,7 +65,11 @@ export async function getInvitaciones() {
  * @returns {{ok, estado, mensaje, invitacion}} — ver invitacion-envio.js
  */
 export async function invitar({ email, rol = 'coach', equipos = [], nombre = null }) {
-  const limpio = normaliza(email);
+  /* Las mismas reglas por los dos caminos. Antes el plan B insertaba
+     `rol` y `equipos` tal y como llegaban, y lo único que lo salvaba era
+     el CHECK de la tabla: la validación del servidor era decorativa
+     porque el otro camino no la aplicaba. */
+  const limpia = saneaInvitacion({ email, rol, equipos, nombre });
   const { data: { session } } = await supabase.auth.getSession();
 
   if (session?.access_token) {
@@ -76,7 +80,7 @@ export async function invitar({ email, rol = 'coach', equipos = [], nombre = nul
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ email: limpio, rol, equipos, nombre: nombre?.trim() || null }),
+        body: JSON.stringify(limpia),
       });
       /* Un 404 es «aquí no hay funciones» (local); un 500 con cuerpo sí
          es una respuesta que hay que enseñar. Se distinguen porque solo
@@ -94,14 +98,12 @@ export async function invitar({ email, rol = 'coach', equipos = [], nombre = nul
   const { data: { user } } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from('invitaciones')
-    .insert({
-      email: limpio, rol, equipos, nombre: nombre?.trim() || null, invita: user?.id ?? null,
-    })
+    .insert({ ...limpia, invita: user?.id ?? null })
     .select(COLS)
     .single();
   if (error) throw error;
   return resultadoDeInvitar({
-    ok: true, estado: 'sin_correo', email: limpio, invitacion: data,
+    ok: true, estado: 'sin_correo', email: limpia.email, invitacion: data,
     motivo: 'aquí no hay servidor de correo; en la web publicada sí',
   });
 }
