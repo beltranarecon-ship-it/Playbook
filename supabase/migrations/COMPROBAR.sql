@@ -117,7 +117,12 @@ WITH esperado(mig, trae, clase, obj) AS (
        columna `email` y la 032 dejó el índice sobre lower(trim(email)),
        que es una expresión y ON CONFLICT no puede resolverse contra
        ella. Si sale «NO», nadie recibe su invitación. */
-    ('039', 'que se pueda invitar y reinvitar por correo', 'indice', 'invitaciones_email_unico')
+    ('039', 'que se pueda invitar y reinvitar por correo', 'indice', 'invitaciones_email_unico'),
+    /* Sin ésta se puede parar el tiempo en el entrenamiento, pero lo
+       parado no queda escrito: al cerrar no habrá «12 min parados» ni
+       el motivo. Nada más deja de funcionar. */
+    ('040', 'guardar el tiempo perdido y por qué', 'columna', 'session_blocks.tiempo_perdido_min'),
+    ('040', 'guardar el tiempo perdido y por qué', 'columna', 'session_blocks.motivo_perdido')
 ),
 
 /* Cada clase se busca donde el catálogo de Postgres la guarda. Una

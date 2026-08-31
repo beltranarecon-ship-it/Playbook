@@ -38,8 +38,65 @@ const dur = (b) => Math.max(0, Number(b?.duracion_min) || 0);
 const real = (b) => (Number.isFinite(Number(b?.duracion_real_min)) && b?.duracion_real_min !== null
   ? Math.max(0, Number(b.duracion_real_min)) : null);
 
+/** Minutos que este bloque estuvo parado. Sin pausa, cero. */
+const perdido = (b) => Math.max(0, Number(b?.tiempo_perdido_min) || 0);
+
+/**
+ * Lo que un bloque ya dado OCUPÓ DE PISTA: lo entrenado más lo parado.
+ *
+ * Es lo que sitúa al siguiente en el reloj, y es distinto de lo que se
+ * entrenó. Si se descontara aquí lo perdido, los diez minutos que se
+ * pasaron esperando a que se fuera el otro equipo harían que todos los
+ * bloques siguientes empezaran diez minutos antes de lo que marca el
+ * reloj de pared, y la cuenta atrás mentiría el resto del
+ * entrenamiento.
+ */
+const ocupado = (b) => (real(b) === null ? null : real(b) + perdido(b));
+
 /** ¿Este bloque ya se ha dado? */
 export const estaHecho = (b) => real(b) !== null;
+
+/**
+ * Milisegundos que el bloque en curso lleva parado, contando la pausa
+ * abierta si la hay.
+ *
+ * `pausa` es `{ acumuladoMs, desde }`: `desde` es el instante en que se
+ * tocó el reloj, o null si está corriendo. Se guarda ASÍ y no como un
+ * contador que va sumando porque, igual que el resto del módulo, tiene
+ * que sobrevivir a un móvil bloqueado en el bolsillo: al volver, lo
+ * pausado se CALCULA desde `desde`, esté la pantalla despierta o no.
+ */
+export function pausadoMs(pausa, ahora = 0) {
+  if (!pausa) return 0;
+  const acumulado = Math.max(0, Number(pausa.acumuladoMs) || 0);
+  const desde = Number(pausa.desde);
+  if (!Number.isFinite(desde) || !desde) return acumulado;
+  return acumulado + Math.max(0, (Number(ahora) || 0) - desde);
+}
+
+/** ¿Está parado ahora mismo? */
+export const estaPausado = (pausa) => !!(pausa && Number(pausa.desde));
+
+/** Tocar el reloj: para si corría, reanuda si estaba parado. */
+export function alternarPausa(pausa, ahora = 0) {
+  const t = Number(ahora) || 0;
+  if (estaPausado(pausa)) {
+    return { ...pausa, acumuladoMs: pausadoMs(pausa, t), desde: null };
+  }
+  return { motivo: '', ...pausa, acumuladoMs: Math.max(0, Number(pausa?.acumuladoMs) || 0), desde: t };
+}
+
+/**
+ * Los minutos perdidos que hay que guardar al finalizar el bloque.
+ *
+ * Se redondea al minuto y se devuelve `null` si no llegó a uno: NULL en
+ * la base significa «no se pausó», y una parada de quince segundos para
+ * atarse una zapatilla no es tiempo perdido, es un entrenamiento.
+ */
+export function minutosPerdidos(ms) {
+  const m = Math.round((Number(ms) || 0) / MIN);
+  return m > 0 ? m : null;
+}
 
 /**
  * El estado del reloj en un instante.
@@ -59,7 +116,7 @@ export const estaHecho = (b) => real(b) !== null;
  *   finPrevisto, desvioMin, terminada
  * }
  */
-export function estadoCronometro(bloques, { arranque = 0, ahora = 0, extras = {} } = {}) {
+export function estadoCronometro(bloques, { arranque = 0, ahora = 0, extras = {}, pausa = null } = {}) {
   const lista = (Array.isArray(bloques) ? bloques : []).filter((b) => b && dur(b) > 0);
   const total = lista.length;
 
@@ -67,23 +124,32 @@ export function estadoCronometro(bloques, { arranque = 0, ahora = 0, extras = {}
   const terminada = indice === -1;
   if (terminada) indice = total;
 
-  // el bloque en curso empieza donde acabó el anterior DE VERDAD
+  /* El bloque en curso empieza donde acabó el anterior DE VERDAD: lo
+     que se entrenó MÁS lo que se estuvo parado, porque las dos cosas
+     ocuparon pista y el reloj de pared no perdona ninguna. */
   let inicioBloque = Number(arranque) || 0;
-  for (let i = 0; i < Math.min(indice, total); i++) inicioBloque += real(lista[i]) * MIN;
+  for (let i = 0; i < Math.min(indice, total); i++) inicioBloque += ocupado(lista[i]) * MIN;
 
   const bloque = terminada ? null : lista[indice] || null;
   const extra = bloque ? Math.max(0, Number(extras[claveDe(bloque)]) || 0) : 0;
   const previstoMs = bloque ? (dur(bloque) + extra) * MIN : 0;
-  const transcurridoMs = bloque ? Math.max(0, Number(ahora) - inicioBloque) : 0;
+  const paradoMs = bloque ? pausadoMs(pausa, ahora) : 0;
+  /* Lo parado no cuenta como entrenado: la cuenta atrás se queda quieta
+     mientras el equipo está esperando, que es justo lo que se espera al
+     tocar el reloj. */
+  const transcurridoMs = bloque
+    ? Math.max(0, (Number(ahora) - inicioBloque) - paradoMs) : 0;
 
   // lo que queda del PLAN completo, contando lo ya gastado de verdad
   let finPrevisto = Number(arranque) || 0;
   for (let i = 0; i < total; i++) {
     const b = lista[i];
     finPrevisto += estaHecho(b)
-      ? real(b) * MIN
+      ? ocupado(b) * MIN
       : (dur(b) + (Number(extras[claveDe(b)]) || 0)) * MIN;
   }
+  // lo que llevamos parados en el bloque en curso también retrasa el final
+  finPrevisto += paradoMs;
   // el bloque en curso ya puede haberse pasado de lo previsto
   if (bloque && transcurridoMs > previstoMs) finPrevisto += transcurridoMs - previstoMs;
 
@@ -96,6 +162,8 @@ export function estadoCronometro(bloques, { arranque = 0, ahora = 0, extras = {}
     inicioBloque,
     transcurridoMs,
     previstoMs,
+    paradoMs,
+    pausado: estaPausado(pausa),
     restanteMs: previstoMs - transcurridoMs,   // negativo = se está pasando
     finPrevisto,
     desvioMin: Math.round((finPrevisto - (arranqueMs + planeadoMs)) / MIN),

@@ -37,7 +37,7 @@
 import { h, mount, icon } from '../ui/dom.js';
 import { toast } from '../ui/toast.js';
 import { confirmar } from '../ui/modal.js';
-import { puntoEquipo } from '../ui/components.js';
+import { puntoEquipo, iniciales } from '../ui/components.js';
 import { getMisEquipos } from '../data/teams.js';
 import { getJugadores } from '../data/players.js';
 import { getSesion, promoverSesion } from '../data/sessions.js';
@@ -50,6 +50,7 @@ import {
 import {
   MAS_MIN, estadoCronometro, minutosReales, arranqueAhora,
   textoReloj, textoDesvio, claveDe,
+  alternarPausa, minutosPerdidos,
 } from '../data/cronometro.js';
 import { esActiva, minutosDesdeInicio } from '../data/estado-sesion.js';
 import { esAgua, esVideo } from '../data/plan.js';
@@ -57,6 +58,13 @@ import { getObjetivos } from '../data/objectives.js';
 import { router } from '../main.js';
 
 const hhmm = (t) => (t ? t.slice(0, 5) : '');
+
+/* Cuánto se puede uno adelantar y que «empezamos ahora» siga teniendo
+   sentido. Sin tope, abrir la pantalla de una sesión del jueves ofrecía
+   «empezamos ahora (3884 min antes)», que no es una ayuda: es una
+   forma de estropear el plan de otro día de un toque. Tarde no lleva
+   tope porque llegar tarde no tiene fondo. */
+const ANTES_MAX_MIN = 120;
 const ICO = {
   estrella: 'M11.48 3.5a.56.56 0 0 1 1.04 0l2.17 4.4 4.85.7a.56.56 0 0 1 .31.96l-3.51 3.42.83 4.83a.56.56 0 0 1-.81.59L12 16.9l-4.34 2.28a.56.56 0 0 1-.81-.59l.83-4.83-3.51-3.42a.56.56 0 0 1 .31-.96l4.85-.7Z',
   atras: 'M15 18l-6-6 6-6',
@@ -74,13 +82,18 @@ export function render(root, params) {
   let extras = {};              // minutos añadidos con «+5», por bloque
   let arranque = null;
   let guardando = false;
+  /* La parada del bloque en curso: { acumuladoMs, desde, motivo }.
+     `desde` es el instante en que se tocó el reloj, no un contador —así
+     una pantalla dormida veinte minutos vuelve sabiendo que se estuvo
+     parado veinte, y no los pocos latidos que le dio el navegador. */
+  let pausa = null;
 
   /* El arranque y los «+5» son ayudas de ESTE rato: viven en el
      navegador. Lo que queda escrito para siempre es la duración real de
      cada bloque, que sí va a la base de datos. */
   const CLAVE = `cbp-activa-${sessionId}`;
   const recordar = () => {
-    try { localStorage.setItem(CLAVE, JSON.stringify({ arranque, extras })); } catch { /* modo privado */ }
+    try { localStorage.setItem(CLAVE, JSON.stringify({ arranque, extras, pausa })); } catch { /* modo privado */ }
   };
   const recordado = () => {
     try { return JSON.parse(localStorage.getItem(CLAVE) || '{}'); } catch { return {}; }
@@ -127,18 +140,22 @@ export function render(root, params) {
   /* ---- cómo va de tiempo ----------------------------------------- */
   function pintaTiempo() {
     if (!sesion) return;
-    const e = estadoCronometro(bloques, { arranque, ahora: Date.now(), extras });
+    const e = estadoCronometro(bloques, { arranque, ahora: Date.now(), extras, pausa });
     const tarde = minutosDesdeInicio(sesion) ?? 0;
     nodoTiempo.replaceChildren(...[
       h('div', { class: 'eq-act-reloj' },
         h('span', { class: 'eq-act-reloj-h' }, `${hhmm(sesion.hora_inicio)}–${hhmm(sesion.hora_fin)}`),
         h('span', { class: `eq-act-desvio${e.desvioMin > 0 ? ' is-tarde' : ''}` }, textoDesvio(e.desvioMin)),
       ),
-      /* El ajuste de un toque (§5.6). Solo aparece cuando de verdad se
-         ha empezado tarde, no se ha dado ningún bloque y no se ha
-         ajustado ya: después ya no es «empezamos ahora», es rehacer el
-         pasado. */
-      !e.hechos && tarde > 3 && !ajustado()
+      /* El ajuste de un toque (§5.6). Solo mientras no se haya dado
+         ningún bloque y no se haya ajustado ya: después ya no es
+         «empezamos ahora», es rehacer el pasado.
+
+         Vale en LOS DOS SENTIDOS. Antes solo salía al llegar tarde, y
+         el pabellón se abre igual de pronto que tarde: quien empieza a
+         y cuarenta y cinco una sesión de las cinco se quedaba con la
+         cuenta atrás ya gastada y sin forma de corregirla. */
+      !e.hechos && (tarde > 3 || (tarde < -3 && tarde >= -ANTES_MAX_MIN)) && !ajustado()
         ? h('button', {
             class: 'btn btn-secondary eq-act-tarde', type: 'button',
             onClick: () => {
@@ -146,7 +163,9 @@ export function render(root, params) {
               recordar(); pintaTiempo(); pintaBloque(); pintaResto(); pintaCaliente();
               toast('Empezamos ahora: el plan entero se corre, no se recorta.');
             },
-          }, `Empezamos ahora (${tarde} min tarde)`)
+          }, tarde > 0
+            ? `Empezamos ahora (${tarde} min tarde)`
+            : `Empezamos ahora (${-tarde} min antes)`)
         : null,
     ].filter(Boolean));
   }
@@ -194,7 +213,7 @@ export function render(root, params) {
   /* ---- el bloque en curso ----------------------------------------- */
   function pintaBloque() {
     if (!sesion) return;
-    const e = estadoCronometro(bloques, { arranque, ahora: Date.now(), extras });
+    const e = estadoCronometro(bloques, { arranque, ahora: Date.now(), extras, pausa });
 
     if (e.terminada) {
       nodoBloque.replaceChildren(
@@ -210,13 +229,41 @@ export function render(root, params) {
     const b = e.bloque;
     const pasado = e.restanteMs < 0;
     const marca = esAgua(b) ? 'Agua' : esVideo(b) ? 'Vídeo' : null;
+    const perdidos = Math.floor(e.paradoMs / 60000);
 
-    nodoBloque.replaceChildren(
+    /* `replaceChildren` es el DOM nativo y NO se traga los null: los
+       pinta como el TEXTO «null» debajo del título. Por eso la lista se
+       filtra, igual que en pintaTiempo. */
+    nodoBloque.replaceChildren(...[
       h('p', { class: 'eq-act-cuenta' }, `${e.indice + 1} de ${e.total}`),
       h('h2', { class: 'eq-act-titulo' }, b.titulo || 'Bloque'),
       marca ? h('span', { class: 'eq-act-marca' }, marca) : null,
-      h('div', { class: `eq-act-crono${pasado ? ' is-pasado' : ''}` }, textoReloj(e.restanteMs)),
-      h('p', { class: 'eq-act-previsto' }, `de ${Math.round(e.previstoMs / 60000)} min`),
+      /* El número es el botón (§5.6: todo en un toque). Pausar no
+         merece un botón más en una pantalla que se mira con un balón
+         en la otra mano. */
+      h('button', {
+        class: `eq-act-crono${pasado ? ' is-pasado' : ''}${e.pausado ? ' is-pausado' : ''}`,
+        type: 'button',
+        'aria-pressed': e.pausado ? 'true' : 'false',
+        title: e.pausado ? 'Tocar para reanudar' : 'Tocar para parar el tiempo',
+        onClick: () => {
+          pausa = alternarPausa(pausa, Date.now());
+          recordar(); pintaTiempo(); pintaBloque(); pintaResto();
+        },
+      }, textoReloj(e.restanteMs)),
+      h('p', { class: 'eq-act-previsto' },
+        e.pausado ? 'Parado · tocar el reloj para seguir' : `de ${Math.round(e.previstoMs / 60000)} min`),
+      /* Mientras está parado, el motivo. Opcional a propósito: en el
+         pabellón se para con el pulgar y se explica si da tiempo. */
+      e.pausado ? h('input', {
+        class: 'field-input eq-act-motivo', type: 'text', maxLength: 120,
+        value: pausa?.motivo || '',
+        placeholder: '¿Por qué se ha parado? (opcional)',
+        onInput: (ev) => { pausa = { ...pausa, motivo: ev.target.value }; recordar(); },
+      }) : null,
+      perdidos > 0 && !e.pausado
+        ? h('p', { class: 'eq-act-perdido' }, `${perdidos} min parados en este bloque`)
+        : null,
       h('div', { class: 'eq-act-acciones' },
         h('button', {
           class: 'btn btn-secondary eq-act-btn-grande', type: 'button',
@@ -227,26 +274,35 @@ export function render(root, params) {
         }, `+${MAS_MIN} min`),
         h('button', {
           class: 'btn btn-primary eq-act-btn-grande', type: 'button',
-          onClick: () => finaliza(b, e.transcurridoMs),
+          onClick: () => finaliza(b, e.transcurridoMs, e.paradoMs),
         }, 'Finalizado'),
       ),
-    );
+    ].filter(Boolean));
   }
 
   /**
    * Dar un bloque por acabado: se guarda lo que DE VERDAD duró, que es
    * lo que alimentará la duración estimada del ejercicio (fila 3.6).
    */
-  async function finaliza(b, transcurridoMs) {
+  async function finaliza(b, transcurridoMs, paradoMs = 0) {
     b.duracion_real_min = minutosReales(transcurridoMs);
+    /* Lo parado va aparte: ocupó pista —y por eso sitúa al bloque
+       siguiente— pero no fue entrenamiento, así que no puede ensuciar
+       la duración que se le propondrá luego a este ejercicio. */
+    b.tiempo_perdido_min = minutosPerdidos(paradoMs);
+    b.motivo_perdido = b.tiempo_perdido_min ? (pausa?.motivo || '').trim() || null : null;
+    // la parada muere con el bloque: la del siguiente empieza de cero
+    pausa = null; recordar();
     pintaTiempo(); pintaBloque(); pintaResto(); pintaCaliente();
     await guardaBloques();
-    toast(`${b.titulo || 'Bloque'}: ${b.duracion_real_min} min`);
+    toast(b.tiempo_perdido_min
+      ? `${b.titulo || 'Bloque'}: ${b.duracion_real_min} min (+${b.tiempo_perdido_min} parados)`
+      : `${b.titulo || 'Bloque'}: ${b.duracion_real_min} min`);
   }
 
   /* ---- lo que se apunta en caliente -------------------------------- */
   function pintaCaliente() {
-    const e = estadoCronometro(bloques, { arranque, ahora: Date.now(), extras });
+    const e = estadoCronometro(bloques, { arranque, ahora: Date.now(), extras, pausa });
     const b = e.bloque;
     const presentes = densas.filter((f) => f.estado === 'presente' || f.estado === 'tarde');
     const conEstrella = new Set(estrellas.map((x) => x.player_id));
@@ -263,7 +319,11 @@ export function render(root, params) {
       },
     });
 
-    nodoCaliente.replaceChildren(
+    /* Filtrado como en pintaTiempo y pintaBloque: `replaceChildren` es
+       el DOM nativo y pinta cada null como el TEXTO «null». Con el plan
+       acabado aqui hay dos —no hay bloque en curso y no hay estrellas—
+       y salia un «nullnull» debajo de la nota. */
+    nodoCaliente.replaceChildren(...[
       h('h2', { class: 'eq-zona-titulo' }, 'En caliente'),
       presentes.length
         ? h('div', { class: 'eq-act-estrellas' }, ...presentes.map((f) => h('button', {
@@ -274,7 +334,11 @@ export function render(root, params) {
             onClick: () => estrella(f, b),
           },
             icon(ICO.estrella, { size: 15, fill: conEstrella.has(f.player_id) ? 'currentColor' : 'none' }),
-            h('span', null, f.dorsal != null ? String(f.dorsal) : f.nombre.split(' ')[0]),
+            /* Dorsal E INICIALES: por el dorsal solo no se sabe a quien
+               se le esta poniendo la estrella —hay que acordarse de
+               dieciseis numeros— y en caliente eso no se hace. */
+            h('span', { class: 'eq-act-chip-n' }, f.dorsal != null ? String(f.dorsal) : ''),
+            h('span', { class: 'eq-act-chip-ini' }, iniciales(f.nombre) || f.nombre.split(' ')[0]),
           )))
         : h('p', { class: 'eq-ayuda' }, 'Pasa lista y aquí saldrán los que están para darles una estrella.'),
       nota,
@@ -288,7 +352,7 @@ export function render(root, params) {
       estrellas.length
         ? h('p', { class: 'eq-ayuda' }, `${estrellas.length} ${estrellas.length === 1 ? 'estrella' : 'estrellas'} hoy. Toca otra vez para quitarla.`)
         : null,
-    );
+    ].filter(Boolean));
   }
 
   async function estrella(f, bloque) {
@@ -335,7 +399,7 @@ export function render(root, params) {
 
   /* ---- lo que queda ------------------------------------------------ */
   function pintaResto() {
-    const e = estadoCronometro(bloques, { arranque, ahora: Date.now(), extras });
+    const e = estadoCronometro(bloques, { arranque, ahora: Date.now(), extras, pausa });
     const quedan = bloques.filter((b, i) => (Number(b.duracion_min) || 0) > 0 && i > bloques.indexOf(e.bloque));
     nodoResto.replaceChildren(
       h('h2', { class: 'eq-zona-titulo' }, quedan.length ? 'Lo que queda' : 'Ya está todo'),
@@ -402,6 +466,10 @@ export function render(root, params) {
       const g = recordado();
       extras = g.extras && typeof g.extras === 'object' ? g.extras : {};
       arranque = Number(g.arranque) || instanteInicio(sesion);
+      /* Se vuelve a la pausa tal y como se dejó: si se cerró la app con
+         el entrenamiento parado, sigue parado —y lo que se estuvo
+         parado se calcula desde `desde`, no desde que se reabrió. */
+      pausa = g.pausa && typeof g.pausa === 'object' ? g.pausa : null;
 
       /* Dar un entrenamiento es planificarlo de la forma más rápida que
          hay: si estaba sin confirmar, se confirma sola. Que quede en

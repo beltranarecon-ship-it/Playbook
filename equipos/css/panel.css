@@ -1739,3 +1739,38 @@ a.eq-inv-fila:hover { border-color: var(--ink); }
   .eq-ses-barra { bottom: calc(3.75rem + env(safe-area-inset-bottom)); }
   .eq-ses-panel { padding-bottom: 9rem; }
 }
+
+/* La explicacion larga de la barra se calla en movil: el boton que la
+   acompana ya dice lo que se puede hacer, y dos lineas de texto pegadas
+   abajo se comen la pantalla en la que se esta escribiendo. Solo la
+   marcada: la de sesion cancelada va sin clase porque ahi no hay boton
+   y es lo unico que hay en la barra. */
+@media (max-width: 719px) {
+  .eq-ses-barra .eq-ayuda-ancho { display: none; }
+}
+
+/* ── Sesión en pista: parar el tiempo y lo que se pierde ─────
+   El reloj grande ES el botón de pausa (§5.6: todo en un toque). Se
+   hereda el tipo del número para que no se note que ahora es un botón:
+   lo que cambia al tocarlo es el color, no la forma. */
+.eq-act-crono {
+  display: block; width: 100%; cursor: pointer;
+  background: none; border: 0; color: inherit;
+  font: inherit; font-family: var(--font-display); font-weight: 900;
+  font-size: clamp(3rem, 18vw, 6rem); line-height: 1;
+  font-variant-numeric: tabular-nums;
+  border-radius: 0.5rem;
+  transition: color var(--t-fast), opacity var(--t-fast);
+}
+.eq-act-crono:focus-visible { outline: 2px solid var(--papaya); outline-offset: 4px; }
+/* Parado se apaga: de un vistazo, desde la otra punta de la pista, se
+   ve que el tiempo no está corriendo. */
+.eq-act-crono.is-pausado { color: var(--muted); opacity: 0.55; }
+.eq-act-motivo { max-width: 22rem; margin: 0.75rem auto 0; text-align: center; }
+.eq-act-perdido { color: var(--muted); font-size: 0.75rem; margin: 0.35rem 0 0; }
+.eq-cierre-perdido { color: var(--muted); }
+
+/* Los botones de estrella: dorsal delante, iniciales detrás. */
+.eq-act-chip-n { font-weight: 800; font-variant-numeric: tabular-nums; }
+.eq-act-chip-ini { opacity: 0.75; letter-spacing: 0.02em; }
+.eq-act-chip-n + .eq-act-chip-ini { margin-left: 0.25rem; }

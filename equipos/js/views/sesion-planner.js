@@ -1258,10 +1258,18 @@ export function render(root, params, opts = {}) {
     const irCierre = () => (opts.irACierre ? opts.irACierre() : salir(`/sesiones/${sessionId}/cierre`));
     if (soloLectura) {
       return [
-        h('p', { class: 'eq-ayuda' },
-          sesion.estado === 'cancelada'
-            ? 'Sesión cancelada: el plan queda como histórico y no se edita.'
-            : 'Esta sesión ya pasó: el plan queda como histórico. La reflexión y la rúbrica sí se editan.'),
+        /* En móvil la explicación se calla y queda solo «Editar el
+           plan», que ya dice lo que se puede hacer: la barra va pegada
+           abajo y dos líneas de texto ahí se comen la pantalla en la
+           que se está escribiendo.
+           La de CANCELADA no lleva esa clase a propósito: en ese caso
+           no hay botón y el texto es lo único que hay en la barra —
+           esconderlo dejaría una franja vacía sin explicar nada. */
+        sesion.estado === 'cancelada'
+          ? h('p', { class: 'eq-ayuda' },
+              'Sesión cancelada: el plan queda como histórico y no se edita.')
+          : h('p', { class: 'eq-ayuda eq-ayuda-ancho' },
+              'Esta sesión ya pasó: el plan queda como histórico. La reflexión y la rúbrica sí se editan.'),
         /* El candado se quita a mano y solo aquí: un entrenamiento que
            cambió sobre la marcha necesita que el plan diga lo que de
            verdad se hizo. */

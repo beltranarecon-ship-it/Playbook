@@ -98,14 +98,27 @@ export function slotsEditor(slotsIniciales = []) {
   return root;
 }
 
+/**
+ * Las iniciales de un nombre: «Luis Ruiz Moreno» → «LR».
+ *
+ * Se exporta porque no es solo cosa del avatar: en la pantalla de
+ * sesión activa los botones de estrella llevan dorsal e iniciales, y
+ * dos formas distintas de sacarlas harían que el mismo crío se llamara
+ * de dos maneras en la misma pantalla.
+ */
+export function iniciales(nombre) {
+  return String(nombre || '').trim().split(/\s+/).slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() || '').join('');
+}
+
 /** Avatar por iniciales con color derivado del nombre (fallback sin foto). */
 export function avatar(nombre, color = null, size = 36) {
-  const iniciales = nombre.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() || '').join('');
+  const ini = iniciales(nombre);
   const tono = color || TEAM_COLORS[[...nombre].reduce((a, c) => a + c.charCodeAt(0), 0) % TEAM_COLORS.length];
   return h('span', {
     class: 'eq-avatar', 'aria-hidden': 'true',
     style: { width: size + 'px', height: size + 'px', background: tono + '22', color: tono },
-  }, iniciales || '·');
+  }, ini || '·');
 }
 
 /**

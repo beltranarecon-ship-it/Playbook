@@ -13,6 +13,7 @@
 import {
   MAS_MIN, estadoCronometro, estaHecho, minutosReales,
   arranqueAhora, textoReloj, textoDesvio, claveDe,
+  pausadoMs, estaPausado, alternarPausa, minutosPerdidos,
 } from '../js/data/cronometro.js';
 
 let pasan = 0, fallan = 0;
@@ -208,6 +209,126 @@ test('sin bloques no revienta', () => {
     eq(e.total, 0, `con ${JSON.stringify(v)}:`);
     ok(e.terminada);
   }
+});
+
+
+/* ── 6. La pausa ───────────────────────────────────────────── */
+
+console.log('\n· parar y reanudar');
+
+test('tocar el reloj para y vuelve a tocar para reanudar', () => {
+  let p = null;
+  p = alternarPausa(p, enMin(5));
+  ok(estaPausado(p), 'no se ha parado');
+  eq(pausadoMs(p, enMin(8)), 3 * MIN, 'a los 3 min de parada:');
+  p = alternarPausa(p, enMin(8));
+  ok(!estaPausado(p), 'no ha reanudado');
+  eq(pausadoMs(p, enMin(20)), 3 * MIN, 'reanudado, lo parado ya no crece:');
+});
+
+test('lo parado se CALCULA, no se cuenta: sobrevive al móvil en el bolsillo', () => {
+  /* Es lo mismo que hace el resto del módulo. Si esto se llevara con un
+     contador, la pantalla dormida veinte minutos volvería diciendo que
+     solo se estuvo parado los pocos latidos que le dio el navegador. */
+  const p = alternarPausa(null, enMin(5));
+  eq(pausadoMs(p, enMin(25)), 20 * MIN, 'veinte minutos con el móvil bloqueado:');
+});
+
+test('varias paradas se suman', () => {
+  let p = alternarPausa(null, enMin(2));
+  p = alternarPausa(p, enMin(4));          // 2 min
+  p = alternarPausa(p, enMin(10));
+  p = alternarPausa(p, enMin(15));         // + 5 min
+  eq(pausadoMs(p, enMin(30)), 7 * MIN);
+});
+
+test('la cuenta atrás se queda quieta mientras está parado', () => {
+  const b = plan();
+  let p = alternarPausa(null, enMin(4));
+  const aLos4 = estadoCronometro(b, { arranque: T0, ahora: enMin(4), pausa: p });
+  const aLos9 = estadoCronometro(b, { arranque: T0, ahora: enMin(9), pausa: p });
+  eq(aLos9.transcurridoMs, aLos4.transcurridoMs, 'ha seguido corriendo parado:');
+  eq(aLos9.restanteMs, 6 * MIN, 'quedan los mismos 6 min del bloque de 10:');
+  ok(aLos9.pausado, 'no dice que está pausado');
+  eq(aLos9.paradoMs, 5 * MIN);
+});
+
+test('reanudado, sigue por donde iba', () => {
+  const b = plan();
+  let p = alternarPausa(null, enMin(4));
+  p = alternarPausa(p, enMin(9));           // 5 min parados
+  const e = estadoCronometro(b, { arranque: T0, ahora: enMin(12), pausa: p });
+  eq(e.transcurridoMs, 7 * MIN, '12 de reloj menos 5 parados:');
+  eq(e.restanteMs, 3 * MIN);
+});
+
+test('lo parado retrasa el final previsto', () => {
+  const b = plan();
+  const sin = estadoCronometro(b, { arranque: T0, ahora: enMin(4) });
+  const con = estadoCronometro(b, { arranque: T0, ahora: enMin(4), pausa: { acumuladoMs: 8 * MIN, desde: null } });
+  eq(con.finPrevisto - sin.finPrevisto, 8 * MIN, 'el final no se ha corrido:');
+  eq(con.desvioMin, 8, 'y el desvío no lo dice:');
+});
+
+console.log('\n· lo perdido ocupa pista, pero no es entrenamiento');
+
+test('el bloque siguiente empieza contando TAMBIÉN lo parado', () => {
+  /* Es lo único que mantiene el reloj pegado al de pared. Si lo parado
+     se descontara aquí, los diez minutos esperando a que se fuera el
+     otro equipo harían que todos los bloques siguientes empezaran diez
+     minutos antes de lo que marca el reloj. */
+  const b = plan();
+  b[0].duracion_real_min = 10;        // se entrenaron 10
+  b[0].tiempo_perdido_min = 6;        // y se perdieron 6
+  const e = estadoCronometro(b, { arranque: T0, ahora: enMin(16) });
+  eq(e.indice, 1, 'no va por el segundo:');
+  eq(e.inicioBloque, enMin(16), 'el segundo no empieza en el minuto 16:');
+  eq(e.transcurridoMs, 0, 'y por tanto acaba de empezar:');
+});
+
+test('sin pausa, un bloque hecho ocupa exactamente lo que duró', () => {
+  const b = plan();
+  b[0].duracion_real_min = 12;
+  const e = estadoCronometro(b, { arranque: T0, ahora: enMin(12) });
+  eq(e.inicioBloque, enMin(12));
+});
+
+test('minutosReales guarda lo ENTRENADO, no el reloj de pared', () => {
+  /* `transcurridoMs` ya viene sin lo parado, así que esto sale solo. Es
+     lo que después se le propone al ejercicio en la biblioteca: si se
+     guardara con las pausas dentro, un 3c3 de diez minutos acabaría
+     fichado como de veinte. */
+  const b = plan();
+  const p = { acumuladoMs: 6 * MIN, desde: null };
+  const e = estadoCronometro(b, { arranque: T0, ahora: enMin(16), pausa: p });
+  eq(minutosReales(e.transcurridoMs), 10, 'los 16 de reloj menos 6 parados:');
+  eq(minutosPerdidos(e.paradoMs), 6);
+});
+
+test('una parada de segundos NO es tiempo perdido', () => {
+  /* NULL en la base significa «no se pausó». Atarse una zapatilla no
+     es tiempo perdido, es un entrenamiento. */
+  eq(minutosPerdidos(0), null);
+  eq(minutosPerdidos(20000), null, '20 segundos:');
+  eq(minutosPerdidos(29999), null, 'casi medio minuto:');
+  eq(minutosPerdidos(45000), 1, '45 segundos redondean a 1:');
+});
+
+test('lo roto no revienta ni inventa pausas', () => {
+  eq(pausadoMs(null, enMin(5)), 0);
+  eq(pausadoMs(undefined, enMin(5)), 0);
+  eq(pausadoMs({}, enMin(5)), 0);
+  eq(pausadoMs({ acumuladoMs: 'x', desde: 'y' }, enMin(5)), 0);
+  eq(estaPausado(null), false);
+  eq(estaPausado({ desde: null }), false);
+  eq(minutosPerdidos(null), null);
+  eq(minutosPerdidos('hola'), null);
+});
+
+test('un reloj que va hacia atrás no da tiempos negativos', () => {
+  /* Cambio de hora, o el sistema ajustándose por NTP. */
+  const p = { acumuladoMs: 0, desde: enMin(10) };
+  eq(pausadoMs(p, enMin(5)), 0, 'ahora anterior al inicio de la pausa:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

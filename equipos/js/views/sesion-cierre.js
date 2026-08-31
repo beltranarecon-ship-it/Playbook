@@ -321,10 +321,24 @@ export function render(root, params, opts = {}) {
       jugadores: entrenaron,
       requisitosDe: (b) => (b.exercise_id ? requisitosPorEjercicio.get(b.exercise_id) || null : null),
     });
+    /* Lo que se fue sin entrenar (migración 040). Se enseña solo si lo
+       hubo: un «0 min parados» en cada sesión sería ruido. Y los
+       motivos van juntos porque leídos en fila cuentan la historia del
+       día —«lluvia», «pabellón ocupado», «se cortó la luz»—. */
+    const parados = bloques.reduce((s, b) => s + (Number(b.tiempo_perdido_min) || 0), 0);
+    const motivos = bloques
+      .filter((b) => Number(b.tiempo_perdido_min) > 0 && (b.motivo_perdido || '').trim())
+      .map((b) => b.motivo_perdido.trim());
+
     return h('section', { class: 'eq-cierre-seccion eq-cierre-real' },
       h('h2', { class: 'eq-zona-titulo' }, 'Lo que dio de sí'),
       h('p', { class: 'eq-ayuda' }, textoMinutos(m)),
       h('p', { class: 'eq-ayuda' }, `${c.duracion} min · intensidad media ${c.cargaMedia.toFixed(1)}`),
+      parados > 0
+        ? h('p', { class: 'eq-ayuda eq-cierre-perdido' },
+            `${parados} min parados`,
+            motivos.length ? ` · ${motivos.join(' · ')}` : '')
+        : null,
     );
   }
 
