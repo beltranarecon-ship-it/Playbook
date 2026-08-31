@@ -39,7 +39,7 @@ import {
   textoHace, cabeEnGrupo,
 } from '../data/plan.js';
 import { getSesionesRango } from '../data/sessions.js';
-import { esActiva } from '../data/estado-sesion.js';
+import { esActiva, yaPaso } from '../data/estado-sesion.js';
 import {
   guardar as guardarBorrador, leer as leerBorrador, borrar as borrarBorrador,
   claveSesion, hayQueOfrecer, fechaDe, limpiarViejos,
@@ -105,7 +105,17 @@ function nodoTrasCursor(cont, y) {
   }) || null;
 }
 
-export function render(root, params) {
+/**
+ * @param opts.incrustado  el planificador es la pestaña «Plan» de la
+ *   pantalla de sesión (sesion.js) y NO dibuja ni la cabecera ni la
+ *   barra de acciones: de eso se encarga el contenedor, que es quien
+ *   tiene el botón único de guardar y el guardián de cambios.
+ * @param opts.alCambiar   avisa al contenedor de que hay algo sin guardar.
+ * @param opts.salir       el guardián del contenedor, en vez del propio.
+ * @param opts.alCargar    la sesión recién leída, para la cabecera común.
+ */
+export function render(root, params, opts = {}) {
+  const incrustado = !!opts.incrustado;
   const sessionId = params.sessionId;
   const cont = h('div', { class: 'eq-page eq-planner' });
   mount(root, cont);
@@ -141,6 +151,17 @@ export function render(root, params) {
   let titulo = '';
   let soloLectura = false;
   let sucio = false;
+  /* El plan de una sesión que ya pasó es un HISTÓRICO y no se edita:
+     es lo que se estaba haciendo, no lo que se quiere hacer. Pero el
+     candado se puede quitar a mano —«Editar el plan»— porque a veces el
+     entrenamiento cambió sobre la marcha y el plan hay que ajustarlo a
+     lo que de verdad ocurrió. Dura lo que dure la visita: al recargar
+     vuelve a estar cerrado, que es el estado en el que debe estar. */
+  let desbloqueado = false;
+  const recalculaLectura = () => {
+    soloLectura = sesion?.estado === 'cancelada'
+      || (yaPaso(sesion) && !desbloqueado);
+  };
   let selUid = null;             // bloque enfocado en el visor
   let modalVisor = null;
   let modalPicker = null;
@@ -176,7 +197,7 @@ export function render(root, params) {
     guardaBorradorTimer = setTimeout(() => guardarBorrador(CLAVE_BORRADOR, instantanea()), 800);
   };
 
-  const marcaSucio = () => { sucio = true; pintaEstadoGuardado(); anotaBorrador(); };
+  const marcaSucio = () => { sucio = true; pintaEstadoGuardado(); anotaBorrador(); opts.alCambiar?.(); };
 
   /* ---- cuánta gente va a haber (Tramo 3.2) ------------------------
      Manda lo que el entrenador ponga para ESTE día; si no ha puesto
@@ -217,10 +238,13 @@ export function render(root, params) {
   });
   anfitrionVisor.append(visor.el);
 
-  // aviso al cerrar/recargar la pestaña con cambios pendientes
+  /* Aviso al cerrar/recargar con cambios pendientes. Incrustado NO se
+     registra: el contenedor tiene uno solo que mira las dos pestañas, y
+     dos guardianes darían dos avisos seguidos por la misma salida. */
   const onBeforeUnload = (e) => { if (sucio) { e.preventDefault(); e.returnValue = ''; } };
-  window.addEventListener('beforeunload', onBeforeUnload);
+  if (!incrustado) window.addEventListener('beforeunload', onBeforeUnload);
   const salir = (destino) => {
+    if (opts.salir) return opts.salir(destino);
     if (sucio && !confirm('Tienes cambios sin guardar. ¿Salir y descartarlos?')) return false;
     sucio = false; router.navigate(destino); return true;
   };
@@ -1138,14 +1162,17 @@ export function render(root, params) {
       .filter(Boolean).join(' · ');
 
     mount(cont,
-      h('div', { class: 'eq-planner-top' },
+      /* Incrustado, la cabecera es la del contenedor: una sola para las
+         dos pestañas. Repetirla aquí dejaría dos títulos y dos chapas de
+         estado en la misma pantalla. */
+      incrustado ? null : h('div', { class: 'eq-planner-top' },
         enlaceGuardado(`/sesiones?equipo=${sesion.team_id}`, '‹ Calendario', 'eq-volver'),
         h('div', { class: 'eq-planner-top-der' },
           nodoEstado,
           h('span', { class: `eq-estado-badge eq-ses-${sesion.estado}` }, ESTADOS_SESION[sesion.estado]),
         ),
       ),
-      h('div', { class: 'view-hero eq-planner-hero' },
+      incrustado ? null : h('div', { class: 'view-hero eq-planner-hero' },
         h('div', { class: 'view-hero-text' },
           h('span', { class: 'eyebrow' }, puntoEquipo(color), ' ', nombreEquipo),
           h('h1', { class: 'display view-title' }, fechaTxt),
@@ -1211,7 +1238,8 @@ export function render(root, params) {
             nodoMaterial,
           ),
 
-          barraAcciones(),
+          // incrustado, la barra la pone el contenedor (botón único)
+          incrustado ? null : barraAcciones(),
         ),
         anfitrionVisor,
       ),
@@ -1221,21 +1249,41 @@ export function render(root, params) {
     pintaVigilar();
   }
 
-  function barraAcciones() {
-    const irCierre = () => salir(`/sesiones/${sessionId}/cierre`);
+  /**
+   * Lo que esta pestaña aporta a la barra de acciones, SIN el botón de
+   * guardar: ese es único y lo pone el contenedor. Devuelve un array
+   * porque el contenedor lo mezcla con lo suyo en una sola barra.
+   */
+  function accionesBarra() {
+    const irCierre = () => (opts.irACierre ? opts.irACierre() : salir(`/sesiones/${sessionId}/cierre`));
     if (soloLectura) {
-      return h('div', { class: 'eq-planner-barra' },
+      return [
         h('p', { class: 'eq-ayuda' },
-          sesion.estado === 'realizada'
-            ? 'Sesión realizada: el plan queda como histórico y no se edita.'
-            : 'Sesión cancelada: el plan queda como histórico y no se edita.'),
-        sesion.estado === 'realizada'
-          ? h('button', { class: 'btn btn-secondary', type: 'button', onClick: irCierre }, 'Ver cierre')
-          : null,
-      );
+          sesion.estado === 'cancelada'
+            ? 'Sesión cancelada: el plan queda como histórico y no se edita.'
+            : 'Esta sesión ya pasó: el plan queda como histórico. La reflexión y la rúbrica sí se editan.'),
+        /* El candado se quita a mano y solo aquí: un entrenamiento que
+           cambió sobre la marcha necesita que el plan diga lo que de
+           verdad se hizo. */
+        sesion.estado === 'cancelada' ? null : h('button', {
+          class: 'btn btn-secondary', type: 'button',
+          onClick: () => { desbloqueado = true; recalculaLectura(); pinta(); opts.alCambiarModo?.(); },
+        }, 'Editar el plan'),
+      ];
     }
-    const esPreliminar = sesion.estado === 'preliminar';
+    return accionesEditables(irCierre);
+  }
+
+  /** La barra entera, para cuando el planificador va solo (sin contenedor). */
+  function barraAcciones() {
     return h('div', { class: 'eq-planner-barra' },
+      ...accionesBarra(),
+      soloLectura ? null : botonGuardarPlan());
+  }
+
+  function accionesEditables(irCierre) {
+    const esPreliminar = sesion.estado === 'preliminar';
+    return [
       h('div', { class: 'eq-planner-barra-sec' },
         (sesion.estado === 'preliminar' || sesion.estado === 'programada') ? h('button', {
           class: 'btn btn-secondary eq-btn-peligro', type: 'button',
@@ -1285,10 +1333,15 @@ export function render(root, params) {
         class: 'btn btn-primary eq-planner-guardar', type: 'button',
         onClick: async () => { await guardar({ callado: true }); salir(`/sesiones/${sessionId}/activa`); },
       }, 'Entrenar ahora') : null,
-      h('button', {
-        class: `btn ${esActiva(sesion) ? 'btn-secondary' : 'btn-primary'} eq-planner-guardar`, type: 'button', onClick: guardar,
-      }, esPreliminar ? 'Guardar y confirmar' : 'Guardar plan'),
-    );
+    ];
+  }
+
+  /** El «Guardar plan» de siempre. Incrustado no se usa: el botón es único. */
+  function botonGuardarPlan() {
+    return h('button', {
+      class: `btn ${esActiva(sesion) ? 'btn-secondary' : 'btn-primary'} eq-planner-guardar`,
+      type: 'button', onClick: guardar,
+    }, sesion.estado === 'preliminar' ? 'Guardar y confirmar' : 'Guardar plan');
   }
 
   /**
@@ -1380,9 +1433,11 @@ export function render(root, params) {
   // ── carga inicial ──────────────────────────────────────────
   (async () => {
     try {
-      sesion = await getSesion(sessionId);
-      soloLectura = sesion.estado === 'realizada' || sesion.estado === 'cancelada';
+      // el contenedor ya la ha leido: no se pide dos veces la misma fila
+      sesion = opts.sesion || await getSesion(sessionId);
+      recalculaLectura();
       titulo = sesion.titulo || '';
+      opts.alCargar?.(sesion);
       const [eqs, blks, objsSes] = await Promise.all([
         getMisEquipos(), getBloques(sessionId), getObjetivosSesion(sessionId),
       ]);
@@ -1458,6 +1513,14 @@ export function render(root, params) {
     // que si no se cierran aquí, volver atrás con el picker abierto dejaba un
     // telón fijo tapando el calendario, con su Escape y su segundo visor
     // (CourtView + motor a 60 fps) vivos para siempre.
+    /* Lo que el contenedor necesita para tener UNA barra y UN guardián.
+       `guardar` va en modo callado a propósito: quien avisa y quien
+       navega es el contenedor, y dos avisos por un solo clic sobran. */
+    guardar: () => guardar({ callado: true }),
+    estaSucio: () => sucio,
+    esSoloLectura: () => soloLectura,
+    accionesBarra: () => (sesion ? accionesBarra() : []),
+    nodoEstado,
     destroy() {
       window.removeEventListener('beforeunload', onBeforeUnload);
       window.removeEventListener('resize', alRedimensionar);

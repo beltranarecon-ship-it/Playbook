@@ -127,3 +127,33 @@ export function laDeAhora(sesiones, ahora = Date.now()) {
   }
   return mejor;
 }
+
+/**
+ * ¿La sesión YA PASÓ? Es lo que decide si existe la pestaña de cierre.
+ *
+ * Se DEDUCE del reloj, igual que `activa` y por la misma razón
+ * (decisión #17): si `realizada` se escribiera sola al pasar la hora,
+ * las sesiones que nunca ocurrieron —vacaciones, un puente, un
+ * entrenamiento suspendido que nadie canceló— quedarían marcadas como
+ * hechas para siempre y ensuciarían la progresión y el dosier. La
+ * columna solo cambia cuando el entrenador guarda el cierre.
+ *
+ * Una CANCELADA no pasó: no se le pasa lista ni se reflexiona sobre
+ * ella, así que no tiene cierre.
+ *
+ * Sin hora de inicio no hay ventana que mirar y vale el día: la sesión
+ * se da por pasada cuando ha terminado su fecha. Suponerle una hora
+ * sería inventarse a qué hora entrena un equipo.
+ */
+export function yaPaso(sesion, ahora = Date.now()) {
+  if (!sesion || sesion.estado === 'cancelada') return false;
+  if (sesion.estado === 'realizada') return true;
+
+  const v = ventanaActiva(sesion);
+  if (v) return Number(ahora) > v.hasta;
+
+  const f = String(sesion.fecha || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f)) return false;
+  const [Y, M, D] = f.split('-').map(Number);
+  return Number(ahora) >= new Date(Y, M - 1, D + 1, 0, 0, 0, 0).getTime();
+}

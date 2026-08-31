@@ -1701,3 +1701,41 @@ a.eq-inv-fila:hover { border-color: var(--ink); }
 .eq-borrar-lleva li { font-size: 0.875rem; }
 /* El botón sigue apagado hasta que el nombre coincide: que se vea. */
 .modal-peligro .eq-btn-peligro[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+/* ── La pantalla de sesión: plan y cierre en dos pestañas ─────
+   Antes eran dos pantallas y el cierre llevaba una copia del plan.
+   Ahora la cabecera es una sola y lo que cambia es el panel. */
+.eq-ses-panel[hidden] { display: none; }
+/* Hueco para la barra pegada: sin esto tapa las ultimas lineas. */
+.eq-ses-panel { padding-bottom: 4.5rem; }
+/* El panel oculto conserva su estado (lo escrito a medias, el bloque
+   abierto en el visor): se esconde, no se destruye. */
+
+/* La barra se queda pegada abajo: la pantalla unida es larga y el
+   botón de guardar no puede estar a diez scrolls de donde escribes. */
+.eq-ses-barra {
+  position: sticky; bottom: 0; z-index: 3;
+  margin-top: 2rem; padding-bottom: 1rem;
+  /* --bone es el fondo de la app (base.css). Tiene que ser OPACO: la
+     barra flota sobre la lista y con transparencia se lee doble. */
+  background: var(--bone);
+  box-shadow: 0 -0.75rem 1rem -0.5rem var(--bone);
+}
+/* Sin nada que guardar la barra se queda vacía: que no deje un filo
+   suelto flotando sobre el contenido. */
+.eq-ses-barra:empty { display: none; }
+
+@media print {
+  .eq-ses-barra, .eq-sesion .eq-tabs { display: none !important; }
+  /* Al imprimir se quiere la sesión ENTERA, no solo la pestaña abierta. */
+  .eq-ses-panel[hidden] { display: block !important; }
+}
+
+/* En móvil manda la tab-bar de abajo (fija, z-40): la barra de la
+   sesión tiene que quedarse POR ENCIMA de ella o el botón de guardar
+   se esconde detrás justo cuando más se usa —cerrando en el pabellón,
+   con el móvil en la mano—. */
+@media (max-width: 719px) {
+  .eq-ses-barra { bottom: calc(3.75rem + env(safe-area-inset-bottom)); }
+  .eq-ses-panel { padding-bottom: 9rem; }
+}

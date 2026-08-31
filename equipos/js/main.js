@@ -13,8 +13,7 @@ import * as lista from './views/equipos-lista.js';
 import * as nuevo from './views/equipo-nuevo.js';
 import * as detalle from './views/equipo-detalle.js';
 import * as calendario from './views/calendario.js';
-import * as planner from './views/sesion-planner.js';
-import * as cierre from './views/sesion-cierre.js';
+import * as sesion from './views/sesion.js';
 import * as sesionActiva from './views/sesion-activa.js';
 import * as partido from './views/partido.js';
 import * as convocatoria from './views/convocatoria.js';
@@ -72,8 +71,12 @@ router
   .on('/equipos/:teamId', (p) => show(detalle, p))
   .on('/equipos', () => show(lista))
   .on('/sesiones/:sessionId/activa', (p) => show(sesionActiva, p))
-  .on('/sesiones/:sessionId/cierre', (p) => show(cierre, p))
-  .on('/sesiones/:sessionId', (p) => show(planner, p))
+  /* Plan y cierre son DOS PESTAÑAS de la misma pantalla (sesion.js).
+     La ruta /cierre se mantiene: hay tres sitios que llevan ahí —el
+     aviso push, el calendario y el cronómetro al terminar— y es la que
+     la gente tiene guardada. Ahora abre esa pestaña. */
+  .on('/sesiones/:sessionId/cierre', (p) => show(sesion, { ...p, tab: 'cierre' }))
+  .on('/sesiones/:sessionId', (p) => show(sesion, p))
   .on('/sesiones', () => show(calendario))
   .on('/partidos/:matchId/convocatoria', (p) => show(convocatoria, p))
   .on('/partidos/:matchId', (p) => show(partido, p))

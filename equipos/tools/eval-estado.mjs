@@ -12,7 +12,7 @@
 
 import {
   ACTIVA, ANTES_MIN, DESPUES_MIN, ESTADOS,
-  ventanaActiva, esActiva, estadoEfectivo, minutosDesdeInicio, laDeAhora,
+  ventanaActiva, esActiva, estadoEfectivo, minutosDesdeInicio, laDeAhora, yaPaso,
 } from '../js/data/estado-sesion.js';
 
 let pasan = 0, fallan = 0;
@@ -164,6 +164,59 @@ test('las canceladas no cuentan, ni una lista vacía revienta', () => {
   eq(laDeAhora([{ ...SESION, estado: 'cancelada' }], enPunto(18, 30)), null);
   eq(laDeAhora([], enPunto(18, 30)), null);
   eq(laDeAhora(null, enPunto(18, 30)), null);
+});
+
+
+/* ── 5. Ya pasó: la pestaña de cierre ──────────────────────── */
+
+console.log('\n· si la sesión ya pasó (pestaña de cierre)');
+
+test('durante el entrenamiento todavía NO ha pasado', () => {
+  eq(yaPaso(SESION, enPunto(17, 0)), false, 'antes de empezar:');
+  eq(yaPaso(SESION, enPunto(18, 30)), false, 'en mitad:');
+  eq(yaPaso(SESION, enPunto(19, 30)), false, 'a la hora de fin:');
+});
+
+test('pasa cuando se acaba la ventana, no cuando se acaba la hora', () => {
+  /* Los cinco minutos de cortesía del final son los mismos que los de
+     «activa»: el alargue de siempre. Si el cierre se abriera antes, se
+     solaparía con la sesión todavía en pista. */
+  eq(yaPaso(SESION, enPunto(19, 34)), false, `a los ${DESPUES_MIN - 1} min:`);
+  eq(yaPaso(SESION, enPunto(19, 36)), true, 'pasado el margen:');
+  ok(!esActiva(SESION, enPunto(19, 36)), 'no puede estar activa y pasada a la vez');
+});
+
+test('una REALIZADA ya pasó aunque el reloj diga lo contrario', () => {
+  /* Se cerró antes de tiempo, o se marcó a mano. Lo guardado manda. */
+  eq(yaPaso({ ...SESION, estado: 'realizada' }, enPunto(10, 0)), true);
+});
+
+test('una CANCELADA no pasó nunca: no se cierra', () => {
+  const c = { ...SESION, estado: 'cancelada' };
+  eq(yaPaso(c, enPunto(23, 0)), false, 'el mismo día:');
+  eq(yaPaso(c, new Date(2027, 0, 1).getTime()), false, 'meses después:');
+});
+
+test('una PRELIMINAR pasada también se cierra', () => {
+  /* Un martes a las seis se entrena, esté el plan escrito o no: pasar
+     lista es justo lo que la convierte en una sesión de verdad. */
+  eq(yaPaso({ ...SESION, estado: 'preliminar' }, enPunto(20, 0)), true);
+});
+
+test('sin hora de inicio vale el DÍA, no una hora inventada', () => {
+  const sinHora = { id: 's2', estado: 'programada', fecha: '2026-09-15', hora_inicio: null, hora_fin: null };
+  eq(yaPaso(sinHora, enPunto(23, 59)), false, 'el mismo día todavía no:');
+  eq(yaPaso(sinHora, new Date(2026, 8, 16, 0, 0, 1).getTime()), true, 'al día siguiente sí:');
+});
+
+test('una sesión futura no tiene cierre', () => {
+  eq(yaPaso({ ...SESION, fecha: '2027-03-01' }, enPunto(20, 0)), false);
+});
+
+test('lo roto no revienta y no abre cierres de la nada', () => {
+  for (const v of [null, undefined, {}, { estado: 'programada' }, { estado: 'programada', fecha: 'ayer' }]) {
+    eq(yaPaso(v, enPunto(20, 0)), false, JSON.stringify(v));
+  }
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

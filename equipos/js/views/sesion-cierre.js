@@ -48,7 +48,15 @@ const hoyISO = () => {
 const estrellasSelector = (valor, onChange, { soloLectura = false } = {}) =>
   estrellas(valor, onChange, { max: ESTRELLAS_MAX, labels: ESTRELLA_LABEL, soloLectura });
 
-export function render(root, params) {
+/**
+ * @param opts.incrustado  el cierre es la pestaña «Cierre» de la
+ *   pantalla de sesión (sesion.js): ni cabecera, ni barra propia, ni
+ *   resumen del plan —el plan está en la pestaña de al lado, entero—.
+ * @param opts.alCambiar   avisa al contenedor de que hay algo sin guardar.
+ * @param opts.salir       el guardián del contenedor, en vez del propio.
+ */
+export function render(root, params, opts = {}) {
+  const incrustado = !!opts.incrustado;
   const sessionId = params.sessionId;
   const cont = h('div', { class: 'eq-page eq-cierre' });
   mount(root, cont);
@@ -82,14 +90,17 @@ export function render(root, params) {
   let porGuardar = {};         // `player|clave` → nivel
   let soloLectura = false;      // cancelada = no se cierra ni se pasa lista
   let sucio = false;
-  const marcaSucio = () => { sucio = true; };
+  const marcaSucio = () => { sucio = true; opts.alCambiar?.(); };
 
   const nodoLista = h('div', { class: 'eq-as-lista' });
   const nodoResumen = h('div', { class: 'eq-as-resumen' });
 
+  /* Incrustado NO se registra: el guardián es el del contenedor, que
+     mira las dos pestañas a la vez. Dos guardianes = dos avisos. */
   const onBeforeUnload = (e) => { if (sucio) { e.preventDefault(); e.returnValue = ''; } };
-  window.addEventListener('beforeunload', onBeforeUnload);
+  if (!incrustado) window.addEventListener('beforeunload', onBeforeUnload);
   const salir = (destino) => {
+    if (opts.salir) return opts.salir(destino);
     if (sucio && !confirm('Tienes cambios sin guardar. ¿Salir y descartarlos?')) return false;
     sucio = false; router.navigate(destino); return true;
   };
@@ -296,6 +307,27 @@ export function render(root, params) {
   }
 
   // ── Resumen del plan (solo lectura) ────────────────────────
+  /**
+   * Incrustado, el plan NO se repite: está entero en la pestaña de al
+   * lado y una copia resumida solo puede quedarse desfasada. Lo único
+   * que sobrevive es lo que aquí es distinto — los minutos calculados
+   * con la asistencia REAL, que en el plan todavía era una estimación.
+   */
+  function resumenReal() {
+    if (!bloques.length) return null;
+    const c = curvaCarga(bloques);
+    const entrenaron = resumenAsistencia(densas).entrenaron || jugadores.length || null;
+    const m = minutosDeSesion(bloques, {
+      jugadores: entrenaron,
+      requisitosDe: (b) => (b.exercise_id ? requisitosPorEjercicio.get(b.exercise_id) || null : null),
+    });
+    return h('section', { class: 'eq-cierre-seccion eq-cierre-real' },
+      h('h2', { class: 'eq-zona-titulo' }, 'Lo que dio de sí'),
+      h('p', { class: 'eq-ayuda' }, textoMinutos(m)),
+      h('p', { class: 'eq-ayuda' }, `${c.duracion} min · intensidad media ${c.cargaMedia.toFixed(1)}`),
+    );
+  }
+
   function seccionPlan() {
     if (!bloques.length && !objetivosSesion.length) return null;
     const c = curvaCarga(bloques);
@@ -327,8 +359,13 @@ export function render(root, params) {
   }
 
   // ── Guardado ───────────────────────────────────────────────
-  async function guardar({ cerrar = false } = {}) {
-    if (soloLectura) return;
+  /**
+   * @param opts.callado  guarda sin avisar. Lo usa el botón único del
+   *   contenedor, que guarda las dos pestañas y avisa una sola vez: dos
+   *   mensajes por un clic se pisan y no se lee ninguno.
+   */
+  async function guardar({ cerrar = false, callado = false } = {}) {
+    if (soloLectura) return false;
     if (cerrar && sesion.fecha > hoyISO()) {
       const ok = await confirmar({
         titulo: 'Sesión futura',
@@ -377,12 +414,39 @@ export function render(root, params) {
         toast('Sesión cerrada');
         router.navigate(`/sesiones?equipo=${sesion.team_id}`);
       } else {
-        toast(eraEdicion ? 'Cambios guardados' : 'Guardado');
+        if (!callado) toast(eraEdicion ? 'Cambios guardados' : 'Guardado');
         pinta();
       }
+      return true;
     } catch (e) {
+      /* El error se dice SIEMPRE, aunque el guardado fuera callado: lo
+         que se calla es la buena noticia, no la mala. */
       toast('Error al guardar: ' + e.message, 'error');
+      return false;
     }
+  }
+
+  /**
+   * Lo que esta pestaña aporta a la barra, SIN el botón de guardar: ese
+   * es único y lo pone el contenedor.
+   *
+   * «Cerrar sesión» sigue siendo un botón aparte y no se funde con
+   * guardar: cerrar MARCA la sesión como realizada y exige decir cómo
+   * han trabajado (decisión #20). Si guardar cerrase, no se podría
+   * pasar lista al llegar a casa y dejar la reflexión para después.
+   */
+  function accionesBarra() {
+    if (soloLectura) {
+      return [h('p', { class: 'eq-ayuda' }, 'Sesión cancelada: no se pasa lista ni se reflexiona.')];
+    }
+    return [
+      h('div', { class: 'eq-planner-barra-sec' },
+        sesion.estado === 'realizada' ? botonReabrir() : h('button', {
+          class: 'btn btn-secondary', type: 'button',
+          onClick: () => guardar({ cerrar: true }),
+        }, 'Cerrar sesión'),
+      ),
+    ];
   }
 
   function barraAcciones() {
@@ -393,28 +457,9 @@ export function render(root, params) {
     const yaRealizada = sesion.estado === 'realizada';
     return h('div', { class: 'eq-planner-barra' },
       h('div', { class: 'eq-planner-barra-sec' },
-        yaRealizada ? h('button', {
-          class: 'btn btn-secondary', type: 'button',
-          onClick: async () => {
-            const ok = await confirmar({
-              titulo: 'Reabrir sesión',
-              mensaje: 'Volverá a estado «programada» y podrás editar su plan. La asistencia y la reflexión se conservan.',
-              textoOk: 'Reabrir',
-            });
-            if (!ok) return;
-            try {
-              await promoverSesion(sessionId);   // realizada → programada
-              sesion.estado = 'programada';
-              toast('Sesión reabierta'); pinta();
-            } catch (e) { toast('Error: ' + e.message, 'error'); }
-          },
-        }, 'Reabrir sesión') : null,
+        yaRealizada ? botonReabrir() : null,
       ),
       h('div', { class: 'eq-planner-barra-sec' },
-        /* Cuando ya hay algo guardado, el botón dice que se están
-           guardando CAMBIOS. Y si además la sesión está cerrada ya no
-           hay «guardar y cerrar», así que éste pasa a ser el principal:
-           un botón secundario solitario parece que no hace nada. */
         h('button', {
           class: (yaRealizada ? 'btn btn-primary eq-planner-guardar' : 'btn btn-secondary'),
           type: 'button', onClick: () => guardar(),
@@ -425,6 +470,28 @@ export function render(root, params) {
         }, yaGuardado ? 'Guardar cambios y cerrar sesión' : 'Guardar y cerrar sesión'),
       ),
     );
+  }
+
+  /** Realizada → programada. La lista y la reflexión se conservan. */
+  function botonReabrir() {
+    return h('button', {
+      class: 'btn btn-secondary', type: 'button',
+      onClick: async () => {
+        const ok = await confirmar({
+          titulo: 'Reabrir sesión',
+          mensaje: 'Volverá a estado «programada» y podrás editar su plan. La asistencia y la reflexión se conservan.',
+          textoOk: 'Reabrir',
+        });
+        if (!ok) return;
+        try {
+          await promoverSesion(sessionId);   // realizada → programada
+          sesion.estado = 'programada';
+          toast('Sesión reabierta');
+          pinta();
+          opts.alCambiarModo?.();
+        } catch (e) { toast('Error: ' + e.message, 'error'); }
+      },
+    }, 'Reabrir sesión');
   }
 
   // ── Pintado ────────────────────────────────────────────────
@@ -574,14 +641,15 @@ export function render(root, params) {
     const horaTxt = [hhmm(sesion.hora_inicio) && `${hhmm(sesion.hora_inicio)}–${hhmm(sesion.hora_fin)}`, sesion.lugar].filter(Boolean).join(' · ');
 
     mount(cont,
-      h('div', { class: 'eq-planner-top' },
+      // incrustado, la cabecera es la del contenedor: una para las dos pestañas
+      incrustado ? null : h('div', { class: 'eq-planner-top' },
         h('a', {
           class: 'eq-volver', href: `/sesiones?equipo=${sesion.team_id}`,
           onClick: (e) => { e.preventDefault(); e.stopPropagation(); salir(`/sesiones?equipo=${sesion.team_id}`); },
         }, '‹ Calendario'),
         h('span', { class: `eq-estado-badge eq-ses-${sesion.estado}` }, ESTADOS_SESION[sesion.estado]),
       ),
-      h('div', { class: 'view-hero eq-planner-hero' },
+      incrustado ? null : h('div', { class: 'view-hero eq-planner-hero' },
         h('div', { class: 'view-hero-text' },
           h('span', { class: 'eyebrow' }, puntoEquipo(color), ' ', nombreEquipo, ' · Cierre'),
           h('h1', { class: 'display view-title' }, fechaTxt),
@@ -617,8 +685,8 @@ export function render(root, params) {
             h('a', { class: 'btn btn-secondary', href: `/equipos/${sesion.team_id}?tab=ajustes`, 'data-link': true }, 'Ajustes del equipo'))
         : null,
 
-      seccionPlan(),
-      barraAcciones(),
+      incrustado ? resumenReal() : seccionPlan(),
+      incrustado ? null : barraAcciones(),
     );
     if (ajustes.asistencia_activa && jugadores.length) pintaLista();
     pintaRubrica();
@@ -627,7 +695,8 @@ export function render(root, params) {
   // ── Carga inicial ──────────────────────────────────────────
   (async () => {
     try {
-      sesion = await getSesion(sessionId);
+      // el contenedor ya la ha leído: no se pide dos veces la misma fila
+      sesion = opts.sesion || await getSesion(sessionId);
       soloLectura = sesion.estado === 'cancelada';
 
       const [equipos, equipo] = await Promise.all([
@@ -691,5 +760,10 @@ export function render(root, params) {
     }
   })();
 
-  return { destroy() { window.removeEventListener('beforeunload', onBeforeUnload); } };
+  return {
+    guardar: () => guardar({ callado: true }),
+    estaSucio: () => sucio,
+    accionesBarra: () => (sesion ? accionesBarra() : []),
+    destroy() { window.removeEventListener('beforeunload', onBeforeUnload); },
+  };
 }
