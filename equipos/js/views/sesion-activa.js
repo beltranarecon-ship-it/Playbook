@@ -29,9 +29,16 @@
    real y el «no ha funcionado» viajan con los bloques; la estrella,
    sola, en su tabla.
 
-   El ARRANQUE y los «+5» viven en el navegador y no en la base de
-   datos: son ayudas de este rato, y lo que queda escrito para siempre
-   es la duración real de cada bloque.
+   Los «+5» viven solo en el navegador: son ayudas de este rato y lo que
+   queda escrito para siempre es la duración real de cada bloque.
+
+   El ARRANQUE también vive aquí —es esta pantalla la que lo usa a cada
+   segundo— pero además se guarda (042). No por esta pantalla: el aviso
+   de «se acaba el bloque» lo manda un servidor cada diez minutos, y un
+   servidor no puede leer el localStorage del móvil del entrenador. Sin
+   ese dato en la base, ese aviso solo podía salir a la hora del
+   horario, y un entrenamiento que empieza a y cuarto lo recibiría
+   cuarto de hora antes de tiempo, bloque tras bloque.
    ============================================================ */
 
 import { h, mount, icon } from '../ui/dom.js';
@@ -40,7 +47,7 @@ import { confirmar } from '../ui/modal.js';
 import { puntoEquipo, iniciales } from '../ui/components.js';
 import { getMisEquipos } from '../data/teams.js';
 import { getJugadores } from '../data/players.js';
-import { getSesion, promoverSesion } from '../data/sessions.js';
+import { getSesion, promoverSesion, guardarArranque } from '../data/sessions.js';
 import { getBloques, guardarBloques } from '../data/blocks.js';
 import { getAsistencia, guardarAsistencia } from '../data/attendance.js';
 import { getEstrellas, ponerEstrella, quitarEstrella } from '../data/estrellas.js';
@@ -88,9 +95,9 @@ export function render(root, params) {
      parado veinte, y no los pocos latidos que le dio el navegador. */
   let pausa = null;
 
-  /* El arranque y los «+5» son ayudas de ESTE rato: viven en el
-     navegador. Lo que queda escrito para siempre es la duración real de
-     cada bloque, que sí va a la base de datos. */
+  /* Los «+5» son ayudas de ESTE rato y se quedan en el navegador. El
+     arranque también se guarda aquí —esta pantalla lo lee a cada
+     segundo— pero además viaja a la base (042): ver la cabecera. */
   const CLAVE = `cbp-activa-${sessionId}`;
   const recordar = () => {
     try { localStorage.setItem(CLAVE, JSON.stringify({ arranque, extras, pausa })); } catch { /* modo privado */ }
@@ -101,6 +108,18 @@ export function render(root, params) {
 
   /** ¿Ya se ha corregido el arranque? Entonces «empezamos ahora» sobra. */
   const ajustado = () => sesion && Math.abs(arranque - instanteInicio(sesion)) > 60000;
+
+  /* El arranque también a la base (042), para el aviso de fin de bloque.
+     SOLO el de HOY: abrir esta pantalla en un entrenamiento de la semana
+     pasada —para mirar qué se hizo— no puede reescribir a qué hora
+     empezó aquel día. Va sin await y sin ruido: en la pista, un error de
+     red no interrumpe nada. */
+  const esDeHoy = () => {
+    const d = new Date();
+    const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return sesion?.fecha === hoy;
+  };
+  const apuntaArranque = () => { if (esDeHoy()) guardarArranque(sessionId, arranque); };
 
   const nodoTiempo = h('div', { class: 'eq-act-tiempo' });
   const nodoLista = h('section', { class: 'eq-act-seccion' });
@@ -160,7 +179,7 @@ export function render(root, params) {
             class: 'btn btn-secondary eq-act-tarde', type: 'button',
             onClick: () => {
               arranque = arranqueAhora(Date.now());
-              recordar(); pintaTiempo(); pintaBloque(); pintaResto(); pintaCaliente();
+              recordar(); apuntaArranque(); pintaTiempo(); pintaBloque(); pintaResto(); pintaCaliente();
               toast('Empezamos ahora: el plan entero se corre, no se recorta.');
             },
           }, tarde > 0
@@ -470,6 +489,10 @@ export function render(root, params) {
          el entrenamiento parado, sigue parado —y lo que se estuvo
          parado se calcula desde `desde`, no desde que se reabrió. */
       pausa = g.pausa && typeof g.pausa === 'object' ? g.pausa : null;
+      /* Abrir esta pantalla ES empezar (§5.6: el botón dice «entrenar
+         ahora»). Se apunta el arranque para que el servidor sepa a qué
+         hora acaba cada bloque; solo el de hoy, ver `apuntaArranque`. */
+      apuntaArranque();
 
       /* Dar un entrenamiento es planificarlo de la forma más rápida que
          hay: si estaba sin confirmar, se confirma sola. Que quede en

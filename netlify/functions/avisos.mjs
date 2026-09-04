@@ -141,6 +141,25 @@ export default async function handler(peticion) {
     sb.from('session_blocks').select('id, session_id, titulo, duracion_min, orden').order('orden'),
   ]);
 
+  /* ── Una consulta que falla NO es «no hay nada que avisar» ──
+     Esto es lo que escondió el fallo de `sessions.arranque` durante
+     meses: la columna no existía, Postgres rechazaba la consulta ENTERA
+     —no solo esa columna—, y el `|| []` de más abajo convertía el error
+     en una lista vacía. El generador decidía que no tocaba ningún
+     aviso, respondía que todo iba bien, y el club se quedó sin cuatro
+     de los seis sin una sola señal.
+
+     Un fallo aquí se dice y se corta. Mandar los avisos «de lo que sí
+     se ha podido leer» es peor: parece que el sistema funciona. */
+  const consultas = { equipos: equiposR, sesiones: sesionesR, partidos: partidosR, bloques: bloquesR };
+  const rotas = Object.entries(consultas)
+    .filter(([, r]) => r.error)
+    .map(([que, r]) => `${que}: ${r.error.message}`);
+  if (rotas.length) {
+    console.error('[avisos] NO se ha mandado nada, hay consultas que fallan:', rotas.join(' · '));
+    return new Response(JSON.stringify({ ok: false, motivo: 'consulta', rotas }), { status: 500 });
+  }
+
   const equipos = (equiposR.data || []).map((t) => ({
     id: t.id,
     name: t.name,

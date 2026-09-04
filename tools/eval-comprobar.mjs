@@ -63,7 +63,12 @@ function apareceEn(texto, clase, obj) {
     case 'funcion':
       return new RegExp(`CREATE (OR REPLACE )?FUNCTION public\\.${esc(obj)}\\s*\\(`).test(texto);
     case 'indice':
-      return new RegExp(`CREATE UNIQUE INDEX (IF NOT EXISTS )?${esc(obj)}\\b`).test(texto);
+      /* UNIQUE es opcional. Hasta la 042 todos los índices por los que
+         se preguntaba eran únicos —eran cerraduras— y el banco se había
+         quedado con esa forma; el SQL de COMPROBAR nunca lo fue: mira
+         `pg_indexes`, que los lista todos. Un índice normal, puesto para
+         que una consulta no recorra la tabla entera, es igual de real. */
+      return new RegExp(`CREATE (UNIQUE )?INDEX (IF NOT EXISTS )?${esc(obj)}\\b`).test(texto);
     case 'politica':
       return texto.includes(`"${obj}"`);
     case 'defecto': {

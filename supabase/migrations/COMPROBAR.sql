@@ -130,7 +130,14 @@ WITH esperado(mig, trae, clase, obj) AS (
        mira pg_policies del esquema public y ésa vive en storage. Y el
        GRANT tampoco: lo comprueba la propia migración al final. */
     ('041', 'la foto de perfil', 'columna', 'profiles.foto_path'),
-    ('041', 'la foto de perfil', 'funcion', 'storage_owner_id')
+    ('041', 'la foto de perfil', 'funcion', 'storage_owner_id'),
+    /* Sin ésta, la función programada de avisos pide una columna que no
+       existe, Postgres le rechaza la consulta ENTERA de sesiones y el
+       club se queda sin cuatro de los seis avisos —fin de bloque, pasar
+       lista, sin programar y sin cerrar— en silencio. Si sale «NO», los
+       avisos del día a día no salen. */
+    ('042', 'a qué hora empezó el entrenamiento', 'columna', 'sessions.arranque'),
+    ('042', 'a qué hora empezó el entrenamiento', 'indice',  'sessions_arranque')
 ),
 
 /* Cada clase se busca donde el catálogo de Postgres la guarda. Una

@@ -104,6 +104,39 @@ export async function guardarCabeceraSesion(id, patch) {
   if (error) throw error;
 }
 
+/* La columna la trae la 042. Sin ella se sigue entrenando igual: lo que
+   se pierde es el aviso de fin de bloque, que necesita saber la hora de
+   verdad. Se apunta y no se vuelve a intentar en cada bloque. */
+let sin042 = false;
+
+/**
+ * A qué hora empezó DE VERDAD el entrenamiento.
+ *
+ * Vive también en el navegador —es la pantalla quien lo usa a cada
+ * segundo— pero tiene que llegar a la base porque el aviso de fin de
+ * bloque lo manda un servidor, y un servidor no puede leer el
+ * localStorage del móvil del entrenador.
+ *
+ * Nunca lanza: esto se llama desde la pantalla de la pista, y ahí un
+ * error de red no puede interrumpir un entrenamiento. Devuelve si se
+ * llegó a guardar, por si alguien quiere decirlo.
+ */
+export async function guardarArranque(id, arranqueMs) {
+  if (sin042 || !id || !Number.isFinite(arranqueMs)) return false;
+  try {
+    const { error } = await supabase
+      .from('sessions')
+      .update({ arranque: new Date(arranqueMs).toISOString() })
+      .eq('id', id);
+    if (!error) return true;
+    const m = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+    // solo se apaga si la queja NOMBRA la columna: un error de otra cosa
+    // no puede dejar sin arranque al resto de la temporada
+    if (m.includes('arranque')) sin042 = true;
+    return false;
+  } catch { return false; }
+}
+
 export async function cancelarSesion(id, motivo) {
   const { error } = await supabase
     .from('sessions')
