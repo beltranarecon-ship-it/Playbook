@@ -27,8 +27,12 @@ import { confirmar, confirmarEscribiendo } from '../ui/modal.js';
 import { getState } from '../store.js';
 import { isAdmin } from '/js/auth.js';
 import {
-  getMisEquipos, borrarEquipo, borrarEquipoConHistorial, queHayEnEquipo,
+  getTodosLosEquipos, borrarEquipo, borrarEquipoConHistorial, queHayEnEquipo,
+  getEntrenadoresDelClub, añadirEntrenador, quitarEntrenador, cambiarRolEntrenador,
 } from '../data/teams.js';
+import {
+  ROLES, ROL_LABEL, puedeQuitar, puedeAñadir, candidatos, nombreDe, ordenarCuadro,
+} from '../data/entrenadores.js';
 import {
   getInvitaciones, invitar, retirar, problemaDelCorreo, estadoDe, normaliza,
 } from '../data/invitaciones.js';
@@ -51,7 +55,11 @@ export function render(root) {
 
     let equipos = [], invitaciones = null;
     try {
-      [equipos, invitaciones] = await Promise.all([getMisEquipos(), getInvitaciones()]);
+      /* getTodosLosEquipos y no getMisEquipos: éste NO descarta los
+         equipos sin entrenador, que son justo los que hay que poder
+         arreglar aquí. Con el otro, un equipo huérfano no aparecía en
+         ninguna pantalla y solo se recuperaba desde Supabase. */
+      [equipos, invitaciones] = await Promise.all([getTodosLosEquipos(), getInvitaciones()]);
     } catch (e) {
       toast('Error: ' + e.message, 'error');
     }
@@ -73,10 +81,120 @@ export function render(root) {
     const chipsEquipos = h('div', { class: 'eq-catchips' });
     let pintaChipsEquipos = () => {};
 
+    /* ---- el cuadro técnico (Tramo 5.7) ------------------------------
+       Qué equipo está desplegado, y los entrenadores del club para el
+       desplegable de añadir. Los perfiles se piden UNA vez y solo
+       cuando se abre el primer equipo: en una pantalla de altas no hay
+       por qué gastarlos si nadie va a tocar los entrenadores. */
+    let abierto = null;
+    let perfiles = null;
+    let cargandoPerfiles = false;
+
+    async function aseguraPerfiles() {
+      if (perfiles || cargandoPerfiles) return;
+      cargandoPerfiles = true;
+      try { perfiles = await getEntrenadoresDelClub(); }
+      catch (e) { toast('No se ha podido leer la lista de entrenadores: ' + e.message, 'error'); }
+      finally { cargandoPerfiles = false; pintaEquipos(); }
+    }
+
+    /** Repinta un equipo con lo que acaba de cambiar en su cuadro. */
+    function actualizaCuadro(teamId, cuadro) {
+      equipos = equipos.map((x) => (x.id === teamId
+        ? { ...x, cuadro, coaches: cuadro.map((c) => c.nombre).filter(Boolean) }
+        : x));
+      pintaEquipos();
+    }
+
+    function panelEntrenadores(t) {
+      const cuadro = t.cuadro || [];
+      if (!perfiles) {
+        return h('div', { class: 'eq-cuadro' },
+          h('p', { class: 'eq-ayuda' }, 'Cargando los entrenadores del club…'));
+      }
+
+      const libres = candidatos(perfiles, cuadro);
+      const quien = h('select', { class: 'field-input' },
+        h('option', { value: '' }, libres.length ? 'Elige a quién añadir…' : 'No queda nadie por añadir'),
+        ...libres.map((p) => h('option', { value: p.id }, nombreDe(p))),
+      );
+      const papel = h('select', { class: 'field-input' },
+        ...ROLES.map((r) => h('option', { value: r }, ROL_LABEL[r])),
+      );
+      papel.value = 'ayudante';
+
+      return h('div', { class: 'eq-cuadro' },
+        cuadro.length
+          ? h('div', { class: 'eq-cuadro-lista' }, ...ordenarCuadro(cuadro).map((c) => {
+              const sePuede = puedeQuitar(cuadro, c.coach_id);
+              return h('div', { class: 'eq-cuadro-fila' },
+                h('span', { class: 'eq-cuadro-nombre' }, c.nombre || nombreDe({ id: c.coach_id })),
+                h('select', {
+                  class: 'field-input eq-cuadro-rol',
+                  onChange: async (e) => {
+                    const rol = e.target.value;
+                    try {
+                      await cambiarRolEntrenador(t.id, c.coach_id, rol);
+                      actualizaCuadro(t.id, cuadro.map((x) => (x.coach_id === c.coach_id ? { ...x, rol } : x)));
+                      toast(`${c.nombre || 'Entrenador'}: ${ROL_LABEL[rol].toLowerCase()}`);
+                    } catch (err) { toast('Error: ' + err.message, 'error'); pintaEquipos(); }
+                  },
+                }, ...ROLES.map((r) => h('option', { value: r, selected: r === c.rol || null }, ROL_LABEL[r]))),
+                h('button', {
+                  class: 'eq-btn-icono', type: 'button',
+                  disabled: !sePuede.ok || null,
+                  title: sePuede.ok ? `Quitar a ${c.nombre || 'este entrenador'} del equipo` : sePuede.porque,
+                  'aria-label': `Quitar del equipo a ${c.nombre || 'este entrenador'}`,
+                  onClick: async () => {
+                    /* Se vuelve a preguntar aquí y no solo al pintar: el
+                       botón pudo quedar habilitado con un cuadro que ya
+                       ha cambiado en otra pestaña. */
+                    const r = puedeQuitar(cuadro, c.coach_id);
+                    if (!r.ok) { toast(r.porque, 'error'); return; }
+                    if (!(await confirmar({
+                      titulo: 'Quitar del equipo',
+                      mensaje: `${c.nombre || 'Este entrenador'} dejará de ver ${t.name}, sus sesiones y sus jugadores. `
+                        + 'Se puede volver a añadir cuando quieras.',
+                      textoOk: 'Quitar',
+                    }))) return;
+                    try {
+                      await quitarEntrenador(t.id, c.coach_id);
+                      actualizaCuadro(t.id, cuadro.filter((x) => x.coach_id !== c.coach_id));
+                      toast('Quitado del equipo');
+                    } catch (err) { toast('Error: ' + err.message, 'error'); }
+                  },
+                }, '×'),
+              );
+            }))
+          : /* El caso que hasta ahora obligaba a entrar en Supabase. */
+            h('p', { class: 'eq-acta-descuadre' },
+              'Este equipo no tiene ningún entrenador: no le sale a nadie en su lista. Añádele uno.'),
+
+        h('div', { class: 'eq-cuadro-anadir' },
+          quien, papel,
+          h('button', {
+            class: 'btn btn-secondary btn-sm', type: 'button',
+            onClick: async () => {
+              const coachId = quien.value;
+              const rol = papel.value;
+              const r = puedeAñadir(cuadro, coachId, rol);
+              if (!r.ok) { toast(r.porque, 'error'); return; }
+              try {
+                await añadirEntrenador(t.id, coachId, rol);
+                const p = perfiles.find((x) => x.id === coachId);
+                actualizaCuadro(t.id, [...cuadro, { coach_id: coachId, rol, nombre: p?.full_name || null }]);
+                toast(`${nombreDe(p)} añadido a ${t.name}`);
+              } catch (err) { toast('Error: ' + err.message, 'error'); }
+            },
+          }, 'Añadir'),
+        ),
+      );
+    }
+
     function pintaEquipos() {
       mount(nodoEquipos,
         equipos.length
-          ? h('div', { class: 'eq-inv-lista' }, ...equipos.map((t) => h('div', { class: 'eq-inv-fila' },
+          ? h('div', { class: 'eq-inv-lista' }, ...equipos.map((t) => h('div', { class: 'eq-equipo-bloque' }, h('div', { class: 'eq-inv-fila' },
               h('a', {
                 class: 'eq-inv-mail', href: `/equipos/${t.id}`, 'data-link': true,
                 onClick: (e) => { e.preventDefault(); router.navigate(`/equipos/${t.id}`); },
@@ -157,7 +275,23 @@ export function render(root) {
                   } catch (e) { toast(e.message, 'error'); }
                 },
               }, '×'),
-            )))
+            ),
+            /* El cuadro técnico se despliega bajo su equipo y no en otra
+               pantalla: se viene aquí a arreglar quién lleva qué, y
+               tenerlo al lado del nombre es lo que hace que se vea. */
+            h('button', {
+              class: 'btn btn-secondary btn-sm eq-cuadro-abrir', type: 'button',
+              'aria-expanded': abierto === t.id ? 'true' : 'false',
+              onClick: () => {
+                abierto = abierto === t.id ? null : t.id;
+                if (abierto) aseguraPerfiles();
+                pintaEquipos();
+              },
+            }, abierto === t.id
+              ? 'Ocultar entrenadores'
+              : `Entrenadores (${(t.cuadro || []).length})`),
+            abierto === t.id ? panelEntrenadores(t) : null,
+          )))
           : h('p', { class: 'eq-ayuda' }, 'Todavía no hay equipos.'),
       );
     }

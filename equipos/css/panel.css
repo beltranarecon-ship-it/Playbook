@@ -21,12 +21,32 @@
 .eq-card {
   display: flex; flex-direction: column; gap: 0.5rem;
   background: var(--white);
-  border: 1px solid var(--line);
+  /* El color del equipo RODEA la tarjeta. Ya viajaba en --team-color
+     desde el primer día y no lo usaba nadie: el color solo se veía en un
+     punto de 10 px. Sin color de equipo cae a --muted. */
+  border: 1px solid var(--team-color, var(--line));
   padding: 1.125rem 1.25rem;
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--notch)), calc(100% - var(--notch)) 100%, 0 100%);
   transition: transform var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast);
 }
-.eq-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--ink); }
+/* El hover NO puede seguir siendo el borde: ahora el borde dice de quién
+   es la tarjeta. Y la sombra tampoco vale, porque el clip-path del pico
+   se la come. Queda el anillo INTERIOR, que sí cae dentro del recorte. */
+.eq-card:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 0 2px var(--team-color, var(--ink));
+}
+
+/* La banda de imagen, pegada al pie y a sangre: se sale del padding con
+   márgenes negativos y el clip-path le corta el pico igual que al resto
+   de la tarjeta, que es lo que la deja integrada y no encima. */
+.eq-card-banda {
+  margin: auto -1.25rem -1.125rem;
+  height: 5.5rem;
+  background: var(--team-color, var(--line));
+  overflow: hidden;
+}
+.eq-card-img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .eq-card-head { display: flex; align-items: center; gap: 0.625rem; }
 .eq-card-nombre {
   font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
@@ -1679,6 +1699,17 @@ a.eq-inv-fila:hover { border-color: var(--ink); }
 .eq-perfil-fila .field-input, .eq-perfil-fila .field-group { flex: 1; min-width: 11rem; }
 .eq-perfil-avisos { display: flex; flex-direction: column; gap: 0.75rem; align-items: flex-start; }
 
+/* La cara, en el hueco derecho del hero (.view-hero es flex con
+   space-between). Redonda y recortada: una foto de movil viene en
+   vertical y en un cuadrado con `contain` sale con dos franjas. */
+.eq-perfil-foto { flex: none; }
+.eq-perfil-foto-img {
+  display: block; width: 6rem; height: 6rem;
+  border-radius: 50%; object-fit: cover;
+  border: 1px solid var(--line); background: var(--white);
+}
+.eq-perfil-foto-ctrl { display: flex; align-items: center; gap: 0.875rem; flex-wrap: wrap; }
+
 /* ── Que nada empuje la página de lado en un móvil ─────── */
 /* Un botón con una frase dentro —«El club: invitaciones, temporadas y
    equipos»— no cabe en 375 px y, sin permiso para partir la línea,
@@ -1774,3 +1805,28 @@ a.eq-inv-fila:hover { border-color: var(--ink); }
 .eq-act-chip-n { font-weight: 800; font-variant-numeric: tabular-nums; }
 .eq-act-chip-ini { opacity: 0.75; letter-spacing: 0.02em; }
 .eq-act-chip-n + .eq-act-chip-ini { margin-left: 0.25rem; }
+
+/* ── El cuadro técnico de un equipo (Tramo 5.7) ──────────────
+   Se despliega bajo su equipo en Administración. La fila del equipo y
+   su panel van dentro del mismo bloque para que se lean como una cosa
+   y no como dos filas sueltas de la lista. */
+.eq-equipo-bloque { display: flex; flex-direction: column; gap: 0.375rem; }
+.eq-cuadro-abrir { align-self: flex-start; }
+.eq-cuadro {
+  display: flex; flex-direction: column; gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--line); border-left: 3px solid var(--papaya);
+  background: var(--white);
+}
+.eq-cuadro-lista { display: flex; flex-direction: column; gap: 0.375rem; }
+.eq-cuadro-fila { display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap; }
+/* Un NOMBRE, no un correo: nada de word-break, que parte «Beltrán» por
+   la mitad. Es lo que hace .eq-inv-mail, que es de al lado y no vale. */
+.eq-cuadro-nombre { font-weight: 600; flex: 1; min-width: 9rem; }
+.eq-cuadro-rol { flex: none; width: auto; min-width: 8rem; }
+.eq-cuadro-anadir { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.eq-cuadro-anadir .field-input { flex: 1; min-width: 9rem; }
+.eq-cuadro-anadir .field-input + .field-input { flex: none; min-width: 8rem; }
+/* El único entrenador no se puede quitar: el botón lo dice apagándose,
+   y el porqué está en su title. */
+.eq-cuadro-fila .eq-btn-icono[disabled] { opacity: 0.35; cursor: not-allowed; }

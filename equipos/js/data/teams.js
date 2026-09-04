@@ -116,6 +116,101 @@ export async function getMisEquipos() {
     }));
 }
 
+/* ── El cuadro técnico (Tramo 5.7, fase 1: solo admin) ─────────
+   La escritura en `team_coaches` es SOLO de admin desde la 007, y a
+   propósito: si un entrenador pudiera escribir ahí, podría meterse él
+   solo en cualquier equipo del club. Estas cuatro funciones son para la
+   pantalla de administración; a cualquier otro la base le dirá que no,
+   que es exactamente lo que tiene que pasar. */
+
+/**
+ * TODOS los equipos del club, incluidos los que se han quedado SIN
+ * ENTRENADOR.
+ *
+ * `getMisEquipos` los descarta —un equipo sin cuadro no es «mío»— y eso
+ * deja fuera justo el caso que hay que poder arreglar: el equipo
+ * huérfano al que hay que asignarle alguien. `teams` tiene el SELECT
+ * abierto a todo autenticado (001), así que la lista sale entera; lo
+ * que la RLS recorta es el embed de `team_coaches`, y por eso esto solo
+ * sirve de verdad en administración.
+ */
+export async function getTodosLosEquipos() {
+  const pide = () => supabase
+    .from('teams')
+    .select(`
+      id, name, category,
+      team_coaches ( coach_id, rol, profiles ( full_name ) ),
+      team_settings ( ${ajustes()} )
+    `)
+    .order('name');
+  const { data, error } = await conReintento(pide);
+  if (error) throw error;
+  return (data ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    category: t.category,
+    color: t.team_settings?.color ?? null,
+    dia_convocatoria: t.team_settings?.dia_convocatoria ?? null,
+    imagen_path: t.team_settings?.imagen_path ?? null,
+    coaches: (t.team_coaches ?? []).map((c) => c.profiles?.full_name).filter(Boolean),
+    /* El cuadro con sus ids: `coaches` son solo nombres para enseñar y
+       no sirve para quitar a nadie. */
+    cuadro: (t.team_coaches ?? []).map((c) => ({
+      coach_id: c.coach_id,
+      rol: c.rol,
+      nombre: c.profiles?.full_name || null,
+    })),
+  }));
+}
+
+/**
+ * Los entrenadores del club, para elegir a quién añadir.
+ *
+ * Solo devuelve algo útil a un admin: la RLS de `profiles` (001) deja
+ * ver el propio perfil y nada más. No es un fallo que a un coach le
+ * llegue una lista de uno; es la cerradura funcionando.
+ */
+export async function getEntrenadoresDelClub() {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, role')
+    .order('full_name');
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Mete a un entrenador en un equipo con su papel. */
+export async function añadirEntrenador(teamId, coachId, rol = 'ayudante') {
+  const { error } = await supabase
+    .from('team_coaches')
+    .insert({ team_id: teamId, coach_id: coachId, rol });
+  if (error) throw error;
+}
+
+/**
+ * Lo saca del equipo. Quien llama tiene que haber comprobado antes
+ * `puedeQuitar` (data/entrenadores.js): la base NO impide dejar un
+ * equipo a cero y ahí el equipo desaparece de la lista de todos.
+ */
+export async function quitarEntrenador(teamId, coachId) {
+  const { error } = await supabase
+    .from('team_coaches')
+    .delete()
+    .eq('team_id', teamId)
+    .eq('coach_id', coachId);
+  if (error) throw error;
+}
+
+/** Principal ↔ ayudante. */
+export async function cambiarRolEntrenador(teamId, coachId, rol) {
+  const { error } = await supabase
+    .from('team_coaches')
+    .update({ rol })
+    .eq('team_id', teamId)
+    .eq('coach_id', coachId);
+  if (error) throw error;
+}
+
 export async function getEquipo(teamId) {
   const pide = () => supabase
     .from('teams')

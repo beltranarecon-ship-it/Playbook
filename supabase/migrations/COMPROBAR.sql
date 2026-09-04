@@ -2,7 +2,7 @@
 -- COMPROBAR.sql — ¿Qué migraciones están puestas de verdad?
 --
 -- No cambia NADA: solo mira y contesta. Pégalo entero en el editor SQL
--- de Supabase y dale a Run. Salen 36 filas, una por migración.
+-- de Supabase y dale a Run. Sale una fila por migración.
 --
 -- ── POR QUÉ ESTO EXISTE ─────────────────────────────────────
 -- Ir por la memoria («creo que esa la puse») es lo que hace perder una
@@ -122,7 +122,15 @@ WITH esperado(mig, trae, clase, obj) AS (
        parado no queda escrito: al cerrar no habrá «12 min parados» ni
        el motivo. Nada más deja de funcionar. */
     ('040', 'guardar el tiempo perdido y por qué', 'columna', 'session_blocks.tiempo_perdido_min'),
-    ('040', 'guardar el tiempo perdido y por qué', 'columna', 'session_blocks.motivo_perdido')
+    ('040', 'guardar el tiempo perdido y por qué', 'columna', 'session_blocks.motivo_perdido'),
+    /* La 041 asoma por dos sitios. La columna es donde queda escrita la
+       foto: sin ella se sube al bucket y al recargar vuelve a salir la
+       inicial. La función es el guard que autoriza el bucket 'perfiles'.
+       La POLÍTICA no se puede preguntar desde aquí: la clase 'politica'
+       mira pg_policies del esquema public y ésa vive en storage. Y el
+       GRANT tampoco: lo comprueba la propia migración al final. */
+    ('041', 'la foto de perfil', 'columna', 'profiles.foto_path'),
+    ('041', 'la foto de perfil', 'funcion', 'storage_owner_id')
 ),
 
 /* Cada clase se busca donde el catálogo de Postgres la guarda. Una

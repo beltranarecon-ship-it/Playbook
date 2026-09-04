@@ -24,7 +24,7 @@ import { nuevoDraft, puedeGuardar } from '../wizard/draft.js';
 import { borradorDeEjercicio, nombreRepetido } from '../wizard/cargar.js';
 import { guardarBorrador, leerBorrador, borrarBorrador, borradorConContenido, fechaBorrador } from '../wizard/borrador.js';
 import { estaViejo, limpiarViejos } from '../borradores.js';
-import { getUser } from '../supabase/auth.js';
+import { getUser, nombreDelEntrenador } from '../supabase/auth.js';
 import { guardarEjercicio, actualizarEjercicio, getEjercicio, nombresDeEjercicios } from '../supabase/ejercicios.js';
 import { paso0 } from '../wizard/paso0.js';
 import { paso1 } from '../wizard/paso1.js';
@@ -194,6 +194,23 @@ export function render(root, { id = null, modo = 'nuevo' } = {}) {
       toast('No se pudo cargar el ejercicio: ' + (e.message || 'error'), { type: 'error', timeout: 6000 });
     }
   })() : (async () => { otros = await nombresDeEjercicios().catch(() => []); })();
+
+  /* ---- el autor, puesto solo (Tramo 3.8) -------------------------
+     Solo al CREAR. Al editar o duplicar, el autor ya viene del
+     ejercicio (cargar.js) y machacarlo pondría tu nombre en el trabajo
+     de otro; y si ese ejercicio venía sin autor, rellenarlo al abrirlo
+     sería atribuírtelo por haber pasado por delante.
+
+     Se pone solo si el campo sigue vacío: si se ha escrito algo
+     mientras viajaba la consulta, manda lo escrito. Y se repinta solo
+     si se está mirando el paso donde vive el campo. */
+  if (modo === 'nuevo') {
+    nombreDelEntrenador().then((nombre) => {
+      if (!nombre || draft.autor_nombre) return;
+      draft.autor_nombre = nombre;
+      if (state.step === 3) paint();
+    });
+  }
 
   /* El borrador sin guardar se ofrece SIEMPRE, pero el suyo (Tramo
      3.13). Antes solo al crear, y con razón: con una sola clave, abrir
