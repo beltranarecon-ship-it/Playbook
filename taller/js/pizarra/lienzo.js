@@ -29,6 +29,7 @@ import { h } from '../ui/dom.js';
 import { CourtView } from '../canvas/court.js';
 import { seVe, pasoRejilla, lineasRejilla } from '../canvas/encuadre.js';
 import { nuevoEstado, reducir, radioAcierto } from './gestos.js';
+import { apuntar, recordado } from './memoria.js';
 import { pxPorMetro, marcoDe } from '../canvas/medidas.js';
 import { radii } from '../canvas/symbols.js';
 
@@ -68,13 +69,16 @@ export class Lienzo {
     this._punteros = nuevoEstado();
     this._duenos = new Map();
     this._gestos = [];
+    this._claveMemoria = null;
+    this._porReponer = null;
+    this._relojMemoria = null;
 
     /** Aviso de que el encuadre ha cambiado: lo escucha la barra que
      *  enseña el porcentaje, y quien guarde el encuadre. */
     this.onEncuadre = null;
 
-    this.vista.onResize = () => this.pintar();
-    this.vista.onEncuadre = () => { this.pintar(); this.onEncuadre?.(this.zoom()); };
+    this.vista.onResize = () => { this._reponerSiSePuede(); this.pintar(); };
+    this.vista.onEncuadre = () => { this.pintar(); this._apuntarPronto(); this.onEncuadre?.(this.zoom()); };
 
     this._atar();
   }
@@ -197,6 +201,51 @@ export class Lienzo {
   medir() {
     this.vista._resize();
     this.pintarAhora();
+  }
+
+  /* ---- dónde estabas mirando (§3.1) --------------------------
+     Volver a abrir un ejercicio te devuelve donde lo dejaste. Y se
+     repone SIN preguntar, al contrario que un borrador: un encuadre no
+     es contenido, no se puede perder nada por reponerlo, y un cartel
+     de «¿te devuelvo el zoom?» no lo quiere leer nadie.
+
+     Es opcional: el Lienzo funciona igual sin llamar a esto. */
+
+  recordarEncuadre(clave) {
+    this._claveMemoria = clave || null;
+    if (!clave) return;
+    this._porReponer = recordado(clave);
+    this._reponerSiSePuede();
+    /* Y se apunta también al salir de la página: el retardo de abajo
+       puede no haber llegado a saltar si se cierra la pestaña justo
+       después de acercar. */
+    this._onSalir = () => this._apuntarYa();
+    addEventListener('pagehide', this._onSalir);
+  }
+
+  /* Reponer necesita la vista MEDIDA, y cuando se pide puede no
+     estarlo todavía (el elemento acaba de entrar en el DOM). Se guarda
+     y se aplica en cuanto haya tamaño. */
+  _reponerSiSePuede() {
+    if (!this._porReponer || !this.vista.vw) return;
+    const g = this._porReponer;
+    this._porReponer = null;
+    this.vista.ponerEncuadre(g);
+  }
+
+  /* Acercar dispara decenas de avisos por segundo; escribir en el
+     almacenamiento en todos sería castigar el disco por un dato que a
+     nadie le urge. Se espera a que la mano pare. */
+  _apuntarPronto() {
+    if (!this._claveMemoria) return;
+    clearTimeout(this._relojMemoria);
+    this._relojMemoria = setTimeout(() => this._apuntarYa(), 400);
+  }
+
+  _apuntarYa() {
+    if (!this._claveMemoria || !this.vista.vw) return;
+    clearTimeout(this._relojMemoria);
+    apuntar(this._claveMemoria, this.vista.encuadreActual());
   }
 
   /* ---- encuadre ---------------------------------------------- */
@@ -425,8 +474,11 @@ export class Lienzo {
     el.removeEventListener('keyup', this._onKeyUp);
     removeEventListener('blur', this._onPurga);
     document.removeEventListener('visibilitychange', this._onPurga);
+    if (this._onSalir) removeEventListener('pagehide', this._onSalir);
+    this._apuntarYa();
     if (this._raf) cancelAnimationFrame(this._raf);
     clearTimeout(this._reloj);
+    clearTimeout(this._relojMemoria);
     this._pendiente = false;
     this.vista.destroy();
     el.remove();
