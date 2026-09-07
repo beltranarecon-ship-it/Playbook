@@ -177,6 +177,26 @@ export function desplazar(enc, dx, dy) {
 }
 
 /**
+ * Escalar y mover A LA VEZ, con UN SOLO recorte al final. Es lo que
+ * hace un pellizco de dos dedos: la mano abre y se desplaza en el
+ * mismo gesto.
+ *
+ * Y tiene que ser una sola función, no `zoomA` seguido de `desplazar`,
+ * por dos motivos que solo se ven con los topes puestos:
+ *
+ *  · Recortando dos veces, el estado intermedio ya viene pegado al
+ *    tope y el segundo recorte trabaja sobre él: el punto que hay bajo
+ *    los dedos se escapa, que es justo lo que `zoomA` existe para
+ *    evitar.
+ *  · Cuando la pista CABE en un eje, `limitar` lo RECENTRA. Recortar
+ *    en medio anula el desplazamiento de ese eje y el gesto se siente
+ *    trabado.
+ */
+export function pellizcar(enc, escala, cx, cy, dx, dy, vw, vh, margen = MARGEN) {
+  return limitar(desplazar(zoomA(enc, escala, cx, cy), dx, dy), vw, vh, margen);
+}
+
+/**
  * Recorta el desplazamiento para que la pista no se pueda perder de
  * vista. Eje a eje y con dos comportamientos distintos, que es lo que
  * hace que no se sienta raro:

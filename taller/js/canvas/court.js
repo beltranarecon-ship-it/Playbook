@@ -8,7 +8,7 @@ import { h } from '../ui/dom.js';
 import { REGLAS, PISTAS_M, marcoDe, pistaANorm } from './medidas.js';
 import {
   neutro, ajustar, proyectar, despoyectar, anchoPista, altoPista,
-  zoomA as encZoomA, desplazar, limitar, ventana as encVentana,
+  zoomA as encZoomA, desplazar, limitar, pellizcar, ventana as encVentana,
   hairline as encHairline, guardable, desdeGuardado,
 } from './encuadre.js';
 
@@ -246,6 +246,21 @@ export class CourtView {
   desplazarPx(dx, dy) {
     if (!this.encuadreLibre) return;
     this._aplicar(limitar(desplazar(this.enc, dx, dy), this.vw, this.vh));
+  }
+
+  /**
+   * Escalar y mover A LA VEZ: el pellizco de dos dedos, que abre la
+   * mano y se desplaza en el mismo gesto.
+   *
+   * Existe como método propio y no como `zoomA` seguido de
+   * `desplazarPx` porque cada uno de esos recorta por su cuenta, y con
+   * dos recortes por fotograma el punto que hay bajo los dedos se
+   * escapa contra el tope. Aquí el recorte es uno solo, al final
+   * (canvas/encuadre.js#pellizcar).
+   */
+  pellizco(escala, cx, cy, dx, dy) {
+    if (!this.encuadreLibre) return;
+    this._aplicar(pellizcar(this.enc, escala, cx, cy, dx, dy, this.vw, this.vh));
   }
 
   /** Vuelve a la pista entera, encajada y centrada. */

@@ -28,6 +28,7 @@
 import { h } from '../ui/dom.js';
 import { CourtView } from '../canvas/court.js';
 import { seVe, pasoRejilla, lineasRejilla } from '../canvas/encuadre.js';
+import { nuevoEstado, reducir, radioAcierto } from './gestos.js';
 import { pxPorMetro, marcoDe } from '../canvas/medidas.js';
 import { radii } from '../canvas/symbols.js';
 
@@ -59,9 +60,14 @@ export class Lienzo {
     this._pendiente = false;
     this._raf = null;
     this._reloj = null;
-    this._arrastre = null;
     this._espacio = false;
     this._espacioUsado = false;
+    /* El estado de los dedos vive en la maquina pura; aqui solo se
+       guarda quien atiende cada puntero, que es lo unico que ella no
+       puede saber porque son objetos con funciones. */
+    this._punteros = nuevoEstado();
+    this._duenos = new Map();
+    this._gestos = [];
 
     /** Aviso de que el encuadre ha cambiado: lo escucha la barra que
      *  enseña el porcentaje, y quien guarde el encuadre. */
@@ -208,10 +214,109 @@ export class Lienzo {
   /** Y al revés. */
   px(metros) { return metros * pxPorMetro(this.vista.pistaKey, this.vista.w); }
 
-  /* ---- entradas de ratón y teclado ---------------------------
-     El dedo (pellizco, dos dedos) va en el paso siguiente: mezclarlo
-     aquí obliga a razonar a la vez sobre punteros múltiples y sobre
-     el encuadre, y son dos problemas distintos. */
+  /* ---- el enganche de los gestos de un dedo ------------------
+     El Lienzo no sabe qué hay dibujado: no conoce fichas, ni nodos, ni
+     trazos. Cuando nace un gesto de un puntero pregunta, de mayor a
+     menor orden, y gana el primero que devuelva un manejador —los
+     nodos antes que las fichas, y las fichas antes que el suelo—.
+
+     El manejador puede traer cuatro cosas, y las cuatro importan:
+       mover(p)    mientras arrastra
+       soltar(p)   se levantó habiendo arrastrado
+       tocar(p)    se levantó SIN llegar a arrastrar
+       abortar()   no ha pasado: deshaz, y sin dejar rastro en el
+                   historial (el segundo dedo, una cancelación del
+                   navegador, Escape)
+
+     `abortar` es la que se olvida y la que más se nota: es lo que
+     hace que apoyar el meñique a mitad de un arrastre devuelva la
+     ficha a su sitio en vez de dejarla donde se quedó. */
+
+  /** Registra un candidato. Devuelve la función que lo quita. */
+  gesto(nombre, atender, { orden = 0 } = {}) {
+    this._gestos.push({ nombre, atender, orden });
+    this._gestos.sort((a, b) => b.orden - a.orden);
+    return () => this.quitarGesto(nombre);
+  }
+
+  quitarGesto(nombre) {
+    this._gestos = this._gestos.filter((g) => g.nombre !== nombre);
+  }
+
+  /**
+   * El radio con el que hay que acertar sobre algo dibujado, en
+   * píxeles de pantalla. Con el dedo hay un suelo de 22 px (§2.6) y
+   * con ratón o lápiz vale el radio de verdad. NO escala con el zoom,
+   * aunque lo parezca: al 50 % una ficha tiene que seguir pinchándose.
+   */
+  agarre(radioDibujadoPx, tipoPuntero) { return radioAcierto(radioDibujadoPx, tipoPuntero); }
+
+  /** Aborta todo gesto vivo. Para Escape, para cuando se abre un
+   *  modal, para cuando cambia la fase. */
+  cancelarGestos() {
+    this._ejecutar(reducir(this._punteros, { tipo: 'purga' }).ordenes);
+  }
+
+  /** Una sola transformación: escala anclada más traslación. */
+  pellizco(escala, cx, cy, dx, dy) { this.vista.pellizco(escala, cx, cy, dx, dy); }
+
+  /* Traduce un evento ya normalizado y ejecuta lo que salga. */
+  _despachar(evento, ev) {
+    const { ordenes } = reducir(this._punteros, evento);
+    this._ejecutar(ordenes, ev);
+  }
+
+  _ejecutar(ordenes, ev) {
+    for (const o of ordenes) {
+      switch (o.tipo) {
+        case 'capturar':
+          try { this.el.setPointerCapture(o.id); } catch { /* puntero sintético */ }
+          break;
+        case 'clase':
+          this.el.classList.toggle(o.clase, !!o.on);
+          if (o.clase === 'is-arrastrando' && o.on && this._espacio) this._espacioUsado = true;
+          break;
+        case 'abrir': this._abrir(o, ev); break;
+        case 'mover': this._duenos.get(o.id)?.mover?.(this._conNorm(o.p)); break;
+        case 'tocar': this._duenos.get(o.id)?.tocar?.(this._conNorm(o.p)); this._duenos.delete(o.id); break;
+        case 'soltar': this._duenos.get(o.id)?.soltar?.(this._conNorm(o.p)); this._duenos.delete(o.id); break;
+        case 'abortar': this._duenos.get(o.id)?.abortar?.(); this._duenos.delete(o.id); break;
+        case 'desplazar': this.vista.desplazarPx(o.dx, o.dy); break;
+        case 'pellizco': this.pellizco(o.escala, o.cx, o.cy, o.dx, o.dy); break;
+        default: break;
+      }
+    }
+  }
+
+  /* Pregunta a la cadena quién quiere este puntero. */
+  _abrir(o, ev) {
+    const intento = {
+      ...this._conNorm(o.p),
+      agarrePx: radioAcierto(0, o.p.tipoPuntero),
+      shift: !!ev?.shiftKey, alt: !!ev?.altKey, ctrl: !!ev?.ctrlKey, meta: !!ev?.metaKey,
+      metros: (px) => this.metros(px),
+      aPx: (m) => this.px(m),
+      toPx: (x, y) => this.vista.toPx(x, y),
+      toNorm: (px, py) => this.vista.toNormRaw(px, py),
+      agarre: (r) => this.agarre(r, o.p.tipoPuntero),
+    };
+    for (const g of this._gestos) {
+      const manejador = g.atender(intento);
+      if (manejador) { this._duenos.set(o.id, manejador); return; }
+    }
+  }
+
+  /* Al punto en píxeles se le añade siempre el normalizado SIN
+     recortar: quien atiende piensa en la pista, no en el lienzo, y
+     recortar convertiría «has soltado fuera» en «has soltado en el
+     borde». */
+  _conNorm(p) {
+    const [x, y] = this.vista.toNormRaw(p.px, p.py);
+    const [x0, y0] = this.vista.toNormRaw(p.px0, p.py0);
+    return { ...p, x, y, x0, y0 };
+  }
+
+  /* ---- entradas de ratón y teclado --------------------------- */
 
   _atar() {
     const el = this.el;
@@ -229,32 +334,47 @@ export class Lienzo {
     };
     el.addEventListener('wheel', this._onRueda, { passive: false });
 
-    /* Arrastrar la vista: botón central siempre, y botón izquierdo con
-       la barra espaciadora, que es lo que hace todo editor. El botón
-       izquierdo a secas NO se toca: ese es de seleccionar y mover
-       fichas, y es de otra capa. */
-    this._onDown = (ev) => {
-      if (ev.button !== 1 && !(ev.button === 0 && this._espacio)) return;
-      ev.preventDefault();
-      if (this._espacio) this._espacioUsado = true;
-      this._arrastre = { x: ev.clientX, y: ev.clientY };
-      el.classList.add('is-arrastrando');
-      try { el.setPointerCapture(ev.pointerId); } catch { /* puntero sintético */ }
+    /* Los punteros NO se atienden aquí: se traducen a eventos y se le
+       pasan a la máquina de pizarra/gestos.js, que es pura y decide
+       quién manda sobre cada dedo. Este bloque es solo el adaptador —
+       traduce hacia dentro y ejecuta hacia fuera—, y ese reparto es lo
+       que permite probar en Node casos que con dedos costaría media
+       hora reproducir. */
+    const alaMaquina = (tipo, ev) => {
+      const [px, py] = this.vista.pointerPx(ev);
+      this._despachar({
+        tipo,
+        id: ev.pointerId,
+        tipoPuntero: ev.pointerType || 'mouse',
+        x: px, y: py,
+        t: ev.timeStamp,
+        boton: ev.button,
+        botones: ev.buttons,
+        espacio: this._espacio,
+        escalaActual: this.vista.enc.escala,
+      }, ev);
     };
-    this._onMove = (ev) => {
-      if (!this._arrastre) return;
-      this.vista.desplazarPx(ev.clientX - this._arrastre.x, ev.clientY - this._arrastre.y);
-      this._arrastre = { x: ev.clientX, y: ev.clientY };
-    };
-    this._onUp = () => {
-      if (!this._arrastre) return;
-      this._arrastre = null;
-      el.classList.remove('is-arrastrando');
-    };
+
+    this._onDown = (ev) => { ev.preventDefault(); alaMaquina('down', ev); };
+    this._onMove = (ev) => alaMaquina('move', ev);
+    this._onUp = (ev) => alaMaquina('up', ev);
+    this._onCancel = (ev) => alaMaquina('cancel', ev);
+    this._onPerdida = (ev) => alaMaquina('perdida', ev);
     el.addEventListener('pointerdown', this._onDown);
     el.addEventListener('pointermove', this._onMove);
     el.addEventListener('pointerup', this._onUp);
-    el.addEventListener('pointercancel', this._onUp);
+    el.addEventListener('pointercancel', this._onCancel);
+    el.addEventListener('lostpointercapture', this._onPerdida);
+
+    /* Cuando el navegador se lleva el gesto no siempre manda
+       `pointercancel`: perder el foco de la ventana con dos dedos
+       apoyados, cambiar de pestaña o abrir el menú contextual dejan
+       los punteros vivos para siempre, y el siguiente toque continúa
+       un gesto que ya nadie recuerda haber empezado. */
+    this._onPurga = () => this.cancelarGestos('purga');
+    addEventListener('blur', this._onPurga);
+    document.addEventListener('visibilitychange', this._onPurga);
+    el.addEventListener('contextmenu', this._onPurga);
 
     /* Teclado. Va sobre el elemento y no sobre el documento a
        propósito: la barra espaciadora es también el atajo de
@@ -298,9 +418,13 @@ export class Lienzo {
     el.removeEventListener('pointerdown', this._onDown);
     el.removeEventListener('pointermove', this._onMove);
     el.removeEventListener('pointerup', this._onUp);
-    el.removeEventListener('pointercancel', this._onUp);
+    el.removeEventListener('pointercancel', this._onCancel);
+    el.removeEventListener('lostpointercapture', this._onPerdida);
+    el.removeEventListener('contextmenu', this._onPurga);
     el.removeEventListener('keydown', this._onKeyDown);
     el.removeEventListener('keyup', this._onKeyUp);
+    removeEventListener('blur', this._onPurga);
+    document.removeEventListener('visibilitychange', this._onPurga);
     if (this._raf) cancelAnimationFrame(this._raf);
     clearTimeout(this._reloj);
     this._pendiente = false;
