@@ -19,9 +19,15 @@
   rasterizan el tile entero en vez de pintar solo lo visible. Si eso
   pasa, al 400 % se dispara la memoria y el gesto se atasca.
 
-  Si el camino por layout aguanta, se queda como está. Si no, el fondo
-  pasa a moverse con `transform` mientras dura el gesto (la red de
-  seguridad ya está diseñada). Es una decisión de datos.
+  MEDIDO Y RESUELTO: aguanta. En un navegador de verdad, con la entera
+  girada 90°, 200 fichas y dpr 1, la memoria del lienzo se queda en
+  1,8 MB del 50 % al 400 % y el gesto da p95 de 14,6 ms — por debajo de
+  un fotograma, con el p50 clavado en la cadencia de la pantalla. O
+  sea: el navegador NO rasteriza el tile entero. El fondo por layout se
+  queda y la red de seguridad del `transform` no se escribe.
+
+  El arnés se conserva: cuando cambie algo del encuadre, esto se vuelve
+  a medir en un minuto en vez de discutirse.
 
   ── LO QUE NO PUEDE MEDIR ─────────────────────────────────────
   La textura de madera es un WebP incrustado en los SVG, así que al

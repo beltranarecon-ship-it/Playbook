@@ -182,6 +182,26 @@ export class CourtView {
    * cuenta que hace hoy `.court--landscape .court__bg` con
    * porcentajes; aquí va en píxeles porque el contenedor ya no tiene
    * la forma de la pista.
+   *
+   * ── LA INCÓGNITA, YA MEDIDA ───────────────────────────────
+   * Quedaba por saber si el navegador rasteriza el TILE ENTERO de un
+   * `background-size` grande o solo lo visible. Si fuera lo primero,
+   * al 400 % se dispararía la memoria y el gesto se atascaría, y
+   * habría que mover el fondo con `transform` durante el gesto.
+   *
+   * Medido en un navegador de verdad con dev/pizarra-encuadre.html,
+   * pista entera girada 90°, 200 fichas, dpr 1:
+   *
+   *     zoom   pintado   gesto p50/p95   memoria del lienzo
+   *      50 %   1,09 ms   13,3 / 14,6     1,8 MB
+   *     100 %   0,98 ms   13,3 / 14,4     1,8 MB
+   *     400 %   0,19 ms   13,3 / 13,7     1,8 MB
+   *
+   * El p50 clavado en 13,3 ms es la cadencia de la pantalla (75 Hz),
+   * no trabajo: el fondo NO se está rasterizando entero. Aguanta, y la
+   * red de seguridad del `transform` no hace falta. Si algún día
+   * aparece un navegador que sí lo haga, el sitio de arreglarlo es
+   * este método y solo este.
    */
   _pintarFondo() {
     const s = this.bg.style;
