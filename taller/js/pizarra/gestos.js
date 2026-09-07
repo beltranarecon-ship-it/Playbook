@@ -151,11 +151,17 @@ function rebasar(e, escalaActual) {
   };
 }
 
+/* Las teclas modificadoras viajan CON el punto, no se consultan
+   aparte. Es lo que permite que el imán (Shift mientras mueves, §3.4)
+   se entere: leer el teclado por su cuenta obligaría a cada capa a
+   escuchar keydown y a acordarse de soltarlo, y el estado de la tecla
+   en el instante del movimiento es justo el que importa. */
 const punto = (p) => ({
   id: p.id, tipoPuntero: p.tipo,
   px: p.x, py: p.y, px0: p.x0, py0: p.y0,
   dpx: p.x - p.x0, dpy: p.y - p.y0,
   t: p.t, dt: p.t - p.t0,
+  shift: !!p.shift, alt: !!p.alt, ctrl: !!p.ctrl, meta: !!p.meta,
 });
 
 /**
@@ -237,6 +243,7 @@ export function reducir(estado, ev) {
     const p = {
       id: ev.id, tipo: ev.tipoPuntero, papel: 'sobra', orden: ++estado.orden,
       x0: ev.x, y0: ev.y, t0: ev.t, x: ev.x, y: ev.y, t: ev.t, promovido: false,
+      shift: !!ev.shift, alt: !!ev.alt, ctrl: !!ev.ctrl, meta: !!ev.meta,
     };
 
     // 2) ya estamos viendo: todo dedo nuevo se suma a la vista
@@ -298,6 +305,7 @@ export function reducir(estado, ev) {
     }
 
     p.x = ev.x; p.y = ev.y; p.t = ev.t;
+    p.shift = !!ev.shift; p.alt = !!ev.alt; p.ctrl = !!ev.ctrl; p.meta = !!ev.meta;
 
     if (p.papel === 'ver') {
       const par = deVer(estado).slice(0, 2);

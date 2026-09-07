@@ -399,6 +399,7 @@ export class Lienzo {
         t: ev.timeStamp,
         boton: ev.button,
         botones: ev.buttons,
+        shift: ev.shiftKey, alt: ev.altKey, ctrl: ev.ctrlKey, meta: ev.metaKey,
         espacio: this._espacio,
         escalaActual: this.vista.enc.escala,
       }, ev);
