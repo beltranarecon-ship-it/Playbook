@@ -21,7 +21,7 @@ import {
   ZOOM_MIN, ZOOM_MAX, MARGEN,
   neutro, ajustar, anchoPista, altoPista, proyectar, despoyectar,
   zoomA, desplazar, limitar, ventana, seVe, hairline,
-  guardable, desdeGuardado,
+  guardable, desdeGuardado, pasoRejilla, lineasRejilla,
 } from '../js/canvas/encuadre.js';
 import { marcoDe, pxPorMetro } from '../js/canvas/medidas.js';
 
@@ -264,6 +264,49 @@ test('hairline centra la línea en la rejilla del dispositivo', () => {
     const enDispositivo = v * dpr;
     aprox(enDispositivo - Math.floor(enDispositivo), 0.5, 1e-9, `dpr ${dpr}:`);
   }
+});
+
+/* ── 8b. La rejilla de metros ────────────────────────────── */
+
+test('el paso de la rejilla sube antes de que se amontonen las líneas', () => {
+  eq(pasoRejilla(10), 1);      // 10 líneas de 1 m: caben
+  eq(pasoRejilla(14), 1);      // 14: el límite exacto
+  eq(pasoRejilla(15), 2);      // 15 ya no: se pasa a 2 m
+  eq(pasoRejilla(28), 2);
+  eq(pasoRejilla(29), 5);
+  eq(pasoRejilla(70), 5);
+  eq(pasoRejilla(71), 10);
+  eq(pasoRejilla(9999), 10);   // no hay escalón por encima de 10 m
+  eq(pasoRejilla(0), 1);
+});
+
+test('la rejilla no se sale de la pista aunque se vea la banda', () => {
+  // ventana que se pasa por los cuatro lados
+  const vis = { x0: -0.5, x1: 1.5, y0: -0.5, y1: 1.5 };
+  const { xs, ys } = lineasRejilla(vis, 18, 27, 2);
+  ok(xs.every((x) => x >= -1e-9 && x <= 1 + 1e-9), `xs fuera: ${xs}`);
+  ok(ys.every((y) => y >= -1e-9 && y <= 1 + 1e-9), `ys fuera: ${ys}`);
+  // 18 m cada 2: los múltiplos 0,2,…,18 → diez líneas
+  eq(xs.length, 10);
+  aprox(xs[0], 0, 1e-12, 'primera:');
+  aprox(xs[xs.length - 1], 1, 1e-12, 'última:');
+});
+
+test('la última línea no se pierde por redondeo al acumular', () => {
+  // 24 m de largo con paso 1: la de los 24 m tiene que estar
+  const { xs } = lineasRejilla({ x0: 0, x1: 1, y0: 0, y1: 1 }, 24, 24, 1);
+  eq(xs.length, 25);
+  aprox(xs[24], 1, 1e-12, 'la de los 24 m:');
+});
+
+test('solo salen las líneas de lo que se ve', () => {
+  // se ve del 25 % al 50 % de una pista de 18 m: de 4,5 a 9 m
+  const { xs } = lineasRejilla({ x0: 0.25, x1: 0.5, y0: 0, y1: 0 }, 18, 27, 1);
+  eq(xs.map((x) => Math.round(x * 18)), [5, 6, 7, 8, 9]);
+});
+
+test('una ventana degenerada no devuelve líneas en vez de romperse', () => {
+  eq(lineasRejilla({ x0: 0.6, x1: 0.4, y0: 0.6, y1: 0.4 }, 18, 27, 1).xs, []);
 });
 
 /* ── 9. Guardar y reponer ────────────────────────────────── */

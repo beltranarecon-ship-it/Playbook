@@ -32,6 +32,7 @@
 <link rel="stylesheet" href="/taller/css/tokens.css">
 <link rel="stylesheet" href="/taller/css/base.css">
 <link rel="stylesheet" href="/taller/css/canvas.css">
+<link rel="stylesheet" href="/taller/css/pizarra.css">
 <style>
   body { background:#0f1115; color:#dde; font:13px/1.55 system-ui,sans-serif; margin:0; padding:1rem 1.2rem 3rem }
   h1 { font-size:.95rem; text-transform:uppercase; letter-spacing:.06em; color:#9ab; margin:0 0 .3rem }
@@ -97,9 +98,8 @@
 </div>
 
 <script type="module">
-import { CourtView } from '/taller/js/canvas/court.js';
-import { seVe } from '/taller/js/canvas/encuadre.js';
-import { drawPlayer, drawBall, drawCone, radii } from '/taller/js/canvas/symbols.js';
+import { Lienzo } from '/taller/js/pizarra/lienzo.js';
+import { drawPlayer, drawBall, drawCone } from '/taller/js/canvas/symbols.js';
 import { drawArrow } from '/taller/js/canvas/arrows.js';
 import { COLORS } from '/taller/js/canvas/colors.js';
 import { pxPorMetro, marcoDe } from '/taller/js/canvas/medidas.js';
@@ -109,7 +109,7 @@ if (!local) { document.body.innerHTML = 'Arnés de desarrollo. Solo en localhost
 
 const $ = (s) => document.querySelector(s);
 const hueco = $('#hueco');
-let vista = null, rot = 0, conCulling = true, escena = fabricar(12);
+let lienzo = null, vista = null, rot = 0, conCulling = true, escena = fabricar(12);
 
 /* ── la escena ────────────────────────────────────────────────
    Fichas repartidas por la pista con una malla determinista (nada de
@@ -135,85 +135,62 @@ function fabricar(n) {
 /* Un repintado completo, como el que hará la Pizarra: fondo no (lo pone
    el CSS), fichas y flechas sí. Devuelve cuántas se han dibujado de
    verdad, que es lo que enseña si el culling sirve de algo. */
-function pintar() {
-  const v = vista;
-  v.clear();
-  const R = radii(v.w, v.pistaKey);
-  const vis = v.ventana();
+let dibujadas = 0;
+function capaEscena({ ctx, R, toPx, seVe }) {
   const holgura = 0.03;
-  let dibujadas = 0;
+  dibujadas = 0;
 
   // flechas entre fichas consecutivas
   for (let i = 1; i < escena.length; i++) {
     const a = escena[i - 1], b = escena[i];
-    if (conCulling && !seVe(vis, a.x, a.y, holgura) && !seVe(vis, b.x, b.y, holgura)) continue;
-    const p1 = v.toPx(a.x, a.y), p2 = v.toPx(b.x, b.y);
-    drawArrow(v.ctx, [{ x: p1[0], y: p1[1] }, { x: p2[0], y: p2[1] }], i % 2 ? 'cut' : 'run', R.scale);
+    if (conCulling && !seVe(a.x, a.y, holgura) && !seVe(b.x, b.y, holgura)) continue;
+    const p1 = toPx(a.x, a.y), p2 = toPx(b.x, b.y);
+    drawArrow(ctx, [{ x: p1[0], y: p1[1] }, { x: p2[0], y: p2[1] }], i % 2 ? 'cut' : 'run', R.scale);
   }
   for (const f of escena) {
-    if (conCulling && !seVe(vis, f.x, f.y, holgura)) continue;
-    const [px, py] = v.toPx(f.x, f.y);
-    if (f.cono) drawCone(v.ctx, px, py, R.cono, {});
-    else drawPlayer(v.ctx, px, py, R.jugador, { color: COLORS[f.equipo], label: f.dorsal, defender: f.def });
+    if (conCulling && !seVe(f.x, f.y, holgura)) continue;
+    const [px, py] = toPx(f.x, f.y);
+    if (f.cono) drawCone(ctx, px, py, R.cono, {});
+    else drawPlayer(ctx, px, py, R.jugador, { color: COLORS[f.equipo], label: f.dorsal, defender: f.def });
     dibujadas++;
   }
-  // el balón y una línea de un píxel, que es la que delata el dpr
-  const [bx, by] = v.toPx(0.5, 0.5);
-  drawBall(v.ctx, bx, by, R.balon, {});
-  v.ctx.strokeStyle = '#fff';
-  v.ctx.lineWidth = v.hairline(1);
-  v.ctx.beginPath(); v.ctx.moveTo(0, 40.5); v.ctx.lineTo(v.vw, 40.5); v.ctx.stroke();
-  return dibujadas;
+  const [bx, by] = toPx(0.5, 0.5);
+  drawBall(ctx, bx, by, R.balon, {});
 }
+
+/* Una capa de PANTALLA: la línea de un píxel que delata el dpr. No
+   crece con el zoom, y ese es justo el punto de que sean dos listas. */
+function capaTestigo({ ctx, vista: v }) {
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = v.hairline(1);
+  ctx.beginPath(); ctx.moveTo(0, 40.5); ctx.lineTo(v.vw, 40.5); ctx.stroke();
+}
+
+/** Un repintado sincrono; devuelve cuantas fichas se dibujaron. */
+function pintar() { lienzo.pintarAhora(); return dibujadas; }
 
 function montar() {
-  vista?.destroy();
+  lienzo?.destroy();
   hueco.replaceChildren();
-  vista = new CourtView({ pista: $('#pista').value, rotate: rot, encuadre: true });
-  hueco.appendChild(vista.root);
-  /* El informe se reescribe también al redimensionar: el primer
-     `_resize` real lo dispara el ResizeObserver DESPUÉS del primer
-     fotograma, así que sin esto el panel se quedaba enseñando la
-     vista de 0×0 mientras la pista ya estaba dibujada. */
-  vista.onResize = () => { pintar(); informar(); };
-  vista.onEncuadre = () => { pintar(); informar(); };
-  /* Medir A MANO nada más meterlo en el DOM, sin esperar al
-     ResizeObserver. Cuando el constructor mide, el elemento todavía no
-     está colgado y sale 0×0; la primera medida buena la da el
-     observador... si el navegador entrega sus avisos. Hay entornos
-     —paneles incrustados, pestañas que no componen— donde el ciclo de
-     renderizado no corre y no llega ninguno, y entonces la pista se
-     queda a 0×0 para siempre. Quien monta una vista, la mide. */
-  vista._resize();
-  pintar();
+  lienzo = new Lienzo({ pista: $('#pista').value, rotate: rot });
+  vista = lienzo.vista;
+  hueco.appendChild(lienzo.el);
+  lienzo.capa('escena', capaEscena, { tipo: 'mundo' });
+  lienzo.capa('testigo', capaTestigo, { tipo: 'pantalla' });
+  lienzo.onEncuadre = informar;
+  /* Medir A MANO nada mas meterlo en el DOM: cuando el constructor
+     mide, el elemento aun no cuelga de ningun sitio y sale 0x0, y la
+     primera medida buena depende del ResizeObserver... que en algunos
+     entornos no entrega nunca. Quien monta un lienzo, lo mide. */
+  lienzo.medir();
   informar();
+  lienzo.el.focus();
 }
 
-/* ── la rueda: es el gesto que hay que sentir ───────────────── */
-hueco.addEventListener('wheel', (ev) => {
-  ev.preventDefault();
-  const [px, py] = vista.pointerPx(ev);
-  const factor = Math.exp(-ev.deltaY * 0.0015);
-  vista.zoomA(vista.enc.escala * factor, px, py);
-}, { passive: false });
-
-/* arrastre con el botón central o con la barra espaciadora pulsada */
-let arrastre = null;
-hueco.addEventListener('pointerdown', (ev) => {
-  if (ev.button !== 1 && !espacio) return;
-  ev.preventDefault();
-  arrastre = { x: ev.clientX, y: ev.clientY };
-  hueco.setPointerCapture(ev.pointerId);
-});
-hueco.addEventListener('pointermove', (ev) => {
-  if (!arrastre) return;
-  vista.desplazarPx(ev.clientX - arrastre.x, ev.clientY - arrastre.y);
-  arrastre = { x: ev.clientX, y: ev.clientY };
-});
-hueco.addEventListener('pointerup', () => { arrastre = null; });
-let espacio = false;
-addEventListener('keydown', (e) => { if (e.code === 'Space') { espacio = true; e.preventDefault(); } });
-addEventListener('keyup', (e) => { if (e.code === 'Space') espacio = false; });
+/* La rueda, el arrastre con el boton central y la barra espaciadora,
+   y las teclas 0 + - y las flechas los pone ya el Lienzo. Aqui no se
+   ata nada: si hiciera falta atarlo, es que el Lienzo no esta
+   terminado. */
 
 /* ── el informe ───────────────────────────────────────────────── */
 function bytes(n) {
@@ -272,8 +249,8 @@ async function medir() {
   const hayFotogramas = await esperarFotograma();
 
   for (const z of zooms) {
-    vista.encajarPista();
-    vista.zoomA(z, vista.vw / 2, vista.vh / 2);
+    lienzo.encajar();
+    lienzo.zoomA(z, vista.vw / 2, vista.vh / 2);
     await esperarFotograma();
 
     // pintado: 40 repintados seguidos
@@ -288,7 +265,7 @@ async function medir() {
       const marcas = [];
       let anterior = performance.now();
       for (let i = 0; i < 24; i++) {
-        vista.zoomA(vista.enc.escala * (i % 2 ? 1.02 : 1 / 1.02), vista.vw / 2, vista.vh / 2);
+        lienzo.zoomA(vista.enc.escala * (i % 2 ? 1.02 : 1 / 1.02), vista.vw / 2, vista.vh / 2);
         await esperarFotograma();
         const ahora = performance.now();
         marcas.push(ahora - anterior);
@@ -312,7 +289,7 @@ async function medir() {
     );
   }
 
-  vista.encajarPista();
+  lienzo.encajar();
   const memConstante = Math.max(...memorias) - Math.min(...memorias) === 0;
   informar([
     ``,
@@ -351,8 +328,8 @@ async function medir() {
 
 /* ── mandos ───────────────────────────────────────────────────── */
 document.querySelectorAll('[data-z]').forEach((b) => b.addEventListener('click', () => {
-  vista.encajarPista();
-  vista.zoomA(Number(b.dataset.z), vista.vw / 2, vista.vh / 2);
+  lienzo.encajar();
+  lienzo.zoomA(Number(b.dataset.z), vista.vw / 2, vista.vh / 2);
 }));
 $('#encajar').addEventListener('click', () => vista.encajarPista());
 $('#pista').addEventListener('change', montar);
@@ -369,7 +346,7 @@ $('#culling').addEventListener('click', (e) => {
 $('#medir').addEventListener('click', medir);
 
 montar();
-window.__pizarra = () => vista;
+window.__pizarra = () => lienzo;
 </script>
 </body>
 </html>

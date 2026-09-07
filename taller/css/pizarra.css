@@ -1,0 +1,57 @@
+/* ============================================================
+   pizarra.css — la Pizarra (§2, §3.1).
+   Los colores y las medidas salen de tokens.css; aquí solo hay
+   estructura. Se carga DESPUÉS de canvas.css: la pista sigue siendo
+   la misma vista, con su `.court--encuadre`.
+   ============================================================ */
+
+/* ---- El hueco ---------------------------------------------
+   La Pizarra «ocupa lo que sobra» (§2.1) entre los paneles, así que
+   el lienzo es un hueco elástico, no una caja con la forma de la
+   pista.
+
+   `min-width` y `min-height` a 0 NO son decoración: un hijo de flex o
+   de grid trae `min-*: auto`, que le impide encogerse por debajo de
+   su contenido. Con un canvas dentro que se mide a sí mismo con un
+   ResizeObserver, contenedor y lienzo se realimentan y la pista crece
+   sin parar, tick a tick, hasta que se come la pantalla. Es un fallo
+   silencioso y de los que cuestan una tarde encontrar. */
+.pz-lienzo {
+  position: relative;
+  /* Los dos, y no uno: `flex` sirve cuando el padre es flex o rejilla
+     —que es como estará en la Pizarra—, y `height: 100%` cuando el
+     padre es un bloque normal con altura, que es como está en el
+     arnés. Sin el segundo, dentro de un bloque el alto se queda en
+     `auto`, o sea 0, y el lienzo no se ve sin dar ningún error. */
+  flex: 1 1 auto;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-bg);
+  touch-action: none;
+  outline: none;
+  contain: paint;
+}
+
+/* El foco se ve, porque desde el teclado se acerca, se aleja y se
+   desplaza: hay que saber si la pizarra escucha. Va por dentro para
+   no mover ni un píxel la maquetación. */
+.pz-lienzo:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
+/* Los dos cursores del desplazamiento: la mano abierta mientras se
+   tiene pulsada la barra espaciadora, cerrada mientras se arrastra.
+   Es la convención de todos los editores y se entiende sin leer nada. */
+.pz-lienzo.is-mano { cursor: grab; }
+.pz-lienzo.is-arrastrando { cursor: grabbing; }
+
+/* Dentro del hueco, la pista pierde su borde y su sombra: aquí no es
+   una tarjeta que se mira, es el suelo sobre el que se trabaja. */
+.pz-lienzo .court {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}

@@ -224,6 +224,53 @@ export function seVe(v, x, y, holgura = 0) {
     && y >= v.y0 - holgura && y <= v.y1 + holgura;
 }
 
+/* ── La rejilla de metros ─────────────────────────────────────
+   Al acercar aparece una rejilla tenue cada tantos metros. No es
+   decoración: es lo que deja ver de un vistazo si dos jugadores están
+   a tres metros o a seis, que sobre una pista vacía no se aprecia.
+
+   El paso se elige para que NUNCA se amontonen las líneas: se sube al
+   siguiente escalón en cuanto entrarían más de catorce. Los escalones
+   son 1, 2, 5 y 10 m, que es la progresión de toda la vida y además
+   cae en números con los que un entrenador piensa. */
+export const PASOS_REJILLA = [1, 2, 5, 10];
+export const LINEAS_MAX = 14;
+
+export function pasoRejilla(metrosVisibles) {
+  const m = Math.max(0, finito(metrosVisibles, 0));
+  for (const p of PASOS_REJILLA) if (m / p <= LINEAS_MAX) return p;
+  return PASOS_REJILLA[PASOS_REJILLA.length - 1];
+}
+
+/**
+ * Las líneas de la rejilla que se ven ahora, en NORMALIZADO.
+ *
+ * Solo las que caen dentro de la pista: prolongarlas por la banda
+ * ensuciaría el dibujo sin decir nada, porque ahí no se juega.
+ *
+ * El bucle va por índice entero y no acumulando `m += paso`: sumando
+ * en coma flotante, a los treinta pasos la línea de los 24 m cae en
+ * 23,999 y se pierde por el redondeo del borde.
+ */
+export function lineasRejilla(vis, anchoM, altoM, paso) {
+  const p = Math.max(1e-6, finito(paso, 1));
+  const eje = (m0, m1, total) => {
+    const salida = [];
+    const desde = Math.max(0, m0);
+    const hasta = Math.min(total, m1);
+    if (!(hasta >= desde)) return salida;
+    const primero = Math.ceil(desde / p - 1e-9);
+    const ultimo = Math.floor(hasta / p + 1e-9);
+    for (let i = primero; i <= ultimo; i++) salida.push((i * p) / total);
+    return salida;
+  };
+  return {
+    paso: p,
+    xs: eje(vis.x0 * anchoM, vis.x1 * anchoM, anchoM),
+    ys: eje(vis.y0 * altoM, vis.y1 * altoM, altoM),
+  };
+}
+
 /**
  * Grosor de una línea que tiene que medir un píxel EN PANTALLA, caiga
  * el zoom donde caiga: el borde de un panel, el marco de selección, la
