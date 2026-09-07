@@ -6,6 +6,7 @@
 
 import { h } from '../ui/dom.js';
 import { REGLAS, PISTAS_M, marcoDe, pistaANorm } from './medidas.js';
+import { neutro, proyectar, despoyectar, anchoPista, altoPista } from './encuadre.js';
 
 export const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -67,6 +68,22 @@ export class CourtView {
     this.root = h('div', { class: 'court' + (this.rot ? ' court--landscape' : '') }, this.bg, this.canvas);
     this.ctx = this.canvas.getContext('2d');
     this.w = 0; this.h = 0; this.dpr = 1;
+    /* ── LA VENTANA Y LA PISTA DEJAN DE SER LO MISMO ──────────
+       Hasta ahora `w` y `h` significaban dos cosas a la vez: el
+       tamaño del lienzo y el tamaño de la pista. Coincidían porque la
+       pista siempre ocupaba el lienzo entero.
+
+       La Pizarra (§3.1) necesita separarlas: con zoom, la pista es
+       mayor que la ventana y solo se ve un trozo. Así que ahora
+       `vw`/`vh` son LA VENTANA (el lienzo) y `w`/`h` siguen siendo LA
+       PISTA, que es lo que consumen `radii()` y `pxPorMetro()`.
+
+       En este modo —el único que existe hoy— la pista ocupa la
+       ventana entera, así que `w === vw` y `h === vh` y nadie nota
+       nada. La comprobación de que eso es cierto al carácter está en
+       taller/tools/eval-encuadre.mjs. */
+    this.vw = 0; this.vh = 0;
+    this.enc = neutro(this.w, this.h, this.rot);
     this.onResize = null;
     this.setPista(pista);
     this._ro = new ResizeObserver(() => this._resize());
@@ -92,20 +109,46 @@ export class CourtView {
     const r = this.root.getBoundingClientRect();
     if (!r.width || !r.height) return;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    this.w = r.width; this.h = r.height;
+    this.vw = r.width; this.vh = r.height;
+    this._reencuadrar();
     this.canvas.width = Math.round(r.width * this.dpr);
     this.canvas.height = Math.round(r.height * this.dpr);
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     if (this.onResize) this.onResize();
   }
 
-  toPx(x, y) { return this.rot ? [(1 - y) * this.w, x * this.h] : [x * this.w, y * this.h]; }
-  toNorm(px, py) { return this.rot ? [clamp01(py / this.h), clamp01(1 - px / this.w)] : [clamp01(px / this.w), clamp01(py / this.h)]; }
+  /**
+   * Rehace el encuadre a partir del tamaño de la ventana.
+   *
+   * En modo clásico la pista ocupa la ventana entera, así que el
+   * encuadre es el NEUTRO y `w`/`h` salen valiendo `vw`/`vh` — los
+   * mismos números de siempre.
+   *
+   * Va aquí y no dentro de `_resize` porque `_resize` sale sin hacer
+   * nada cuando el lienzo mide 0×0 (un panel plegándose, el cajón del
+   * móvil, la pestaña oculta), y en ese caso el encuadre NO se puede
+   * tocar: reiniciarlo ahí haría que al desplegar un panel se perdiera
+   * el sitio donde estabas mirando, y parecería un fallo aleatorio.
+   */
+  _reencuadrar() {
+    this.enc = neutro(this.vw, this.vh, this.rot);
+    this.w = anchoPista(this.enc);
+    this.h = altoPista(this.enc);
+  }
+
+  /* La cuenta ya no vive aquí: la hace canvas/encuadre.js, que es un
+     módulo puro y por tanto se puede probar en Node. Con el encuadre
+     neutro estas dos líneas dan exactamente lo mismo que las que
+     había —el banco compara contra la fórmula antigua copiada a mano,
+     en los dos giros—, y cuando la Pizarra pida zoom será el mismo
+     código el que lo aplique. */
+  toPx(x, y) { return proyectar(this.enc, x, y); }
+  toNorm(px, py) { const [x, y] = despoyectar(this.enc, px, py); return [clamp01(x), clamp01(y)]; }
   pointerNorm(ev) {
     const r = this.canvas.getBoundingClientRect();
     return this.toNorm(ev.clientX - r.left, ev.clientY - r.top);
   }
-  clear() { this.ctx.clearRect(0, 0, this.w, this.h); }
+  clear() { this.ctx.clearRect(0, 0, this.vw, this.vh); }
   basket(which) { return this.pista.baskets[which] || this.pista.baskets.norte; }
   destroy() { this._ro.disconnect(); }
 }
