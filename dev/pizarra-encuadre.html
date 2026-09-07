@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEV · el encuadre de la Pizarra, medido</title>
+<!--
+  Arnés de MEDIDA (dev). NO se sirve en producción.
+
+  ── QUÉ DECIDE ESTE ARNÉS ─────────────────────────────────────
+  El zoom de la Pizarra (§3.1) vive en las coordenadas: el lienzo mide
+  siempre la VENTANA y cada símbolo se vuelve a rasterizar desde su
+  geometría. De ahí se sigue, en teoría, que al 400 % se vea igual de
+  nítido y que la memoria del lienzo no crezca.
+
+  Eso hay que MEDIRLO, no suponerlo, porque queda una incógnita que no
+  se resuelve leyendo código: el FONDO. La imagen de la pista se coloca
+  con `background-size` a tamaño pista×zoom, y hay navegadores que
+  rasterizan el tile entero en vez de pintar solo lo visible. Si eso
+  pasa, al 400 % se dispara la memoria y el gesto se atasca.
+
+  Si el camino por layout aguanta, se queda como está. Si no, el fondo
+  pasa a moverse con `transform` mientras dura el gesto (la red de
+  seguridad ya está diseñada). Es una decisión de datos.
+
+  ── LO QUE NO PUEDE MEDIR ─────────────────────────────────────
+  La textura de madera es un WebP incrustado en los SVG, así que al
+  400 % se ve a menor resolución con cualquier arquitectura. Las
+  LÍNEAS de la pista sí son vectores y salen nítidas. Eso es arte, no
+  motor: se arreglaría separando la madera de las líneas en dos capas.
+-->
+<link rel="stylesheet" href="/taller/css/tokens.css">
+<link rel="stylesheet" href="/taller/css/base.css">
+<link rel="stylesheet" href="/taller/css/canvas.css">
+<style>
+  body { background:#0f1115; color:#dde; font:13px/1.55 system-ui,sans-serif; margin:0; padding:1rem 1.2rem 3rem }
+  h1 { font-size:.95rem; text-transform:uppercase; letter-spacing:.06em; color:#9ab; margin:0 0 .3rem }
+  p.sub { color:#7d8b99; margin:0 0 1.2rem; max-width:80ch }
+  .mando { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin-bottom:1rem }
+  .mando b { color:#9ab; font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-right:.2rem }
+  button, select {
+    background:#1c2230; color:#dde; border:1px solid #2e3a4d; border-radius:6px;
+    padding:.35rem .7rem; font:12px system-ui,sans-serif; cursor:pointer;
+  }
+  button:hover { border-color:#4a5f7d; background:#232c3c }
+  button.on { background:#006F94; border-color:#006F94; color:#fff }
+  .fila { display:flex; gap:1.2rem; align-items:flex-start; flex-wrap:wrap }
+  /* el hueco: lo que le sobra a la Pizarra entre los paneles */
+  #hueco { width:820px; height:560px; outline:1px dashed #e33; outline-offset:2px; position:relative; flex:none }
+  #hueco::after { content:'el hueco · 820×560'; position:absolute; top:-1.15rem; left:0; font:11px ui-monospace,monospace; color:#e33 }
+  #informe { font-family:ui-monospace,monospace; white-space:pre; color:#8fb; font-size:12px; min-width:430px }
+  #veredicto { margin-top:1rem; padding:.7rem .9rem; border-radius:8px; font-size:12.5px; max-width:80ch }
+  .bien { background:#06301f; border:1px solid #0a7; color:#9fe }
+  .mal  { background:#3a1010; border:1px solid #a33; color:#fbb }
+  .duda { background:#33280a; border:1px solid #a83; color:#fe9 }
+</style>
+</head>
+<body>
+<h1>El encuadre de la Pizarra, medido</h1>
+<p class="sub">
+  El lienzo mide siempre la ventana, así que la memoria no debería crecer con el zoom y los símbolos
+  deberían salir igual de nítidos. Lo que hay que vigilar es el <b>fondo</b>: se coloca con
+  <code>background-size</code> a tamaño pista×zoom, y si el navegador rasteriza el tile entero, al 400 %
+  se dispara. Acerca con la rueda sobre la pista y mira si el gesto va fino.
+</p>
+
+<div class="mando">
+  <b>Zoom</b>
+  <button data-z="0.5">50 %</button>
+  <button data-z="1">100 %</button>
+  <button data-z="2">200 %</button>
+  <button data-z="3">300 %</button>
+  <button data-z="4">400 %</button>
+  <button id="encajar">Encajar</button>
+  <b style="margin-left:1rem">Pista</b>
+  <select id="pista">
+    <option value="entera">entera</option>
+    <option value="media">media</option>
+    <option value="entera_fiba">entera · FIBA</option>
+    <option value="media_fiba">media · FIBA</option>
+  </select>
+  <button id="girar">Girar 90°</button>
+  <b style="margin-left:1rem">Escena</b>
+  <button id="escReal" class="on">12 fichas</button>
+  <button id="escBestia">200 fichas</button>
+  <button id="culling" class="on">Culling</button>
+  <b style="margin-left:1rem">Medir</b>
+  <button id="medir">Barrido completo</button>
+</div>
+
+<div class="fila">
+  <div id="hueco"></div>
+  <div>
+    <div id="informe">—</div>
+    <div id="veredicto" class="duda">Sin medir todavía. Pulsa «Barrido completo».</div>
+  </div>
+</div>
+
+<script type="module">
+import { CourtView } from '/taller/js/canvas/court.js';
+import { seVe } from '/taller/js/canvas/encuadre.js';
+import { drawPlayer, drawBall, drawCone, radii } from '/taller/js/canvas/symbols.js';
+import { drawArrow } from '/taller/js/canvas/arrows.js';
+import { COLORS } from '/taller/js/canvas/colors.js';
+import { pxPorMetro, marcoDe } from '/taller/js/canvas/medidas.js';
+
+const local = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+if (!local) { document.body.innerHTML = 'Arnés de desarrollo. Solo en localhost.'; throw new Error('fuera'); }
+
+const $ = (s) => document.querySelector(s);
+const hueco = $('#hueco');
+let vista = null, rot = 0, conCulling = true, escena = fabricar(12);
+
+/* ── la escena ────────────────────────────────────────────────
+   Fichas repartidas por la pista con una malla determinista (nada de
+   azar: dos medidas seguidas tienen que ser comparables). La de 200 no
+   es realista; está para que el culling tenga algo que recortar. */
+function fabricar(n) {
+  const fichas = [];
+  const lado = Math.ceil(Math.sqrt(n));
+  for (let i = 0; i < n; i++) {
+    const f = i % lado, c = Math.floor(i / lado);
+    fichas.push({
+      x: 0.08 + 0.84 * (f + 0.5) / lado,
+      y: 0.06 + 0.88 * (c + 0.5) / lado,
+      equipo: ['A', 'B', 'C', 'D'][i % 4],
+      dorsal: String((i % 15) + 1),
+      def: i % 3 === 0,
+      cono: i % 7 === 6,
+    });
+  }
+  return fichas;
+}
+
+/* Un repintado completo, como el que hará la Pizarra: fondo no (lo pone
+   el CSS), fichas y flechas sí. Devuelve cuántas se han dibujado de
+   verdad, que es lo que enseña si el culling sirve de algo. */
+function pintar() {
+  const v = vista;
+  v.clear();
+  const R = radii(v.w, v.pistaKey);
+  const vis = v.ventana();
+  const holgura = 0.03;
+  let dibujadas = 0;
+
+  // flechas entre fichas consecutivas
+  for (let i = 1; i < escena.length; i++) {
+    const a = escena[i - 1], b = escena[i];
+    if (conCulling && !seVe(vis, a.x, a.y, holgura) && !seVe(vis, b.x, b.y, holgura)) continue;
+    const p1 = v.toPx(a.x, a.y), p2 = v.toPx(b.x, b.y);
+    drawArrow(v.ctx, [{ x: p1[0], y: p1[1] }, { x: p2[0], y: p2[1] }], i % 2 ? 'cut' : 'run', R.scale);
+  }
+  for (const f of escena) {
+    if (conCulling && !seVe(vis, f.x, f.y, holgura)) continue;
+    const [px, py] = v.toPx(f.x, f.y);
+    if (f.cono) drawCone(v.ctx, px, py, R.cono, {});
+    else drawPlayer(v.ctx, px, py, R.jugador, { color: COLORS[f.equipo], label: f.dorsal, defender: f.def });
+    dibujadas++;
+  }
+  // el balón y una línea de un píxel, que es la que delata el dpr
+  const [bx, by] = v.toPx(0.5, 0.5);
+  drawBall(v.ctx, bx, by, R.balon, {});
+  v.ctx.strokeStyle = '#fff';
+  v.ctx.lineWidth = v.hairline(1);
+  v.ctx.beginPath(); v.ctx.moveTo(0, 40.5); v.ctx.lineTo(v.vw, 40.5); v.ctx.stroke();
+  return dibujadas;
+}
+
+function montar() {
+  vista?.destroy();
+  hueco.replaceChildren();
+  vista = new CourtView({ pista: $('#pista').value, rotate: rot, encuadre: true });
+  hueco.appendChild(vista.root);
+  /* El informe se reescribe también al redimensionar: el primer
+     `_resize` real lo dispara el ResizeObserver DESPUÉS del primer
+     fotograma, así que sin esto el panel se quedaba enseñando la
+     vista de 0×0 mientras la pista ya estaba dibujada. */
+  vista.onResize = () => { pintar(); informar(); };
+  vista.onEncuadre = () => { pintar(); informar(); };
+  /* Medir A MANO nada más meterlo en el DOM, sin esperar al
+     ResizeObserver. Cuando el constructor mide, el elemento todavía no
+     está colgado y sale 0×0; la primera medida buena la da el
+     observador... si el navegador entrega sus avisos. Hay entornos
+     —paneles incrustados, pestañas que no componen— donde el ciclo de
+     renderizado no corre y no llega ninguno, y entonces la pista se
+     queda a 0×0 para siempre. Quien monta una vista, la mide. */
+  vista._resize();
+  pintar();
+  informar();
+}
+
+/* ── la rueda: es el gesto que hay que sentir ───────────────── */
+hueco.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  const [px, py] = vista.pointerPx(ev);
+  const factor = Math.exp(-ev.deltaY * 0.0015);
+  vista.zoomA(vista.enc.escala * factor, px, py);
+}, { passive: false });
+
+/* arrastre con el botón central o con la barra espaciadora pulsada */
+let arrastre = null;
+hueco.addEventListener('pointerdown', (ev) => {
+  if (ev.button !== 1 && !espacio) return;
+  ev.preventDefault();
+  arrastre = { x: ev.clientX, y: ev.clientY };
+  hueco.setPointerCapture(ev.pointerId);
+});
+hueco.addEventListener('pointermove', (ev) => {
+  if (!arrastre) return;
+  vista.desplazarPx(ev.clientX - arrastre.x, ev.clientY - arrastre.y);
+  arrastre = { x: ev.clientX, y: ev.clientY };
+});
+hueco.addEventListener('pointerup', () => { arrastre = null; });
+let espacio = false;
+addEventListener('keydown', (e) => { if (e.code === 'Space') { espacio = true; e.preventDefault(); } });
+addEventListener('keyup', (e) => { if (e.code === 'Space') espacio = false; });
+
+/* ── el informe ───────────────────────────────────────────────── */
+function bytes(n) {
+  return n > 1e6 ? `${(n / 1048576).toFixed(1)} MB` : `${(n / 1024).toFixed(0)} kB`;
+}
+function informar(extra = '') {
+  const v = vista;
+  const px = v.canvas.width * v.canvas.height;
+  const m = pxPorMetro(v.pistaKey, v.w);
+  const vis = v.ventana();
+  $('#informe').textContent = [
+    `pista            ${v.pistaKey}${v.rot ? ' · girada 90°' : ''}`,
+    `ventana          ${v.vw.toFixed(0)} × ${v.vh.toFixed(0)} px CSS`,
+    `pista al zoom    ${v.w.toFixed(0)} × ${v.h.toFixed(0)} px CSS`,
+    `zoom             ${(v.enc.escala * 100).toFixed(0)} %`,
+    `dpr              ${v.dpr}`,
+    ``,
+    `LIENZO`,
+    `  respaldo       ${v.canvas.width} × ${v.canvas.height} px de dispositivo`,
+    `  memoria        ${bytes(px * 4)}   ← no debe crecer con el zoom`,
+    ``,
+    `FONDO (la incógnita)`,
+    `  background     ${v.bg.style.width || '(por CSS)'} × ${v.bg.style.height || ''}`,
+    `  tile teórico   ${bytes(parseFloat(v.bg.style.width || 0) * parseFloat(v.bg.style.height || 0) * v.dpr * v.dpr * 4)}`,
+    ``,
+    `ESCALA`,
+    `  px por metro   ${m.toFixed(2)}   (pista de ${marcoDe(v.pistaKey).ancho} m)`,
+    `  ancho medido   ${(v.w / m).toFixed(3)} m   ← debe ser ${marcoDe(v.pistaKey).ancho}`,
+    `  1 px pantalla  ${v.hairline(1)}`,
+    ``,
+    `VISTA`,
+    `  se ve          x ${vis.x0.toFixed(3)} → ${vis.x1.toFixed(3)}`,
+    `                 y ${vis.y0.toFixed(3)} → ${vis.y1.toFixed(3)}`,
+    extra,
+  ].join('\n');
+}
+
+/* ── el barrido: pintado y gesto, zoom a zoom ─────────────────── */
+/* Un fotograma, o el aviso de que aquí no hay fotogramas.
+   Hay entornos —paneles incrustados, pestañas que no componen— donde
+   `requestAnimationFrame` NO dispara aunque `visibilityState` diga
+   «visible». Sin esta comprobación, el barrido se queda colgado
+   esperando eternamente y parece que la app se ha muerto. */
+const esperarFotograma = () => new Promise((res) => {
+  let hecho = false;
+  requestAnimationFrame(() => { if (!hecho) { hecho = true; res(true); } });
+  setTimeout(() => { if (!hecho) { hecho = true; res(false); } }, 250);
+});
+
+async function medir() {
+  const zooms = [0.5, 1, 2, 3, 4];
+  const filas = [];
+  const memorias = [];
+  let peorPintado = 0, peorGesto = 0;
+
+  const hayFotogramas = await esperarFotograma();
+
+  for (const z of zooms) {
+    vista.encajarPista();
+    vista.zoomA(z, vista.vw / 2, vista.vh / 2);
+    await esperarFotograma();
+
+    // pintado: 40 repintados seguidos
+    let dibujadas = 0;
+    const t0 = performance.now();
+    for (let i = 0; i < 40; i++) dibujadas = pintar();
+    const msPintado = (performance.now() - t0) / 40;
+
+    // gesto: 24 pasos de zoom medidos por fotograma (solo si los hay)
+    let p50 = NaN, p95 = NaN;
+    if (hayFotogramas) {
+      const marcas = [];
+      let anterior = performance.now();
+      for (let i = 0; i < 24; i++) {
+        vista.zoomA(vista.enc.escala * (i % 2 ? 1.02 : 1 / 1.02), vista.vw / 2, vista.vh / 2);
+        await esperarFotograma();
+        const ahora = performance.now();
+        marcas.push(ahora - anterior);
+        anterior = ahora;
+      }
+      marcas.sort((a, b) => a - b);
+      p50 = marcas[Math.floor(marcas.length * 0.5)];
+      p95 = marcas[Math.floor(marcas.length * 0.95)];
+    }
+
+    const mem = vista.canvas.width * vista.canvas.height * 4;
+    memorias.push(mem);
+    peorPintado = Math.max(peorPintado, msPintado);
+    if (hayFotogramas) peorGesto = Math.max(peorGesto, p95);
+    const gesto = hayFotogramas
+      ? `${p50.toFixed(1).padStart(5)} / ${p95.toFixed(1).padStart(5)} ms`
+      : `      sin medir`;
+    filas.push(
+      `  ${String(Math.round(z * 100)).padStart(4)} %  ${msPintado.toFixed(2).padStart(6)} ms  `
+      + `${gesto}  ${bytes(mem).padStart(8)}  ${String(dibujadas).padStart(3)} fichas`,
+    );
+  }
+
+  vista.encajarPista();
+  const memConstante = Math.max(...memorias) - Math.min(...memorias) === 0;
+  informar([
+    ``,
+    `BARRIDO (escena de ${escena.length} fichas, culling ${conCulling ? 'sí' : 'no'})`,
+    `   zoom  pintado   gesto p50/p95   memoria  dibujadas`,
+    ...filas,
+  ].join('\n'));
+
+  const v = $('#veredicto');
+  if (!hayFotogramas) {
+    v.className = 'duda';
+    v.textContent = `Este navegador no está dando fotogramas (requestAnimationFrame no dispara), así que `
+      + `el GESTO no se ha podido medir: eso hay que repetirlo en un navegador de verdad. Lo que sí queda `
+      + `medido y es lo importante: la memoria del lienzo ${memConstante ? 'NO cambia' : 'CAMBIA'} con el zoom `
+      + `(${bytes(memorias[0])}) y el pintado peor es de ${peorPintado.toFixed(2)} ms.`
+      + (memConstante ? '' : ' Y eso último es un fallo: el respaldo debería medir siempre la ventana.');
+  } else if (!memConstante) {
+    v.className = 'mal';
+    v.textContent = 'La memoria del lienzo CAMBIA con el zoom. No debería: el respaldo mide la ventana. '
+      + 'Revisa que nadie esté redimensionando el canvas al acercar.';
+  } else if (peorGesto > 32) {
+    v.className = 'mal';
+    v.textContent = `El gesto se atasca: p95 de ${peorGesto.toFixed(1)} ms (más de dos fotogramas a 60 Hz). `
+      + 'Es el síntoma de que el navegador rasteriza el tile entero del fondo. Toca pasar el fondo a '
+      + '`transform` mientras dura el gesto.';
+  } else if (peorGesto > 20 || peorPintado > 8) {
+    v.className = 'duda';
+    v.textContent = `Va justo: gesto p95 ${peorGesto.toFixed(1)} ms, pintado ${peorPintado.toFixed(2)} ms. `
+      + 'Aguanta, pero conviene repetir la medida en la tablet antes de darlo por bueno.';
+  } else {
+    v.className = 'bien';
+    v.textContent = `Aguanta: memoria constante (${bytes(memorias[0])}), gesto p95 ${peorGesto.toFixed(1)} ms, `
+      + `pintado ${peorPintado.toFixed(2)} ms. El fondo por layout vale; no hace falta la red de seguridad.`;
+  }
+}
+
+/* ── mandos ───────────────────────────────────────────────────── */
+document.querySelectorAll('[data-z]').forEach((b) => b.addEventListener('click', () => {
+  vista.encajarPista();
+  vista.zoomA(Number(b.dataset.z), vista.vw / 2, vista.vh / 2);
+}));
+$('#encajar').addEventListener('click', () => vista.encajarPista());
+$('#pista').addEventListener('change', montar);
+$('#girar').addEventListener('click', (e) => { rot = rot ? 0 : 90; e.currentTarget.classList.toggle('on', !!rot); montar(); });
+$('#escReal').addEventListener('click', (e) => {
+  escena = fabricar(12); e.currentTarget.classList.add('on'); $('#escBestia').classList.remove('on'); pintar(); informar();
+});
+$('#escBestia').addEventListener('click', (e) => {
+  escena = fabricar(200); e.currentTarget.classList.add('on'); $('#escReal').classList.remove('on'); pintar(); informar();
+});
+$('#culling').addEventListener('click', (e) => {
+  conCulling = !conCulling; e.currentTarget.classList.toggle('on', conCulling); pintar(); informar();
+});
+$('#medir').addEventListener('click', medir);
+
+montar();
+window.__pizarra = () => vista;
+</script>
+</body>
+</html>
