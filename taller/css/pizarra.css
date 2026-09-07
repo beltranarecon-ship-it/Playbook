@@ -55,3 +55,88 @@
   box-shadow: none;
   background: transparent;
 }
+
+/* ---- El anillo de acciones (§4) ----------------------------
+   Flota sobre la pizarra, así que va en píxeles de PANTALLA y no
+   escala con el zoom: el texto de una casilla mide lo que mide, y el
+   dedo también. Dónde cae cada una lo decide pizarra/anillo.js, que es
+   geometría pura y tiene banco. */
+.pz-anillo { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+
+/* El velo transparente es lo que convierte «pinchar fuera» en un
+   evento que se puede escuchar, sin atar nada al documento y sin
+   acordarse de soltarlo después. */
+.pz-anillo__velo { position: absolute; inset: 0; pointer-events: auto; }
+
+.pz-anillo__caja,
+.pz-anillo__centro,
+.pz-anillo__mas {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-family: var(--font-body);
+}
+
+.pz-anillo__caja {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  /* 34 px de alto y el aire de los lados salen de la geometría que
+     prueba el banco: si cambian aquí, hay que cambiarlos allí o el
+     anillo empezará a salirse por los bordes. */
+  min-height: 34px;
+  padding: 0 13px 0 10px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--fs-400);
+  font-weight: 600;
+  box-shadow: var(--sh-pop);
+  cursor: pointer;
+  transition: background .13s, color .13s, transform .13s;
+}
+.pz-anillo__caja em { font-style: normal; font-size: 15px; opacity: .7; }
+.pz-anillo__caja:hover { background: var(--color-accent); color: #fff; transform: translate(-50%, -50%) scale(1.05); }
+.pz-anillo__caja:hover em { opacity: 1; }
+.pz-anillo__caja:focus-visible { outline: 2px solid var(--color-ball); outline-offset: 2px; }
+
+/* Lo que todavía no existe se ve apagado, con su motivo en el título.
+   Apagado enseña el plan; escondido lo convierte en un olvido. */
+.pz-anillo__caja.is-pendiente {
+  background: var(--surface-2);
+  color: var(--color-text-muted);
+  box-shadow: var(--sh-1);
+  cursor: not-allowed;
+  opacity: .7;
+}
+.pz-anillo__caja.is-pendiente:hover { background: var(--surface-2); color: var(--color-text-muted); transform: translate(-50%, -50%); }
+
+.pz-anillo__centro {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 7px 15px;
+  border-radius: var(--r-pill);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: var(--fs-400);
+  box-shadow: var(--sh-pop);
+}
+.pz-anillo__centro b { font-weight: 700; }
+.pz-anillo__centro small { opacity: .82; font-size: var(--fs-300); }
+
+.pz-anillo__mas {
+  pointer-events: auto;
+  min-height: 30px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--fs-300);
+  box-shadow: var(--sh-2);
+  cursor: pointer;
+}
+.pz-anillo__mas:hover { color: var(--color-accent); }
