@@ -25,6 +25,7 @@ import {
   nuevoTrazo, desdePuntos, nodosFijos, moverNodo, insertarEn,
   curvar, enderezar, alternarCurva, esCurvo, borrarNodo,
   longitudMetros, rotulo, duracionDe, suavizar,
+  RADIO_NODO, nodoEn, segmentoEn,
 } from '../js/pizarra/trazo.js';
 import { flattenPath } from '../js/canvas/geometry.js';
 import { marcoDe } from '../js/canvas/medidas.js';
@@ -247,6 +248,85 @@ test('entradas imposibles no rompen nada', () => {
 
 test('la tolerancia es la de la especificación', () => {
   eq(TOLERANCIA_SUAVIZADO, 0.25);
+});
+
+/* ── Acertar: con qué se ha pinchado ─────────────── */
+
+test('se acierta un nodo dentro del agarre, y fuera no', () => {
+  const t = nuevoTrazo({ x: 0.3, y: 0.3 }, { x: 0.7, y: 0.7 });
+  eq(nodoEn(t, { x: 0.3, y: 0.3 }, { tolerancia: 0.5 }), 0, 'justo encima del primero:');
+  eq(nodoEn(t, { x: 0.7, y: 0.7 }, { tolerancia: 0.5 }), 1, 'justo encima del segundo:');
+  eq(nodoEn(t, { x: 0.5, y: 0.5 }, { tolerancia: 0.5 }), -1, 'en medio no hay ningún nodo:');
+  eq(nodoEn([], { x: 0.5, y: 0.5 }), -1, 'un trazo vacío no acierta nada');
+  eq(nodoEn(null, { x: 0.5, y: 0.5 }), -1, 'ni uno que no existe');
+});
+
+test('gana el nodo MÁS CERCANO, no el primero que pille', () => {
+  /* En un trazo apretado dos nodos caen dentro del agarre a la vez.
+     Cogiendo siempre el de menor índice, el último de un rizo no se
+     podría tocar nunca. */
+  const t = desdePuntos([{ x: 0.50, y: 0.50 }, { x: 0.52, y: 0.50 }, { x: 0.90, y: 0.90 }]);
+  eq(nodoEn(t, { x: 0.519, y: 0.50 }, { tolerancia: 1.5 }), 1, 'pinchando pegado al segundo:');
+  eq(nodoEn(t, { x: 0.501, y: 0.50 }, { tolerancia: 1.5 }), 0, 'y pegado al primero:');
+});
+
+test('EL AGARRE SE MIDE EN METROS, y por eso el marco estirado no engaña', () => {
+  /* La entera son 18 × 27 m sobre un marco cuadrado: el mismo 0,02
+     normalizado son 36 cm a lo ancho y 54 a lo largo. Con un agarre de
+     0,45 m, el de a lo ancho entra y el de a lo largo no. En unidades
+     normalizadas los dos darían lo mismo, que es el fallo. */
+  const t = nuevoTrazo({ x: 0.5, y: 0.5 }, { x: 0.9, y: 0.9 });
+  const o = { pista: 'entera', tolerancia: 0.45 };
+  eq(nodoEn(t, { x: 0.52, y: 0.50 }, o), 0, '36 cm a lo ancho: se acierta');
+  eq(nodoEn(t, { x: 0.50, y: 0.52 }, o), -1, '54 cm a lo largo: no');
+});
+
+test('se acierta la LÍNEA, y dice en qué segmento y dónde', () => {
+  const t = desdePuntos([{ x: 0.2, y: 0.2 }, { x: 0.5, y: 0.2 }, { x: 0.8, y: 0.2 }]);
+  const a = segmentoEn(t, { x: 0.35, y: 0.2 }, { tolerancia: 0.5 });
+  eq(a.seg, 0, 'la primera mitad es el segmento 0:');
+  const b = segmentoEn(t, { x: 0.65, y: 0.2 }, { tolerancia: 0.5 });
+  eq(b.seg, 1, 'la segunda es el 1:');
+  aprox(b.punto.y, 0.2, 1e-6, 'el punto cae sobre la línea:');
+  eq(segmentoEn(t, { x: 0.35, y: 0.6 }, { tolerancia: 0.5 }), null, 'lejos de la línea no acierta');
+});
+
+test('SE ACIERTA LA CURVA QUE SE VE, no la recta entre sus nodos', () => {
+  /* Es la razón de aplanar. En un trazo curvado la recta de nodo a
+     nodo pasa por dentro del arco: pinchando sobre la línea dibujada
+     diría «no has acertado», y pinchando en el hueco diría que sí. */
+  const curvo = curvar(desdePuntos([{ x: 0.2, y: 0.5 }, { x: 0.5, y: 0.35 }, { x: 0.8, y: 0.5 }]), 1);
+  const flat = flattenPath(curvo);
+  const enLaCurva = flat[Math.floor(flat.length / 4)];
+  ok(segmentoEn(curvo, enLaCurva, { tolerancia: 0.15 }), 'sobre la curva dibujada hay que acertar');
+  const cuerda = nuevoTrazo(curvo[0], curvo[2]);
+  eq(segmentoEn(cuerda, enLaCurva, { tolerancia: 0.15 }), null, 'contra la cuerda, ese punto no acierta');
+});
+
+test('un trazo de menos de dos nodos no tiene línea que acertar', () => {
+  eq(segmentoEn([], { x: 0.5, y: 0.5 }), null);
+  eq(segmentoEn([{ x: 0.5, y: 0.5 }], { x: 0.5, y: 0.5 }), null);
+  eq(segmentoEn(null, { x: 0.5, y: 0.5 }), null);
+});
+
+test('PINCHAR LA LÍNEA E INSERTAR NO CAMBIA EL TRAZO', () => {
+  /* Las dos piezas del §5.2 juntas: se pincha, sale un segmento y un
+     punto, y `insertarEn` mete ahí un nodo ya curvado y tangente. Si el
+     trazo cambiara de forma al insertar, el entrenador vería dar un
+     tirón a lo que acaba de dibujar. */
+  const t = curvar(desdePuntos([{ x: 0.2, y: 0.7 }, { x: 0.5, y: 0.4 }, { x: 0.8, y: 0.7 }]), 1);
+  const antes = longitudMetros(t, 'entera');
+  const golpe = segmentoEn(t, flattenPath(t)[6], { tolerancia: 0.3 });
+  ok(golpe, 'tiene que acertar sobre su propia curva');
+  const t2 = insertarEn(t, golpe.seg, golpe.punto);
+  eq(t2.length, t.length + 1, 'hay un nodo más:');
+  ok(esCurvo(t2[golpe.seg + 1]), 'y sale curvo, como manda el §5.2');
+  const despues = longitudMetros(t2, 'entera');
+  ok(Math.abs(despues - antes) < 0.35, `el trazo no puede pegar un tirón: ${antes} a ${despues}`);
+});
+
+test('el radio de reserva es un número de METROS razonable en una pista', () => {
+  ok(RADIO_NODO > 0.2 && RADIO_NODO < 1.5, `${RADIO_NODO} m no es un agarre de nodo`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

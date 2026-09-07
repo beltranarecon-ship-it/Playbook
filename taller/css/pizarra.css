@@ -140,3 +140,37 @@
   cursor: pointer;
 }
 .pz-anillo__mas:hover { color: var(--color-accent); }
+
+/* ---- Los botoncitos del dedo, junto a un nodo (§5.2) -------
+   Con ratón no salen: ahí el doble clic curva y Supr borra, que es más
+   rápido. Con el dedo no hay ninguna de las dos cosas, así que tocar un
+   nodo saca estos dos. Van en píxeles de PANTALLA como el anillo: el
+   dedo mide lo que mide a cualquier zoom. */
+.pz-nodo { position: absolute; inset: 0; z-index: 22; pointer-events: none; }
+
+.pz-nodo__caja {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.pz-nodo__b {
+  /* 44 px de lado, que es el mínimo del §2.6: por debajo se falla el
+     toque y se acaba moviendo el nodo en vez de pulsar el botón. */
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 17px;
+  line-height: 1;
+  box-shadow: var(--sh-pop);
+  cursor: pointer;
+}
+.pz-nodo__b:hover { background: var(--color-accent); color: #fff; }
+.pz-nodo__b:focus-visible { outline: 2px solid var(--color-ball); outline-offset: 2px; }

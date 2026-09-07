@@ -31,7 +31,12 @@
 
 import { manejadoresTangentes, flattenPath } from '../canvas/geometry.js';
 import { marcoDe } from '../canvas/medidas.js';
-import { metrosEntre } from '../canvas/escala.js';
+import { metrosEntre, escalaDe } from '../canvas/escala.js';
+
+/** Radio de agarre de un nodo por defecto, en METROS. Es solo el
+ *  valor de reserva: quien pincha manda el suyo, sacado de sus 44 px
+ *  de agarre (§2.6) y del zoom que haya en ese momento. */
+export const RADIO_NODO = 0.50;
 
 /** Cuánto se simplifica un trazo hecho a pulso, en METROS (§5.1). */
 export const TOLERANCIA_SUAVIZADO = 0.25;
@@ -156,6 +161,81 @@ export function borrarNodo(trazo, i, tipo = 'run') {
   if (trazo.length <= 2) return trazo;
   if (nodosFijos(tipo, trazo.length).has(i)) return trazo;
   return trazo.filter((_, k) => k !== i);
+}
+
+/* ── Acertar ────────────────────────────────────────
+
+   Con qué se ha acertado al pinchar: un nodo, la línea, o nada.
+
+   Va aquí y no en el editor porque es geometría del trazo, se prueba
+   en Node y no necesita ni canvas ni punteros. Quien pincha solo tiene
+   que traducir su área de agarre — 44 px con el dedo (§2.6) — a metros
+   con el zoom que haya en ese momento, y preguntar.
+
+   EN METROS, como todo lo demás: en píxeles se acertaría más lejos al
+   alejar el zoom, y en normalizado el margen valdría distinto a lo
+   ancho que a lo largo, así que la misma línea sería más fácil de
+   agarrar en diagonal que en vertical.
+   ────────────────────────────────────────────────── */
+
+/** El punto de `a`→`b` más cercano a `p`, y a cuántos metros queda.
+ *  Se proyecta en el espacio de METROS —multiplicando cada eje por su
+ *  escala— y se vuelve: proyectar en normalizado daría el pie de
+ *  perpendicular de un marco estirado, que no es el de la pista. */
+function masCercaDelSegmento(p, a, b, e) {
+  const ax = a.x * e.x, ay = a.y * e.y;
+  const bx = b.x * e.x, by = b.y * e.y;
+  const px = p.x * e.x, py = p.y * e.y;
+  const dx = bx - ax, dy = by - ay;
+  const largo = dx * dx + dy * dy;
+  const t = largo > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / largo)) : 0;
+  const qx = ax + dx * t, qy = ay + dy * t;
+  return { t, metros: Math.hypot(px - qx, py - qy), punto: { x: qx / e.x, y: qy / e.y } };
+}
+
+/**
+ * Con qué nodo se ha acertado, o -1 si con ninguno.
+ *
+ * Gana el MÁS CERCANO y no el primero: en un trazo apretado dos nodos
+ * caen dentro del área de agarre a la vez, y coger siempre el de menor
+ * índice haría que el último de un rizo no se pudiera tocar nunca.
+ */
+export function nodoEn(trazo, punto, { pista = 'entera', tolerancia = RADIO_NODO } = {}) {
+  let mejor = -1, corta = Infinity;
+  for (let i = 0; i < (trazo || []).length; i++) {
+    const d = metrosEntre(pista, trazo[i], punto);
+    if (d <= tolerancia && d < corta) { corta = d; mejor = i; }
+  }
+  return mejor;
+}
+
+/**
+ * Dónde cae un punto sobre la LÍNEA: en qué segmento, en qué sitio
+ * exacto de la curva y a cuántos metros. `null` si no se acertó.
+ *
+ * Se mide sobre la curva APLANADA, no sobre la recta de nodo a nodo:
+ * en un trazo curvado la recta pasa por dentro del arco, así que
+ * pinchar sobre la línea que se ve daría «no has acertado» y pinchar
+ * en el hueco daría «has acertado». Se aplana con el mismo
+ * `flattenPath` que dibuja y que mide, de dos nodos en dos nodos, para
+ * saber a qué segmento pertenece cada tramo.
+ */
+export function segmentoEn(trazo, punto, {
+  pista = 'entera', tolerancia = RADIO_NODO, porSegmento = 22,
+} = {}) {
+  if (!trazo || trazo.length < 2) return null;
+  const e = escalaDe(pista);
+  let mejor = null;
+  for (let i = 0; i < trazo.length - 1; i++) {
+    const flat = flattenPath([trazo[i], trazo[i + 1]], porSegmento);
+    for (let k = 1; k < flat.length; k++) {
+      const c = masCercaDelSegmento(punto, flat[k - 1], flat[k], e);
+      if (c.metros <= tolerancia && (!mejor || c.metros < mejor.metros)) {
+        mejor = { seg: i, punto: c.punto, metros: c.metros };
+      }
+    }
+  }
+  return mejor;
 }
 
 /* ── Medir ─────────────────────────────────────────────────── */
