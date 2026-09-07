@@ -46,6 +46,42 @@
   .court { width: auto; height: clamp(380px, calc(100vh - var(--header-h) - 150px), 820px); }
 }
 
+/* ---- Modo encuadre libre (Pizarra §3.1) --------------------
+   La vista deja de ser una caja con la FORMA de la pista y pasa a ser
+   un HUECO: llena lo que le den los paneles, y la pista se encaja
+   dentro con sus bandas. El zoom y el desplazamiento los pone
+   CourtView en las coordenadas, no aquí: este bloque solo cede el
+   sitio.
+
+   VA DESPUÉS DE LA MEDIA QUERY A PROPÓSITO. `.court--encuadre` y
+   `.court` tienen la MISMA especificidad (0,1,0), así que si este
+   bloque fuera antes, en pantallas de más de 1024 px ganaría la regla
+   de arriba y la pista volvería a medir 820 px de alto en vez de
+   llenar el hueco. Cambiarlo de sitio rompe el modo sin dar ningún
+   error.
+
+   `min-width` y `min-height` a 0 no son decoración: un elemento de
+   rejilla o de flex tiene `min-*: auto` por defecto, y con un canvas
+   dentro que se mide a sí mismo, el contenedor y el lienzo se
+   realimentan y la pista crece sin parar en cada tick del
+   ResizeObserver. */
+.court--encuadre {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* El fondo pasa a colocarse en píxeles desde JS (_pintarFondo), así
+   que aquí solo se sueltan las anclas: sin `inset` y sin los
+   porcentajes del modo paisaje, que se calculaban sobre un contenedor
+   que ya no tiene la forma de la pista. */
+.court--encuadre .court__bg {
+  inset: auto;
+  transform-origin: 50% 50%;
+}
+
 /* ---- Paleta (§7.1) ----------------------------------------- */
 .palette { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .palette__item {

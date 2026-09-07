@@ -6,7 +6,11 @@
 
 import { h } from '../ui/dom.js';
 import { REGLAS, PISTAS_M, marcoDe, pistaANorm } from './medidas.js';
-import { neutro, proyectar, despoyectar, anchoPista, altoPista } from './encuadre.js';
+import {
+  neutro, ajustar, proyectar, despoyectar, anchoPista, altoPista,
+  zoomA as encZoomA, desplazar, limitar, ventana as encVentana,
+  hairline as encHairline, guardable, desdeGuardado,
+} from './encuadre.js';
 
 export const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -61,11 +65,25 @@ export class CourtView {
   // imagen de fondo por CSS (.court--landscape) y se rotan las coordenadas en
   // toPx; los símbolos siguen dibujándose DERECHOS (no se rota el canvas), así
   // que los dorsales quedan legibles. Rotación 90° horaria: (x,y) → (1−y, x).
-  constructor({ pista = 'entera', rotate = 0 } = {}) {
+  constructor({ pista = 'entera', rotate = 0, encuadre = false } = {}) {
     this.rot = rotate === 90 ? 90 : 0;
+    /* ── MODO ENCUADRE LIBRE (§3.1) ───────────────────────────
+       Apagado, la vista es la de siempre: una caja con la FORMA de la
+       pista, que la pista llena entera. Encendido, la vista es un
+       HUECO —lo que sobre entre los paneles de la Pizarra— dentro del
+       cual la pista se encaja, se acerca y se arrastra.
+
+       Es una bandera y no una clase aparte porque lo único que cambia
+       es de dónde sale el encuadre: la conversión de coordenadas, el
+       lienzo, el giro y el dibujo son exactamente los mismos. */
+    this.encuadreLibre = !!encuadre;
     this.bg = h('div', { class: 'court__bg' });
     this.canvas = h('canvas', { class: 'court__layer' });
-    this.root = h('div', { class: 'court' + (this.rot ? ' court--landscape' : '') }, this.bg, this.canvas);
+    this.root = h('div', {
+      class: 'court'
+        + (this.rot ? ' court--landscape' : '')
+        + (this.encuadreLibre ? ' court--encuadre' : ''),
+    }, this.bg, this.canvas);
     this.ctx = this.canvas.getContext('2d');
     this.w = 0; this.h = 0; this.dpr = 1;
     /* ── LA VENTANA Y LA PISTA DEJAN DE SER LO MISMO ──────────
@@ -85,6 +103,10 @@ export class CourtView {
     this.vw = 0; this.vh = 0;
     this.enc = neutro(this.w, this.h, this.rot);
     this.onResize = null;
+    /* Hueco aparte del de redimensionar: mover o acercar la pista NO
+       cambia el tamaño del lienzo, así que quien dibuja necesita
+       enterarse por otro sitio. Un solo hueco, como `onResize`. */
+    this.onEncuadre = null;
     this.setPista(pista);
     this._ro = new ResizeObserver(() => this._resize());
     this._ro.observe(this.root);
@@ -131,9 +153,126 @@ export class CourtView {
    * el sitio donde estabas mirando, y parecería un fallo aleatorio.
    */
   _reencuadrar() {
-    this.enc = neutro(this.vw, this.vh, this.rot);
+    if (!this.encuadreLibre) {
+      this.enc = neutro(this.vw, this.vh, this.rot);
+    } else {
+      /* La BASE (la pista encajada) se recalcula siempre desde la
+         ventana de ahora, porque la ventana cambia al plegar un panel
+         o al girar la tablet. El zoom y el desplazamiento del
+         entrenador se conservan y se vuelven a recortar: perder el
+         sitio donde estabas mirando por haber plegado un panel se lee
+         como un fallo, no como una decisión. */
+      const base = ajustar({ vw: this.vw, vh: this.vh, aspect: this.pista.aspect, rot: this.rot });
+      this.enc = desdeGuardado(base, guardable(this.enc), this.vw, this.vh);
+    }
     this.w = anchoPista(this.enc);
     this.h = altoPista(this.enc);
+    if (this.encuadreLibre) this._pintarFondo();
+  }
+
+  /**
+   * Coloca la imagen de la pista donde diga el encuadre.
+   *
+   * En modo clásico no se toca: el fondo llena el elemento entero por
+   * CSS y ya está. En modo encuadre el fondo es un rectángulo dentro
+   * de un hueco mayor, así que hay que darle sitio y tamaño a mano.
+   *
+   * Girado 90° el rectángulo del fondo es el TRASPUESTO del de la
+   * pista —alto por ancho— y se gira sobre su centro, que es la misma
+   * cuenta que hace hoy `.court--landscape .court__bg` con
+   * porcentajes; aquí va en píxeles porque el contenedor ya no tiene
+   * la forma de la pista.
+   */
+  _pintarFondo() {
+    const s = this.bg.style;
+    const cx = this.enc.ox + this.w / 2;
+    const cy = this.enc.oy + this.h / 2;
+    if (this.rot === 90) {
+      s.left = `${cx - this.h / 2}px`;
+      s.top = `${cy - this.w / 2}px`;
+      s.width = `${this.h}px`;
+      s.height = `${this.w}px`;
+      s.transform = 'rotate(90deg)';
+    } else {
+      s.left = `${this.enc.ox}px`;
+      s.top = `${this.enc.oy}px`;
+      s.width = `${this.w}px`;
+      s.height = `${this.h}px`;
+      s.transform = 'none';
+    }
+  }
+
+  /* ---- lo que solo usa el modo encuadre (§3.1) ----------------
+     Nada de esto lo llama todavía nadie: la Pizarra se monta encima en
+     el paso siguiente. En modo clásico siguen funcionando —el
+     encuadre neutro es un encuadre válido—, simplemente no hacen
+     nada interesante. */
+
+  /** Como `toNorm`, pero SIN recortar a [0,1]: ver encuadre.js. */
+  toNormRaw(px, py) { return despoyectar(this.enc, px, py); }
+
+  /** Píxeles del lienzo bajo el puntero (sin convertir a normalizado). */
+  pointerPx(ev) {
+    const r = this.canvas.getBoundingClientRect();
+    return [ev.clientX - r.left, ev.clientY - r.top];
+  }
+
+  /**
+   * El puntero en normalizado, sin recortar. Es el que usa el acierto
+   * sobre fichas: recortar al borde haría que un clic en la banda
+   * pareciera un clic en la línea de fondo.
+   */
+  pointerNormRaw(ev) {
+    const [px, py] = this.pointerPx(ev);
+    return this.toNormRaw(px, py);
+  }
+
+  /** Qué trozo de pista se ve, en normalizado (para no dibujar el resto). */
+  ventana() { return encVentana(this.enc, this.vw, this.vh); }
+
+  /** Grosor de una línea que debe medir un píxel en pantalla. */
+  hairline(v = 1) { return encHairline(v, this.dpr); }
+
+  /**
+   * Acerca o aleja dejando quieto un punto de la PANTALLA. Sin punto,
+   * el centro de la ventana.
+   */
+  zoomA(escala, cx = this.vw / 2, cy = this.vh / 2) {
+    if (!this.encuadreLibre) return;
+    this._aplicar(limitar(encZoomA(this.enc, escala, cx, cy), this.vw, this.vh));
+  }
+
+  /** Arrastra la pista por un incremento en píxeles de pantalla. */
+  desplazarPx(dx, dy) {
+    if (!this.encuadreLibre) return;
+    this._aplicar(limitar(desplazar(this.enc, dx, dy), this.vw, this.vh));
+  }
+
+  /** Vuelve a la pista entera, encajada y centrada. */
+  encajarPista() {
+    if (!this.encuadreLibre) return;
+    this._aplicar(ajustar({ vw: this.vw, vh: this.vh, aspect: this.pista.aspect, rot: this.rot }));
+  }
+
+  /** El encuadre para guardarlo (localStorage, NO el JSON de la jugada). */
+  encuadreActual() { return guardable(this.enc); }
+
+  /** Repone un encuadre guardado sobre la ventana de ahora. */
+  ponerEncuadre(g) {
+    if (!this.encuadreLibre) return;
+    const base = ajustar({ vw: this.vw, vh: this.vh, aspect: this.pista.aspect, rot: this.rot });
+    this._aplicar(desdeGuardado(base, g, this.vw, this.vh));
+  }
+
+  /* El único sitio por el que se cambia el encuadre en caliente: deja
+     `w`/`h` al día, recoloca el fondo y avisa. No toca el lienzo —el
+     tamaño no ha cambiado—, así que no pasa por `_resize`. */
+  _aplicar(enc) {
+    this.enc = enc;
+    this.w = anchoPista(enc);
+    this.h = altoPista(enc);
+    this._pintarFondo();
+    if (this.onEncuadre) this.onEncuadre();
   }
 
   /* La cuenta ya no vive aquí: la hace canvas/encuadre.js, que es un
