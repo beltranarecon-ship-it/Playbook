@@ -6,6 +6,7 @@
    ============================================================ */
 
 import { PISTAS } from './court.js';
+import { neutro, proyectar } from './encuadre.js';
 import { AnimationEngine } from './engine.js';
 import { soloPrimeraRonda } from '../ia/rondas.js';
 
@@ -38,8 +39,16 @@ class Off {
     this.ctx = this.canvas.getContext('2d'); this.w = w; this.h = h;
     this.rot = rot === 90 ? 90 : 0;
     this.pista = PISTAS[pistaKey] || PISTAS.entera;
+    /* La cuenta de normalizado a píxeles la hace canvas/encuadre.js,
+       igual que CourtView. Estaba copiada a mano aquí y era la única
+       vez que la fórmula vivía en dos sitios: el día que cambiara
+       —al meter el zoom de la Pizarra, sin ir más lejos— la miniatura
+       se habría quedado dibujando en otro lado sin que nada fallara.
+       El encuadre NEUTRO es exactamente `x*w`, así que el póster sale
+       píxel por píxel igual que antes. */
+    this.enc = neutro(w, h, this.rot);
   }
-  toPx(x, y) { return this.rot ? [(1 - y) * this.w, x * this.h] : [x * this.w, y * this.h]; }
+  toPx(x, y) { return proyectar(this.enc, x, y); }
   clear() { this.ctx.clearRect(0, 0, this.w, this.h); }
   basket(which) { return this.pista.baskets[which] || this.pista.baskets.norte; }
 }

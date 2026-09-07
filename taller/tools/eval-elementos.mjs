@@ -19,7 +19,7 @@
 
 import {
   EQUIPOS, crear, anadir, quitar, mover, renumerar, numeroDe,
-  asignarBalon, soltarBalon, llevaBalon, seguirAlPortador,
+  asignarBalon, soltarBalon, llevaBalon, seguirAlPortador, sitioDelBalon, SEPARACION_BALON,
   enJuego, jugadoresEnJuego, recuento, radioMetros, reiniciarIds,
 } from '../js/pizarra/elementos.js';
 import {
@@ -94,14 +94,34 @@ test('los cuatro equipos existen y uno inventado cae en el primero', () => {
 
 /* ── 2. El balón ─────────────────────────────────────────── */
 
-test('asignar un balón lo centra en el jugador y lo marca como suyo', () => {
+test('asignar un balón lo pone AL LADO del jugador, no encima', () => {
   let l = anadir([], jug('A'), 0.3, 0.4);
   l = anadir(l, { kind: 'balon' }, 0.9, 0.9);
   const [j, b] = l;
   l = asignarBalon(l, b.id, j.id);
   const balon = l.find((e) => e.kind === 'balon');
-  eq([balon.x, balon.y, balon.portador_id], [0.3, 0.4, j.id]);
+  eq(balon.portador_id, j.id);
+  eq([balon.x, balon.y], [sitioDelBalon(j).x, sitioDelBalon(j).y]);
+  ok(balon.x !== j.x, 'centrado le robaría el clic al jugador');
   eq(llevaBalon(l, j.id), true);
+});
+
+test('el balón al lado NO le roba el centro al jugador, y al revés', () => {
+  // es la razón entera de que vaya al lado: con los dos a distancia
+  // cero, el balón —que se dibuja después— ganaba siempre el empate y
+  // un jugador con balón no se podía arrastrar
+  const P = 'entera';
+  let l = anadir([], jug('A'), 0.4, 0.4);
+  l = anadir(l, { kind: 'balon' }, 0.9, 0.9);
+  l = asignarBalon(l, l[1].id, l[0].id, P);
+  const j = l[0], b = l.find((e) => e.kind === 'balon');
+  eq(acierto(l, { x: j.x, y: j.y }, { pista: P }).id, j.id, 'en el centro del jugador gana el jugador:');
+  eq(acierto(l, { x: b.x, y: b.y }, { pista: P }).id, b.id, 'en el centro del balón gana el balón:');
+});
+
+test('si el jugador está pegado al borde derecho, el balón va al otro lado', () => {
+  const j = { x: 0.995, y: 0.5 };
+  ok(sitioDelBalon(j, 'entera').x < j.x, 'no puede salirse del lienzo');
 });
 
 test('un jugador lleva como mucho UNO: el anterior se suelta, no desaparece', () => {
@@ -117,24 +137,32 @@ test('un jugador lleva como mucho UNO: el anterior se suelta, no desaparece', ()
   eq(balones.find((b) => b.id === b1.id).portador_id, null, 'el primero se ha soltado:');
 });
 
-test('el balón asignado sigue al jugador cuando se mueve', () => {
+test('el balón asignado sigue al jugador, conservando el costado', () => {
   let l = anadir([], jug('A'), 0.3, 0.4);
   l = anadir(l, { kind: 'balon' }, 0.9, 0.9);
   l = asignarBalon(l, l[1].id, l[0].id);
   l = mover(l, { [l[0].id]: { x: 0.7, y: 0.2 } });
   l = seguirAlPortador(l);
   const b = l.find((e) => e.kind === 'balon');
-  eq([b.x, b.y], [0.7, 0.2]);
+  const esperado = sitioDelBalon({ x: 0.7, y: 0.2 });
+  eq([b.x, b.y], [esperado.x, esperado.y]);
 });
 
 test('borrar al portador deja el balón suelto, no colgando de un fantasma', () => {
   let l = anadir([], jug('A'), 0.3, 0.4);
   l = anadir(l, { kind: 'balon' }, 0.9, 0.9);
   l = asignarBalon(l, l[1].id, l[0].id);
+  const sitio = sitioDelBalon(l[0]);
   l = quitar(l, l[0].id);
   const b = l.find((e) => e.kind === 'balon');
   eq(b.portador_id, null);
-  eq([b.x, b.y], [0.3, 0.4], 'se queda donde estaba, no vuelve al origen:');
+  eq([b.x, b.y], [sitio.x, sitio.y], 'se queda donde estaba, no vuelve al origen:');
+});
+
+test('la separación es la acordada y deja hueco entre los dos discos', () => {
+  eq(SEPARACION_BALON, 0.75);
+  ok(SEPARACION_BALON > radioMetros('jugador'),
+    'tiene que salir del disco del jugador o vuelve el empate del acierto');
 });
 
 test('soltar el balón lo deja donde esté', () => {

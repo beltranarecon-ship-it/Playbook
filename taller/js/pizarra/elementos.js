@@ -17,7 +17,36 @@
    cada sitio ni acordarse de hacerlo.
    ============================================================ */
 
-import { TAMANOS } from '../canvas/medidas.js';
+import { TAMANOS, marcoDe } from '../canvas/medidas.js';
+
+/**
+ * A qué distancia del jugador se pone su balón, EN METROS.
+ *
+ * Va al lado y no centrado, y el motivo no es estético: centrado, el
+ * balón y el jugador están a distancia cero, y como el balón se dibuja
+ * después ganaba siempre el acierto — un jugador con balón no se podía
+ * arrastrar.
+ *
+ * 0,75 m es la distancia a la que ninguno de los dos le roba el centro
+ * al otro: el jugador tiene radio 0,65 y el balón 0,35, así que
+ * pinchando el centro del balón el jugador ya está fuera de alcance, y
+ * al revés. Más cerca y vuelve el empate; más lejos y deja de leerse
+ * como «lo lleva él».
+ *
+ * El motor de animación tendrá que usar ESTE mismo número cuando se
+ * reescriba (hoy usa 0,012 normalizado, que son 22 cm y esconde el
+ * balón dentro de la ficha). Si no, el balón saldría en un sitio en la
+ * pizarra y en otro al animar.
+ */
+export const SEPARACION_BALON = 0.75;
+
+/** Dónde le toca al balón de este jugador. A su derecha, como en el
+ *  motor; recortado para que no se salga del lienzo. */
+export function sitioDelBalon(jugador, pista = 'entera') {
+  const dx = SEPARACION_BALON / marcoDe(pista).ancho;
+  const x = jugador.x + dx;
+  return { x: x > 1 ? jugador.x - dx : x, y: jugador.y };
+}
 
 export const EQUIPOS = ['A', 'B', 'C', 'D'];
 
@@ -134,12 +163,13 @@ export function mover(lista, movimientos) {
  * suelta donde está en vez de desaparecer: perder un balón de la
  * pizarra sin decirlo es peor que dejarlo en el suelo.
  */
-export function asignarBalon(lista, balonId, jugadorId) {
+export function asignarBalon(lista, balonId, jugadorId, pista = 'entera') {
   const jugador = lista.find((e) => e.id === jugadorId && e.kind === 'jugador');
   const balon = lista.find((e) => e.id === balonId && e.kind === 'balon');
   if (!jugador || !balon) return lista;
+  const sitio = sitioDelBalon(jugador, pista);
   return lista.map((e) => {
-    if (e.id === balonId) return { ...e, portador_id: jugadorId, x: jugador.x, y: jugador.y };
+    if (e.id === balonId) return { ...e, portador_id: jugadorId, ...sitio };
     if (e.kind === 'balon' && e.portador_id === jugadorId) return { ...e, portador_id: null };
     return e;
   });
@@ -158,13 +188,14 @@ export const llevaBalon = (lista, jugadorId) => lista.some((e) => e.kind === 'ba
  * mover: si no, arrastrar a un jugador con balón dejaría el balón
  * atrás y habría que acordarse de moverlo en cada sitio que mueva algo.
  */
-export function seguirAlPortador(lista) {
+export function seguirAlPortador(lista, pista = 'entera') {
   const donde = new Map(lista.filter((e) => e.kind === 'jugador').map((e) => [e.id, e]));
   return lista.map((e) => {
     if (e.kind !== 'balon' || !e.portador_id) return e;
     const j = donde.get(e.portador_id);
-    if (!j || (e.x === j.x && e.y === j.y)) return e;
-    return { ...e, x: j.x, y: j.y };
+    if (!j) return e;
+    const s = sitioDelBalon(j, pista);
+    return (e.x === s.x && e.y === s.y) ? e : { ...e, ...s };
   });
 }
 

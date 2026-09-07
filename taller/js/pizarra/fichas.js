@@ -32,7 +32,7 @@
 import { COLORS } from '../canvas/colors.js';
 import { drawPlayer, drawBall, drawCone, drawPelotaTenis, drawEscalera, drawZona } from '../canvas/symbols.js';
 import { contornoDe, centroDe } from '../canvas/zonas.js';
-import { mover, seguirAlPortador, numeroDe, llevaBalon } from './elementos.js';
+import { mover, seguirAlPortador, soltarBalon, numeroDe, llevaBalon } from './elementos.js';
 import { acierto, marcoDesde, enMarco, alPinchar, alMarcar } from './seleccion.js';
 import { puntosDeIman, imantar } from './iman.js';
 import { guiasDe, hayGuias } from './guias.js';
@@ -69,7 +69,7 @@ export class Fichas {
   }
 
   _cambio(elementos) {
-    this.elementos = seguirAlPortador(elementos);
+    this.elementos = seguirAlPortador(elementos, this.lienzo.vista.pistaKey);
     this.onCambio?.(this.elementos, this.seleccion);
     this.lienzo.pintar();
   }
@@ -89,21 +89,7 @@ export class Fichas {
        se necesita en metros: es lo único que hay que traducir, y se
        traduce con el zoom de AHORA. */
     const minimoM = l.metros(intento.agarrePx);
-    /* Un balón ASIGNADO no se puede coger, y esto no es un capricho:
-       se dibuja centrado en su jugador (§7.3), así que los dos están a
-       distancia cero y el balón —que se pinta después— ganaba siempre
-       el empate. El resultado era que un jugador con balón no se podía
-       mover: arrastrabas el balón, y al soltar `seguirAlPortador` lo
-       devolvía encima del jugador, que no se había movido.
-
-       Mientras tenga dueño, el balón es parte de la ficha: se mueve
-       con ella y se suelta desde el panel. Queda anotado que el §7.3
-       también decía «arrastrarlo fuera lo suelta», y eso con el balón
-       centrado no puede funcionar — hay que decidir si el balón se
-       dibuja centrado o junto a la ficha, como ya hace el motor de
-       animación. */
-    const asignados = this.elementos.filter((e) => e.kind === 'balon' && e.portador_id).map((e) => e.id);
-    const bajoElDedo = acierto(this.elementos, intento, { pista, minimoM, excluir: asignados });
+    const bajoElDedo = acierto(this.elementos, intento, { pista, minimoM });
 
     if (!bajoElDedo) return this._marcar(intento);
 
@@ -135,10 +121,18 @@ export class Fichas {
       posiciones: this.posiciones, excluir: [...this.seleccion],
     });
 
+    /* Arrastrar un balón que llevaba alguien lo SUELTA (§7.3). Es lo
+       que hace falta el balón al lado de la ficha y no encima: si
+       estuviera centrado no habría dónde cogerlo. */
+    const soltarAlMover = agarrado.kind === 'balon' && agarrado.portador_id;
+
     return {
       mover: (p) => {
         let ancla = { x: p.x, y: p.y };
         this._pegado = null;
+        if (soltarAlMover && this.elementos.find((e) => e.id === agarrado.id)?.portador_id) {
+          this.elementos = soltarBalon(this.elementos, agarrado.id);
+        }
         /* El imán solo actúa sobre la ficha AGARRADA; las demás la
            siguen. Pegar cada una por su cuenta desharía la figura que
            el entrenador acababa de colocar. */
