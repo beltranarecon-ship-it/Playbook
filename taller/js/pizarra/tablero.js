@@ -37,7 +37,7 @@
 
 import { Fichas } from './fichas.js';
 import { Anillo } from './anillo.js';
-import { Dibujo, ritmoDe } from './dibujo.js';
+import { Dibujo, ritmoDe, tipoFlecha } from './dibujo.js';
 import { Nodos } from './nodos.js';
 import { Repaso } from './repaso.js';
 import { drawArrow } from '../canvas/arrows.js';
@@ -45,9 +45,10 @@ import { flattenPath } from '../canvas/geometry.js';
 import {
   estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS,
 } from './repertorio.js';
-import { segmentoEn, RADIO_NODO } from './trazo.js';
+import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon } from './elementos.js';
 import { acierto } from './seleccion.js';
+import { tieneDestinoPropio, destinoDe } from './destino.js';
 
 let siguiente = 1;
 
@@ -83,7 +84,7 @@ export class Tablero {
     const comun = { canasta, posiciones, elementos: () => this.fichas.elementos };
 
     this.fichas = new Fichas(lienzo, { canasta, posiciones });
-    this.fichas.onTocarFicha = (e) => this._tocarFicha(e);
+    this.fichas.onTocarFicha = (e, o) => this._tocarFicha(e, o);
     this.fichas.onTocarSuelo = (p) => this._tocarSuelo(p);
 
     this.repaso = new Repaso(lienzo, { onFin: () => this._pintarAyuda() });
@@ -98,7 +99,12 @@ export class Tablero {
        Va antes de que nadie lo reproduzca: `_trazoHecho` cambia el
        modelo y DESPUÉS llama a `reproducir`, así que esto no se come el
        repaso que acaba de nacer. */
-    this.fichas.onCambio = () => this.repaso.parar();
+    this.fichas.onCambio = (elementos) => {
+      this.repaso.parar();
+      this._seguirALasFichas(elementos);
+      this._recordarDonde(elementos);
+    };
+    this._donde = new Map();
 
     this.anillo = new Anillo(lienzo.el, {
       onElegir: (slug, datos) => this._elegir(slug, datos),
@@ -155,8 +161,54 @@ export class Tablero {
     this.tramos = [];
     this.repaso.parar();
     this.fichas.poner(elementos);
+    this._recordarDonde(elementos);
     this.onTramos?.(this.tramos);
     this._pintarAyuda();
+  }
+
+  _recordarDonde(elementos) {
+    this._donde = new Map((elementos || []).map((e) => [e.id, { x: e.x, y: e.y }]));
+  }
+
+  /**
+   * EL TRAZO SIGUE A SU FICHA, ESTIRÁNDOSE.
+   *
+   * Arrastrar una ficha que ya tiene trazos los dejaba huérfanos:
+   * apuntando desde donde estaba a donde estaba, mientras ella se iba
+   * sola por la pista.
+   *
+   * Lo que se mueve es el FINAL del último tramo, no el arranque, y no
+   * es un capricho: la ficha se dibuja en la punta de su trazo —ahí la
+   * dejó—, así que lo que hay debajo del dedo cuando la arrastras es
+   * ese final. El arranque se queda clavado donde empezó la jugada, que
+   * es la mitad que importa conservar. Corregir el arranque es mover su
+   * nodo, y para eso está el editor.
+   *
+   * Solo los tramos que ESTA ficha recorre: un pase lo recorre el balón,
+   * así que mover al pasador no toca su pase.
+   */
+  _seguirALasFichas(elementos) {
+    if (!this.tramos.length || !this._donde.size) return;
+    let tramos = this.tramos;
+    let toco = false;
+    for (const e of elementos || []) {
+      const antes = this._donde.get(e.id);
+      if (!antes || (antes.x === e.x && antes.y === e.y)) continue;
+      const mios = tramos.filter((t) => t.corre_id === e.id);
+      if (!mios.length) continue;
+      const ultimo = mios[mios.length - 1];
+      const fin = ultimo.trazo.length - 1;
+      if (ultimo.trazo[fin].x === e.x && ultimo.trazo[fin].y === e.y) continue;
+      const trazo = moverNodo(ultimo.trazo, fin, { x: e.x, y: e.y });
+      tramos = tramos.map((t) => (t.id === ultimo.id ? { ...t, trazo } : t));
+      toco = true;
+      if (this._editando && this._editando.id === ultimo.id) this.nodos.refrescar(trazo);
+    }
+    if (!toco) return;
+    this.tramos = tramos;
+    if (this._editando) this._editando = tramos.find((t) => t.id === this._editando.id) || null;
+    this.onTramos?.(this.tramos);
+    this.lienzo.pintar();
   }
 
   /** Lo que la ficha puede hacer AHORA: lo que haya ido encadenando
@@ -193,8 +245,12 @@ export class Tablero {
 
   /* ---- el bucle ---------------------------------------------- */
 
-  _tocarFicha(elemento) {
+  _tocarFicha(elemento, { tipoPuntero } = {}) {
     if (this.dibujo.dibujando) return;   // en mitad de un trazo no se abre nada
+    /* Con qué se ha abierto el anillo viaja hasta el modo destino: la
+       barra de ayuda tiene que nombrar Alt o «mantén pulsado» desde el
+       primer momento, no a partir del primer gesto. */
+    this._conDedo = tipoPuntero === 'touch';
     this.nodos.soltar();
     this._abrirAnillo(elemento, elemento);
   }
@@ -282,9 +338,40 @@ export class Tablero {
 
     this.anillo.cerrar();
 
-    if (!necesita(accion).destino) { this.onSinSoporte?.(accion); this._pintarAyuda(); return; }
+    /* Lo que pide algo que esta capa no sabe preguntar —el desenlace de
+       un tiro, el compañero de un bloqueo— se declara y se para aquí. */
+    const pide = necesita(accion);
+    if (pide.desenlace || pide.companero) { this.onSinSoporte?.(accion); this._pintarAyuda(); return; }
+
+    /* LO QUE YA SABE A DÓNDE VA, NO SE PREGUNTA. «Entra» va al aro y
+       «recoge» va a por el balón suelto: el catálogo lo dice, así que se
+       calcula el trazo y se dibuja hecho. Si no gusta, se pincha y se
+       mueven sus nodos, que es lo que ya funciona — la decisión tomada
+       es automático y ajustable. */
+    if (tieneDestinoPropio(accion)) {
+      const d = destinoDe(accion, elemento, {
+        pista: this.lienzo.vista.pistaKey,
+        canasta: this.canasta,
+        elementos: this.fichas.elementos,
+      });
+      if (!d.punto) { this.onNoPuede?.(accion, d.motivo); this._pintarAyuda(); return; }
+      this._trazoHecho({
+        elemento, accion, variante,
+        trazo: nuevoTrazo({ x: elemento.x, y: elemento.y }, d.punto),
+        tipo: tipoFlecha(accion),
+        /* Cuál era el balón, si iba a por uno. Viene de `destinoDe`, que
+           es quien lo eligió: buscarlo otra vez en la punta del trazo no
+           vale, porque la ficha se para NOVENTA CENTÍMETROS antes de
+           llegar —para no taparlo— y a esa distancia el acierto ya no
+           lo alcanza. */
+        balon: d.balon || null,
+      });
+      return;
+    }
+
+    if (!pide.destino) { this.onSinSoporte?.(accion); this._pintarAyuda(); return; }
     this._enCurso = { elemento, accion, variante };
-    this.dibujo.empezar({ elemento, accion, variante });
+    this.dibujo.empezar({ elemento, accion, variante, conDedo: this._conDedo });
   }
 
   /** El motivo por el que esta ficha no puede hacer esto ahora, o
@@ -315,11 +402,16 @@ export class Tablero {
    * «conBalón» la próxima vez que se la toque. Si termina en el suelo,
    * es un pase a un sitio y el balón se queda ahí.
    */
-  _trazoHecho({ elemento, accion, variante, trazo, tipo }) {
+  _trazoHecho({ elemento, accion, variante, trazo, tipo, balon = null }) {
     const fin = trazo[trazo.length - 1];
     const ritmo = ritmoDe(accion);
     const pista = this.lienzo.vista.pistaKey;
-    const vuelaElBalon = accion.familia === 'balon';
+    /* «Recoge» es familia balón pero NO vuela el balón: el que va es el
+       jugador, a por él. Metido en el mismo saco que el pase, la ficha
+       se quedaba quieta y lo que se movía era el balón —al revés de lo
+       que dice la acción. */
+    const recogiendo = (accion.parametros && accion.parametros.modo) === 'recoge';
+    const vuelaElBalon = accion.familia === 'balon' && !recogiendo;
 
     let lista = this.fichas.elementos;
     let corre = elemento;
@@ -337,6 +429,9 @@ export class Tablero {
       }
     } else {
       lista = mover(lista, { [elemento.id]: { x: fin.x, y: fin.y } });
+      /* Y si iba a por un balón, al llegar se lo queda: si no, el trazo
+         acabaría a su lado y el balón seguiría suelto para siempre. */
+      if (recogiendo && balon) lista = asignarBalon(lista, balon, elemento.id, pista);
     }
 
     this.tramos = [...this.tramos, {

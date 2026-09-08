@@ -205,8 +205,12 @@ export function balonesDelTablero(elementos = []) {
    agosto: dónde muere una finalización y dónde se para quien va a por
    el balón. Ni encima del aro (la ficha taparía la canasta) ni a tres
    metros. */
-const METROS_FINALIZACION = 1.1;
-const METROS_RECOGIDA = 0.9;
+/* Se exportan porque la Pizarra calcula los mismos destinos mientras se
+   dibuja (pizarra/destino.js): con dos copias del número, el trazo que
+   enseña el anillo y el que anima el motor acabarían a distinta
+   distancia del aro sin que nada lo dijera. */
+export const METROS_FINALIZACION = 1.1;
+export const METROS_RECOGIDA = 0.9;
 
 /* ---- timings por tipo de fase (constantes de siempre) --------------- */
 const TIEMPOS = {

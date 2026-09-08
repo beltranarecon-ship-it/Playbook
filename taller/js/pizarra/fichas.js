@@ -55,7 +55,7 @@ export class Fichas {
        dos empiezan con el mismo `pointerdown`, así que quien quiera
        distinguirlos tiene que esperar a saber cómo acabó — y eso solo
        lo sabe el motor de gestos, que es quien avisa aquí. */
-    this.onTocarFicha = null;  // (elemento)
+    this.onTocarFicha = null;  // (elemento, {tipoPuntero})
     this.onTocarSuelo = null;  // ({x,y,tipoPuntero}) donde y con que se toco
 
     this._marco = null;        // el marco de selección mientras se arrastra
@@ -162,7 +162,7 @@ export class Fichas {
         this._cambio(mover(this.elementos, destinos));
       },
       soltar: () => { this._guias = null; this._pegado = null; this.lienzo.pintar(); },
-      tocar: () => { this._guias = null; this._pegado = null; this.onTocarFicha?.(agarrado); },
+      tocar: (p) => { this._guias = null; this._pegado = null; this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero }); },
       abortar: () => {
         /* No ha pasado: todo vuelve a donde estaba. Es lo que hace que
            apoyar el meñique a mitad de un arrastre no deje la ficha en

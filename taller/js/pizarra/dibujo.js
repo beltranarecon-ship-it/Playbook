@@ -62,9 +62,25 @@ export function ritmoDe(accion) {
   return RITMOS[r] ? r : 'normal';
 }
 
+/** Cuánto hay que dejar el dedo quieto para que sea «marca un punto»
+ *  y no «termina aquí». 400 ms es lo que usan las listas de iOS y
+ *  Android para su menú contextual: por debajo se dispara sin querer al
+ *  apuntar, y por encima se siente colgado. */
+export const PULSACION_LARGA = 400;
+
+/** Y cuánto se puede mover el dedo sin que deje de ser una pulsación
+ *  quieta. Un dedo apoyado nunca está del todo parado. */
+export const TEMBLOR_PX = 8;
+
 const AYUDAS = {
-  destino: 'Clic para el destino · <b>Alt</b>+clic añade un punto por el camino · arrastra para dibujarlo a pulso · <b>Intro</b> termina · <b>Esc</b> cancela',
-  siguiendo: 'Clic para terminar aquí · <b>Alt</b>+clic para seguir marcando · <b>Intro</b> termina · <b>Esc</b> cancela',
+  mouse: {
+    destino: 'Clic para el destino · <b>Alt</b>+clic añade un punto por el camino · arrastra para dibujarlo a pulso · <b>Intro</b> termina · <b>Esc</b> cancela',
+    siguiendo: 'Clic para terminar aquí · <b>Alt</b>+clic para seguir marcando · <b>Intro</b> termina · <b>Esc</b> cancela',
+  },
+  touch: {
+    destino: 'Toca el destino · <b>mantén pulsado</b> para añadir un punto por el camino · arrastra para dibujarlo a pulso',
+    siguiendo: 'Toca para terminar aquí · <b>mantén pulsado</b> para seguir marcando',
+  },
 };
 
 export class Dibujo {
@@ -90,6 +106,9 @@ export class Dibujo {
 
     this.activo = null;    // { elemento, accion, variante, tipo, ritmo, nodos, puntero, pegado, aPulso }
     this._puntos = null;   // el trazo a pulso mientras se dibuja
+    this._conDedo = false; // con qué se está dibujando, para la ayuda
+    this._reloj = null;    // el temporizador de la pulsación larga
+    this._marcado = false; // la pulsación larga ya puso su nodo
 
     this._quitarCapas = [
       lienzo.capa('dibujo', (c) => this._dibujar(c), { tipo: 'mundo', orden: 20 }),
@@ -108,15 +127,22 @@ export class Dibujo {
 
   get dibujando() { return !!this.activo; }
 
-  /** El texto que la barra de arriba tiene que estar enseñando. */
+  /** El texto que la barra de arriba tiene que estar enseñando. Cambia
+   *  con el puntero: nombrar Alt e Intro en una tablet es prometer
+   *  teclas que no hay. */
   ayuda() {
     if (!this.activo) return null;
-    return this.activo.nodos.length ? AYUDAS.siguiendo : AYUDAS.destino;
+    const juego = this._conDedo ? AYUDAS.touch : AYUDAS.mouse;
+    return this.activo.nodos.length ? juego.siguiendo : juego.destino;
   }
 
   /* ---- entrar y salir ---------------------------------------- */
 
-  empezar({ elemento, accion, variante = null }) {
+  /** @param conDedo  con qué se ha llegado hasta aquí. La barra de
+   *  ayuda lo necesita ANTES del primer gesto: si se espera a saberlo
+   *  por el puntero, el texto de la primera vez siempre está al revés. */
+  empezar({ elemento, accion, variante = null, conDedo = false }) {
+    this._conDedo = !!conDedo;
     this.activo = {
       elemento,
       accion,
@@ -142,6 +168,7 @@ export class Dibujo {
 
   cancelar() {
     if (!this.activo) return;
+    this._pararReloj();
     this.activo = null;
     this._puntos = null;
     this.onCancelar?.();
@@ -160,6 +187,7 @@ export class Dibujo {
       ? desdePuntos([origen, ...a.nodos, fin])
       : nuevoTrazo(origen, fin);
     const datos = { elemento: a.elemento, accion: a.accion, variante: a.variante, trazo, tipo: a.tipo };
+    this._pararReloj();
     this.activo = null;
     this._puntos = null;
     this.onTrazo?.(datos);
@@ -202,11 +230,38 @@ export class Dibujo {
   _atender(intento) {
     if (!this.activo) return null;
     const a = this.activo;
+    this._conDedo = intento.tipoPuntero === 'touch';
     this._apuntar({ x: intento.x, y: intento.y }, intento.shift);
     this.lienzo.pintar();
 
+    /* MANTENER PULSADO ES EL Alt DEL DEDO (§5.1, principio 5).
+       Alt+clic resuelve la ambigüedad entre «termina» y «sigue
+       marcando» sin esperas, pero en una tablet no hay Alt, y sin él el
+       segundo de los tres gestos desaparecía: en táctil no había manera
+       de poner un punto por el camino. Dejar el dedo quieto 400 ms lo
+       dice igual de claro y no depende de ninguna tecla.
+
+       Solo con el dedo: con ratón, esperar cuatro décimas para nada
+       sería un castigo, y Alt ya está ahí. */
+    this._pararReloj();
+    this._marcado = false;
+    if (this._conDedo) {
+      const donde = { x: intento.x, y: intento.y, shift: intento.shift };
+      this._reloj = setTimeout(() => {
+        this._reloj = null;
+        if (!this.activo || this._puntos) return;
+        this._apuntar(donde, donde.shift);
+        a.nodos.push({ ...a.puntero });
+        this._marcado = true;
+        this.onCambio?.();
+        this.lienzo.pintar();
+      }, PULSACION_LARGA);
+    }
+
     return {
       mover: (p) => {
+        /* Se ha movido: ya no es una pulsación quieta. */
+        if (Math.hypot(p.dpx, p.dpy) > TEMBLOR_PX) this._pararReloj();
         /* Se ha movido con el puntero apoyado: es un trazo A PULSO. Se
            van guardando todas las muestras y al soltar se simplifican
            (§5.1); guardar la polilínea cruda dejaría doscientos nodos
@@ -226,6 +281,7 @@ export class Dibujo {
         this.lienzo.pintar();
       },
       soltar: (p) => {
+        this._pararReloj();
         if (this._puntos && this._puntos.length > 2) {
           /* El imán también vale para lo dibujado a pulso. Se pintaba el
              círculo naranja del sitio al que se iba a pegar y luego el
@@ -255,6 +311,11 @@ export class Dibujo {
         this.terminar({ x: p.x, y: p.y });
       },
       tocar: (p) => {
+        this._pararReloj();
+        /* Si la pulsación larga ya puso su nodo, levantar el dedo no
+           termina nada: el trazo sigue abierto, que es justo lo que se
+           ha pedido al mantenerlo. */
+        if (this._marcado) { this._marcado = false; return; }
         this._apuntar({ x: p.x, y: p.y }, p.shift);
         if (p.alt) {
           /* Alt: un punto más por el camino, y el trazo sigue abierto.
@@ -268,6 +329,8 @@ export class Dibujo {
         this.terminar(a.puntero);
       },
       abortar: () => {
+        this._pararReloj();
+        this._marcado = false;
         /* ABORTAR TIRA EL GESTO, NO EL MODO. Lo que aborta un gesto es
            casi siempre un segundo dedo — alguien que apoya el meñique o
            que va a hacer zoom a mitad de un trazo. Cancelando el modo
@@ -349,7 +412,12 @@ export class Dibujo {
     }
   }
 
+  _pararReloj() {
+    if (this._reloj) { clearTimeout(this._reloj); this._reloj = null; }
+  }
+
   destroy() {
+    this._pararReloj();
     this.lienzo.el.removeEventListener('pointermove', this._onMoverRaton);
     this.lienzo.el.removeEventListener('keydown', this._onTecla);
     this._quitarCapas.forEach((f) => f());

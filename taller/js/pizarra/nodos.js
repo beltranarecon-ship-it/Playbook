@@ -156,6 +156,19 @@ export class Nodos {
     });
   }
 
+  /** Cambia el trazo que se está editando SIN reiniciar la edición.
+   *  Lo usa quien lo tenga guardado cuando cambia por fuera — arrastrar
+   *  la ficha estira su trazo, y el editor tiene que estar mirando el
+   *  mismo que todos los demás. Volver a llamar a `editar()` serviría,
+   *  pero perdería el nodo elegido a mitad de la corrección. */
+  refrescar(trazo) {
+    if (!this.trazo || !trazo) return;
+    this.trazo = trazo;
+    this._fijos = nodosFijos(this.tipo, trazo.length);
+    if (this.sel >= trazo.length) this.sel = -1;
+    this.lienzo.pintar();
+  }
+
   soltar() {
     if (!this.trazo) return;
     this.trazo = null;
