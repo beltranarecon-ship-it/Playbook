@@ -439,6 +439,10 @@ export class Tablero {
       elemento_id: elemento.id,
       corre_id: corre.id,
       receptor_id: receptor ? receptor.id : null,
+      /* Qué balón se va a recoger. Lo necesitan los arranques del §6.3:
+         ir a por un balón suelto no puede empezar antes de que esté
+         suelto, y para saber cuándo lo está hay que saber cuál es. */
+      balon_id: recogiendo ? balon : null,
       accion: accion.slug,
       variante,
       trazo, tipo, ritmo,
