@@ -183,7 +183,8 @@ test('reproducir dos veces seguidas CORTA el anterior, no lo encadena', () => {
     r.reproducir({ elemento: { id: 'j1' }, trazo: largo, ritmo: 'normal' });
     r.reproducir({ elemento: { id: 'j2' }, trazo: largo, ritmo: 'normal' });
     ok(banco.pendientes() <= 2, `dos repasos seguidos dejan ${banco.pendientes()} callbacks vivos`);
-    eq(r.activo.id, 'j2', 'manda el último:');
+    ok(r.activo.porElemento.has('j2'), 'manda el último:');
+    ok(!r.activo.porElemento.has('j1'), 'y el anterior ya no está:');
     r.destroy();
   } finally { banco.soltar(); }
 });
@@ -200,6 +201,97 @@ test('el gancho `donde` solo habla de quien viaja', () => {
     eq(r.donde(null), null, 'y nada no rompe');
     r.parar();
     eq(r.donde({ id: 'j1', kind: 'jugador' }), null, 'parado, cada uno donde dice el modelo:');
+    r.destroy();
+  } finally { banco.soltar(); }
+});
+
+/* ── Una fase entera: varios carriles a la vez (§6.1) ──── */
+
+test('LOS CARRILES VAN EN PARALELO, cada uno arrancando cuando le toca', () => {
+  const banco = bancoDePruebas();
+  try {
+    const r = new Repaso(lienzoDeMentira());
+    const a = nuevoTrazo({ x: 0.2, y: 0.8 }, { x: 0.2, y: 0.2 });
+    const b = nuevoTrazo({ x: 0.8, y: 0.8 }, { x: 0.8, y: 0.2 });
+    r.reproducirFase({ tramos: [
+      { corre_id: 'A1', trazo: a, inicio_ms: 0, duracion_ms: 1000 },
+      { corre_id: 'A2', trazo: b, inicio_ms: 500, duracion_ms: 1000 },
+    ] });
+    /* En el instante cero: A1 ya en su salida y A2 también en la suya,
+       porque todavía no le toca. Lo importante es que A2 NO esté en su
+       destino, que es donde el modelo le tiene puesto. */
+    const p1 = r.posicion('A1'), p2 = r.posicion('A2');
+    ok(p1 && p2, 'los dos tienen sitio desde el principio');
+    aprox(p2.y, 0.8, 1e-6, 'A2 espera EN SU ARRANQUE, no en su destino:');
+    eq(r.posicion('A9'), null, 'quien no sale en la fase no se pinta en otro sitio:');
+    /* Y a mitad: A1 ya casi ha llegado y A2 acaba de arrancar. */
+    r.activo.t0 -= 750;
+    const q1 = r.posicion('A1'), q2 = r.posicion('A2');
+    ok(q1.y < 0.4, `A1 tendría que ir por el final de su trazo: ${q1.y}`);
+    ok(q2.y > 0.6 && q2.y < 0.8, `y A2 recén salido: ${q2.y}`);
+    r.destroy();
+  } finally { banco.soltar(); }
+});
+
+test('entre dos tramos suyos, la ficha se queda donde acabó el primero', () => {
+  const banco = bancoDePruebas();
+  try {
+    const r = new Repaso(lienzoDeMentira());
+    r.reproducirFase({ tramos: [
+      { corre_id: 'A1', trazo: nuevoTrazo({ x: 0.2, y: 0.8 }, { x: 0.5, y: 0.5 }), inicio_ms: 0, duracion_ms: 1 },
+      { corre_id: 'A1', trazo: nuevoTrazo({ x: 0.5, y: 0.5 }, { x: 0.9, y: 0.1 }), inicio_ms: 100000, duracion_ms: 1000 },
+    ] });
+    /* Se ADELANTA EL RELOJ cinco segundos en vez de esperarlos: así la
+       prueba no depende del reloj de pared, que en un banco es la
+       diferencia entre verde siempre y verde casi siempre. */
+    r.activo.t0 -= 5000;
+    /* El primero ya ha acabado y el segundo tarda un siglo en empezar:
+       tiene que estar plantada en el final del primero, y no de vuelta
+       en su salida ni ya en el destino final. */
+    const p = r.posicion('A1');
+    aprox(p.x, 0.5, 1e-6, 'esperando donde acabó el primero:');
+    aprox(p.y, 0.5, 1e-6);
+    r.destroy();
+  } finally { banco.soltar(); }
+});
+
+test('la fase dura hasta que acaba el carril más largo', () => {
+  const banco = bancoDePruebas();
+  try {
+    const r = new Repaso(lienzoDeMentira());
+    r.reproducirFase({ tramos: [
+      { corre_id: 'A1', trazo: largo, inicio_ms: 0, duracion_ms: 1000 },
+      { corre_id: 'A2', trazo: largo, inicio_ms: 2000, duracion_ms: 1500 },
+    ] });
+    eq(r.activo.dur, 3500, 'el que arranca tarde y dura mucho manda:');
+    r.destroy();
+  } finally { banco.soltar(); }
+});
+
+test('un tramo sin longitud no arrastra a los demás: se descarta él solo', () => {
+  const banco = bancoDePruebas();
+  try {
+    const r = new Repaso(lienzoDeMentira());
+    r.reproducirFase({ tramos: [
+      { corre_id: 'A1', trazo: nuevoTrazo({ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }), inicio_ms: 0, duracion_ms: 500 },
+      { corre_id: 'A2', trazo: largo, inicio_ms: 0, duracion_ms: 1000 },
+    ] });
+    ok(r.corriendo, 'la fase sigue reproduciéndose');
+    eq(r.posicion('A1'), null, 'el de longitud cero no se pinta en ningún sitio raro:');
+    ok(r.posicion('A2'), 'y el otro sí');
+    r.destroy();
+  } finally { banco.soltar(); }
+});
+
+test('una fase sin nada que reproducir avisa y no se queda corriendo', () => {
+  const banco = bancoDePruebas();
+  try {
+    let fines = 0;
+    const r = new Repaso(lienzoDeMentira(), { onFin: () => { fines++; } });
+    r.reproducirFase({ tramos: [] });
+    eq(r.corriendo, false);
+    eq(fines, 1, 'avisa de que ha terminado, para que nadie se quede esperando:');
+    eq(banco.pendientes(), 0, 'y no deja nada programado:');
     r.destroy();
   } finally { banco.soltar(); }
 });
