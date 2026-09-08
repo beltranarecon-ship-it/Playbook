@@ -88,6 +88,17 @@ export class Tablero {
 
     this.repaso = new Repaso(lienzo, { onFin: () => this._pintarAyuda() });
     this.fichas.donde = this.repaso.donde;
+    /* CUALQUIER COSA QUE MUEVA LA PISTA CORTA EL REPASO. El repaso dice
+       dónde pintar a quien viaja, así que mientras dura tapa la posición
+       de verdad: arrastrando esa ficha se veía quieta hasta que el
+       repaso terminaba, y entonces aparecía de golpe donde se la había
+       llevado. Un repaso es un golpe de vista de segundo y medio; en
+       cuanto el entrenador hace otra cosa, sobra.
+
+       Va antes de que nadie lo reproduzca: `_trazoHecho` cambia el
+       modelo y DESPUÉS llama a `reproducir`, así que esto no se come el
+       repaso que acaba de nacer. */
+    this.fichas.onCambio = () => this.repaso.parar();
 
     this.anillo = new Anillo(lienzo.el, {
       onElegir: (slug, datos) => this._elegir(slug, datos),
