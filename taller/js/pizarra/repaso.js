@@ -74,6 +74,13 @@ export class Repaso {
   reproducir({ elemento, trazo, ritmo = 'normal' }) {
     if (!trazo || trazo.length < 2 || !elemento) return;
     this.parar();
+    /* UN TRAZO SIN LONGITUD NO SE REPASA. Pasa con soltar el destino
+       justo encima de la ficha, que es un resbalón de lo más normal.
+       Y no es solo que no haya nada que enseñar: `makeSampler` reparte
+       por longitud de arco, con longitud cero se sale de su propia
+       tabla y revienta a mitad del recorrido, dejando el fotograma a
+       medio pintar. */
+    if (longitudMetros(trazo, this.lienzo.vista.pistaKey) < 1e-6) { this.onFin?.(); return; }
     this.activo = {
       id: elemento.id,
       muestra: makeSampler(trazo),

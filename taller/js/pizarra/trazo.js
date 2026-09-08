@@ -247,6 +247,50 @@ export function segmentoEn(trazo, punto, {
   return mejor;
 }
 
+/**
+ * Estira un trazo desde un origen nuevo (§5.5).
+ *
+ * EL DESTINO SE QUEDA QUIETO. Eso es lo que dice la especificación y es
+ * lo único que tiene sentido: el final de un trazo es una decisión del
+ * entrenador —ahí quiere que llegue—, mientras que el arranque es una
+ * consecuencia de dónde acabó lo anterior. Moviendo el trazo entero, un
+ * cambio en la primera fase desbarataba todas las siguientes.
+ *
+ * Los nodos de en medio se reparten PROPORCIONALMENTE, y por longitud
+ * de arco y no por su número: en un trazo con tres nodos juntos al
+ * principio y uno lejos al final, repartir por índice movaría los tres
+ * primeros casi lo mismo y deformaría la curva. Medido en metros, como
+ * todo lo demás.
+ */
+export function reanclar(trazo, origen, pista = 'entera') {
+  if (!trazo || trazo.length < 2 || !origen) return trazo;
+  const dx = origen.x - trazo[0].x;
+  const dy = origen.y - trazo[0].y;
+  if (dx === 0 && dy === 0) return trazo;
+
+  const acum = [0];
+  for (let i = 1; i < trazo.length; i++) {
+    acum.push(acum[i - 1] + metrosEntre(pista, trazo[i - 1], trazo[i]));
+  }
+  const total = acum[acum.length - 1];
+  /* Con longitud cero no hay proporción que repartir: se mueve entero,
+     que es lo único que no deja el trazo del revés. */
+  if (!(total > 0)) return trazo.map((n) => desplazar(n, dx, dy));
+
+  return trazo.map((n, i) => {
+    const peso = 1 - acum[i] / total;
+    return desplazar(n, dx * peso, dy * peso);
+  });
+}
+
+const desplazar = (n, dx, dy) => ({
+  ...n,
+  x: n.x + dx,
+  y: n.y + dy,
+  handle_in: n.handle_in ? { x: n.handle_in.x + dx, y: n.handle_in.y + dy } : null,
+  handle_out: n.handle_out ? { x: n.handle_out.x + dx, y: n.handle_out.y + dy } : null,
+});
+
 /* ── Medir ─────────────────────────────────────────────────── */
 
 /** Lo que mide el trazo recorrido, EN METROS. Se mide sobre la curva

@@ -165,6 +165,7 @@ export class Anillo {
     const r = this.host.getBoundingClientRect();
     const vw = r.width, vh = r.height;
     const radio = radioDe(vw, vh, nivel === 'exterior' ? RADIO_EXTERIOR : RADIO_INTERIOR);
+    this._piezas = [];
 
     this.capa = h('div', { class: 'pz-anillo' });
     /* Un velo transparente por debajo: es lo que convierte «pinchar
@@ -178,11 +179,10 @@ export class Anillo {
       const c = h('div', { class: 'pz-anillo__centro' },
         h('b', null, centro),
         h('small', null, 'o pincha ya en la pista'));
-      c.style.left = `${cx}px`; c.style.top = `${cy}px`;
+      this._piezas.push({ el: c, tipo: 'centro' });
       this.capa.append(c);
     }
 
-    const sitios = repartir(opciones.length, { cx, cy, vw, vh, radio });
     opciones.forEach((o, i) => {
       const b = h('button', {
         class: 'pz-anillo__caja' + (o.pendiente ? ' is-pendiente' : ''),
@@ -190,8 +190,7 @@ export class Anillo {
         title: o.pendiente ? o.motivo : (o.descripcion || o.nombre),
         disabled: o.pendiente ? '' : null,
       }, o.icono ? h('em', null, o.icono) : null, h('span', null, o.nombre));
-      b.style.left = `${sitios[i].x}px`;
-      b.style.top = `${sitios[i].y}px`;
+      this._piezas.push({ el: b, tipo: 'caja', i });
       if (!o.pendiente) {
         b.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); });
         b.addEventListener('click', (ev) => { ev.stopPropagation(); this._elegir(o); });
@@ -200,16 +199,47 @@ export class Anillo {
     });
 
     if (conMas) {
-      const p = posicionMas({ cx, cy, vw, vh, radio });
       const mas = h('button', { class: 'pz-anillo__mas', type: 'button' }, '⋯ más acciones');
-      mas.style.left = `${p.x}px`; mas.style.top = `${p.y}px`;
       mas.addEventListener('pointerdown', (ev) => ev.stopPropagation());
       mas.addEventListener('click', (ev) => { ev.stopPropagation(); this.onElegir?.('__mas__', {}); });
+      this._piezas.push({ el: mas, tipo: 'mas' });
       this.capa.append(mas);
     }
 
     this.host.append(this.capa);
+    this.recolocar(cx, cy);
     return this;
+  }
+
+  /**
+   * Vuelve a poner cada pieza en su sitio para un centro nuevo, SIN
+   * rehacer el DOM.
+   *
+   * Hace falta porque el anillo va en píxeles y la pista se puede mover
+   * debajo de él: la rueda del ratón atraviesa el velo —que solo
+   * intercepta `pointerdown`— y el lienzo acerca o aleja con el anillo
+   * abierto. Sin esto el menú se quedaba clavado donde estaba, flotando
+   * sobre otra ficha. Sin rehacer el DOM porque recrearlo perdería el
+   * foco del teclado y el `:hover` a media pulsación.
+   */
+  recolocar(cx, cy) {
+    if (!this.capa || !this.estado) return;
+    this.estado.cx = cx; this.estado.cy = cy;
+    const r = this.host.getBoundingClientRect();
+    const vw = r.width, vh = r.height;
+    const radio = radioDe(vw, vh, this.estado.nivel === 'exterior' ? RADIO_EXTERIOR : RADIO_INTERIOR);
+    const cajas = this._piezas.filter((p) => p.tipo === 'caja');
+    const sitios = repartir(cajas.length, { cx, cy, vw, vh, radio });
+    for (const p of this._piezas) {
+      if (p.tipo === 'centro') { p.el.style.left = `${cx}px`; p.el.style.top = `${cy}px`; continue; }
+      if (p.tipo === 'mas') {
+        const m = posicionMas({ cx, cy, vw, vh, radio });
+        p.el.style.left = `${m.x}px`; p.el.style.top = `${m.y}px`;
+        continue;
+      }
+      const s = sitios[p.i];
+      if (s) { p.el.style.left = `${s.x}px`; p.el.style.top = `${s.y}px`; }
+    }
   }
 
   _elegir(o) {
@@ -223,6 +253,7 @@ export class Anillo {
     this.capa.remove();
     this.capa = null;
     this.estado = null;
+    this._piezas = [];
     if (porFuera) this.onCerrar?.();
   }
 }

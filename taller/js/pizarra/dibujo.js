@@ -227,7 +227,16 @@ export class Dibujo {
       },
       soltar: (p) => {
         if (this._puntos && this._puntos.length > 2) {
+          /* El imán también vale para lo dibujado a pulso. Se pintaba el
+             círculo naranja del sitio al que se iba a pegar y luego el
+             trazo acababa donde estuviera la yema: la ayuda enseñaba una
+             cosa y quedaba otra. */
+          this._apuntar({ x: p.x, y: p.y }, p.shift);
           const pulso = suavizar(this._puntos, { pista: this.lienzo.vista.pistaKey });
+          if (a.pegado && pulso.length) {
+            const u = pulso.length - 1;
+            pulso[u] = { ...pulso[u], x: a.pegado.x, y: a.pegado.y };
+          }
           /* Lo marcado a mano por delante y lo dibujado a pulso detrás.
              `suavizar` ya devuelve su primer nodo en el punto de
              arranque, que es el último de Alt, así que se descarta para

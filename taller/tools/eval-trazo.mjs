@@ -25,7 +25,7 @@ import {
   nuevoTrazo, desdePuntos, nodosFijos, moverNodo, insertarEn,
   curvar, enderezar, alternarCurva, esCurvo, borrarNodo,
   longitudMetros, rotulo, duracionDe, suavizar,
-  RADIO_NODO, nodoEn, segmentoEn,
+  RADIO_NODO, nodoEn, segmentoEn, reanclar,
 } from '../js/pizarra/trazo.js';
 import { flattenPath } from '../js/canvas/geometry.js';
 import { tipoFlecha } from '../js/pizarra/dibujo.js';
@@ -347,6 +347,78 @@ test('PINCHAR LA LÍNEA E INSERTAR NO CAMBIA EL TRAZO', () => {
 
 test('el radio de reserva es un número de METROS razonable en una pista', () => {
   ok(RADIO_NODO > 0.2 && RADIO_NODO < 1.5, `${RADIO_NODO} m no es un agarre de nodo`);
+});
+
+/* ── Reanclado (§5.5) ────────────────────────── */
+
+test('EL DESTINO SE QUEDA QUIETO y el trazo se estira desde el nuevo origen', () => {
+  /* Lo que dice el §5.5, y lo único que tiene sentido: el final de un
+     trazo es una decisión —ahí quiere que llegue— y el arranque es una
+     consecuencia de dónde acabó lo anterior. */
+  const t = desdePuntos([{ x: 0.2, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.8, y: 0.8 }]);
+  const r = reanclar(t, { x: 0.3, y: 0.1 }, 'entera');
+  aprox(r[0].x, 0.3, 1e-12, 'el origen va donde se le dice:');
+  aprox(r[0].y, 0.1, 1e-12);
+  aprox(r[2].x, 0.8, 1e-12, 'y el destino NO se mueve:');
+  aprox(r[2].y, 0.8, 1e-12);
+});
+
+test('los de en medio se reparten, ni se quedan ni se van del todo', () => {
+  const t = desdePuntos([{ x: 0.2, y: 0.5 }, { x: 0.5, y: 0.5 }, { x: 0.8, y: 0.5 }]);
+  const r = reanclar(t, { x: 0.2, y: 0.9 }, 'entera');
+  ok(r[1].y > 0.5 && r[1].y < 0.9, `el de en medio tiene que quedar entre los dos: ${r[1].y}`);
+  // a mitad de camino en longitud, la mitad del desplazamiento
+  aprox(r[1].y, 0.7, 1e-9, 'justo en la mitad:');
+});
+
+test('SE REPARTE POR LONGITUD, no por número de nodo', () => {
+  /* Tres nodos apretados al principio y uno lejos al final. Repartiendo
+     por índice, los tres primeros se moverían casi lo mismo y la curva
+     saldría deformada. */
+  const t = desdePuntos([
+    { x: 0.10, y: 0.5 }, { x: 0.12, y: 0.5 }, { x: 0.14, y: 0.5 }, { x: 0.90, y: 0.5 },
+  ]);
+  const r = reanclar(t, { x: 0.10, y: 0.9 }, 'entera');
+  const d = r.map((n, i) => n.y - t[i].y);
+  ok(d[1] > 0.35 && d[2] > 0.35, `los pegados al origen se van casi entero con él: ${d}`);
+  aprox(d[3], 0, 1e-12, 'y el último no se mueve:');
+  ok(d[0] > d[1] && d[1] > d[2] && d[2] > d[3], `tiene que ir bajando: ${d}`);
+});
+
+test('los manejadores van con su nodo, o la curva se deforma', () => {
+  const t = curvar(desdePuntos([{ x: 0.2, y: 0.7 }, { x: 0.5, y: 0.4 }, { x: 0.8, y: 0.7 }]), 1);
+  const r = reanclar(t, { x: 0.1, y: 0.8 }, 'entera');
+  ok(r[1].handle_in && r[1].handle_out, 'siguen existiendo');
+  aprox(r[1].handle_in.x - r[1].x, t[1].handle_in.x - t[1].x, 1e-12, 'el manejador guarda su distancia al nodo:');
+  aprox(r[1].handle_out.y - r[1].y, t[1].handle_out.y - t[1].y, 1e-12);
+});
+
+test('reanclar al mismo sitio no toca nada', () => {
+  const t = desdePuntos([{ x: 0.2, y: 0.2 }, { x: 0.8, y: 0.8 }]);
+  eq(reanclar(t, { x: 0.2, y: 0.2 }, 'entera'), t);
+});
+
+test('no muta el trazo que recibe', () => {
+  const t = desdePuntos([{ x: 0.2, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.8, y: 0.8 }]);
+  const copia = JSON.parse(JSON.stringify(t));
+  reanclar(t, { x: 0.9, y: 0.1 }, 'entera');
+  eq(t, copia, 'el original ha cambiado:');
+});
+
+test('un trazo de longitud cero se mueve entero en vez de darse la vuelta', () => {
+  const t = desdePuntos([{ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }]);
+  const r = reanclar(t, { x: 0.7, y: 0.3 }, 'entera');
+  aprox(r[0].x, 0.7, 1e-12); aprox(r[1].x, 0.7, 1e-12);
+  ok(r.every((n) => Number.isFinite(n.x) && Number.isFinite(n.y)), 'nada de NaN');
+});
+
+test('entradas imposibles devuelven lo que había', () => {
+  eq(reanclar(null, { x: 0.5, y: 0.5 }), null);
+  eq(reanclar([], { x: 0.5, y: 0.5 }), []);
+  const uno = [{ x: 0.5, y: 0.5 }];
+  eq(reanclar(uno, { x: 0.1, y: 0.1 }), uno);
+  const t = desdePuntos([{ x: 0.2, y: 0.2 }, { x: 0.8, y: 0.8 }]);
+  eq(reanclar(t, null), t);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

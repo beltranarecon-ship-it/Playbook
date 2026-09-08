@@ -54,8 +54,13 @@ export const HOLGURA_PX = 6;
 /** Dos toques dentro de esto, en el mismo nodo, son un doble clic. */
 export const DOBLE_MS = 350;
 
-/** A qué distancia del nodo salen los botoncitos del dedo. */
+/** A qué distancia del nodo salen los botoncitos del dedo, y cuánto
+ *  ocupa su caja. Los 44 px de lado y los 6 de hueco salen del CSS: si
+ *  cambian allí hay que cambiarlos aquí, o los botones dejarán de
+ *  recortarse bien contra los bordes. */
 const SEPARACION_BOTONES = 34;
+const ANCHO_BOTONES = 44 * 2 + 6;
+const ALTO_BOTONES = 44;
 
 const AYUDAS = {
   mouse: 'Arrastra un nodo · clic en la línea añade uno · doble clic lo curva · <b>Supr</b> lo borra · <b>Esc</b> sale',
@@ -83,7 +88,6 @@ export class Nodos {
     this.ritmo = 'normal';
     this.sel = -1;             // el nodo seleccionado, o -1
     this._fijos = new Set();
-    this._imanes = [];
     this._antes = null;        // para deshacer si el gesto se aborta
     this._ultimo = null;       // { i, t } del toque anterior, para el doble
     this._pegado = null;       // a qué se ha pegado el imán mientras se mueve
@@ -112,7 +116,17 @@ export class Nodos {
 
   /* ---- entrar y salir ---------------------------------------- */
 
-  editar({ trazo, tipo = 'run', ritmo = 'normal' }) {
+  /**
+   * @param excluir   ids que el imán no debe ofrecer. Es el de la ficha
+   *                  que recorre este trazo: está en la punta —porque
+   *                  ahí la dejó el trazo—, así que sin excluirla el
+   *                  último nodo se imanta a sí mismo y no hay manera de
+   *                  afinarlo dentro de sesenta centímetros.
+   * @param conDedo   con qué se ha abierto la edición, para que la barra
+   *                  de ayuda diga lo que se puede hacer DE VERDAD: con
+   *                  el dedo no hay doble clic ni tecla Supr.
+   */
+  editar({ trazo, tipo = 'run', ritmo = 'normal', excluir = [], conDedo = false }) {
     this.trazo = trazo;
     this.tipo = tipo;
     this.ritmo = ritmo;
@@ -120,15 +134,26 @@ export class Nodos {
     this._fijos = nodosFijos(tipo, trazo.length);
     this._ultimo = null;
     this._antes = null;
+    this._excluir = excluir;
+    this._conDedo = !!conDedo;
     this._cerrarBotones();
-    this._imanes = puntosDeIman({
+    this.lienzo.el.focus?.({ preventScroll: true });
+    this.lienzo.pintar();
+  }
+
+  /* Los puntos del imán se sacan AL EMPEZAR CADA GESTO, no al entrar a
+     editar. Editar un trazo no congela la pista: tocar fuera de él deja
+     pasar el gesto a las fichas, que se pueden arrastrar mientras tanto.
+     Con una foto tomada al entrar, el imán seguía pegando a los sitios
+     de antes y anunciando «jugador» donde ya no había nadie. */
+  _imanesDeAhora() {
+    return puntosDeIman({
       pista: this.lienzo.vista.pistaKey,
       canasta: this.canasta,
       elementos: this.elementos() || [],
       posiciones: this.posiciones,
+      excluir: this._excluir,
     });
-    this.lienzo.el.focus?.({ preventScroll: true });
-    this.lienzo.pintar();
   }
 
   soltar() {
@@ -189,12 +214,13 @@ export class Nodos {
     this.sel = i;
     this._cerrarBotones();
     this.lienzo.pintar();
+    const imanes = this._imanesDeAhora();
 
     const mover = (p) => {
       this._pegado = null;
       let destino = { x: p.x, y: p.y };
       if (p.shift) {
-        const q = imantar(destino, this._imanes, this.lienzo.vista.pistaKey);
+        const q = imantar(destino, imanes, this.lienzo.vista.pistaKey);
         if (q) { this._pegado = q; destino = { x: q.x, y: q.y }; }
       }
       this._aplicar(moverNodo(this.trazo, i, destino));
@@ -314,9 +340,17 @@ export class Nodos {
     const caja = this._botones.firstChild;
     /* Encima del nodo, y debajo si arriba no cabe: tapar el nodo que se
        acaba de tocar es lo único que no puede pasar. */
-    const arriba = py - SEPARACION_BOTONES > 4;
-    caja.style.left = `${px}px`;
-    caja.style.top = `${arriba ? py - SEPARACION_BOTONES : py + SEPARACION_BOTONES}px`;
+    const arriba = py - SEPARACION_BOTONES - ALTO_BOTONES / 2 > 0;
+    /* Y recortado contra los CUATRO bordes, contando el tamaño de la
+       caja —que va centrada en su punto por el `translate(-50%,-50%)`
+       del CSS—. Esto solo miraba el eje vertical y además se olvidaba
+       de la mitad de su altura: tocando un nodo pegado a una banda, los
+       botones se salían del lienzo y no se podían pulsar. */
+    const mediaAncho = ANCHO_BOTONES / 2;
+    const mediaAlto = ALTO_BOTONES / 2;
+    const limitar = (v, min, max) => (v < min ? min : v > max ? max : v);
+    caja.style.left = `${limitar(px, mediaAncho, Math.max(mediaAncho, vista.vw - mediaAncho))}px`;
+    caja.style.top = `${limitar(arriba ? py - SEPARACION_BOTONES : py + SEPARACION_BOTONES, mediaAlto, Math.max(mediaAlto, vista.vh - mediaAlto))}px`;
   }
 
   /* ---- dibujo ------------------------------------------------ */

@@ -43,7 +43,7 @@ import { Repaso } from './repaso.js';
 import { drawArrow } from '../canvas/arrows.js';
 import { flattenPath } from '../canvas/geometry.js';
 import {
-  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, trasAccion, ICONOS,
+  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS,
 } from './repertorio.js';
 import { segmentoEn, RADIO_NODO } from './trazo.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon } from './elementos.js';
@@ -69,10 +69,14 @@ export class Tablero {
     this.onNoPuede = onNoPuede;
 
     this.tramos = [];
-    /* Lo que cada ficha tiene en la mano según va encadenando. Es del
-       MOMENTO, no del jugador: la misma ficha ofrece tres anillos
-       distintos a lo largo de una fase. */
-    this.estados = new Map();
+    /* NO HAY UN MAPA DE ESTADOS APARTE, y es a propósito. Lo que cada
+       ficha tiene en la mano es del MOMENTO y no del jugador —la misma
+       ficha ofrece tres anillos distintos a lo largo de una fase—, pero
+       eso ya lo dice la pista: cada tramo deja el balón donde toca. Un
+       cache en paralelo daba la misma respuesta hasta que el entrenador
+       arrastraba el balón a mano, y entonces el anillo ofrecía tirar a
+       quien ya no lo tenía. `trasAccion()` sigue en repertorio.js, que
+       es donde la regla del §4.5 se puede probar en Node. */
     this._enCurso = null;   // { elemento, accion, variante } mientras se traza
     this._editando = null;  // el tramo que se está corrigiendo
 
@@ -107,6 +111,25 @@ export class Tablero {
        fichas: los trazos ya hechos son el fondo sobre el que se
        trabaja, no lo que se está tocando. */
     this._quitarCapa = lienzo.capa('tramos', (c) => this._dibujarTramos(c), { tipo: 'mundo', orden: 12 });
+    /* El anillo vive en píxeles y la pista se mueve debajo de él: la
+       rueda atraviesa el velo, que solo intercepta `pointerdown`. Se
+       recoloca con cada pintada, que es justo cuando la vista ha podido
+       cambiar — el mismo trato que reciben los botoncitos de nodo. */
+    this._quitarCapaAnillo = lienzo.capa('anillo-sitio', ({ vista }) => {
+      if (!this.anillo.abierto || !this._ancla) return;
+      const [x, y] = vista.toPx(this._ancla.en.x, this._ancla.en.y);
+      this.anillo.recolocar(x, y);
+    }, { tipo: 'pantalla', orden: 30 });
+
+    /* `Esc` con el anillo abierto no lo escuchaba nadie: Dibujo y Nodos
+       solo atienden la tecla cuando les toca a ellos, y el Anillo no ata
+       teclado. La barra prometía «Esc cierra» y no pasaba nada. */
+    this._onTecla = (ev) => {
+      if (!this.anillo.abierto || ev.key !== 'Escape') return;
+      ev.preventDefault();
+      this.cerrar();
+    };
+    lienzo.el.addEventListener('keydown', this._onTecla);
   }
 
   /* ---- estado ------------------------------------------------ */
@@ -119,7 +142,6 @@ export class Tablero {
        no está. */
     this.cerrar();
     this.tramos = [];
-    this.estados.clear();
     this.repaso.parar();
     this.fichas.poner(elementos);
     this.onTramos?.(this.tramos);
@@ -130,14 +152,17 @@ export class Tablero {
    *  esta fase, y si no, lo que diga la pista. */
   estadoDe(elemento) {
     if (!elemento) return { llevaBalon: false, esDefensor: false };
-    if (this.estados.has(elemento.id)) return this.estados.get(elemento.id);
-    /* `esDefensor` se queda en false a propósito y no por olvido: el
+    /* MANDA EL MODELO, NO LO GUARDADO. Cada tramo deja el balón donde
+       toca —`asignarBalon`, `soltarBalon`—, así que preguntar a la pista
+       da la misma respuesta que `trasAccion` y además no se queda
+       vieja. Con la respuesta cacheada, arrastrar el balón fuera de un
+       jugador que ya había actuado dejaba su anillo ofreciéndole tirar
+       con las manos vacías.
+
+       `esDefensor` se queda en false a propósito y no por olvido: el
        modelo de elementos.js no tiene rol —un jugador es equipo A o B,
        y eso no dice quién defiende—, y quien lo va a decir es el
-       reparto de marcas del §8, que es de la capa 5. Esto llegó a
-       preguntar por `elemento.rol` y `elemento.tipo`, dos campos que no
-       existen: no daba error, simplemente el anillo del defensor no
-       salía nunca y no había manera de saber por qué. */
+       reparto de marcas del §8, que es de la capa 5. */
     return {
       llevaBalon: llevaBalon(this.fichas.elementos, elemento.id),
       esDefensor: false,
@@ -168,7 +193,7 @@ export class Tablero {
        corregirlo, o cerrar. Se mira primero lo primero, porque un
        trazo pinchado es una intención y el suelo vacío no. */
     const tramo = this._tramoEn(punto);
-    if (tramo) { this._editar(tramo); return; }
+    if (tramo) { this._editar(tramo, punto.tipoPuntero === 'touch'); return; }
     this.cerrar();
   }
 
@@ -183,6 +208,11 @@ export class Tablero {
       cx, cy, opciones: lista, nivel, centro, accion,
       conMas: conMas === null ? resto(estado).length > 0 : conMas,
     });
+    /* Y el foco vuelve al lienzo, como hacen Dibujo y Nodos al entrar.
+       Al abrir el segundo anillo se quita la capa con el botón recién
+       pulsado dentro, y el foco se cae a `document.body`: sin esto, la
+       tecla de arriba no llegaría nunca a quién la escucha. */
+    this.lienzo.el.focus?.({ preventScroll: true });
     this._pintarAyuda();
   }
 
@@ -314,11 +344,6 @@ export class Tablero {
     this.fichas._cambio(lista);
     this.repaso.reproducir({ elemento: corre, trazo, ritmo });
 
-    this.estados.set(elemento.id, trasAccion(this.estadoDe(elemento), accion));
-    /* El receptor tiene que quedar marcado a mano: si ya había actuado
-       esta fase, su estado guardado diría que no lleva balón y ganaría
-       al modelo, que sí lo dice. */
-    if (receptor) this.estados.set(receptor.id, { ...this.estadoDe(receptor), llevaBalon: true });
     this.onTramos?.(this.tramos);
 
     /* Y el anillo vuelve a salir en la punta, ya contextual (§4.5). Se
@@ -353,10 +378,15 @@ export class Tablero {
     return null;
   }
 
-  _editar(tramo) {
+  _editar(tramo, conDedo = false) {
     this.anillo.cerrar();
     this._editando = tramo;
-    this.nodos.editar({ trazo: tramo.trazo, tipo: tramo.tipo, ritmo: tramo.ritmo });
+    this.nodos.editar({
+      trazo: tramo.trazo, tipo: tramo.tipo, ritmo: tramo.ritmo, conDedo,
+      /* Quien recorre este trazo está en su punta, porque ahí lo dejó
+         el trazo. Sin excluirlo, el último nodo se imanta a sí mismo. */
+      excluir: [tramo.corre_id],
+    });
     this._pintarAyuda();
   }
 
@@ -387,10 +417,6 @@ export class Tablero {
         lista = receptor
           ? asignarBalon(soltarBalon(lista, balon.id), balon.id, receptor.id, pista)
           : soltarBalon(lista, balon.id);
-        if (mio.receptor_id && mio.receptor_id !== (receptor && receptor.id)) {
-          this.estados.set(mio.receptor_id, { ...this.estadoDe({ id: mio.receptor_id }), llevaBalon: false });
-        }
-        if (receptor) this.estados.set(receptor.id, { ...this.estadoDe(receptor), llevaBalon: true });
         this.tramos = this.tramos.map((t) => (t.id === id ? { ...t, receptor_id: receptor ? receptor.id : null } : t));
         this._editando = this.tramos.find((t) => t.id === id);
       }
@@ -440,7 +466,9 @@ export class Tablero {
        destruidas. */
     this.lienzo.cancelarGestos?.();
     this.cerrar();
+    this.lienzo.el.removeEventListener('keydown', this._onTecla);
     this._quitarCapa?.();
+    this._quitarCapaAnillo?.();
     this.repaso.destroy();
     this.nodos.destroy();
     this.dibujo.destroy();
