@@ -57,6 +57,14 @@ export class Fichas {
        lo sabe el motor de gestos, que es quien avisa aquí. */
     this.onTocarFicha = null;  // (elemento, {tipoPuntero})
     this.onTocarSuelo = null;  // ({x,y,tipoPuntero}) donde y con que se toco
+    /* Un veto para arrastrar. Devolviendo un motivo, la ficha NO se
+       mueve y quien nos usa lo dice en voz alta. Lo necesita el §6.6:
+       en una fase que no es la primera, el sitio de una ficha es
+       consecuencia de la fase anterior, y moverla ahí sería cambiar algo
+       que se decidió en otro sitio. Se vet a AQUÍ y no después porque
+       dejarla moverse y devolverla luego se ve como un tirón. */
+    this.puedeMover = null;    // (elemento) -> null si se puede, o el motivo
+    this.onVeto = null;        // (elemento, motivo) para poder decirlo
 
     this._marco = null;        // el marco de selección mientras se arrastra
     this._guias = null;        // las guías mientras se mueve algo
@@ -109,7 +117,28 @@ export class Fichas {
     }
     if (!this.seleccion.has(bajoElDedo.id)) return null;   // Shift lo ha quitado
 
+    /* EL VETO ES DEL ARRASTRE, NO DEL TOQUE. Devolviendo `null` aquí, el
+       gesto se iba al suelo y tocar la ficha dejaba de abrir su anillo:
+       en una fase que no es la primera no se podía ni empezar a dibujar.
+       Así que se sigue cogiendo el gesto —para que el toque funcione— y
+       lo que se ignora es el movimiento. */
+    const veto = this.puedeMover?.(bajoElDedo);
+    if (veto) return this._quieta(bajoElDedo, veto);
+
     return this._arrastrar(intento, bajoElDedo);
+  }
+
+  /** Una ficha que no se puede mover: el toque sigue valiendo —abre su
+   *  anillo— y el arrastre solo dice por qué no. Se avisa UNA vez por
+   *  gesto: repetirlo en cada fotograma llenaría la barra de lo mismo. */
+  _quieta(agarrado, motivo) {
+    let dicho = false;
+    return {
+      mover: () => { if (!dicho) { dicho = true; this.onVeto?.(agarrado, motivo); } },
+      soltar: () => {},
+      tocar: (p) => { this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero }); },
+      abortar: () => {},
+    };
   }
 
   /** Mover lo seleccionado. */
