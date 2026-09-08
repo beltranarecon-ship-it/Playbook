@@ -280,7 +280,8 @@ alrededor aparecen sus variantes:
 
 | Tipo | Qué pasa al elegirla |
 |---|---|
-| Con destino (bota, corta, entra, recoge, vuelve a la fila) | Entra en modo destino: dibujas el trazo (§5) |
+| Con destino (bota, corta) | Entra en modo destino: dibujas el trazo (§5) |
+| Con destino PROPIO (entra, recoge, vuelve a la fila) | No se pregunta: el trazo se dibuja hecho hasta donde ya sabe que va —el aro, el balón suelto más cercano, su cola— y se corrige pinchándolo si no gusta. Si el destino no se puede saber todavía (no hay balón suelto, no hay filas), **se dice** y no se dibuja nada |
 | Sin destino (tira, finta, pivota, para, protege) | Se aplica al momento sobre la ficha y se dibuja su símbolo |
 | Entre dos (bloquea, defiende, ayuda, cambia con…) | La ayuda pide «¿a quién?»; pinchas la otra ficha; **el que actúa se desplaza** hasta el sitio que le corresponde y se dibuja el símbolo de la relación |
 | Pasa | Pide receptor: pinchas la ficha (o el suelo, y es un pase a un sitio) |
@@ -316,9 +317,18 @@ Con una ficha seleccionada, la letra lanza la acción sin abrir el anillo.
 
 | Gesto | Resultado |
 |---|---|
-| **Un clic** en el destino | Recta desde la ficha hasta ahí |
-| **Clics sucesivos** | Polilínea, nodo a nodo; **doble clic** o `Intro` termina |
+| **Un clic** (o un toque) en el destino | Recta desde la ficha hasta ahí. Termina el trazo |
+| **Alt + clic** con ratón, **mantener pulsado** con el dedo | Añade un punto por el camino y el trazo **sigue abierto**. `Intro` o un clic normal terminan |
 | **Arrastrar** | Trazo a pulso; al soltar se **suaviza** y se convierte en 4–8 nodos Bézier |
+
+Un clic y varios clics seguidos son **el mismo evento** hasta que llega el
+segundo, así que no se pueden separar por tiempo: esperar 300 ms a ver si viene
+otro haría que el caso más común —una recta— se sintiera pegajoso en todos los
+ejercicios. Alt lo resuelve sin ambigüedad y sin esperas. Como en una tablet no
+hay Alt, y el principio 5 dice que ningún gesto puede depender de una tecla, el
+dedo lo dice manteniendo pulsado **400 ms** — lo mismo que hacen las listas de
+iOS y Android para su menú. La barra de arriba nombra uno u otro según con qué
+se esté dibujando.
 
 Suavizado: simplificación Ramer–Douglas–Peucker con tolerancia **0,25 m**, y
 tangentes calculadas por vecinos (el algoritmo que ya usa `manejadoresTangentes`).
@@ -355,7 +365,16 @@ final. Nada entra en bucle.
 
 Si cambia el arranque de un trazo (porque la fase anterior cambió), **el destino
 se queda quieto** y el trazo se estira desde el nuevo origen. Los nodos
-intermedios se reparten proporcionalmente.
+intermedios se reparten proporcionalmente, **por longitud de arco** y no por
+número de nodo: en un trazo con tres nodos juntos al principio y uno lejos al
+final, repartir por índice deformaría la curva.
+
+**Arrastrar la ficha a mano es otra cosa.** La ficha se dibuja en la punta de su
+trazo —ahí la dejó—, así que lo que hay debajo del dedo al arrastrarla es el
+FINAL: el trazo la sigue estirándose y el arranque se queda clavado donde
+empezó la jugada. Para corregir el arranque se mueve su nodo. Solo se estiran
+los tramos que esa ficha recorre: un pase lo recorre el balón, así que mover al
+pasador no toca su pase.
 
 ---
 
