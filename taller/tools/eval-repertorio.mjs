@@ -18,6 +18,7 @@
 
 import {
   ESTADOS, ANILLO, VARIANTES, estadoDe, anilloDe, resto,
+  trasAccion,
   variantesDe, tieneVariantes, variantePorDefecto, necesita,
 } from '../js/pizarra/repertorio.js';
 import { CATALOGO_SISTEMA, normalizarNombre } from '../js/ia/acciones.js';
@@ -34,6 +35,7 @@ const eq = (real, esp, msg = '') => {
   if (r !== e) throw new Error(`${msg} esperado=${e} real=${r}`);
 };
 const porSlug = new Map(CATALOGO_SISTEMA.map((a) => [a.slug, a]));
+const de = (slug) => porSlug.get(slug);
 
 /* ── 1. El estado, que no es del jugador sino del momento ── */
 
@@ -189,6 +191,54 @@ test('«entra» y «vuelve a la fila» ya saben a dónde van', () => {
 
 test('una acción que no existe no rompe nada', () => {
   eq(necesita(null), { destino: false, companero: false, desenlace: false });
+});
+
+/* ── Qué queda en la mano después (el encadenado del §4.5) ─ */
+
+test('tras pasar o tirar, la ficha se queda SIN balón', () => {
+  const con = { llevaBalon: true };
+  eq(trasAccion(con, de('pasa')).llevaBalon, false);
+  eq(trasAccion(con, de('tira')).llevaBalon, false);
+  eq(estadoDe(trasAccion(con, de('pasa'))), 'sinBalon',
+    'el anillo de la punta de la flecha ya no puede ofrecer tirar');
+});
+
+test('tras recoger, la ficha se queda CON balón', () => {
+  eq(trasAccion({ llevaBalon: false }, de('recoge')).llevaBalon, true);
+  eq(estadoDe(trasAccion({ llevaBalon: false }, de('recoge'))), 'conBalon');
+});
+
+test('botar, cortar o fintar no cambian quién lleva el balón', () => {
+  for (const s of ['bota', 'corta', 'finta', 'bloquea', 'para', 'entra']) {
+    eq(trasAccion({ llevaBalon: true }, de(s)).llevaBalon, true, `${s} con balón:`);
+    eq(trasAccion({ llevaBalon: false }, de(s)).llevaBalon, false, `${s} sin balón:`);
+  }
+});
+
+test('SALE DEL CATÁLOGO, no de una lista escrita otra vez', () => {
+  /* Lo decide `parametros.modo`, que es lo mismo que obedece el motor.
+     Con una lista de slugs aquí, una acción nueva del club que pasara
+     el balón dejaría al encadenado ofreciendo tirar sin balón. */
+  for (const a of CATALOGO_SISTEMA) {
+    const modo = a.parametros && a.parametros.modo;
+    const despues = trasAccion({ llevaBalon: true }, a).llevaBalon;
+    if (modo === 'pase' || modo === 'tiro') ok(!despues, `${a.slug} suelta el balón`);
+    else ok(despues, `${a.slug} no debería quitarlo`);
+  }
+  eq(trasAccion({ llevaBalon: false }, { parametros: { modo: 'recoge' } }).llevaBalon, true,
+    'una acción inventada con modo recoge también lo coge');
+});
+
+test('defender no se pierde por el camino', () => {
+  eq(trasAccion({ esDefensor: true, llevaBalon: false }, de('corta')).esDefensor, true);
+  eq(estadoDe(trasAccion({ esDefensor: true }, de('recoge'))), 'defensor',
+    'quien defiende sigue defendiendo aunque coja un balón');
+});
+
+test('sin estado y sin acción no rompe: se queda como estaba', () => {
+  eq(trasAccion(null, null), { llevaBalon: false, esDefensor: false });
+  eq(trasAccion({ llevaBalon: true }, null), { llevaBalon: true, esDefensor: false });
+  eq(trasAccion(undefined, de('pasa')), { llevaBalon: false, esDefensor: false });
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

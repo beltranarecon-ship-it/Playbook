@@ -98,14 +98,23 @@ export function desdePuntos(puntos) {
  * Qué nodos NO se pueden arrastrar, porque son consecuencia de dónde
  * está una ficha y no de lo que el entrenador decidió:
  *
- *   · el origen de cualquier trazo   (lo pone quien lo hace)
- *   · el final de un PASE            (lo pone quien lo recibe)
+ *   · el origen de cualquier trazo        (lo pone quien lo hace)
+ *   · el final de un PASE o de un TIRO     (lo pone quien lo recibe,
+ *                                            o el aro)
  *
  * Dejar arrastrarlos sería mentir: al recalcular vuelven a su sitio.
+ *
+ * OJO CON LA PALABRA. Lo que circula por la Pizarra como `tipo` es el
+ * TIPO DE FLECHA —'run', 'pass', 'cut', 'gesto'— y no el nombre de la
+ * acción. Esto comparó durante un tiempo con 'pase', que no existe en
+ * ningún sitio, así que la condición no se cumplía nunca y el final de
+ * un pase se podía arrastrar y borrar. No dio ningún error — solo
+ * dejaba de proteger. El banco tampoco lo vio, porque llamaba a esta
+ * función con la palabra equivocada.
  */
 export function nodosFijos(tipo, n) {
   const fijos = new Set([0]);
-  if (tipo === 'pase' && n > 1) fijos.add(n - 1);
+  if (tipo === 'pass' && n > 1) fijos.add(n - 1);
   return fijos;
 }
 

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEV · dibujar en la Pizarra, de punta a punta</title>
+<!--
+  Arnés de la CAPA 2 (dev). NO se sirve en producción.
+
+  ── PARA QUÉ ──────────────────────────────────────────────────
+  La Pizarra de verdad —con sus paneles, su línea de tiempo y su ruta—
+  es de la capa 3. Pero la capa 2 tiene que dejar algo utilizable de
+  punta a punta (§14), y esto es ese punta a punta: el bucle entero de
+  dibujar, sin nada más alrededor.
+
+     tocas una ficha   →  sale su anillo, contextual
+     eliges acción     →  si tiene variantes, segundo anillo
+     eliges destino    →  se dibuja el trazo
+     al soltar         →  se repasa a 1,5× y el anillo vuelve a salir
+                          EN LA PUNTA, ya con el estado nuevo
+     tocas fuera       →  se cierra y se guarda
+
+  Aquí se prueba con el ratón y con el dedo lo que ningún banco de Node
+  puede probar: que los gestos no se pisen, que el anillo caiga donde
+  toca y que lo que se ve al dibujar sea lo que queda dibujado.
+
+  La barra de arriba es la del §2.2 en pequeño: va diciendo qué se
+  puede hacer en cada momento. Sale del propio Tablero, así que si
+  miente, miente la app.
+-->
+<link rel="stylesheet" href="/taller/css/tokens.css">
+<link rel="stylesheet" href="/taller/css/base.css">
+<link rel="stylesheet" href="/taller/css/canvas.css">
+<link rel="stylesheet" href="/taller/css/pizarra.css">
+<style>
+  body { margin: 0; height: 100vh; display: flex; flex-direction: column; background: var(--color-bg); }
+  .barra {
+    flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp-3);
+    padding: 10px 14px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+    font-family: var(--font-body); font-size: var(--fs-300); color: var(--color-text-muted);
+  }
+  .barra b { color: var(--color-text); font-weight: 600; }
+  .barra .sep { margin-left: auto; }
+  .barra button, .barra select {
+    font: inherit; padding: 5px 10px; border: 1px solid var(--color-border);
+    border-radius: var(--r-2); background: var(--color-surface); color: var(--color-text); cursor: pointer;
+  }
+  .cuerpo { flex: 1 1 auto; display: flex; min-height: 0; }
+  .pz-lienzo { flex: 1 1 auto; }
+  .lista {
+    flex: 0 0 270px; overflow: auto; padding: 10px 12px; background: var(--color-surface);
+    border-left: 1px solid var(--color-border); font-family: var(--font-body); font-size: var(--fs-300);
+  }
+  .lista h2 { margin: 0 0 8px; font-size: var(--fs-300); text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); }
+  .lista ol { margin: 0; padding-left: 18px; }
+  .lista li { margin-bottom: 6px; line-height: 1.35; }
+  .lista .vacio { color: var(--color-text-muted); }
+  .aviso { margin-top: 10px; padding: 8px 10px; border-radius: var(--r-2); background: var(--surface-2); color: var(--color-text-muted); line-height: 1.35; }
+</style>
+</head>
+<body>
+  <div class="barra">
+    <span id="ayuda"><b>Toca una ficha</b> para ver qué puede hacer</span>
+    <span class="sep"></span>
+    <select id="pista">
+      <option value="entera">Pista entera</option>
+      <option value="media">Media pista</option>
+    </select>
+    <button id="reiniciar" type="button">Reiniciar</button>
+  </div>
+  <div class="cuerpo">
+    <div id="hueco" style="flex:1 1 auto; min-width:0; display:flex;"></div>
+    <aside class="lista">
+      <h2>Tramos de la fase</h2>
+      <ol id="tramos"></ol>
+      <p class="vacio" id="vacio">Nada dibujado todavía.</p>
+      <div class="aviso" id="aviso" hidden></div>
+    </aside>
+  </div>
+
+<script type="module">
+import { Lienzo } from '/taller/js/pizarra/lienzo.js';
+import { Tablero } from '/taller/js/pizarra/tablero.js';
+import * as E from '/taller/js/pizarra/elementos.js';
+
+const hueco = document.getElementById('hueco');
+const elAyuda = document.getElementById('ayuda');
+const elTramos = document.getElementById('tramos');
+const elVacio = document.getElementById('vacio');
+const elAviso = document.getElementById('aviso');
+let lienzo = null;
+let tablero = null;
+
+function escena(pista) {
+  let l = [];
+  l = E.anadir(l, { kind: 'jugador', equipo: 'A' }, 0.30, 0.72);
+  l = E.anadir(l, { kind: 'jugador', equipo: 'A' }, 0.70, 0.72);
+  l = E.anadir(l, { kind: 'jugador', equipo: 'A' }, 0.50, 0.52);
+  l = E.anadir(l, { kind: 'jugador', equipo: 'B' }, 0.42, 0.34);
+  l = E.anadir(l, { kind: 'balon' }, 0.34, 0.72);
+  const con = l.find((e) => e.kind === 'balon');
+  const uno = l.find((e) => e.kind === 'jugador');
+  return E.asignarBalon(l, con.id, uno.id, pista);
+}
+
+function montar(pista) {
+  tablero?.destroy();
+  lienzo?.destroy?.();
+  hueco.replaceChildren();
+  lienzo = new Lienzo({ pista });
+  hueco.append(lienzo.el);
+  lienzo.medir();
+  tablero = new Tablero(lienzo, {
+    canasta: 'norte',
+    onAyuda: (t) => { elAyuda.innerHTML = t || ''; },
+    onTramos: (ts) => pintarTramos(ts),
+    onSinSoporte: (a) => {
+      elAviso.hidden = false;
+      elAviso.innerHTML = `<b>«${a.nombre}»</b> no se dibuja todavía: es de las capas 3 y 4 (§4.4). Lo que esta capa hace son las acciones con destino.`;
+    },
+    onNoPuede: (a, motivo) => {
+      elAviso.hidden = false;
+      elAviso.innerHTML = `<b>«${a.nombre}»</b> no se puede: ${motivo}.`;
+    },
+  });
+  tablero.poner(escena(pista));
+  pintarTramos([]);
+  window.__tablero = tablero;
+  window.__lienzo = lienzo;
+}
+
+function pintarTramos(ts) {
+  elVacio.hidden = ts.length > 0;
+  elTramos.replaceChildren(...ts.map((t) => {
+    const li = document.createElement('li');
+    li.textContent = `${t.accion}${t.variante ? ` · ${t.variante}` : ''} — ${t.trazo.length} nodos`;
+    return li;
+  }));
+}
+
+document.getElementById('pista').addEventListener('change', (ev) => montar(ev.target.value));
+document.getElementById('reiniciar').addEventListener('click', () => montar(document.getElementById('pista').value));
+montar('entera');
+</script>
+</body>
+</html>

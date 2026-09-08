@@ -50,6 +50,30 @@ export function estadoDe({ llevaBalon = false, esDefensor = false } = {}) {
   return llevaBalon ? 'conBalon' : 'sinBalon';
 }
 
+/**
+ * En qué estado queda la ficha DESPUÉS de hacer esto (§4.5).
+ *
+ * Es lo que hace que el anillo del encadenado sea de verdad
+ * contextual: terminado un pase, el anillo que sale en la punta de la
+ * flecha ya no ofrece tirar. Sin esto el encadenado ofrecería acciones
+ * imposibles y el entrenador tendría que acordarse solo de quién lleva
+ * el balón.
+ *
+ * Lo decide `parametros.modo`, que es lo que el catálogo ya declara y
+ * lo que el motor ya obedece — no una lista de slugs escrita otra vez
+ * aquí, que se quedaría atrás en cuanto el club añadiera una acción.
+ * Defender no cambia con nada de esto: quien defiende sigue
+ * defendiendo hasta que el reparto de roles diga otra cosa, y eso es de
+ * la capa de la defensa.
+ */
+export function trasAccion(estado, accion) {
+  const antes = { llevaBalon: false, esDefensor: false, ...(estado || {}) };
+  const modo = accion && accion.parametros && accion.parametros.modo;
+  if (modo === 'pase' || modo === 'tiro') return { ...antes, llevaBalon: false };
+  if (modo === 'recoge') return { ...antes, llevaBalon: true };
+  return antes;
+}
+
 /* ── El anillo interior ────────────────────────────────────── */
 
 /*
@@ -60,7 +84,10 @@ export function estadoDe({ llevaBalon = false, esDefensor = false } = {}) {
    Los iconos son de una sola figura a propósito: en una casilla de
    treinta píxeles, un dibujo con detalle no se distingue de otro.
 */
-const ICONOS = {
+/** El icono de cada acción. Se exporta porque el anillo de «⋯ más»
+ *  arma sus casillas desde el catálogo y tiene que verse igual que el
+ *  anillo de siempre. */
+export const ICONOS = {
   bota: '⛹', pasa: '➜', tira: '◎', entra: '⇥', finta: '↯', para: '■',
   corta: '⤳', bloquea: '▮', recoge: '↺', vuelve_a_fila: '⟲', pivota: '↻',
   defiende: '⌒', rodea: '∿', cambia_de_mano: '⇄', protege: '⊙',

@@ -210,15 +210,31 @@ export class Dibujo {
         /* Se ha movido con el puntero apoyado: es un trazo A PULSO. Se
            van guardando todas las muestras y al soltar se simplifican
            (§5.1); guardar la polilínea cruda dejaría doscientos nodos
-           imposibles de agarrar. */
-        if (!this._puntos) this._puntos = [{ x: a.elemento.x, y: a.elemento.y }];
+           imposibles de agarrar.
+
+           ARRANCA DONDE SE HABÍA QUEDADO EL TRAZO, no siempre en la
+           ficha: si ya hay puntos puestos con Alt, el pulso los
+           continúa. Empezando siempre en la ficha, los puntos ya
+           marcados se tiraban a la basura al soltar — y encima se
+           seguían pintando, así que parecía que contaban. */
+        if (!this._puntos) {
+          const desde = a.nodos.length ? a.nodos[a.nodos.length - 1] : { x: a.elemento.x, y: a.elemento.y };
+          this._puntos = [{ x: desde.x, y: desde.y }];
+        }
         this._puntos.push({ x: p.x, y: p.y });
         this._apuntar({ x: p.x, y: p.y }, p.shift);
         this.lienzo.pintar();
       },
       soltar: (p) => {
         if (this._puntos && this._puntos.length > 2) {
-          const trazo = suavizar(this._puntos, { pista: this.lienzo.vista.pistaKey });
+          const pulso = suavizar(this._puntos, { pista: this.lienzo.vista.pistaKey });
+          /* Lo marcado a mano por delante y lo dibujado a pulso detrás.
+             `suavizar` ya devuelve su primer nodo en el punto de
+             arranque, que es el último de Alt, así que se descarta para
+             no repetirlo. */
+          const trazo = a.nodos.length
+            ? desdePuntos([{ x: a.elemento.x, y: a.elemento.y }, ...a.nodos]).concat(pulso.slice(1))
+            : pulso;
           const datos = { elemento: a.elemento, accion: a.accion, variante: a.variante, trazo, tipo: a.tipo };
           this.activo = null; this._puntos = null;
           this.onTrazo?.(datos);
@@ -242,7 +258,18 @@ export class Dibujo {
         }
         this.terminar(a.puntero);
       },
-      abortar: () => { this._puntos = null; this.cancelar(); },
+      abortar: () => {
+        /* ABORTAR TIRA EL GESTO, NO EL MODO. Lo que aborta un gesto es
+           casi siempre un segundo dedo — alguien que apoya el meñique o
+           que va a hacer zoom a mitad de un trazo. Cancelando el modo
+           entero, ese pellizco borraba también la acción que se acababa
+           de elegir en el anillo, y había que volver a empezar por el
+           principio. Se tira lo dibujado a pulso en ESTE gesto; la
+           acción, la variante y los puntos ya fijados con Alt siguen
+           donde estaban. Para salir del modo está Esc. */
+        this._puntos = null;
+        this.lienzo.pintar();
+      },
     };
   }
 
@@ -263,12 +290,15 @@ export class Dibujo {
     drawArrow(ctx, px, a.tipo, R.scale);
     ctx.restore();
 
-    // los puntos ya fijados con Alt, para saber cuáles se han puesto
+    /* Los puntos ya fijados con Alt, para saber cuáles se han puesto.
+       En píxeles de PANTALLA y sin `R.scale`, como los tiradores de
+       nodos.js: son interfaz, no dibujo, y tienen que medir lo mismo
+       al 50 % que al 400 %. */
     for (const n of a.nodos) {
       const [x, y] = toPx(n.x, n.y);
       ctx.save();
-      ctx.beginPath(); ctx.arc(x, y, R.scale * 5, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff'; ctx.strokeStyle = COLORS.accent; ctx.lineWidth = R.scale * 2;
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = COLORS.accent; ctx.lineWidth = 2;
       ctx.fill(); ctx.stroke();
       ctx.restore();
     }

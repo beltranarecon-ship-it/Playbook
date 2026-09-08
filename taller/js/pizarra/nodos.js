@@ -330,24 +330,32 @@ export class Nodos {
     const flat = flattenPath(t).map((p) => { const [x, y] = toPx(p.x, p.y); return { x, y }; });
     drawArrow(ctx, flat, this.tipo, R.scale);
 
+    /* LOS NODOS VAN EN PÍXELES DE PANTALLA, SIN `R.scale`.
+       El trazo sí escala con el zoom —es contenido, una línea gruesa
+       vista de cerca es más gruesa—, pero un nodo es un TIRADOR, y un
+       tirador mide lo que mide el dedo. Multiplicarlo por `R.scale`
+       —que sale de `radii(vista.w)`, y `vista.w` crece con el zoom— lo
+       hacía crecer mientras su área de acierto se quedaba en los
+       mismos 11,5 px de `_atender`. Al 400 %, el nodo se veía enorme y
+       pinchando dentro no se cogía. */
     for (let i = 0; i < t.length; i++) {
       const [x, y] = toPx(t[i].x, t[i].y);
       ctx.save();
       if (this._fijos.has(i)) {
         /* Un aro pequeño y discontinuo (§5.3): se ve que está, se ve
            que no se toca, y no se confunde con uno que sí. */
-        ctx.setLineDash([3 * R.scale, 3 * R.scale]);
+        ctx.setLineDash([3, 3]);
         ctx.strokeStyle = 'rgba(255,255,255,.75)';
-        ctx.lineWidth = 1.5 * R.scale;
-        ctx.beginPath(); ctx.arc(x, y, RADIO_FIJO_PX * R.scale, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(x, y, RADIO_FIJO_PX, 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
         continue;
       }
-      const r = RADIO_NODO_PX * R.scale;
+      const r = RADIO_NODO_PX;
       const elegido = i === this.sel;
       ctx.fillStyle = elegido ? COLORS.accent : '#fff';
       ctx.strokeStyle = elegido ? '#fff' : COLORS.accent;
-      ctx.lineWidth = 2 * R.scale;
+      ctx.lineWidth = 2;
       ctx.beginPath();
       /* Redondo el curvo y cuadrado el recto. Es la única manera de
          saber, ANTES de hacer doble clic, qué va a pasar al hacerlo. */

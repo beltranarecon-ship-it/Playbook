@@ -28,6 +28,7 @@ import {
   RADIO_NODO, nodoEn, segmentoEn,
 } from '../js/pizarra/trazo.js';
 import { flattenPath } from '../js/canvas/geometry.js';
+import { tipoFlecha } from '../js/pizarra/dibujo.js';
 import { marcoDe } from '../js/canvas/medidas.js';
 
 let pasan = 0, fallan = 0;
@@ -126,10 +127,29 @@ test('los nodos FIJOS no se pueden borrar', () => {
 });
 
 test('en un PASE también está fijo el final: lo pone el receptor', () => {
+  /* CON LA PALABRA QUE CIRCULA DE VERDAD. Lo que viaja por la Pizarra
+     como `tipo` es el tipo de FLECHA —'run', 'pass', 'cut', 'gesto'—,
+     que es lo que sale de `tipoFlecha()` y lo que entiende `drawArrow`.
+     Este banco probó durante un tiempo con 'pase', una palabra que no
+     existe en la app: salía verde mientras el final de los pases se
+     quedaba sin proteger. */
   eq([...nodosFijos('run', 3)], [0]);
-  eq([...nodosFijos('pase', 3)].sort(), [0, 2]);
+  eq([...nodosFijos('pass', 3)].sort(), [0, 2]);
+  eq([...nodosFijos('cut', 3)], [0], 'un corte no tiene final fijo');
   const t = desdePuntos([{ x: 0.1, y: 0.1 }, { x: 0.5, y: 0.5 }, { x: 0.9, y: 0.9 }]);
-  eq(borrarNodo(t, 2, 'pase').length, 3, 'el final de un pase no se borra');
+  eq(borrarNodo(t, 2, 'pass').length, 3, 'el final de un pase no se borra');
+  eq(borrarNodo(t, 2, 'run').length, 2, 'el de un corte sí');
+});
+
+test('EL TIPO SALE DE tipoFlecha, y este banco lo comprueba de punta a punta', () => {
+  /* La única manera de que el desajuste de palabras no vuelva: preguntar
+     por el tipo igual que lo pregunta la app, en vez de escribirlo a mano. */
+  const dePase = tipoFlecha({ simbolo: 'pase' });
+  const deTiro = tipoFlecha({ simbolo: 'tiro' });
+  const deCorte = tipoFlecha({ simbolo: 'corte' });
+  eq([...nodosFijos(dePase, 3)].sort(), [0, 2], `el símbolo pase da "${dePase}":`);
+  eq([...nodosFijos(deTiro, 3)].sort(), [0, 2], `y el tiro da "${deTiro}":`);
+  eq([...nodosFijos(deCorte, 3)], [0], `el corte da "${deCorte}":`);
 });
 
 test('nada muta el trazo que recibe', () => {

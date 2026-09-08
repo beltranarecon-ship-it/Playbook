@@ -49,6 +49,14 @@ export class Fichas {
     this.elementos = [];
     this.seleccion = new Set();
     this.onCambio = null;      // (elementos, seleccion)
+    this.donde = null;         // (elemento) -> {x,y} para pintarlo en otro sitio
+    /* TOCAR no es lo mismo que ARRASTRAR, y de esa diferencia vive el
+       §3.3: arrastrar una ficha la mueve, tocarla abre su anillo. Los
+       dos empiezan con el mismo `pointerdown`, así que quien quiera
+       distinguirlos tiene que esperar a saber cómo acabó — y eso solo
+       lo sabe el motor de gestos, que es quien avisa aquí. */
+    this.onTocarFicha = null;  // (elemento)
+    this.onTocarSuelo = null;  // ({x,y,tipoPuntero}) donde y con que se toco
 
     this._marco = null;        // el marco de selección mientras se arrastra
     this._guias = null;        // las guías mientras se mueve algo
@@ -154,7 +162,7 @@ export class Fichas {
         this._cambio(mover(this.elementos, destinos));
       },
       soltar: () => { this._guias = null; this._pegado = null; this.lienzo.pintar(); },
-      tocar: () => { this._guias = null; this._pegado = null; },
+      tocar: () => { this._guias = null; this._pegado = null; this.onTocarFicha?.(agarrado); },
       abortar: () => {
         /* No ha pasado: todo vuelve a donde estaba. Es lo que hace que
            apoyar el meñique a mitad de un arrastre no deje la ficha en
@@ -180,7 +188,7 @@ export class Fichas {
         this.lienzo.pintar();
       },
       soltar: () => { this._marco = null; this.lienzo.pintar(); },
-      tocar: () => { this._marco = null; this.seleccionar(alPinchar(this.seleccion, null, { shift })); },
+      tocar: (p) => { this._marco = null; this.seleccionar(alPinchar(this.seleccion, null, { shift })); this.onTocarSuelo?.({ x: p.x, y: p.y, tipoPuntero: p.tipoPuntero }); },
       abortar: () => { this._marco = null; this.seleccionar(previa); },
     };
   }
@@ -191,8 +199,16 @@ export class Fichas {
     const orden = [...this.elementos].sort((a, b) => (ORDEN[a.kind] ?? 9) - (ORDEN[b.kind] ?? 9));
     for (const e of orden) {
       if (e.kind === 'zona') { this._dibujarZona(ctx, vista, e, R); continue; }
-      if (!Number.isFinite(e.x) || !seVe(e.x, e.y, 0.05)) continue;
-      const [px, py] = toPx(e.x, e.y);
+      /* `donde` deja que otro diga en qué punto pintar una ficha SIN
+         tocar el modelo. Lo usa el repaso del §5.4 —la ficha recorre
+         el trazo recién dibujado mientras sus datos ya están en el
+         final— y lo usará la reproducción de la fase. Que se pinte en
+         otro sitio y que esté en otro sitio son cosas distintas, y
+         mover el modelo para animar es lo que hace que una animación
+         interrumpida deje las fichas a mitad de camino. */
+      const p = this.donde?.(e) || e;
+      if (!Number.isFinite(p.x) || !seVe(p.x, p.y, 0.05)) continue;
+      const [px, py] = toPx(p.x, p.y);
       const sel = this.seleccion.has(e.id);
       switch (e.kind) {
         case 'jugador':
