@@ -96,6 +96,7 @@ export class Tablero {
     this.fichas = new Fichas(lienzo, { canasta, posiciones });
     this.fichas.onTocarFicha = (e, o) => this._tocarFicha(e, o);
     this.fichas.onTocarSuelo = (p) => this._tocarSuelo(p);
+    this.fichas.onArrastrado = (ids) => this._recolocadas(ids);
     /* §6.6: en una fase que no es la primera, el sitio de una ficha es
        consecuencia de la anterior y no se toca aquí. En la primera,
        moverla es colocarla y no tiene ninguna consecuencia rara. */
@@ -184,6 +185,11 @@ export class Tablero {
       ...nuevaFase('f1'),
       tramos: [],
       entrada: Object.fromEntries(elementos.map((e) => [e.id, { x: e.x, y: e.y }])),
+      /* Quién tiene cada balón AL EMPEZAR la jugada. Va aparte de las
+         posiciones y no dentro de ellas: el modelo lo cambia en cuanto
+         se dibuja un pase, y es justo lo que el compilador necesita
+         saber de antes. */
+      posesion: Object.fromEntries(elementos.filter((e) => e.kind === 'balon').map((e) => [e.id, e.portador_id ?? null])),
     }];
     this.iFase = 0;
     this.fichas.poner(elementos);
@@ -191,6 +197,63 @@ export class Tablero {
     this._avisarDeFases();
     this.onTramos?.(this.tramos);
     this._pintarAyuda();
+  }
+
+  /**
+   * EN LA FASE 1, RECOLOCAR ES CAMBIAR DÓNDE EMPIEZA LA JUGADA (§6.6).
+   *
+   * Si la ficha no participa todavía en la fase, su sitio nuevo es su
+   * arranque. Sin esto, el arranque se quedaba en donde se puso al
+   * principio y, al pasar de fase o al volver a la 1, la ficha saltaba
+   * de golpe a su sitio viejo.
+   *
+   * La que SÍ participa no se toca: arrastrarla estira el final de su
+   * trazo (§5.5) y su arranque sigue siendo el mismo. Lo mismo el
+   * balón de alguien que participa: va con él. Y después, las fases
+   * siguientes se recalculan desde el sitio nuevo (§6.5).
+   */
+  _recolocadas(ids) {
+    if (this.iFase !== 0 || !ids || !ids.length) return;
+    const participa = new Set(this.tramos.flatMap((t) => [t.elemento_id, t.corre_id, t.balon_id]).filter(Boolean));
+    const movidas = new Set(ids);
+    const entrada = { ...this.fases[0].entrada };
+    let toco = false;
+    for (const e of this.fichas.elementos) {
+      const suyo = movidas.has(e.id) || (e.kind === 'balon' && movidas.has(e.portador_id));
+      if (!suyo || participa.has(e.id) || (e.portador_id && participa.has(e.portador_id))) continue;
+      entrada[e.id] = { x: e.x, y: e.y };
+      toco = true;
+    }
+    if (!toco) return;
+    this.fases = this.fases.map((f, i) => (i === 0 ? { ...f, entrada } : f));
+    this._recalcularSiguientes();
+  }
+
+  /**
+   * La jugada tal y como se guarda (§11.1): la escena AL EMPEZAR la fase
+   * 1 —posiciones de arranque y quién tiene cada balón— y por cada fase
+   * sus tramos. Es lo que se compila y lo que hay que reabrir.
+   */
+  jugada() {
+    const inicio = this.fases[0].entrada || {};
+    const posesion = this.fases[0].posesion || {};
+    return {
+      version: 3,
+      pista: this.lienzo.vista.pistaKey,
+      canasta: this.canasta,
+      elementos: this.fichas.elementos.map((e) => ({
+        ...e,
+        ...(inicio[e.id] || {}),
+        ...(e.kind === 'balon' ? { portador_id: posesion[e.id] ?? null } : {}),
+      })),
+      fases: this.fases.map((f) => ({
+        id: f.id,
+        nombre: f.nombre ?? null,
+        duracion_ms: f.duracion_ms ?? null,
+        pausa_post_ms: f.pausa_post_ms ?? null,
+        tramos: f.tramos,
+      })),
+    };
   }
 
   _recordarDonde(elementos) {

@@ -65,6 +65,7 @@ export class Fichas {
        dejarla moverse y devolverla luego se ve como un tirón. */
     this.puedeMover = null;    // (elemento) -> null si se puede, o el motivo
     this.onVeto = null;        // (elemento, motivo) para poder decirlo
+    this.onArrastrado = null;  // (ids) quien ha recolocado el entrenador, al soltar
 
     this._marco = null;        // el marco de selección mientras se arrastra
     this._guias = null;        // las guías mientras se mueve algo
@@ -190,7 +191,14 @@ export class Fichas {
         );
         this._cambio(mover(this.elementos, destinos));
       },
-      soltar: () => { this._guias = null; this._pegado = null; this.lienzo.pintar(); },
+      soltar: () => {
+        this._guias = null; this._pegado = null; this.lienzo.pintar();
+        /* Se avisa AL SOLTAR y no en cada cambio: quien necesita saber
+           que el entrenador ha recolocado algo no puede fiarse de
+           `onCambio`, que también salta cuando se dibuja un tramo o
+           cuando alguien recoge un balón. */
+        this.onArrastrado?.([...desfase.keys()]);
+      },
       tocar: (p) => { this._guias = null; this._pegado = null; this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero }); },
       abortar: () => {
         /* No ha pasado: todo vuelve a donde estaba. Es lo que hace que
