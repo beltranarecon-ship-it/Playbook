@@ -137,7 +137,12 @@ WITH esperado(mig, trae, clase, obj) AS (
        lista, sin programar y sin cerrar— en silencio. Si sale «NO», los
        avisos del día a día no salen. */
     ('042', 'a qué hora empezó el entrenamiento', 'columna', 'sessions.arranque'),
-    ('042', 'a qué hora empezó el entrenamiento', 'indice',  'sessions_arranque')
+    ('042', 'a qué hora empezó el entrenamiento', 'indice',  'sessions_arranque'),
+    /* Sin ésta, la Pizarra guarda la animación pero no la JUGADA: el
+       ejercicio se ve bien en todas partes, pero al volver a abrirlo no
+       se puede seguir editando y hay que rehacerlo desde las posiciones
+       iniciales. Nada más deja de funcionar: la app guarda sin ella. */
+    ('043', 'reabrir la pizarra para seguir editando', 'columna', 'exercises.jugada')
 ),
 
 /* Cada clase se busca donde el catálogo de Postgres la guarda. Una

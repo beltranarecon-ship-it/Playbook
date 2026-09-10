@@ -21,7 +21,7 @@ node taller/tools/eval-fases.mjs   # y el resto de bancos: todos en verde
 | 1 · Lienzo, zoom, gestos, fichas | ✅ cerrada | `57255ed` |
 | 2 · Dibujar: anillo, trazo, nodos, encadenado, repaso | ✅ cerrada | `2db2b91` |
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
-| 4 · El motor | ⏳ en curso — 4.1, 4.2 y 4.3 hechos; 4.4 en marcha | — |
+| 4 · El motor | ⏳ en curso — 4.1 a 4.3 hechos, 4.4 a medias: **esperando decisiones** | — |
 | 5 · Defensa | pendiente | — |
 | 6 · Conos y elementos | pendiente | — |
 | 7 · Texto y voz | pendiente | — |
@@ -39,7 +39,8 @@ pruebas**. Arnés para probar de punta a punta: `dev/pizarra-dibujar.html`.
 | 4.1 | Compilador `jugada → animación` (`pizarra/motor/compilar.js`), con el formato que ya leen proyector, miniaturas y visor. `Tablero.jugada()` | ✅ |
 | 4.2 | `engine.js` con carriles: varios tramos por ficha y fase, arranques propios, el dueño del balón cambiando a mitad de fase. Sin cambiar cómo se ven las animaciones guardadas | ✅ |
 | 4.3 | Reabrir una jugada guardada y seguir editándola (`Tablero.cargar`), y abrir desde su animación un ejercicio de antes de la Pizarra (§11.4) | ✅ |
-| 4.4 | Guardar jugada + animación en Supabase — la parte que no depende de nada, en marcha; el resto **necesita decisiones**, ver abajo | ⏳ |
+| 4.4a | Guardar aunque falte una columna nueva (`supabase/columnas.js`), y la migración 043 con su comprobación. **La 043 hay que aplicarla a mano** en Supabase | ✅ |
+| 4.4b | Conectar guardar y abrir a una pantalla, y borrar lo viejo — **necesita decisiones**, ver abajo | esperando |
 
 En 4.1 salió un fallo de la capa 3: recolocar en la fase 1 una ficha sin
 trazos no cambiaba su arranque, y al pasar de fase o volver a la 1 saltaba

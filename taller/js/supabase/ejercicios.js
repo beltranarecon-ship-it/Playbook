@@ -8,6 +8,7 @@ import { alMarcoActual, MARCO_ACTUAL } from '../canvas/marco-lectura.js';
 import { limitesCancha } from '../canvas/medidas.js';
 import { aRegistro } from '../wizard/draft.js';
 import { generarThumbnail } from '../canvas/thumbnail.js';
+import { guardarSinLasQueFalten } from './columnas.js';
 
 /** Genera póster + GIF (§19) sin bloquear el guardado si algo falla. */
 async function conMiniatura(row, animacion) {
@@ -70,16 +71,14 @@ export async function guardarEjercicio(draft, elementos = []) {
   };
   await conMiniatura(row, animacion);
 
-  let { data, error } = await supabase.from('exercises').insert(row).select('id').single();
-  /* Sin la migración 038 no existe la columna `marco` y PostgREST
-     rechaza el insert entero. Se reintenta sin ella: es preferible
-     guardar el ejercicio sin sellar —y que se vea bien igual, porque
-     sin columna no se recoloca nada— a perder el trabajo de quien
-     acaba de dibujarlo. */
-  if (error && /marco/.test(error.message || '')) {
-    const { marco, ...sinMarco } = row;
-    ({ data, error } = await supabase.from('exercises').insert(sinMarco).select('id').single());
-  }
+  /* Las columnas nuevas pueden no existir todavía: `marco` llega con la
+     038 y `jugada` con la 043, y las dos se aplican a mano. Sin ellas
+     PostgREST rechaza el insert entero, así que se reintenta sin la que
+     falte: es preferible guardar el ejercicio sin sellar —y que se vea
+     bien igual, porque sin columna no se recoloca nada— a perder el
+     trabajo de quien acaba de dibujarlo. */
+  const { data, error } = await guardarSinLasQueFalten(
+    (fila) => supabase.from('exercises').insert(fila).select('id').single(), row);
   if (error) throw error;
   return data; // { id }
 }
@@ -133,12 +132,9 @@ export async function actualizarEjercicio(id, draftOCampos, elementos = null) {
     };
   }
   if (campos.animacion) campos = await conMiniatura({ ...campos }, campos.animacion);
-  let { data, error } = await supabase.from('exercises').update(campos).eq('id', id).select('id').single();
-  // sin la 038 no existe `marco`: se reintenta sin ella antes que perder la correccion
-  if (error && /marco/.test(error.message || '')) {
-    const { marco, ...sinMarco } = campos;
-    ({ data, error } = await supabase.from('exercises').update(sinMarco).eq('id', id).select('id').single());
-  }
+  // sin la 038 o la 043 falta alguna columna nueva: se reintenta sin ella antes que perder la corrección
+  const { data, error } = await guardarSinLasQueFalten(
+    (fila) => supabase.from('exercises').update(fila).eq('id', id).select('id').single(), campos);
   if (error) throw error;
   return data;
 }
