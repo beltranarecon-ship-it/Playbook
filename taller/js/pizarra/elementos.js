@@ -63,6 +63,21 @@ export const nuevoId = (prefijo) => `${prefijo}_${++_n}`;
  *  mismos ids o no se pueden comparar. */
 export const reiniciarIds = () => { _n = 0; };
 
+/**
+ * Al reabrir una jugada guardada, los ids nuevos tienen que seguir
+ * DESPUÉS de los que ya hay. Empezando otra vez desde 1, la primera
+ * ficha que se añadiera se llamaría igual que una de las guardadas: las
+ * dos se seleccionarían y se moverían juntas, y sus trazos se
+ * mezclarían. Solo sube la cuenta, nunca la baja.
+ */
+export function continuarIds(lista) {
+  for (const e of lista || []) {
+    const m = /_(\d+)$/.exec(String(e && e.id));
+    if (m) _n = Math.max(_n, Number(m[1]));
+  }
+  return _n;
+}
+
 /* ── Crear ─────────────────────────────────────────────────── */
 
 export function crear(spec, x = 0.5, y = 0.5) {

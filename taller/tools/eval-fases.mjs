@@ -26,7 +26,7 @@ import {
   MINIMO_TRAMO_MS, PENDIENTES,
   nuevaFase, carrilesDesde, tramosDe,
   duracionDeTramo, tiemposDe, duracionDeCarril, posicionesFinales,
-  reanclarFase, recalcular,
+  reanclarFase, recalcular, posesionAlFinal,
 } from '../js/pizarra/fases.js';
 import { duracionDe, longitudMetros, nuevoTrazo } from '../js/pizarra/trazo.js';
 
@@ -389,6 +389,49 @@ test('sin fases ni entrada, no rompe', () => {
   eq(recalcular([], {}, 'entera'), { fases: [], entradas: [], huerfanos: [] });
   eq(recalcular(null, {}, 'entera').fases, []);
   eq(reanclarFase(null, {}, 'entera').carriles, []);
+});
+
+/* ── De quién es el balón al volver a una fase (§6.5) ───── */
+
+const pase = (de, a, bal) => ({ id: `tp${++n}`, elemento_id: de, corre_id: bal, receptor_id: a, accion: 'pasa', trazo: [] });
+
+test('VOLVER A UNA FASE DEVUELVE EL BALÓN A QUIEN LO TENÍA ENTONCES', () => {
+  /* A1 pasa a A2 en la fase 1 y A2 se lo devuelve en la 2. El modelo
+     dice que es de A1 (lo último dibujado); al volver a la 1, es de A2. */
+  const fases = [{ tramos: [pase('A1', 'A2', 'b1')] }, { tramos: [pase('A2', 'A1', 'b1')] }];
+  eq(posesionAlFinal(fases, 0, { b1: 'A1' }).b1, 'A2', 'al acabar la fase 1:');
+  eq(posesionAlFinal(fases, 1, { b1: 'A1' }).b1, 'A1', 'al acabar la 2:');
+});
+
+test('antes de la primera fase, el dueño del principio', () => {
+  eq(posesionAlFinal([{ tramos: [pase('A1', 'A2', 'b1')] }], -1, { b1: 'A1' }).b1, 'A1');
+});
+
+test('un pase AL SUELO deja el balón sin dueño', () => {
+  eq(posesionAlFinal([{ tramos: [pase('A1', null, 'b1')] }], 0, { b1: 'A1' }).b1, null);
+});
+
+test('quien recoge se lo queda', () => {
+  const fases = [{ tramos: [pase('A1', null, 'b1')] }, { tramos: [{ id: 'tq', elemento_id: 'A3', corre_id: 'A3', balon_id: 'b1', accion: 'recoge', trazo: [] }] }];
+  eq(posesionAlFinal(fases, 1, { b1: 'A1' }).b1, 'A3');
+});
+
+test('correr con el balón no cambia de quién es, y los balones quietos tampoco', () => {
+  const fases = [{ tramos: [{ id: 'tb', elemento_id: 'A1', corre_id: 'A1', accion: 'bota', trazo: [] }] }];
+  eq(posesionAlFinal(fases, 0, { b1: 'A1', b2: null }), { b1: 'A1', b2: null });
+});
+
+test('se lee del DATO, no del nombre de la acción', () => {
+  /* Una acción nueva del club que mueva el balón funciona sin tocar esto. */
+  const fases = [{ tramos: [{ id: 'tx', elemento_id: 'A1', corre_id: 'b1', receptor_id: 'A4', accion: 'accion_nueva_del_club', trazo: [] }] }];
+  eq(posesionAlFinal(fases, 0, { b1: 'A1' }).b1, 'A4');
+});
+
+test('pedir más allá de la última fase se para en la última, y no toca lo que recibe', () => {
+  const inicial = { b1: 'A1' };
+  eq(posesionAlFinal([{ tramos: [pase('A1', 'A2', 'b1')] }], 99, inicial).b1, 'A2');
+  eq(inicial, { b1: 'A1' }, 'el dueño del principio ha cambiado:');
+  eq(posesionAlFinal(null, 3, { b1: 'A1' }), { b1: 'A1' });
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

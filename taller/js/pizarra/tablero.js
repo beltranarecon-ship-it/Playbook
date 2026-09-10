@@ -46,10 +46,11 @@ import {
   estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS,
 } from './repertorio.js';
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
-import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe } from './elementos.js';
+import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador } from './elementos.js';
 import { acierto } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe } from './destino.js';
-import { nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular } from './fases.js';
+import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
+import { nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular, posesionAlFinal } from './fases.js';
 
 let siguiente = 1;
 
@@ -331,6 +332,65 @@ export class Tablero {
   /** Dónde está cada ficha al EMPEZAR la fase que se edita. */
   get entrada() { return this.fases[this.iFase].entrada; }
 
+  /**
+   * REABRIR UNA JUGADA GUARDADA PARA SEGUIR EDITÁNDOLA (§11.1).
+   *
+   * Lo que llega de la base de datos no se da por bueno: pasa antes por
+   * `normalizarJugada`, que deja fuera lo que no entiende y lo dice. Si
+   * no hay jugada pero sí la animación de un ejercicio de antes de la
+   * Pizarra, se abre con sus posiciones iniciales y una fase vacía, para
+   * rehacerla desde ahí (§11.4).
+   *
+   * Las entradas de las fases siguientes no se guardan: se DEDUCEN
+   * recalculando desde la escena del principio. Guardarlas sería guardar
+   * dos veces lo mismo, y la segunda copia es la que acaba vieja.
+   *
+   * @param guardada  la jugada tal y como sale de la columna `jugada`
+   * @param animacion la animación, por si la jugada no está
+   * @returns { ok, avisos }
+   */
+  cargar(guardada, { animacion = null } = {}) {
+    let r = normalizarJugada(guardada);
+    const avisos = [];
+    if (!r.jugada && animacion) {
+      r = normalizarJugada(jugadaDesdeAnimacion(animacion));
+      if (r.jugada) avisos.push('Este ejercicio es de antes de la Pizarra: se abre con sus posiciones iniciales para rehacerlo.');
+    }
+    avisos.push(...r.avisos);
+    if (!r.jugada) return { ok: false, avisos };
+    const j = r.jugada;
+    const pista = this.lienzo.vista.pistaKey;
+    if (j.pista !== pista) avisos.push(`La jugada es de pista «${j.pista}» y la pizarra está en «${pista}»: hay que abrirla en su pista.`);
+    if (j.canasta !== this.canasta) avisos.push(`La jugada ataca la canasta ${j.canasta} y la pizarra la ${this.canasta}.`);
+
+    this.cerrar();
+    this.repaso.parar();
+    /* Los nombres nuevos siguen DESPUÉS de los guardados: empezando otra
+       vez desde 1, la primera ficha o el primer tramo que se añadiera se
+       llamaría igual que uno de los que ya hay, y se moverían juntos. */
+    continuarIds(j.elementos);
+    siguiente = Math.max(siguiente, r.siguienteTramo);
+
+    const entrada = Object.fromEntries(j.elementos.map((e) => [e.id, { x: e.x, y: e.y }]));
+    const posesion = Object.fromEntries(j.elementos.filter((e) => e.kind === 'balon').map((e) => [e.id, e.portador_id ?? null]));
+    const rc = recalcular(j.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) })), entrada, pista);
+    this.fases = j.fases.map((f, i) => ({
+      ...nuevaFase(f.id),
+      ...f,
+      entrada: rc.entradas[i] || entrada,
+      ...(i === 0 ? { posesion } : {}),
+    }));
+    this._huerfanos = rc.huerfanos;
+    /* La escena tal y como empezaba, y después a la fase 1 como si se
+       hubiera ido a ella: así las fichas quedan en la punta de sus
+       trazos y el balón en las manos de quien lo tiene al acabarla, que
+       es exactamente lo que se ve al dibujar. */
+    this.iFase = 0;
+    this.fichas.poner(j.elementos.map((e) => ({ ...e })));
+    this.irAFase(0);
+    return { ok: true, avisos };
+  }
+
   /** En qué fase se está dibujando, contando desde uno. */
   get numeroDeFase() { return this.iFase + 1; }
 
@@ -479,7 +539,17 @@ export class Tablero {
     this.iFase = n;
     const { fase } = this.faseEnCurso();
     const finales = posicionesFinales(fase, this.entrada);
-    this.fichas.poner(this.fichas.elementos.map((e) => (finales[e.id] ? { ...e, ...finales[e.id] } : e)));
+    /* Y de quién es cada balón AL ACABAR ESA FASE, repasando lo dibujado
+       desde el principio: el modelo solo sabe de quién es ahora, que es
+       lo último que se dibujó, y al volver a una fase anterior eso ya no
+       vale. El balón que lleva alguien va con él, esté donde esté: si no,
+       el de alguien que botó se quedaba donde empezó el bote. */
+    const duenos = posesionAlFinal(this.fases, n, this.fases[0].posesion || {});
+    const colocadas = this.fichas.elementos.map((e) => {
+      const f = finales[e.id] ? { ...e, ...finales[e.id] } : e;
+      return e.kind === 'balon' && e.id in duenos ? { ...f, portador_id: duenos[e.id] } : f;
+    });
+    this.fichas.poner(seguirAlPortador(colocadas, this.lienzo.vista.pistaKey));
     this._recordarDonde(this.fichas.elementos);
     this._avisarDeFases();
     this.onTramos?.(this.tramos);

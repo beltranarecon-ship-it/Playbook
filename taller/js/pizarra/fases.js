@@ -334,3 +334,32 @@ export function posicionesFinales(fase, entrada = {}) {
   }
   return salida;
 }
+
+/**
+ * De quién es cada balón AL ACABAR la fase `hasta` (índice), repasando
+ * lo dibujado desde el principio (§6.4, §6.5).
+ *
+ * El modelo solo sabe de quién es el balón AHORA, que es lo último que
+ * se dibujó. Al volver a una fase anterior eso ya no vale: si A1 pasa a
+ * A2 en la fase 1 y A2 se lo devuelve en la 2, al volver a la 1 el
+ * balón tiene que estar en manos de A2, no de A1.
+ *
+ * Se lee de los datos del tramo y no del nombre de la acción: si lo que
+ * viaja es un balón (`corre_id` distinto de quien actúa), al llegar es
+ * del receptor, o de nadie si fue al suelo; y quien recoge (`balon_id`)
+ * se lo queda.
+ *
+ * @param inicial  { balonId: portadorId } al empezar la jugada
+ */
+export function posesionAlFinal(fases, hasta, inicial = {}) {
+  const duenos = { ...inicial };
+  const lista = fases || [];
+  for (let i = 0; i <= hasta && i < lista.length; i++) {
+    for (const t of (lista[i] && lista[i].tramos) || []) {
+      if (!t) continue;
+      if (t.corre_id && t.corre_id !== t.elemento_id && t.corre_id in duenos) duenos[t.corre_id] = t.receptor_id || null;
+      if (t.balon_id) duenos[t.balon_id] = t.elemento_id;
+    }
+  }
+  return duenos;
+}
