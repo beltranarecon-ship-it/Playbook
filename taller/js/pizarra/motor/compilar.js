@@ -178,14 +178,17 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
       });
       if (t.balon_id) {
         const fin = t.trazo[t.trazo.length - 1];
+        /* De donde estaba el balón suelto a donde acaba el jugador. Ese
+           sitio lo apunta el Tablero al dibujar el tramo, que es el único
+           momento en que se sabe seguro. Sin él no se inventa de dónde
+           venía: el camino queda en las manos del jugador, y el motor
+           resuelve un camino de longitud cero como quedarse quieto. */
+        const desde = t.balon_desde || fin;
         movimientos.push({
           elemento_id: t.balon_id,
           tipo_elemento: 'balon',
           tipo_movimiento: 'recogida',
-          /* El camino del balón es de donde está a donde acaba el
-             jugador; su arranque lo resuelve el motor, que es quien
-             sabe dónde estaba el balón en ese momento. */
-          path: [{ x: fin.x, y: fin.y, tipo_nodo: 'lineal' }, { x: fin.x, y: fin.y, tipo_nodo: 'lineal' }],
+          path: [{ x: desde.x, y: desde.y, tipo_nodo: 'lineal' }, { x: fin.x, y: fin.y, tipo_nodo: 'lineal' }],
           inicio_ms: m.inicio_ms + m.duracion_ms * (1 - RECOGIDA_FRACCION),
           duracion_ms: m.duracion_ms * RECOGIDA_FRACCION,
         });

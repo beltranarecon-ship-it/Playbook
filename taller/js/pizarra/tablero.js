@@ -724,6 +724,14 @@ export class Tablero {
          ir a por un balón suelto no puede empezar antes de que esté
          suelto, y para saber cuándo lo está hay que saber cuál es. */
       balon_id: recogiendo ? balon : null,
+      /* Y dónde estaba ese balón, que después ya no se sabe: al llegar el
+         jugador se lo queda y el balón pasa a ir con él. El compilador lo
+         necesita para que viaje a sus manos desde el suelo y no aparezca
+         en ellas de golpe. */
+      balon_desde: (() => {
+        const b = recogiendo && balon ? this.fichas.elementos.find((e) => e.id === balon) : null;
+        return b ? { x: b.x, y: b.y } : null;
+      })(),
       accion: accion.slug,
       variante,
       trazo, tipo, ritmo,

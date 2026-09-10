@@ -157,6 +157,24 @@ test('RECOGER: va el jugador, el balón hace el último trozo y cambia de dueño
   eq(f.recogidas, [{ jugador_id: 'A2', balon_id: bal.id }]);
 });
 
+test('EL BALÓN QUE SE RECOGE VIAJA DESDE EL SUELO, no aparece en las manos', () => {
+  /* El Tablero apunta dónde estaba el balón al dibujar el tramo; es lo
+     único que se sabe seguro. */
+  const { l, a2, bal } = escena();
+  const t = { ...tramo(a2.id, P(0.7, 0.8), P(0.5, 0.3), { accion: 'recoge', balon_id: bal.id }), balon_desde: P(0.52, 0.27) };
+  const delBalon = compilar(jugadaCon(l, [{ id: 'f1', tramos: [t] }])).fases[0].movimientos.find((m) => m.tipo_elemento === 'balon');
+  eq([delBalon.path[0].x, delBalon.path[0].y], [0.52, 0.27], 'sale de donde estaba:');
+  eq([delBalon.path[1].x, delBalon.path[1].y], [0.5, 0.3], 'y llega a donde acaba el jugador:');
+});
+
+test('y sin saber dónde estaba, se queda en sus manos en vez de inventarlo', () => {
+  const { l, a2, bal } = escena();
+  const t = tramo(a2.id, P(0.7, 0.8), P(0.5, 0.3), { accion: 'recoge', balon_id: bal.id });
+  const delBalon = compilar(jugadaCon(l, [{ id: 'f1', tramos: [t] }])).fases[0].movimientos.find((m) => m.tipo_elemento === 'balon');
+  eq([delBalon.path[0].x, delBalon.path[0].y], [0.5, 0.3]);
+  eq([delBalon.path[1].x, delBalon.path[1].y], [0.5, 0.3]);
+});
+
 /* ── 3. Los tiempos (§11.2) ──────────────────────────────── */
 
 test('CADA MOVIMIENTO LLEVA SU ARRANQUE Y SU DURACIÓN: los del §6.3', () => {

@@ -15,6 +15,47 @@ const clone = (m) => { const o = {}; for (const k in m) o[k] = { ...m[k] }; retu
 const lastNode = (path) => (path && path.length ? { x: path[path.length - 1].x, y: path[path.length - 1].y } : null);
 const numLabel = (j) => (j.dorsal ?? (String(j.id).match(/\d+/)?.[0] ?? j.id));
 
+/* Un camino de LONGITUD CERO —soltar el destino encima de la ficha, un
+   balón que ya está en las manos a las que va— hace que `makeSampler`
+   reparta por una longitud de arco que no existe, se salga de su propia
+   tabla y reviente a mitad del recorrido. Aquí eso es simplemente
+   quedarse quieto. */
+function muestreador(path) {
+  const s = makeSampler(path);
+  const flat = s.flat || [];
+  let largo = 0;
+  for (let i = 1; i < flat.length; i++) largo += Math.hypot(flat[i].x - flat[i - 1].x, flat[i].y - flat[i - 1].y);
+  if (largo > 0) return s;
+  const p = flat[flat.length - 1] || lastNode(path) || { x: 0.5, y: 0.5 };
+  const quieto = () => ({ x: p.x, y: p.y });
+  quieto.flat = flat.length ? flat : [p];
+  quieto.totalLen = 0;
+  return quieto;
+}
+
+/* Dónde está alguien en el instante t, con sus tramos ordenados por
+   arranque. Tres casos, y los tres importan: mientras uno está activo,
+   sobre su camino; ANTES del primero, en su salida —si no, esperaría de
+   pie en el destino—; y ENTRE dos, donde acabó el anterior. */
+function posicionEn(movs, t) {
+  if (!movs || !movs.length) return null;
+  let ultimo = null;
+  for (const x of movs) {
+    if (t < x.inicio) break;
+    if (t <= x.fin) return x.sampler(easeInOut((t - x.inicio) / x.dur));
+    ultimo = x;
+  }
+  return ultimo ? ultimo.sampler(1) : movs[0].sampler(0);
+}
+
+/* De quién es un balón en el instante t: el último cambio de manos que
+   ya haya ocurrido, o el dueño con el que empezó la fase. */
+function duenoEn(eventos, t, inicial) {
+  let quien = inicial ?? null;
+  for (const ev of eventos || []) { if (ev.t <= t) quien = ev.quien; else break; }
+  return quien;
+}
+
 export class AnimationEngine {
   constructor(view, animacion, opts = {}) {
     this.view = view;
@@ -67,62 +108,106 @@ export class AnimationEngine {
     this.meta = [];
 
     for (const fase of this.fases) {
+      const dur = fase.duracion_ms || 1000;
+      /* CUÁNDO va cada cosa dentro de la fase (§11.2).
+         Solo lleva tiempo propio lo que trae `inicio_ms`, que es la señal
+         de que viene del compilador con carriles. Todo lo demás
+         —cualquier animación guardada antes— ocupa la fase entera,
+         exactamente como hacía este motor, así que nada de lo guardado
+         cambia de aspecto. Y no basta con `duracion_ms`: las animaciones
+         de antes ya lo traían en algunos pases, y hacerle caso cambiaría
+         cómo se ven. */
+      const cuando = (x) => {
+        if (!Number.isFinite(x && x.inicio_ms)) return { inicio: 0, fin: dur, dur };
+        const inicio = Math.max(0, x.inicio_ms);
+        const d = Number.isFinite(x.duracion_ms) && x.duracion_ms > 0 ? x.duracion_ms : Math.max(1, dur - inicio);
+        return { inicio, fin: inicio + d, dur: d };
+      };
       this.restStart.push({ P: clone(P), B: clone(B), owner: { ...owner } });
-      const m = { movByEl: {}, ballMoves: {}, bloqueos: fase.bloqueos || [], arrows: [], defenders: new Set(fase.defensores || []) };
+      const m = {
+        movs: {},        // jugador -> [{ sampler, inicio, fin, dur }], por orden de arranque
+        ballMovs: {},    // balón   -> [{ kind, sampler, inicio, fin, dur }]
+        duenos: {},      // balón   -> [{ t, quien }]: cuándo cambia de manos
+        /* El último movimiento de cada uno, como lo guardaba el motor de
+           antes: quien lo lea desde fuera sigue encontrándolo. */
+        movByEl: {}, ballMoves: {},
+        bloqueos: fase.bloqueos || [], arrows: [], defenders: new Set(fase.defensores || []),
+      };
+      const pon = (lista, id, x) => { (lista[id] ||= []).push(x); };
+      /* Dónde acaba cada uno se decide por INSTANTE, no por el orden en
+         que vienen escritos: con carriles, el último de la lista no tiene
+         por qué ser el último en acabar. Con empate —todo lo que ocupa la
+         fase entera— gana el último escrito, como antes. */
+      const alFinal = {};
+      const acaba = (id, fin, punto) => { if (punto && (!alFinal[id] || fin >= alFinal[id].fin)) alFinal[id] = { fin, punto }; };
 
       // movimientos de jugadores y balones
       for (const mv of (fase.movimientos || [])) {
-        const sampler = makeSampler(mv.path);
+        const sampler = muestreador(mv.path);
         const type = MOV_TO_ARROW[mv.tipo_movimiento] || 'cut';
-        if (mv.tipo_elemento === 'balon') m.ballMoves[mv.elemento_id] = { kind: 'mov', sampler };
-        else { m.movByEl[mv.elemento_id] = { sampler, type }; m.arrows.push({ flat: sampler.flat, type }); }
-        const end = lastNode(mv.path);
-        if (end) { if (mv.tipo_elemento === 'balon') B[mv.elemento_id] = end; else P[mv.elemento_id] = end; }
+        const c = cuando(mv);
+        if (mv.tipo_elemento === 'balon') {
+          pon(m.ballMovs, mv.elemento_id, { kind: 'mov', sampler, ...c });
+          m.ballMoves[mv.elemento_id] = { kind: 'mov', sampler };
+        } else {
+          pon(m.movs, mv.elemento_id, { sampler, ...c });
+          m.movByEl[mv.elemento_id] = { sampler, type };
+          m.arrows.push({ flat: sampler.flat, type });
+        }
+        acaba(mv.elemento_id, c.fin, lastNode(mv.path));
       }
+      for (const j of this.jugadores) if (alFinal[j.id]) P[j.id] = alFinal[j.id].punto;
 
-      // pases (el balón viaja al receptor)
+      // pases (el balón viaja al receptor, y es suyo al llegar)
       for (const p of (fase.pases || [])) {
         const recvEnd = P[p.a_id] || lastNode(p.path) || B[p.balon_id];
         const effPath = (p.path && p.path.length >= 2) ? p.path : [this.restStart[this.restStart.length - 1].B[p.balon_id] || B[p.balon_id], recvEnd];
-        const sampler = makeSampler(effPath);
+        const sampler = muestreador(effPath);
+        const c = cuando(p);
+        pon(m.ballMovs, p.balon_id, { kind: 'pase', sampler, ...c });
         m.ballMoves[p.balon_id] = { kind: 'pase', sampler };
         m.arrows.push({ flat: sampler.flat, type: 'pass' });
-        owner[p.balon_id] = p.a_id;
-        B[p.balon_id] = { ...recvEnd };
+        pon(m.duenos, p.balon_id, { t: c.fin, quien: p.a_id || null });
+        acaba(p.balon_id, c.fin, lastNode(effPath));
       }
 
-      // tiros (el balón viaja a canasta)
+      // tiros (el balón viaja a canasta y deja de ser de nadie)
       for (const t of (fase.tiros || [])) {
         const start = this.restStart[this.restStart.length - 1].B[t.balon_id] || B[t.balon_id];
         const basket = this._basket(t.canasta);
         const effPath = (t.path && t.path.length >= 2) ? t.path : [start, basket];
-        const sampler = makeSampler(effPath);
+        const sampler = muestreador(effPath);
+        const c = cuando(t);
+        pon(m.ballMovs, t.balon_id, { kind: 'tiro', sampler, ...c });
         m.ballMoves[t.balon_id] = { kind: 'tiro', sampler };
         m.arrows.push({ flat: sampler.flat, type: 'pass' });
-        owner[t.balon_id] = null;
-        // reposo final = último nodo del path EFECTIVO: con path explícito
-        // (Tramo 2: el compilador apunta al centro MEDIDO del aro, anclas.js)
-        // el balón no salta al aro de court.js al acabar la fase.
-        B[t.balon_id] = lastNode(effPath) || basket;
+        pon(m.duenos, t.balon_id, { t: c.fin, quien: null });
+        // reposo final = último nodo del path EFECTIVO (Tramo 2): el balón
+        // no salta al aro de court.js al acabar la fase.
+        acaba(t.balon_id, c.fin, lastNode(effPath) || basket);
       }
 
-      // recogidas: alguien va a por un balón suelto y se lo queda. El
-      // VIAJE del balón ya viaja como movimiento de tipo_elemento
-      // 'balon' (lo emite el compilador); esto solo cambia de dueño, que
-      // es lo que hace que el balón le siga en las fases siguientes.
-      // Va DESPUÉS de los tiros: en la misma fase, primero se suelta.
+      // recogidas: alguien va a por un balón suelto y se lo queda. Es suyo
+      // cuando el balón llega a sus manos —el final de su último viaje en
+      // esta fase—, y si no viaja, al acabar la fase, como antes. Va
+      // DESPUÉS de los tiros: en la misma fase, primero se suelta.
       for (const rec of (fase.recogidas || [])) {
         if (!rec || !rec.balon_id) continue;
-        owner[rec.balon_id] = rec.jugador_id || null;
-        if (rec.jugador_id && P[rec.jugador_id]) B[rec.balon_id] = { ...P[rec.jugador_id] };
+        const viajes = m.ballMovs[rec.balon_id] || [];
+        const t = viajes.length ? Math.max(...viajes.map((x) => x.fin)) : dur;
+        pon(m.duenos, rec.balon_id, { t, quien: rec.jugador_id || null });
       }
 
-      // balones en posesión que no se mueven explícitamente: siguen al portador
+      // dueños y sitios al acabar la fase
       for (const b of this.balones) {
-        if (m.ballMoves[b.id]) continue;
+        const lista = m.duenos[b.id];
+        if (lista) { lista.sort((a, z) => a.t - z.t); owner[b.id] = lista[lista.length - 1].quien; }
         const o = owner[b.id];
         if (o && P[o]) B[b.id] = { ...P[o] };
+        else if (alFinal[b.id]) B[b.id] = alFinal[b.id].punto;
       }
+      for (const id in m.movs) m.movs[id].sort((a, z) => a.inicio - z.inicio);
+      for (const id in m.ballMovs) m.ballMovs[id].sort((a, z) => a.inicio - z.inicio);
 
       this.meta.push(m);
     }
@@ -215,21 +300,27 @@ export class AnimationEngine {
   /* ---- cálculo del fotograma actual ---- */
   _computePositions() {
     const meta = this.meta[this.k], start = this.restStart[this.k];
-    const te = easeInOut(this.tNorm());
-    const players = {}, balls = {};
+    /* El instante DENTRO de la fase, en milisegundos. Lo que no trae
+       tiempo propio ocupa la fase entera, así que para eso esto es lo
+       mismo que el `easeInOut(tNorm())` de siempre. */
+    const t = Math.min(this.phaseElapsed, this._dur());
+    const players = {}, balls = {}, carrying = new Set();
     for (const j of this.jugadores) {
-      const mv = meta?.movByEl[j.id];
-      players[j.id] = mv ? mv.sampler(te) : (start ? { ...start.P[j.id] } : { x: 0.5, y: 0.5 });
+      players[j.id] = posicionEn(meta?.movs[j.id], t) || (start ? { ...start.P[j.id] } : { x: 0.5, y: 0.5 });
     }
     for (const b of this.balones) {
-      const bm = meta?.ballMoves[b.id];
-      if (bm) balls[b.id] = bm.sampler(te);
-      else {
-        const o = start?.owner[b.id];
-        balls[b.id] = (o && players[o]) ? { x: players[o].x + 0.012, y: players[o].y } : (start ? { ...start.B[b.id] } : { x: 0.5, y: 0.5 });
-      }
+      const movs = meta?.ballMovs[b.id];
+      const activo = movs && movs.find((x) => t >= x.inicio && t <= x.fin);
+      if (activo) { balls[b.id] = activo.sampler(easeInOut((t - activo.inicio) / activo.dur)); continue; }
+      /* Sin viaje en este instante: con su dueño de AHORA, que puede no
+         ser el del principio de la fase —tras un pase es del receptor,
+         aunque el receptor eche a correr en esta misma fase. */
+      const o = duenoEn(meta?.duenos[b.id], t, start?.owner[b.id]);
+      if (o && players[o]) { balls[b.id] = { x: players[o].x + 0.012, y: players[o].y }; carrying.add(o); continue; }
+      const hecho = movs ? movs.filter((x) => x.fin < t).pop() : null;
+      balls[b.id] = hecho ? hecho.sampler(1) : (start ? { ...start.B[b.id] } : { x: 0.5, y: 0.5 });
     }
-    return { players, balls };
+    return { players, balls, carrying };
   }
 
   render() {
@@ -300,15 +391,10 @@ export class AnimationEngine {
     // entrada en meta.ballMoves (no está en vuelo esta fase) y era su dueño
     // al INICIO de la fase (restStart[k].owner). En vuelo (pase/tiro) nadie
     // lo lleva mientras dura el viaje.
-    const start = this.restStart[this.k];
-    const carrying = new Set();
-    if (start) {
-      for (const b of this.balones) {
-        if (meta && meta.ballMoves[b.id]) continue;
-        const owner = start.owner[b.id];
-        if (owner) carrying.add(owner);
-      }
-    }
+    /* Quién lleva el balón AHORA lo dice el cálculo del instante: con
+       carriles puede cambiar a mitad de fase, y mirarlo en el dueño del
+       principio pintaría el anillo naranja en quien ya lo ha pasado. */
+    const carrying = f.carrying || new Set();
     for (const j of this.jugadores) {
       const p = f.players[j.id]; if (!p) continue;
       const [px, py] = this.view.toPx(p.x, p.y);
