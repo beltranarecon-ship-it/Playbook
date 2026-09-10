@@ -42,7 +42,7 @@
    declara en `PENDIENTES` en vez de olvidarse.
    ============================================================ */
 
-import { duracionDe, longitudMetros } from './trazo.js';
+import { duracionDe, longitudMetros, reanclar } from './trazo.js';
 
 /** Ningún tramo dura menos que esto: un movimiento de dos palmos
  *  seguiría siendo un movimiento, y con duración cero el motor tendría
@@ -242,6 +242,73 @@ export function tiemposDe(fase, { pista = 'entera' } = {}) {
 export function duracionDeCarril(carril, tiempos) {
   if (!carril || !carril.tramos.length) return 0;
   return Math.max(...carril.tramos.map((t) => (tiempos.tramos[t.id] || {}).fin_ms || 0));
+}
+
+/* ── Volver atrás y arrastrar a las siguientes (§6.5) ──── */
+
+/**
+ * Reancla los trazos de una fase a unas posiciones de entrada nuevas.
+ *
+ * Es el §5.5 aplicado a lo largo de un carril: cada trazo se estira
+ * desde donde ahora está quien lo hace, y SU DESTINO SE QUEDA QUIETO,
+ * porque el destino es una decisión del entrenador y el arranque es una
+ * consecuencia de la fase anterior.
+ *
+ * EL ORIGEN LO PONE QUIEN ACTÚA, NO QUIEN VIAJA. En un pase el trazo
+ * sale del pasador aunque lo recorra el balón, así que el arranque
+ * sigue al pasador. Y por eso mismo, dentro de un carril, el trazo
+ * siguiente solo arranca donde acabó el anterior SI la ficha lo
+ * recorrió: después de pasar, el pasador se quedó donde estaba.
+ *
+ * Un tramo cuyo protagonista ya no está en la pista no se toca y se
+ * marca `huerfano` (§6.5): borrarlo en silencio sería hacer desaparecer
+ * trabajo del entrenador sin decirle nada.
+ */
+export function reanclarFase(fase, entrada = {}, pista = 'entera') {
+  const carriles = ((fase && fase.carriles) || []).map((c) => {
+    let pos = entrada[c.elemento];
+    const tramos = c.tramos.map((t) => {
+      if (!pos) return { ...t, huerfano: true };
+      const trazo = reanclar(t.trazo, pos, pista);
+      /* Solo avanza el cursor si esta ficha ha recorrido el trazo. */
+      if (t.corre_id === c.elemento && trazo.length) {
+        const fin = trazo[trazo.length - 1];
+        pos = { x: fin.x, y: fin.y };
+      }
+      return { ...t, trazo, huerfano: false };
+    });
+    return { ...c, tramos };
+  });
+  return { ...fase, carriles };
+}
+
+/**
+ * Recalcula una jugada entera desde una fase en adelante.
+ *
+ * Es lo que pasa al volver atrás y cambiar algo (§6.5): las posiciones
+ * de arranque de las siguientes se recalculan y sus trazos se reanclan,
+ * manteniendo sus destinos. Sin esto, corregir la fase 1 dejaba las
+ * fases 2 y 3 dibujadas desde sitios donde ya no hay nadie.
+ *
+ * @param fases    todas, en orden
+ * @param entrada  dónde está cada ficha al empezar la PRIMERA
+ * @returns { fases, entradas, huerfanos }
+ */
+export function recalcular(fases, entrada = {}, pista = 'entera') {
+  const salida = [];
+  const entradas = [];
+  const huerfanos = [];
+  let actual = { ...entrada };
+  for (const f of fases || []) {
+    entradas.push(actual);
+    const reanclada = reanclarFase(f, actual, pista);
+    for (const c of reanclada.carriles) {
+      for (const t of c.tramos) if (t.huerfano) huerfanos.push({ fase: reanclada.id, tramo: t.id, elemento: c.elemento });
+    }
+    salida.push(reanclada);
+    actual = posicionesFinales(reanclada, actual);
+  }
+  return { fases: salida, entradas, huerfanos };
 }
 
 /* ── Dónde acaba cada ficha ────────────────────────────────── */

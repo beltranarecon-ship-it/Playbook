@@ -47,19 +47,10 @@
   }
   .cuerpo { flex: 1 1 auto; display: flex; min-height: 0; }
   .columna { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-  /* El botón va DEBAJO DE LA PISTA, que es donde se pidió: es el gesto
-     que cierra lo dibujado, y cae justo donde acaba de mirar el ojo. */
-  .pie {
-    flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp-3);
-    padding: 8px 14px; border-top: 1px solid var(--color-border);
-    background: var(--color-surface); font-family: var(--font-body); font-size: var(--fs-300);
-  }
-  .pie .sep { margin-left: auto; }
-  .pie button {
-    font: inherit; font-weight: 600; padding: 7px 14px; border: 0; border-radius: var(--r-pill);
-    background: var(--color-accent); color: #fff; cursor: pointer;
-  }
-  .pie button:disabled { background: var(--surface-2); color: var(--color-text-muted); cursor: not-allowed; }
+  /* La línea de tiempo va DEBAJO DE LA PISTA (§2.5): las fases, los
+     carriles y el botón que cierra lo dibujado caen justo donde acaba
+     de mirar el ojo. */
+  #tiempo { flex: 0 0 auto; display: flex; flex-direction: column; }
   .pz-lienzo { flex: 1 1 auto; }
   .lista {
     flex: 0 0 270px; overflow: auto; padding: 10px 12px; background: var(--color-surface);
@@ -85,11 +76,7 @@
   <div class="cuerpo">
     <div class="columna">
       <div id="hueco" style="flex:1 1 auto; min-width:0; display:flex;"></div>
-      <div class="pie">
-        <span id="fase"><b>Fase 1</b></span>
-        <span class="sep"></span>
-        <button id="siguiente" type="button">Siguiente fase →</button>
-      </div>
+      <div id="tiempo"></div>
     </div>
     <aside class="lista">
       <h2>Tramos de la fase</h2>
@@ -102,6 +89,7 @@
 <script type="module">
 import { Lienzo } from '/taller/js/pizarra/lienzo.js';
 import { Tablero } from '/taller/js/pizarra/tablero.js';
+import { LineaTiempo } from '/taller/js/pizarra/linea-tiempo.js';
 import * as E from '/taller/js/pizarra/elementos.js';
 
 const hueco = document.getElementById('hueco');
@@ -109,8 +97,8 @@ const elAyuda = document.getElementById('ayuda');
 const elTramos = document.getElementById('tramos');
 const elVacio = document.getElementById('vacio');
 const elAviso = document.getElementById('aviso');
-const elFase = document.getElementById('fase');
-const elSiguiente = document.getElementById('siguiente');
+const elTiempo = document.getElementById('tiempo');
+let linea = null;
 let lienzo = null;
 let tablero = null;
 
@@ -145,11 +133,17 @@ function montar(pista) {
       elAviso.hidden = false;
       elAviso.innerHTML = `<b>«${a.nombre}»</b> no se puede: ${motivo}.`;
     },
-    onFases: (fases, enCurso) => {
-      elFase.innerHTML = `<b>Fase ${enCurso}</b>`
-        + (fases.length ? ` · ${fases.length} cerrada${fases.length > 1 ? 's' : ''}` : '');
+    onFases: (fases, enCurso, huerfanos) => {
+      linea?.refrescar();
+      if (huerfanos && huerfanos.length) {
+        elAviso.hidden = false;
+        elAviso.innerHTML = `<b>${huerfanos.length} tramo${huerfanos.length > 1 ? 's' : ''}</b> de fases posteriores `
+          + 'ya no encaja: su protagonista no está en la pista.';
+      }
     },
   });
+  linea?.destroy();
+  linea = new LineaTiempo(elTiempo, tablero);
   tablero.poner(escena(pista));
   pintarTramos([]);
   window.__tablero = tablero;
@@ -158,7 +152,7 @@ function montar(pista) {
 
 function pintarTramos(ts) {
   elVacio.hidden = ts.length > 0;
-  elSiguiente.disabled = ts.length === 0;
+  linea?.refrescar();
   elTramos.replaceChildren(...ts.map((t) => {
     const li = document.createElement('li');
     li.textContent = `${t.accion}${t.variante ? ` · ${t.variante}` : ''} — ${t.trazo.length} nodos`;
@@ -166,7 +160,6 @@ function pintarTramos(ts) {
   }));
 }
 
-elSiguiente.addEventListener('click', () => { elAviso.hidden = true; tablero.siguienteFase(); });
 document.getElementById('pista').addEventListener('change', (ev) => montar(ev.target.value));
 document.getElementById('reiniciar').addEventListener('click', () => montar(document.getElementById('pista').value));
 montar('entera');

@@ -49,7 +49,7 @@ import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe } from './elementos.js';
 import { acierto } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe } from './destino.js';
-import { nuevaFase, carrilesDesde, tiemposDe, posicionesFinales } from './fases.js';
+import { nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular } from './fases.js';
 
 let siguiente = 1;
 
@@ -72,12 +72,14 @@ export class Tablero {
     this.onNoPuede = onNoPuede;
     this.onFases = onFases;
 
-    this.tramos = [];
-    /* Las fases YA CERRADAS, con lo que se dibujó en cada una y dónde
-       estaba todo el mundo al empezarla. La de en curso vive aparte, en
-       `this.tramos`, porque es la única que se edita. */
-    this.fases = [];
-    this.entrada = {};
+    /* TODAS las fases en una sola lista, y un índice diciendo cuál se
+       está editando. La de en curso vivió un tiempo aparte, y en cuanto
+       hubo que poder volver atrás (§6.5) eso dejaba dos sitios donde
+       vive una fase y dos maneras de tocarla. `this.tramos` se
+       mantiene, pero como ventana a la fase activa: así todo lo que
+       dibuja y corrige sigue escrito igual. */
+    this.fases = [{ ...nuevaFase('f1'), tramos: [], entrada: {} }];
+    this.iFase = 0;
     /* NO HAY UN MAPA DE ESTADOS APARTE, y es a propósito. Lo que cada
        ficha tiene en la mano es del MOMENTO y no del jugador —la misma
        ficha ofrece tres anillos distintos a lo largo de una fase—, pero
@@ -97,8 +99,8 @@ export class Tablero {
     /* §6.6: en una fase que no es la primera, el sitio de una ficha es
        consecuencia de la anterior y no se toca aquí. En la primera,
        moverla es colocarla y no tiene ninguna consecuencia rara. */
-    this.fichas.puedeMover = (e) => (this.fases.length
-      ? `llega aquí desde la fase ${this.fases.length}, y ahí es donde hay que corregirlo`
+    this.fichas.puedeMover = (e) => (this.iFase > 0
+      ? `llega aquí desde la fase ${this.iFase}, y ahí es donde hay que corregirlo`
       : null);
     this.fichas.onVeto = (e, motivo) => { this.onNoPuede?.({ nombre: this.nombreDe(e) }, motivo); this._pintarAyuda(); };
 
@@ -177,14 +179,17 @@ export class Tablero {
        corregirlos, y al mover su último nodo se buscaría un dueño que
        no está. */
     this.cerrar();
-    this.tramos = [];
-    this.fases = [];
     this.repaso.parar();
+    this.fases = [{
+      ...nuevaFase('f1'),
+      tramos: [],
+      entrada: Object.fromEntries(elementos.map((e) => [e.id, { x: e.x, y: e.y }])),
+    }];
+    this.iFase = 0;
     this.fichas.poner(elementos);
     this._recordarDonde(elementos);
-    this.entrada = Object.fromEntries(elementos.map((e) => [e.id, { x: e.x, y: e.y }]));
+    this._avisarDeFases();
     this.onTramos?.(this.tramos);
-    this.onFases?.(this.fases, this.numeroDeFase);
     this._pintarAyuda();
   }
 
@@ -254,8 +259,17 @@ export class Tablero {
     };
   }
 
+  /** Los tramos de la fase que se está editando. */
+  get tramos() { return this.fases[this.iFase].tramos; }
+  set tramos(v) {
+    this.fases = this.fases.map((f, i) => (i === this.iFase ? { ...f, tramos: v } : f));
+  }
+
+  /** Dónde está cada ficha al EMPEZAR la fase que se edita. */
+  get entrada() { return this.fases[this.iFase].entrada; }
+
   /** En qué fase se está dibujando, contando desde uno. */
-  get numeroDeFase() { return this.fases.length + 1; }
+  get numeroDeFase() { return this.iFase + 1; }
 
   nombreDe(e) {
     if (!e) return 'esa ficha';
@@ -266,7 +280,7 @@ export class Tablero {
 
   /** La fase en curso, con sus carriles y sus tiempos ya calculados. */
   faseEnCurso() {
-    const fase = { ...nuevaFase(`f${this.numeroDeFase}`), carriles: carrilesDesde(this.tramos) };
+    const fase = { ...this.fases[this.iFase], carriles: carrilesDesde(this.tramos) };
     return { fase, tiempos: tiemposDe(fase, { pista: this.lienzo.vista.pistaKey }) };
   }
 
@@ -300,6 +314,68 @@ export class Tablero {
     return true;
   }
 
+  /** Reproduce la fase que se está editando, sin cerrarla: el botón de
+   *  la línea de tiempo, para verla las veces que haga falta. */
+  reproducirFase() {
+    if (!this.tramos.length) return false;
+    this.cerrar();
+    const { tiempos } = this.faseEnCurso();
+    this.repaso.reproducirFase({
+      tramos: this.tramos.map((t) => ({
+        corre_id: t.corre_id, trazo: t.trazo,
+        inicio_ms: tiempos.tramos[t.id].inicio_ms,
+        duracion_ms: tiempos.tramos[t.id].duracion_ms,
+      })),
+    });
+    return true;
+  }
+
+  /**
+   * La jugada entera desde el principio (§6.4).
+   *
+   * Las fases van una detrás de otra, así que cada tramo se corre en el
+   * tiempo lo que sumen las fases anteriores. Y funciona aunque se esté
+   * editando la fase 3: el repaso coloca a cada ficha en el arranque de
+   * su primer tramo, que es donde estaba al empezar la jugada.
+   */
+  reproducirJugada() {
+    this.cerrar();
+    const pista = this.lienzo.vista.pistaKey;
+    const todos = [];
+    let desfase = 0;
+    for (const f of this.fases) {
+      const fase = { ...f, carriles: carrilesDesde(f.tramos) };
+      const tiempos = tiemposDe(fase, { pista });
+      for (const t of f.tramos) {
+        const m = tiempos.tramos[t.id];
+        todos.push({
+          corre_id: t.corre_id, trazo: t.trazo,
+          inicio_ms: desfase + m.inicio_ms, duracion_ms: m.duracion_ms,
+        });
+      }
+      desfase += tiempos.duracion_ms;
+    }
+    if (!todos.length) return false;
+    this.repaso.reproducirFase({ tramos: todos });
+    return true;
+  }
+
+  /**
+   * Adelanta o retrasa un tramo dentro de su fase (§2.5), y lo marca
+   * como puesto A MANO (§6.3): a partir de ahí deja de recalcularse.
+   *
+   * Sin la marca, el siguiente cambio en la fase lo devolvería a su
+   * arranque automático y el entrenador vería deshacerse lo que acaba
+   * de ajustar, sin tocarlo.
+   */
+  moverArranque(tramoId, ms) {
+    const inicio = Math.max(0, Math.round(ms));
+    this.tramos = this.tramos.map((t) => (t.id === tramoId ? { ...t, inicio_ms: inicio, manual: true } : t));
+    this._recalcularSiguientes();
+    this.onTramos?.(this.tramos);
+    this.lienzo.pintar();
+  }
+
   /* Se llama al terminar el repaso. Cerrar la fase AQUÍ y no al pulsar
      el botón es lo que hace que se vea entera antes de dejar de poder
      tocarla. */
@@ -311,15 +387,67 @@ export class Tablero {
     this._pintarAyuda();
   }
 
+  /* Cerrar la fase = pasar a la siguiente. Si no hay siguiente, se crea
+     vacía; si ya la había —porque se volvió atrás a corregir— se va a
+     ella sin tocar lo que tuviera dibujado. */
   _cerrarFase() {
     const { fase } = this.faseEnCurso();
-    this.fases = [...this.fases, { ...fase, tramos: this.tramos, entrada: this.entrada }];
-    this.entrada = posicionesFinales(fase, this.entrada);
-    this.tramos = [];
+    if (this.iFase === this.fases.length - 1) {
+      this.fases = [...this.fases, {
+        ...nuevaFase(`f${this.fases.length + 1}`),
+        tramos: [],
+        entrada: posicionesFinales(fase, this.entrada),
+      }];
+    }
+    this.irAFase(this.iFase + 1);
+  }
+
+  /**
+   * Volver a cualquier fase para cambiarla (§6.5).
+   *
+   * Al llegar, las fichas se colocan donde las deja ESA fase: es lo que
+   * hay que ver para seguir dibujándola, y es coherente con que la
+   * ficha viva siempre en la punta de su trazo.
+   */
+  irAFase(i) {
+    const n = Math.max(0, Math.min(this.fases.length - 1, i | 0));
     this.cerrar();
+    this.repaso.parar();
+    this.iFase = n;
+    const { fase } = this.faseEnCurso();
+    const finales = posicionesFinales(fase, this.entrada);
+    this.fichas.poner(this.fichas.elementos.map((e) => (finales[e.id] ? { ...e, ...finales[e.id] } : e)));
+    this._recordarDonde(this.fichas.elementos);
+    this._avisarDeFases();
     this.onTramos?.(this.tramos);
-    this.onFases?.(this.fases, this.numeroDeFase);
+    this._pintarAyuda();
     this.lienzo.pintar();
+  }
+
+  /**
+   * Lo que hay que hacer después de tocar una fase que no es la última
+   * (§6.5): las siguientes se recalculan y sus trazos se reanclan
+   * manteniendo su destino. Sin esto, corregir la fase 1 deja la 2
+   * dibujada desde un sitio donde ya no hay nadie.
+   */
+  _recalcularSiguientes() {
+    if (this.iFase >= this.fases.length - 1) return;
+    const pista = this.lienzo.vista.pistaKey;
+    const conCarriles = this.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) }));
+    const r = recalcular(conCarriles, this.fases[0].entrada, pista);
+    this.fases = this.fases.map((f, i) => (i <= this.iFase ? f : {
+      ...f,
+      entrada: r.entradas[i] || f.entrada,
+      /* Los carriles vuelven a lista plana: es como se editan, y así
+         solo hay una forma de guardar un tramo. */
+      tramos: r.fases[i].carriles.flatMap((c) => c.tramos).sort((a, b) => a.orden - b.orden),
+    }));
+    this._huerfanos = r.huerfanos;
+    this._avisarDeFases();
+  }
+
+  _avisarDeFases() {
+    this.onFases?.(this.fases, this.numeroDeFase, this._huerfanos || []);
   }
 
   /** Cierra lo que haya abierto y guarda. Es lo que hace «tocar
@@ -544,6 +672,7 @@ export class Tablero {
     this.fichas._cambio(lista);
     this.repaso.reproducir({ elemento: corre, trazo, ritmo });
 
+    this._recalcularSiguientes();
     this.onTramos?.(this.tramos);
 
     /* Y el anillo vuelve a salir en la punta, ya contextual (§4.5). Se
@@ -622,6 +751,7 @@ export class Tablero {
       }
       this.fichas._cambio(lista);
     }
+    this._recalcularSiguientes();
     this.onTramos?.(this.tramos);
   }
 
@@ -663,7 +793,7 @@ export class Tablero {
   /* El fantasma de la fase anterior: sus trazos, apagados. Se ve de
      dónde viene cada uno sin que compita con lo que se dibuja ahora. */
   _dibujarFantasma({ ctx, R, toPx }) {
-    const previa = this.fases[this.fases.length - 1];
+    const previa = this.iFase > 0 ? this.fases[this.iFase - 1] : null;
     if (!previa) return;
     ctx.save();
     ctx.globalAlpha = 0.28;

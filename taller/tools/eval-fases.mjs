@@ -26,6 +26,7 @@ import {
   MINIMO_TRAMO_MS, PENDIENTES,
   nuevaFase, carrilesDesde, tramosDe,
   duracionDeTramo, tiemposDe, duracionDeCarril, posicionesFinales,
+  reanclarFase, recalcular,
 } from '../js/pizarra/fases.js';
 import { duracionDe, longitudMetros, nuevoTrazo } from '../js/pizarra/trazo.js';
 
@@ -289,6 +290,105 @@ test('el tercer arranque del §6.3 sale DECLARADO como pendiente, con su motivo'
   ok(PENDIENTES.bloqueo, 'quien sale de un bloqueo espera al bloqueador');
   ok(PENDIENTES.bloqueo.length > 30, 'un pendiente sin motivo es un olvido');
   ok(/bloque/i.test(PENDIENTES.bloqueo));
+});
+
+/* ── Volver atrás y arrastrar a las siguientes (§6.5) ── */
+
+test('AL CAMBIAR UNA FASE, LAS SIGUIENTES SE ESTIRAN DESDE EL SITIO NUEVO', () => {
+  /* Sin esto, corregir la fase 1 dejaba la fase 2 dibujada desde un
+     sitio donde ya no hay nadie. */
+  const f2 = conCarriles([tramo('A1', P(0.5, 0.5), P(0.9, 0.1))]);
+  const r = reanclarFase(f2, { A1: P(0.3, 0.7) }, 'entera');
+  const t = r.carriles[0].tramos[0];
+  eq([t.trazo[0].x, t.trazo[0].y], [0.3, 0.7], 'arranca donde está ahora:');
+  eq([t.trazo[1].x, t.trazo[1].y], [0.9, 0.1], 'y EL DESTINO SE QUEDA QUIETO:');
+  eq(t.huerfano, false);
+});
+
+test('EL ORIGEN LO PONE QUIEN ACTÚA, NO QUIEN VIAJA', () => {
+  /* Un pase sale del pasador aunque lo recorra el balón. Siguiendo a
+     quien viaja, el pase arrancaría desde donde quedó el balón. */
+  const pase = tramo('A1', P(0.2, 0.8), P(0.8, 0.8), { corre_id: 'b1', accion: 'pasa', receptor_id: 'A2' });
+  const r = reanclarFase(conCarriles([pase]), { A1: P(0.4, 0.6), b1: P(0.44, 0.6) }, 'entera');
+  const t = r.carriles[0].tramos[0];
+  eq([t.trazo[0].x, t.trazo[0].y], [0.4, 0.6], 'sale del pasador:');
+  eq([t.trazo[1].x, t.trazo[1].y], [0.8, 0.8], 'y llega donde llegaba:');
+});
+
+test('dentro de un carril, DESPUÉS DE PASAR el pasador no se ha movido', () => {
+  /* El trazo siguiente solo arranca donde acabó el anterior si la ficha
+     lo recorrió. Encadenando a ciegas, el que pasa aparecería de golpe
+     donde acabó su propio pase. */
+  const pase = tramo('A1', P(0.2, 0.8), P(0.8, 0.8), { corre_id: 'b1', accion: 'pasa', receptor_id: 'A2' });
+  const corta = tramo('A1', P(0.2, 0.8), P(0.3, 0.3));
+  const r = reanclarFase(conCarriles([pase, corta]), { A1: P(0.4, 0.6) }, 'entera');
+  const [p, c] = r.carriles[0].tramos;
+  eq([p.trazo[0].x, p.trazo[0].y], [0.4, 0.6]);
+  eq([c.trazo[0].x, c.trazo[0].y], [0.4, 0.6], 'el corte también sale de donde sigue estando:');
+});
+
+test('y si SÍ lo recorrió, el siguiente arranca en su punta', () => {
+  const a = tramo('A1', P(0.2, 0.8), P(0.5, 0.5));
+  const b = tramo('A1', P(0.5, 0.5), P(0.9, 0.2));
+  const r = reanclarFase(conCarriles([a, b]), { A1: P(0.1, 0.9) }, 'entera');
+  const [x, y] = r.carriles[0].tramos;
+  eq([x.trazo[0].x, x.trazo[0].y], [0.1, 0.9]);
+  eq([y.trazo[0].x, y.trazo[0].y], [x.trazo[1].x, x.trazo[1].y], 'encadenados:');
+  eq([y.trazo[1].x, y.trazo[1].y], [0.9, 0.2], 'con su destino intacto:');
+});
+
+test('UN TRAMO SIN PROTAGONISTA NO SE BORRA EN SILENCIO: se marca', () => {
+  /* Borrarlo sin decir nada sería hacer desaparecer trabajo del
+     entrenador. Se marca y quien nos usa lo enseña (§6.5). */
+  const t = tramo('A9', P(0.5, 0.5), P(0.9, 0.1));
+  const r = reanclarFase(conCarriles([t]), { A1: P(0.3, 0.7) }, 'entera');
+  eq(r.carriles[0].tramos[0].huerfano, true);
+  eq(r.carriles[0].tramos[0].trazo, t.trazo, 'y su trazo se queda tal cual:');
+});
+
+test('RECALCULAR ARRASTRA LA CADENA ENTERA, fase tras fase', () => {
+  /* A1 corre en la 1 y vuelve a correr en la 2. Cambiando dónde empieza
+     la 1, la 2 tiene que salir del nuevo final de la 1. */
+  const f1 = conCarriles([tramo('A1', P(0.2, 0.9), P(0.5, 0.5))]);
+  const f2 = conCarriles([tramo('A1', P(0.5, 0.5), P(0.9, 0.1))]);
+  const r = recalcular([{ ...f1, id: 'f1' }, { ...f2, id: 'f2' }], { A1: P(0.1, 0.95) }, 'entera');
+  const t1 = r.fases[0].carriles[0].tramos[0];
+  const t2 = r.fases[1].carriles[0].tramos[0];
+  eq([t1.trazo[0].x, t1.trazo[0].y], [0.1, 0.95], 'la 1 sale del sitio nuevo:');
+  eq([t2.trazo[0].x, t2.trazo[0].y], [t1.trazo[1].x, t1.trazo[1].y], 'y la 2 del final de la 1:');
+  eq([t2.trazo[1].x, t2.trazo[1].y], [0.9, 0.1], 'con su destino intacto:');
+  eq(r.huerfanos, []);
+  eq(r.entradas.length, 2, 'y sale dónde empieza cada fase:');
+});
+
+test('quien no se mueve en una fase llega igual a la siguiente', () => {
+  const f1 = conCarriles([tramo('A1', P(0.2, 0.9), P(0.5, 0.5))]);
+  const f2 = conCarriles([tramo('A2', P(0.8, 0.8), P(0.6, 0.4))]);
+  const r = recalcular([{ ...f1, id: 'f1' }, { ...f2, id: 'f2' }], { A1: P(0.2, 0.9), A2: P(0.8, 0.8) }, 'entera');
+  eq(r.huerfanos, [], 'A2 no sale en la fase 1, pero sigue en la pista');
+  eq(r.entradas[1].A2, P(0.8, 0.8));
+});
+
+test('recalcular DICE quién se ha quedado huérfano, con su fase', () => {
+  const f1 = conCarriles([tramo('A1', P(0.2, 0.9), P(0.5, 0.5))]);
+  const f2 = conCarriles([tramo('A9', P(0.5, 0.5), P(0.9, 0.1))]);
+  const r = recalcular([{ ...f1, id: 'f1' }, { ...f2, id: 'f2' }], { A1: P(0.2, 0.9) }, 'entera');
+  eq(r.huerfanos.length, 1);
+  eq(r.huerfanos[0].fase, 'f2');
+  eq(r.huerfanos[0].elemento, 'A9');
+});
+
+test('recalcular no muta lo que recibe', () => {
+  const f1 = conCarriles([tramo('A1', P(0.2, 0.9), P(0.5, 0.5))]);
+  const copia = JSON.parse(JSON.stringify(f1));
+  recalcular([f1], { A1: P(0.7, 0.7) }, 'entera');
+  eq(f1, copia, 'la fase original ha cambiado:');
+});
+
+test('sin fases ni entrada, no rompe', () => {
+  eq(recalcular([], {}, 'entera'), { fases: [], entradas: [], huerfanos: [] });
+  eq(recalcular(null, {}, 'entera').fases, []);
+  eq(reanclarFase(null, {}, 'entera').carriles, []);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

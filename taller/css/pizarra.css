@@ -174,3 +174,84 @@
 }
 .pz-nodo__b:hover { background: var(--color-accent); color: #fff; }
 .pz-nodo__b:focus-visible { outline: 2px solid var(--color-ball); outline-offset: 2px; }
+
+/* ---- La línea de tiempo (§2.5) -----------------------------
+   La tira de abajo: los mandos, las fases y los carriles de la fase
+   activa. Va en píxeles de pantalla y no sabe nada del zoom de la
+   pista: es interfaz, no dibujo. */
+.pz-tiempo {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: var(--fs-300);
+}
+
+.pz-tiempo__mandos { display: flex; align-items: center; gap: 6px; }
+.pz-tiempo__mando {
+  /* 44 px: los mandos se pulsan con el dedo en la tablet igual que con
+     el ratón en el ordenador (§2.6). */
+  width: 44px; height: 34px;
+  display: grid; place-items: center;
+  border: 1px solid var(--color-border); border-radius: var(--r-2);
+  background: var(--color-surface); color: var(--color-text);
+  font-size: 15px; cursor: pointer;
+}
+.pz-tiempo__mando:hover:not(:disabled) { border-color: var(--color-accent); color: var(--color-accent); }
+.pz-tiempo__mando:disabled { opacity: .4; cursor: not-allowed; }
+.pz-tiempo__dur { margin-left: 4px; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+/* La tira de fases. Se desborda a lo ancho en vez de apretarse: con
+   ocho fases, unas pastillas de dos milímetros no se pulsan. */
+.pz-tiempo__fases {
+  display: flex; align-items: center; gap: 6px;
+  overflow-x: auto; padding-bottom: 2px;
+}
+.pz-fase {
+  flex: 0 0 auto;
+  min-height: 30px; padding: 0 12px;
+  border: 1px solid var(--color-border); border-radius: var(--r-pill);
+  background: var(--color-surface); color: var(--color-text);
+  font: inherit; cursor: pointer; white-space: nowrap;
+}
+.pz-fase:hover { border-color: var(--color-accent); }
+.pz-fase.is-activa { background: var(--color-accent); border-color: var(--color-accent); color: #fff; font-weight: 600; }
+/* Una fase abierta y sin dibujar se ve a medio tono: está, pero todavía
+   no tiene nada, y eso no es lo mismo que un hueco. */
+.pz-fase.is-vacia:not(.is-activa) { color: var(--color-text-muted); border-style: dashed; }
+.pz-fase--mas { margin-left: auto; font-weight: 600; color: var(--color-accent); border-color: var(--color-accent); }
+.pz-fase--mas:disabled { color: var(--color-text-muted); border-color: var(--color-border); cursor: not-allowed; }
+
+/* Los carriles: una fila por ficha, una barra por tramo. */
+.pz-tiempo__carriles { display: flex; flex-direction: column; gap: 4px; }
+.pz-tiempo__nada { margin: 2px 0; color: var(--color-text-muted); }
+
+.pz-carril { display: flex; align-items: center; gap: 8px; }
+.pz-carril__quien {
+  flex: 0 0 42px; text-align: right; font-weight: 600;
+  color: var(--color-text-muted); white-space: nowrap; overflow: hidden;
+}
+.pz-carril__pista {
+  position: relative; flex: 1 1 auto; height: 20px;
+  background: var(--surface-2); border-radius: var(--r-1);
+}
+.pz-carril__dur { flex: 0 0 46px; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+
+.pz-barra {
+  position: absolute; top: 2px; bottom: 2px;
+  display: flex; align-items: center;
+  padding: 0 6px;
+  border-radius: var(--r-1);
+  background: var(--color-accent); color: #fff;
+  font-size: var(--fs-200); line-height: 1;
+  white-space: nowrap; overflow: hidden;
+  cursor: grab; touch-action: none; user-select: none;
+}
+.pz-barra:active { cursor: grabbing; }
+/* Un arranque puesto a mano deja de recalcularse (§6.3), y eso hay que
+   verlo: si no, no habría manera de saber cuáles siguen la corriente. */
+.pz-barra.is-manual { background: var(--color-ball); box-shadow: inset 0 0 0 2px var(--color-ink, #0b2330); }
