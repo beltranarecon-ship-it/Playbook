@@ -8,6 +8,7 @@ import { h, mount, icon } from '../ui/dom.js';
 import { header } from '../ui/chrome.js';
 import { Stage } from '../canvas/stage.js';
 import { abrirProyector } from '../canvas/proyector.js';
+import { paraVer, perdioLaAnimacion } from '../pizarra/motor/marca.js';
 import { toast } from '../ui/toast.js';
 import { confirmModal } from '../ui/modal.js';
 import { getEjercicio, setFavorito, eliminarEjercicio } from '../supabase/ejercicios.js';
@@ -60,12 +61,18 @@ export function render(root, { id } = {}) {
     titleEl.textContent = ej.name;
     titleEl.title = ej.name;
     const anim = ej.animacion || { pista: ej.tipo_pista || 'entera', jugadores: [], balones: [], conos: [], fases: [] };
+    /* Lo de antes de la Pizarra ya no se reproduce: se ve su colocación
+       inicial, quieta, y se ofrece rehacerla (ESPEC-PIZARRA-v3 §11.4).
+       Lo que no tiene nada que reproducir se enseña sin mandos, que no
+       harían nada. */
+    const vista = paraVer(anim);
     stage = new Stage({ pista: ej.tipo_pista || 'entera' });
-    stage.showAnimation(anim);
+    if ((vista.fases || []).length) stage.showAnimation(vista);
+    else stage.showPreview(vista);
     curEj = ej; curAnim = anim;
 
     mount(body, h('div', { class: 'detalle-grid' },
-      h('section', { class: 'detalle-canvas' }, stage.el),
+      h('section', { class: 'detalle-canvas' }, stage.el, perdioLaAnimacion(anim) ? avisoDeAntes(ej) : null),
       h('aside', { class: 'detalle-side' }, acciones(ej, anim), ...ficha(ej)),
     ));
   }
@@ -96,7 +103,16 @@ export function render(root, { id } = {}) {
   }
 
   function abrir(anim, ej) {
-    proj = abrirProyector(anim, { nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min, categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos, catalogo });
+    proj = abrirProyector(paraVer(anim), { nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min, categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos, catalogo });
+  }
+
+  /* ESPEC-PIZARRA-v3 §11.4: al abrir un ejercicio de antes, la ficha lo
+     dice y ofrece «rehacer la pizarra», que abre la Pizarra con sus
+     posiciones iniciales ya colocadas. */
+  function avisoDeAntes(ej) {
+    return h('div', { class: 'detalle-aviso' },
+      h('p', null, h('b', null, 'Es de antes de la Pizarra.'), ' Su animación ya no se reproduce: se ve la colocación inicial.'),
+      h('a', { class: 'btn btn--secondary btn--sm', href: `/ejercicios/${ej.id}/rehacer`, 'data-link': true }, 'Rehacer la pizarra'));
   }
 
   /* ---- vídeos de las acciones de ESTE ejercicio (Tramo 2.14) ------

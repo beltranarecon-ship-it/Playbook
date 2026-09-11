@@ -61,13 +61,14 @@ function pasoDelBorrador(b) {
   return Math.max(0, Math.min(STEPS.length - 1, Number(paso) || 0));
 }
 
-export function render(root, { id = null, modo = 'nuevo' } = {}) {
+export function render(root, { id = null, modo = 'nuevo', paso = 0 } = {}) {
   const draft = nuevoDraft();
   /* La columna de la derecha, fuera de la Pizarra: enseña lo dibujado
      mientras se rellena la ficha. */
   const stage = new Stage({ pista: draft.tipo_pista });
 
-  const state = { step: 0 };
+  // «Rehacer la pizarra» entra directamente por la Pizarra (§11.4)
+  const state = { step: Math.max(0, Math.min(STEPS.length - 1, Number(paso) || 0)) };
   let current = null;
   // nombres del resto de ejercicios: para el nombre de la variante y
   // para no dejar dos iguales (§6). Sin red se queda vacío y no bloquea.

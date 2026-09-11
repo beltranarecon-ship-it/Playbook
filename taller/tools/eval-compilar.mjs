@@ -18,6 +18,7 @@
 import {
   VERSION_JUGADA, PAUSA_POR_DEFECTO_MS, RECOGIDA_FRACCION, compilar, esDeLaPizarra,
 } from '../js/pizarra/motor/compilar.js';
+import { MOTOR_PIZARRA, soloColocacion, paraVer, perdioLaAnimacion } from '../js/pizarra/motor/marca.js';
 import { anadir, asignarBalon, reiniciarIds } from '../js/pizarra/elementos.js';
 import { nuevoTrazo } from '../js/pizarra/trazo.js';
 import { carrilesDesde, tiemposDe } from '../js/pizarra/fases.js';
@@ -356,6 +357,38 @@ test('una jugada sin nada dibujado es una colocación: sin fases, y con la escen
   const a = compilar(jugadaCon(l, []));
   eq(a.fases, []);
   ok(a.jugadores.length > 0, 'la colocación tiene que salir');
+});
+
+test('LO DE ANTES SE VE QUIETO: la colocación sí, las fases y las rondas no', () => {
+  const vieja = {
+    pista: 'entera', rondas: 3,
+    jugadores: [{ id: 'A1', posicion_inicial: [0.3, 0.7] }], balones: [], conos: [],
+    fases: [{ id: 'f1', movimientos: [{ elemento_id: 'A1' }] }],
+  };
+  const v = paraVer(vieja);
+  eq(v.fases, []);
+  eq(v.jugadores, vieja.jugadores, 'la colocación, entera:');
+  ok(!('rondas' in v), 'sin rondas que repetir');
+  eq(vieja.fases.length, 1, 'y la guardada no se toca:');
+  eq(vieja.rondas, 3);
+});
+
+test('LO DE LA PIZARRA SE VE ENTERO, tal cual', () => {
+  const { l } = escena();
+  const a = compilar(jugadaCon(l, []));
+  ok(paraVer(a) === a, 'la misma animación, sin copiarla');
+  eq(a.motor, MOTOR_PIZARRA);
+});
+
+test('SOLO SE AVISA DE LO QUE SE MOVÍA: lo de antes sin fases no ha perdido nada', () => {
+  ok(perdioLaAnimacion({ jugadores: [], fases: [{}] }), 'lo de antes que se movía');
+  ok(!perdioLaAnimacion({ jugadores: [], fases: [] }), 'lo de antes quieto');
+  const { l } = escena();
+  ok(!perdioLaAnimacion(compilar(jugadaCon(l, []))), 'lo de la Pizarra');
+  for (const v of [null, undefined, 'x', 3]) {
+    ok(!perdioLaAnimacion(v), `${JSON.stringify(v)}`);
+    eq(soloColocacion(v), v ?? null, `soloColocacion(${JSON.stringify(v)}):`);
+  }
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

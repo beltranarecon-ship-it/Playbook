@@ -123,8 +123,21 @@ Los pasos:
    cargaba en `taller/index.html`, y el motor pintaba a todos en el
    centro cuando la animación no tiene fases (ya pasaba antes con lo
    guardado «sin animación»; con la Pizarra pasa con toda colocación sin
-   trazos). Bancos: 63 en verde, 1529 pruebas.
+   trazos). Bancos: 63 en verde, 1529 pruebas. ✅ commit `32477f3`
+   (rama `pizarra-v3`, subida; `main` sin tocar).
 3. §11.4 en la ficha, el proyector, el visor de Equipos y la lista.
+   **Escrito:** `pizarra/motor/marca.js` (`esDeLaPizarra`, `paraVer`,
+   `soloColocacion`, `perdioLaAnimacion`; sin dependencias, probado en
+   eval-compilar). La ficha enseña lo de antes quieto, con aviso y
+   «Rehacer la pizarra» (ruta nueva `/ejercicios/:id/rehacer`, que abre
+   el asistente en la Pizarra). El proyector y el visor de Equipos
+   enseñan `paraVer(...)`; el visor dice que es de antes y no narra
+   fases. La biblioteca pide `motor:animacion->motor` y solo anima al
+   pasar el ratón la miniatura de lo de la Pizarra; `sw.js` pasa a v14.
+   El proyector no repintaba al tomar tamaño: con una colocación sola
+   salía la pista vacía. Probado en el navegador: ficha, «Rehacer»,
+   visor (arnés `dev/planner.html`). **Sin probar en vivo:** la lista de
+   la biblioteca, porque el navegador de pruebas ya no tiene sesión real.
 4. Borrado del §12, mudando lo que sobrevive, y bancos adaptados.
 
 ## Pendiente de decidir o de arreglar (no se toca sin avisar)
@@ -156,9 +169,13 @@ Los pasos:
 `localStorage` y la sesión del Playbook se guarda en `cbp-auth`. El
 guardado llegó a Supabase de verdad y creó el ejercicio **«Prueba
 Pizarra pase»** (id `4d4408b1-02af-4de0-bb7b-202e67674ef3`, autor
-Beltrán). Hubo un 400 en consola antes del éxito: casi seguro el primer
-intento rechazado por la columna `jugada` (la 043 no está aplicada) y el
-reintento sin ella, que es lo que tiene que pasar.
+Beltrán). En la consola salió un 400, pero **su origen no está
+confirmado**: vuelve a salir al abrir cualquier ficha, así que puede ser
+de la ficha y no del guardado. No se sabe si la `jugada` llegó a
+guardarse (es decir, si la 043 está aplicada): la comprobación de solo
+lectura falló porque `dev/planner.html` había cambiado la sesión de
+`cbp-auth` por la suya, falsa. Desde entonces ese navegador de pruebas
+no tiene sesión real.
 
 **Decidido (2026-09-11).** El entrenador lo archiva él; aquí no se
 toca. Y el guardado se prueba **siempre sin red**.

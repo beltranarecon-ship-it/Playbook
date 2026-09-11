@@ -285,3 +285,15 @@
 }
 .chip--video { cursor: pointer; }
 .chip--video small { opacity: .7; font-weight: 400; }
+
+/* ---- Lo de antes de la Pizarra (ESPEC-PIZARRA-v3 §11.4) ----- */
+.detalle-aviso {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-3); padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--color-border); border-left: 3px solid var(--color-warn);
+  border-radius: var(--r-md); background: var(--color-surface);
+  font-size: var(--fs-300); color: var(--color-text-muted);
+}
+.detalle-aviso p { flex: 1 1 18rem; margin: 0; }
+.detalle-aviso b { color: var(--color-text); }

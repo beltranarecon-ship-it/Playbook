@@ -40,6 +40,7 @@
    ============================================================ */
 
 import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
+import { MOTOR_PIZARRA } from './marca.js';
 import { carrilesDesde, tiemposDe } from '../fases.js';
 
 export const VERSION_JUGADA = 3;
@@ -54,14 +55,11 @@ export const PAUSA_POR_DEFECTO_MS = 400;
  *  fotograma; si viajara todo el tramo, iría flotando delante de él. */
 export const RECOGIDA_FRACCION = 0.25;
 
-/**
- * ¿La ha compilado la Pizarra? Las animaciones de antes salían del motor
- * viejo (§11.4): ya no se reproducen, se ve su colocación inicial quieta
- * y se ofrece rehacerlas. Se mira una marca que va DENTRO de la
- * animación, y no la columna `jugada`: esa la trae la 043, que se aplica
- * a mano, y hasta entonces daría por viejo todo lo nuevo.
- */
-export const esDeLaPizarra = (anim) => !!anim && typeof anim === 'object' && anim.motor === VERSION_JUGADA;
+/* ¿La ha compilado la Pizarra? Vive en marca.js, que no depende de nada,
+   para que quien solo necesita saber esto (la ficha, Equipos, la
+   biblioteca) no cargue el compilador. Se reexporta aquí porque es de
+   aquí de donde sale la marca. */
+export { esDeLaPizarra } from './marca.js';
 
 const porSlug = new Map(CATALOGO_SISTEMA.map((a) => [a.slug, a]));
 const punto = (p) => [p.x, p.y];
@@ -134,7 +132,7 @@ export function compilar(jugada) {
       : null))
     .filter(Boolean);
 
-  return { motor: VERSION_JUGADA, pista, canasta, jugadores, balones, conos, materiales, fases, warnings };
+  return { motor: MOTOR_PIZARRA, pista, canasta, jugadores, balones, conos, materiales, fases, warnings };
 }
 
 function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {

@@ -23,7 +23,9 @@ const TOPE = 500;
 export async function getEjercicios() {
   const { data, error } = await supabase
     .from('exercises')
-    .select('id, name, type, category, difficulty, dificultad_label, duration_min, description, tags, poster, created_by, created_at')
+    /* `motor` dice si la animación es de la Pizarra (§11.4): la
+       miniatura de lo de antes no se anima al pasar el ratón. */
+    .select('id, name, type, category, difficulty, dificultad_label, duration_min, description, tags, poster, created_by, created_at, motor:animacion->motor')
     .eq('is_archived', false)
     .order('created_at', { ascending: false })
     .limit(TOPE + 1);

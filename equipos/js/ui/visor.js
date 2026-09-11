@@ -22,6 +22,7 @@ import { CourtView } from '../../../taller/js/canvas/court.js';
 import { AnimationEngine } from '../../../taller/js/canvas/engine.js';
 import { controls } from '../../../taller/js/canvas/controls.js';
 import { abrirProyector } from '../../../taller/js/canvas/proyector.js';
+import { paraVer, perdioLaAnimacion } from '../../../taller/js/pizarra/motor/marca.js';
 import { urlIncrustado, urlPublica, textoTramo, seIncrusta } from '../../../taller/js/ia/video.js';
 import { cargarCatalogoConVideos } from '../../../taller/js/supabase/acciones.js';
 import { dificultadDe } from '../../../taller/js/config.js';
@@ -127,20 +128,25 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
       return;
     }
     lienzo.classList.remove('is-sin-anim');
-    view.setPista(anim.pista || 'entera');
+    /* Lo de antes de la Pizarra ya no se reproduce: su colocación, quieta
+       (ESPEC-PIZARRA-v3 §11.4). */
+    const vista = paraVer(anim);
+    view.setPista(vista.pista || 'entera');
     if (!engine) {
-      engine = new AnimationEngine(view, anim, { autoplay: true, loop: true });
+      engine = new AnimationEngine(view, vista, { autoplay: true, loop: true });
       ctrl = controls(engine);
       engine.on('phase', ({ k }) => marcaFase(k));
     } else {
       engine.preview = null;
-      engine.load(anim);
+      engine.load(vista);
     }
     // Sin fases no hay nada que reproducir: se ve la colocación inicial
     // y la barra de transporte sobra (botones que no harían nada).
-    const conFases = !!(anim.fases || []).length;
+    const conFases = !!(vista.fases || []).length;
     ranuraCtrl.replaceChildren(conFases ? ctrl.el : '');
-    notaPista.textContent = conFases ? '' : 'Sin animación por fases: se ve la colocación inicial.';
+    notaPista.textContent = conFases ? ''
+      : perdioLaAnimacion(anim) ? 'Es de antes de la Pizarra: su animación ya no se reproduce. Se puede rehacer en el Taller.'
+      : 'Sin animación por fases: se ve la colocación inicial.';
   }
 
   /** Resalta en el guion la fase que el motor está reproduciendo. */
@@ -378,7 +384,7 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
         // abierto, destroy() lo cierra en vez de dejar un telón negro encima
         // se le pasan los requisitos: el proyector enseña dosis, criterio
         // y el nivel de exigencia que se está corriendo
-        onClick: () => { proyector = abrirProyector(ficha.animacion, { nombre: ficha.name, requisitos: ficha.requisitos, variantes: ficha.variantes, catalogo }); },
+        onClick: () => { proyector = abrirProyector(paraVer(ficha.animacion), { nombre: ficha.name, requisitos: ficha.requisitos, variantes: ficha.variantes, catalogo }); },
       }, icon(ICO.proyector, { size: 18 })) : null,
       bloque.exercise_id ? h('a', {
         class: 'eq-vbtn', href: `/ejercicios/${bloque.exercise_id}`,
@@ -414,7 +420,8 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
       const f = await getEjercicioCompleto(b.exercise_id);
       if (!vivo || mio !== turno) return;         // llegó tarde: no manda
       ficha = f;
-      guion = guionDeAnimacion(f.animacion);
+      /* De lo de antes no se narran fases que ya no se ven (§11.4). */
+      guion = guionDeAnimacion(paraVer(f.animacion));
       pintaPista(f.animacion || null);
       pintaCabecera(); pintaTabs(); pintaCuerpo();
     } catch (e) {

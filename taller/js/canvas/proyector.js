@@ -89,6 +89,14 @@ export function abrirProyector(animacion, meta = {}) {
   const view = new CourtView({ pista: animacion.pista || 'entera', rotate: 90 });
   const engine = new AnimationEngine(view, animacion, { autoplay: true, loop: true });
   const ctrl = controls(engine);
+  /* Repintar al tomar tamaño. Reproduciendo da igual —cada fotograma
+     vuelve a pintar—, pero una colocación sola no se reproduce: sin
+     esto se quedaba la pista vacía, pintada cuando aún medía 0×0. */
+  view.onResize = () => engine.render();
+  /* Una colocación sola (un ejercicio de antes de la Pizarra, o uno sin
+     nada dibujado, §11.4) no tiene nada que reproducir: ni barra de
+     mandos ni «En pausa», que dirían que algo se ha parado. */
+  const sinFases = !(animacion.fases || []).length;
 
   // Botón de salida SIEMPRE presente. Hasta ahora las únicas salidas eran la
   // tecla Escape y el evento fullscreenchange: en un iPhone no existe
@@ -139,9 +147,10 @@ export function abrirProyector(animacion, meta = {}) {
       barraVideos,
     ),
     btnCerrar,
-    h('div', { class: 'proyector__stage' }, view.root, rotuloPausa, h('div', { class: 'proyector__controls' }, ctrl.el)),
+    h('div', { class: 'proyector__stage' }, view.root, rotuloPausa, sinFases ? null : h('div', { class: 'proyector__controls' }, ctrl.el)),
     h('p', { class: 'proyector__hint mono' },
-      'Toca la pista o Espacio: pausa · ← → fases · R reinicio · L bucle · 1/2/3 velocidad'
+      (sinFases ? 'Solo la colocación: no hay nada que reproducir'
+        : 'Toca la pista o Espacio: pausa · ← → fases · R reinicio · L bucle · 1/2/3 velocidad')
       + (ficha?.hayNiveles ? ' · N nivel' : '')
       + (chipsVideo.length ? ' · V vídeos' : '') + ' · Esc salir'),
   );
@@ -163,7 +172,7 @@ export function abrirProyector(animacion, meta = {}) {
      veces y cerrar no pausa antes de cerrar. */
   view.canvas.addEventListener('click', () => { if (!capaVideo) engine.toggle(); });
 
-  const pintarPausa = () => root.classList.toggle('is-pausado', !engine.playing && !capaVideo);
+  const pintarPausa = () => root.classList.toggle('is-pausado', !engine.playing && !capaVideo && !sinFases);
   engine.on('play', pintarPausa);
   engine.on('pause', pintarPausa);
   pintarPausa();
