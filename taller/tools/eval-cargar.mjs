@@ -232,5 +232,33 @@ test('un nombre vacío no cuenta como repetido', () => {
   ok(!nombreRepetido('', [{ id: 'x', name: '' }]));
 });
 
+console.log('\n· la jugada de la Pizarra');
+
+const JUGADA = () => ({
+  version: 3, pista: 'media', canasta: 'sur',
+  elementos: [{ id: 'jugador_1', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.6 }],
+  fases: [{ id: 'f1', nombre: null, duracion_ms: null, pausa_post_ms: null, tramos: [] }],
+});
+
+test('vuelve la JUGADA tal cual, para seguir dibujando', () => {
+  const jugada = JUGADA();
+  const { draft } = borradorDeEjercicio({ ...filaGuardada(), jugada });
+  eq(draft.jugada, jugada);
+  ok(draft.jugada !== jugada, 'es una copia: dibujar no puede cambiar lo que llegó');
+});
+
+test('un ejercicio de antes de la Pizarra no tiene jugada, y no se le inventa', () => {
+  eq(borradorDeEjercicio(filaGuardada()).draft.jugada, null);
+  eq(borradorDeEjercicio({ ...filaGuardada(), jugada: 'rota' }).draft.jugada, null);
+  eq(borradorDeEjercicio(null).draft.jugada, null);
+});
+
+test('duplicar se lleva la jugada, y guardar la escribe', () => {
+  const { draft } = borradorDeEjercicio({ ...filaGuardada(), jugada: JUGADA() }, { duplicar: true, nombres: [] });
+  eq(draft.jugada, JUGADA());
+  eq(aRegistro(draft).jugada, JUGADA(), 'aRegistro:');
+  eq(aRegistro(nuevoDraft()).jugada, null, 'y un borrador nuevo sale sin ella:');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

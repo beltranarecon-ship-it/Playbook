@@ -16,7 +16,7 @@
    ============================================================ */
 
 import {
-  VERSION_JUGADA, PAUSA_POR_DEFECTO_MS, RECOGIDA_FRACCION, compilar,
+  VERSION_JUGADA, PAUSA_POR_DEFECTO_MS, RECOGIDA_FRACCION, compilar, esDeLaPizarra,
 } from '../js/pizarra/motor/compilar.js';
 import { anadir, asignarBalon, reiniciarIds } from '../js/pizarra/elementos.js';
 import { nuevoTrazo } from '../js/pizarra/trazo.js';
@@ -302,6 +302,60 @@ test('TRAS UN PASE, EL BALÓN ES DEL RECEPTOR EN LA FASE SIGUIENTE', () => {
   const fin = enElInstante(motor, 1, motor.fases[1].duracion_ms);
   ok(cerca(fin.players.A2.y, 0.30, 1e-6), 'A2 ha botado hasta su punta');
   ok(Math.abs(fin.balls[bal.id].y - 0.30) < 0.03, `y el balón va con él: ${JSON.stringify(fin.balls[bal.id])}`);
+});
+
+test('SIN FASES, EL MOTOR ENSEÑA LA COLOCACIÓN, no a todos en el centro', () => {
+  /* Una colocación sin trazos se compila sin fases. El motor caía al
+     valor de reserva de su cálculo y los pintaba a todos en el centro de
+     la pista, uno encima de otro. */
+  const { l } = escena();
+  const anim = compilar(jugadaCon(l, []));
+  eq(anim.fases, []);
+  const motor = enElMotor(anim);
+  eq(motor.phaseCount, 0);
+  const f = enElInstante(motor, 0, 0);
+  for (const j of anim.jugadores) {
+    ok(cerca(f.players[j.id].x, j.posicion_inicial[0], 1e-9) && cerca(f.players[j.id].y, j.posicion_inicial[1], 1e-9),
+      `${j.id} tiene que estar en ${j.posicion_inicial}: ${JSON.stringify(f.players[j.id])}`);
+  }
+  for (const b of anim.balones) {
+    const p = f.balls[b.id];
+    ok(p && Number.isFinite(p.x), `el balón ${b.id} tiene que estar`);
+    ok(!(cerca(p.x, 0.5, 1e-9) && cerca(p.y, 0.5, 1e-9)), `y no en el centro: ${JSON.stringify(p)}`);
+  }
+});
+
+/* ── 6. Lo nuevo y lo de antes (§11.4) ───────────────────── */
+
+test('LA ANIMACIÓN LLEVA LA MARCA DE LA PIZARRA, y la de antes no', () => {
+  const { l } = escena();
+  ok(esDeLaPizarra(compilar(jugadaCon(l, []))), 'lo compilado tiene que llevarla');
+  ok(!esDeLaPizarra({ pista: 'entera', jugadores: [], balones: [], conos: [], fases: [] }), 'una del motor viejo no la lleva');
+  for (const v of [null, undefined, 'x', 3, { motor: 2 }]) ok(!esDeLaPizarra(v), `${JSON.stringify(v)} no es de la Pizarra`);
+});
+
+test('UNA FASE SIN NADA DIBUJADO NO SE COMPILA, y las demás conservan su nombre', () => {
+  /* La que abre «Siguiente fase» está vacía hasta que se dibuja en ella:
+     compilada, era una pausa muda al final de cada vuelta. */
+  const { l } = escena();
+  const quien = l.find((e) => e.kind === 'jugador');
+  const corte = {
+    id: 'tz', elemento_id: quien.id, corre_id: quien.id, accion: 'corta', variante: null,
+    trazo: nuevoTrazo({ x: quien.x, y: quien.y }, { x: quien.x, y: quien.y - 0.1 }), tipo: 'run', ritmo: 'normal',
+  };
+  const j = jugadaCon(l, []);
+  j.fases = [{ id: 'f1', tramos: [] }, { id: 'f2', tramos: [corte] }, { id: 'f3', tramos: [] }];
+  const a = compilar(j);
+  eq(a.fases.map((f) => f.id), ['f2']);
+  eq(a.fases[0].movimientos.length, 1, 'y la que tiene algo, entera:');
+  eq(j.fases.length, 3, 'la jugada no se toca:');
+});
+
+test('una jugada sin nada dibujado es una colocación: sin fases, y con la escena', () => {
+  const { l } = escena();
+  const a = compilar(jugadaCon(l, []));
+  eq(a.fases, []);
+  ok(a.jugadores.length > 0, 'la colocación tiene que salir');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

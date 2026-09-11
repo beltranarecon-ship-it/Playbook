@@ -366,3 +366,26 @@
 .videos-form { display: grid; gap: var(--sp-2); margin-top: var(--sp-3); }
 .videos-aviso:empty { display: none; }
 .videos-aviso { color: var(--color-danger); font-size: var(--fs-300); }
+
+/* ---- El paso de la Pizarra (ESPEC-PIZARRA-v3 §2.1) ----------
+   La Pizarra ocupa todo el ancho y todo el alto que dejan la cabecera y
+   la barra de guardar. La columna de la derecha sobra: la pista ya es la
+   Pizarra, y tenerla dos veces sería no saber en cuál se dibuja. */
+.taller--pizarra .wizard-grid {
+  width: 100%; max-width: none; margin: 0;
+  padding: var(--sp-3) var(--sp-4) 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+.taller--pizarra .canvas-col { display: none; }
+.taller--pizarra .wizard-form {
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  height: calc(100vh - var(--header-h) - var(--savebar-h) - var(--sp-3));
+  height: calc(100dvh - var(--header-h) - var(--savebar-h) - var(--sp-3));
+}
+.taller--pizarra .wizard-step { flex: 1 1 auto; min-height: 0; display: flex; }
+.taller--pizarra .wizard-foot { margin-top: 0; padding-bottom: var(--sp-3); }
+.wizard-pizarra {
+  flex: 1 1 auto; display: flex; min-width: 0; min-height: 0;
+  border: 1px solid var(--color-border); border-radius: var(--r-md); overflow: hidden;
+}
+.wizard-pizarra > .pz-pantalla { flex: 1 1 auto; }

@@ -135,6 +135,12 @@ export function borradorDeEjercicio(row, { duplicar = false, nombres = [] } = {}
   d.descripcion_texto = texto(row?.descripcion_texto);
   d.notas = texto(row?.notas);
   d.animacion = a;
+  /* La jugada de la Pizarra (§11.1), si la hay: es lo que se reabre para
+     seguir dibujando. Una COPIA: el asistente la cambia mientras se
+     dibuja, y lo que llegó de la base de datos no puede cambiar con
+     ella. Los ejercicios de antes no la tienen y se abren desde las
+     posiciones de su animación (§11.4). */
+  d.jugada = row?.jugada && typeof row.jugada === 'object' ? JSON.parse(JSON.stringify(row.jugada)) : null;
   d.canasta = a?.canasta ?? null;
 
   /* Los requisitos se funden sobre los del borrador nuevo: una ficha

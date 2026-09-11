@@ -54,6 +54,15 @@ export const PAUSA_POR_DEFECTO_MS = 400;
  *  fotograma; si viajara todo el tramo, iría flotando delante de él. */
 export const RECOGIDA_FRACCION = 0.25;
 
+/**
+ * ¿La ha compilado la Pizarra? Las animaciones de antes salían del motor
+ * viejo (§11.4): ya no se reproducen, se ve su colocación inicial quieta
+ * y se ofrece rehacerlas. Se mira una marca que va DENTRO de la
+ * animación, y no la columna `jugada`: esa la trae la 043, que se aplica
+ * a mano, y hasta entonces daría por viejo todo lo nuevo.
+ */
+export const esDeLaPizarra = (anim) => !!anim && typeof anim === 'object' && anim.motor === VERSION_JUGADA;
+
 const porSlug = new Map(CATALOGO_SISTEMA.map((a) => [a.slug, a]));
 const punto = (p) => [p.x, p.y];
 
@@ -112,10 +121,20 @@ export function compilar(jugada) {
     warnings.push('Las zonas todavía no se compilan (capa 6): se guardan en la jugada pero no salen en la animación.');
   }
 
-  /* ── las fases ── */
-  const fases = (j.fases || []).map((f, i) => compilarFase(f, i, { pista, canasta, de, nombre, warnings }));
+  /* ── las fases ──
+     Una fase sin nada dibujado no se compila: no hay nada que ver, y el
+     motor la reproduciría como una pausa muda en cada vuelta. La que abre
+     «Siguiente fase» está vacía hasta que se dibuja en ella, así que casi
+     toda jugada acaba con una. En la jugada sí se queda: es donde se
+     edita. El índice es el de la jugada, para que los avisos digan la
+     fase que ve el entrenador. */
+  const fases = (j.fases || [])
+    .map((f, i) => (f && Array.isArray(f.tramos) && f.tramos.length
+      ? compilarFase(f, i, { pista, canasta, de, nombre, warnings })
+      : null))
+    .filter(Boolean);
 
-  return { pista, canasta, jugadores, balones, conos, materiales, fases, warnings };
+  return { motor: VERSION_JUGADA, pista, canasta, jugadores, balones, conos, materiales, fases, warnings };
 }
 
 function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {

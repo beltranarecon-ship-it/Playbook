@@ -106,6 +106,13 @@ export class AnimationEngine {
 
     this.restStart = [];
     this.meta = [];
+    /* La escena del principio, aparte de las fases. Sin ninguna fase no
+       hay `restStart[0]`, y el cálculo del fotograma caía a su valor de
+       reserva: TODOS pintados en el centro de la pista, uno encima de
+       otro. Pasaba ya con lo que se guardaba «sin animación», y con la
+       Pizarra pasa con toda colocación sin trazos (se compila sin
+       fases). */
+    this.inicio = { P: clone(P), B: clone(B), owner: { ...owner } };
 
     for (const fase of this.fases) {
       const dur = fase.duracion_ms || 1000;
@@ -299,7 +306,7 @@ export class AnimationEngine {
 
   /* ---- cálculo del fotograma actual ---- */
   _computePositions() {
-    const meta = this.meta[this.k], start = this.restStart[this.k];
+    const meta = this.meta[this.k], start = this.restStart[this.k] || this.inicio;
     /* El instante DENTRO de la fase, en milisegundos. Lo que no trae
        tiempo propio ocupa la fase entera, así que para eso esto es lo
        mismo que el `easeInOut(tNorm())` de siempre. */

@@ -53,6 +53,9 @@ export async function guardarEjercicio(draft, elementos = []) {
     tags: r.tags,
     created_by: user.id,
     animacion,
+    /* Lo dibujado en la Pizarra, para reabrirlo (§11.3). La columna la
+       trae la 043; si no está, se guarda sin ella (abajo). */
+    jugada: r.jugada,
     tipo_pista: r.tipo_pista,
     categoria_rama: r.categoria_rama,
     categoria_nivel: r.categoria_nivel,
@@ -122,7 +125,7 @@ export async function actualizarEjercicio(id, draftOCampos, elementos = null) {
       difficulty: r.dificultad_valor, intensidad: r.intensidad,
       duration_min: r.duracion_min, duration_max: r.duracion_max,
       description: r.description || null, tags: r.tags,
-      animacion, tipo_pista: r.tipo_pista,
+      animacion, jugada: r.jugada, tipo_pista: r.tipo_pista,
       categoria_rama: r.categoria_rama, categoria_nivel: r.categoria_nivel,
       dificultad_label: r.dificultad_label, autor_nombre: r.autor_nombre || null,
       objetivos: r.objetivos || null, notas: r.notas || null,

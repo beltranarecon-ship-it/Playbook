@@ -57,13 +57,13 @@ const PRESION_LBL = {
 };
 
 export function paso3(ctx) {
-  const { draft, stage, goTo, onDraftChange } = ctx;
+  const { draft, goTo, onDraftChange, recuento } = ctx;
 
   const r = draft.requisitos;
   // El conteo del tablero es una PROPUESTA: lo dibujado es la muestra
   // (dos o tres fichas, las justas para entender el mecanismo) y el
   // grupo de verdad son doce. Solo rellena lo que esté sin decidir.
-  if (!draft.requisitos_manual) Object.assign(r, requisitosSugeridos(stage.board.counts(), r));
+  if (!draft.requisitos_manual) Object.assign(r, requisitosSugeridos(recuento(), r));
   draft.dificultad_sugerida = draft.animacion ? sugerirDificultad(draft.animacion) : null;
 
   const cambio = () => { pintarListon(); onDraftChange?.(); };
@@ -140,7 +140,7 @@ export function paso3(ctx) {
       draft.descripcion_texto = draft.descripcion_texto ? `${draft.descripcion_texto}\n${semilla}` : semilla;
       desarrollo.value = draft.descripcion_texto;
       cambio();
-    } }, 'Traer las fases del paso 2')
+    } }, 'Traer las líneas de las fases')
     : null;
 
   /* ---- 3 · Los tres niveles -------------------------------------- */
@@ -234,7 +234,7 @@ export function paso3(ctx) {
 
   el.append(
     h('div', { class: 'card flow' },
-      h('p', { class: 'eyebrow' }, 'Paso 3 · La tarjeta'),
+      h('p', { class: 'eyebrow' }, 'Paso 2 · La tarjeta'),
       h('h2', { class: 'section-title' }, 'La ficha del ejercicio'),
       field('La frase de la tarjeta', linea('description', 'Una sola frase, concreta. Es lo primero que se lee y lo que puntúa en las sugerencias.'), { required: true }),
       field('Bloque de contenido', bloque, { required: true, hint: 'Qué se entrena. El tipo de ejercicio se eligió en el paso 0.' }),

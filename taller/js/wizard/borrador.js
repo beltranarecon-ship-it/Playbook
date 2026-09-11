@@ -30,7 +30,7 @@ export function borrarBorrador(id = null) {
 /** ¿El borrador tiene contenido que merezca ofrecer recuperación? */
 export function borradorConContenido(b) {
   if (!b || !b.draft) return false;
-  return !!(b.draft.nombre?.trim() || (b.elementos && b.elementos.length) || b.draft.animacion);
+  return !!(b.draft.nombre?.trim() || (b.elementos && b.elementos.length) || b.draft.animacion || b.draft.jugada?.elementos?.length);
 }
 
 export const fechaBorrador = fechaDe;

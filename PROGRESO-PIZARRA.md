@@ -108,6 +108,22 @@ Los pasos:
    adoptaba la canasta de la jugada: arreglado.
 2. El asistente pasa a tres pasos: Identificación · Pizarra · Metadatos.
    Guardar = jugada + animación compilada con marca; abrir = `cargar`.
+   **Escrito** (commit de la pantalla: `bea3089`): `wizard.js` reescrito
+   con la Pizarra a todo el ancho y viva mientras vive el asistente; al
+   salir de ella o al guardar se vuelca `draft.jugada` + `compilar()`.
+   Un ejercicio viejo abierto y sin tocar la pizarra se guarda con su
+   animación de antes. `compilar` lleva la marca `motor: 3`
+   (`esDeLaPizarra`) y no compila fases vacías. `ejercicios.js` guarda
+   `jugada`; `cargar.js` la devuelve; el paso 3 cuenta desde la Pizarra.
+   **Probado en el navegador, sin tocar la base de datos:** crear
+   (colocar, pase, Metadatos con la animación en marcha), volver a la
+   Pizarra sin perder nada, abrir un ejercicio viejo (fixture de dev
+   `window.__demoEjercicio`) sin tocar y tocándolo, y retomar un
+   borrador de la v2.1. Salieron y se arreglaron: `pizarra.css` no se
+   cargaba en `taller/index.html`, y el motor pintaba a todos en el
+   centro cuando la animación no tiene fases (ya pasaba antes con lo
+   guardado «sin animación»; con la Pizarra pasa con toda colocación sin
+   trazos). Bancos: 63 en verde, 1529 pruebas.
 3. §11.4 en la ficha, el proyector, el visor de Equipos y la lista.
 4. Borrado del §12, mudando lo que sobrevive, y bancos adaptados.
 
@@ -132,6 +148,25 @@ Los pasos:
 ---
 
 ## Incidentes
+
+### 2026-09-11 · Un ejercicio de prueba guardado en la base de datos real
+
+**Qué pasó.** Probando el asistente nuevo en el navegador, se pulsó
+«Guardar» creyendo que no había sesión: se buscaron claves `sb-…` en
+`localStorage` y la sesión del Playbook se guarda en `cbp-auth`. El
+guardado llegó a Supabase de verdad y creó el ejercicio **«Prueba
+Pizarra pase»** (id `4d4408b1-02af-4de0-bb7b-202e67674ef3`, autor
+Beltrán). Hubo un 400 en consola antes del éxito: casi seguro el primer
+intento rechazado por la columna `jugada` (la 043 no está aplicada) y el
+reintento sin ella, que es lo que tiene que pasar.
+
+**Decidido (2026-09-11).** El entrenador lo archiva él; aquí no se
+toca. Y el guardado se prueba **siempre sin red**.
+
+**Qué se ha aprendido.** En el navegador de pruebas HAY sesión (clave
+`cbp-auth`): nada de pulsar «Guardar», «Eliminar» ni «Favorito» en el
+Taller. Lo que se guardaría se comprueba con `aRegistro` o
+interceptando la red, nunca contra la base de datos.
 
 ### 2026-09-10 · Cierre brusco con el trabajo recién subido
 

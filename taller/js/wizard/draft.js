@@ -27,6 +27,11 @@ export function nuevoDraft() {
     canasta: null,           // aro al que ataca; null = el más cercano a lo colocado
     ediciones: [],           // retoques manuales de flechas (Tramo 6)
     animacion: null,         // JSON §10 una vez generada
+    /* La jugada de la Pizarra (ESPEC-PIZARRA-v3 §11.1): lo que se
+       dibujó, para poder reabrirlo y seguir. `animacion` se compila
+       desde ella. null = nada dibujado todavía, o un ejercicio de antes
+       de la Pizarra (§11.4). */
+    jugada: null,
     dificultad_valor: 3,
     dificultad_sugerida: null,
     intensidad: 3,           // intensidad física por defecto 1-5 (carga · módulo Sesiones)
@@ -146,6 +151,7 @@ export function aRegistro(d) {
     notas: d.notas,
     descripcion_texto: d.descripcion_texto,
     animacion: d.animacion,
+    jugada: d.jugada ?? null,
     tipo_pista: d.tipo_pista,
     requisitos: d.requisitos,
     favorito: false,
