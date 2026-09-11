@@ -63,7 +63,7 @@ const ANCHO_BOTONES = 44 * 2 + 6;
 const ALTO_BOTONES = 44;
 
 const AYUDAS = {
-  mouse: 'Arrastra un nodo · clic en la línea añade uno · doble clic lo curva · <b>Supr</b> lo borra · <b>Esc</b> sale',
+  mouse: 'Arrastra un nodo · clic en la línea añade uno · doble clic lo curva · <b>Supr</b> borra el nodo elegido, o el trazo si no hay ninguno · <b>Esc</b> sale',
   touch: 'Arrastra un nodo · toca la línea para añadir uno · toca un nodo para curvarlo o borrarlo',
 };
 
@@ -71,10 +71,11 @@ export class Nodos {
   /**
    * @param onCambio (trazo) — el trazo ha cambiado y hay que guardarlo
    * @param onSalir  ()      — se ha terminado de editar
+   * @param onBorrarTrazo () — Supr sin ningún nodo elegido: fuera el trazo
    */
   constructor(lienzo, {
     canasta = 'norte', posiciones = {}, elementos = () => [],
-    onCambio, onSalir,
+    onCambio, onSalir, onBorrarTrazo,
   } = {}) {
     this.lienzo = lienzo;
     this.canasta = canasta;
@@ -82,6 +83,7 @@ export class Nodos {
     this.elementos = elementos;
     this.onCambio = onCambio;
     this.onSalir = onSalir;
+    this.onBorrarTrazo = onBorrarTrazo;
 
     this.trazo = null;
     this.tipo = 'run';
@@ -309,8 +311,13 @@ export class Nodos {
     if (!this.trazo) return;
     if (ev.key === 'Escape') { ev.preventDefault(); this.soltar(); return; }
     if (ev.key === 'Delete' || ev.key === 'Backspace') {
-      if (this.sel < 0) return;
+      /* Con un nodo elegido, Supr borra ESE nodo. Sin ninguno, borra el
+         trazo entero (§2.2): era la única manera de quitar un tramo, y
+         sin ella una ficha con trazos no se podía quitar nunca. Se marca
+         el evento como atendido para que nadie más lo lea: si no, el
+         Tablero lo recibía después y quitaba además la ficha elegida. */
       ev.preventDefault();
+      if (this.sel < 0) { this.onBorrarTrazo?.(); return; }
       this.borrar(this.sel);
     }
   }

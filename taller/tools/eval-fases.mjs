@@ -27,6 +27,7 @@ import {
   nuevaFase, carrilesDesde, tramosDe,
   duracionDeTramo, tiemposDe, duracionDeCarril, posicionesFinales,
   reanclarFase, recalcular, posesionAlFinal,
+  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas,
 } from '../js/pizarra/fases.js';
 import { duracionDe, longitudMetros, nuevoTrazo } from '../js/pizarra/trazo.js';
 
@@ -432,6 +433,105 @@ test('pedir más allá de la última fase se para en la última, y no toca lo qu
   eq(posesionAlFinal([{ tramos: [pase('A1', 'A2', 'b1')] }], 99, inicial).b1, 'A2');
   eq(inicial, { b1: 'A1' }, 'el dueño del principio ha cambiado:');
   eq(posesionAlFinal(null, 3, { b1: 'A1' }), { b1: 'A1' });
+});
+
+/* ── La escena: poner y quitar ───────────────────────────── */
+
+const p = (x, y) => ({ x, y });
+/* A1 pasa a A2 con b1; A3 recoge b2 del suelo; A4 tiene b3 y no hace
+   nada. En la fase 2, A2 corta. */
+const escena = () => [
+  {
+    id: 'f1',
+    tramos: [
+      { id: 'ta', elemento_id: 'A1', corre_id: 'b1', receptor_id: 'A2', trazo: [] },
+      { id: 'tb', elemento_id: 'A3', corre_id: 'A3', balon_id: 'b2', trazo: [] },
+    ],
+    entrada: { A1: p(0.3, 0.7), A2: p(0.7, 0.7), A3: p(0.5, 0.5), A4: p(0.2, 0.2), b1: p(0.31, 0.7), b2: p(0.6, 0.4), b3: p(0.21, 0.2) },
+    posesion: { b1: 'A1', b2: null, b3: 'A4' },
+  },
+  {
+    id: 'f2',
+    tramos: [{ id: 'tc', elemento_id: 'A2', corre_id: 'A2', trazo: [] }],
+    entrada: { A1: p(0.3, 0.7), A2: p(0.7, 0.7), A4: p(0.2, 0.2), b3: p(0.21, 0.2) },
+  },
+];
+
+test('TRAMOS CON FICHA: la encuentra actúe, corra, reciba o sea el balón que se recoge', () => {
+  const f = escena();
+  eq(tramosConFicha(f, 'A1').map((r) => r.tramo.id), ['ta'], 'el que pasa:');
+  eq(tramosConFicha(f, 'b1').map((r) => r.tramo.id), ['ta'], 'el balón que vuela:');
+  eq(tramosConFicha(f, 'A2').map((r) => `${r.fase}:${r.tramo.id}`), ['0:ta', '1:tc'], 'el que recibe, y también en la fase 2:');
+  eq(tramosConFicha(f, 'b2').map((r) => r.tramo.id), ['tb'], 'el balón que se recoge:');
+  eq(tramosConFicha(f, 'A4'), [], 'quien no hace nada:');
+});
+
+test('sin id no hay tramos: un receptor vacío no es «este jugador»', () => {
+  /* `receptor_id` es null en un pase al suelo: sin la guarda, pedir los
+     tramos de una ficha sin id devolvía todos esos pases. */
+  eq(tramosConFicha(escena(), undefined), []);
+  eq(tramosConFicha(escena(), null), []);
+  eq(tramosConFicha(null, 'A1'), []);
+});
+
+test('BALÓN EN JUEGO: el que vuela o se recoge sí; el que nadie toca, no', () => {
+  const f = escena();
+  ok(balonEnJuego(f, 'b1'), 'b1 se pasa');
+  ok(balonEnJuego(f, 'b2'), 'b2 se recoge');
+  ok(!balonEnJuego(f, 'b3'), 'b3 nadie lo toca');
+});
+
+test('FICHA NUEVA: entra en el arranque de la fase 1, y en nada más', () => {
+  const f = escena();
+  const r = conFichaNueva(f, { id: 'A5', kind: 'jugador', x: 0.4, y: 0.6 });
+  eq(r[0].entrada.A5, p(0.4, 0.6));
+  ok(!('A5' in r[1].entrada), 'la fase 2 se deduce recalculando, no se escribe aquí');
+  ok(!('A5' in r[0].posesion), 'un jugador no es un balón');
+  ok(!('A5' in f[0].entrada), 'y no toca lo que recibe');
+});
+
+test('un BALÓN nuevo apunta de quién es al empezar, suelto o en las manos de alguien', () => {
+  eq(conFichaNueva(escena(), { id: 'b4', kind: 'balon', x: 0.5, y: 0.5, portador_id: null })[0].posesion.b4, null);
+  eq(conFichaNueva(escena(), { id: 'b4', kind: 'balon', x: 0.5, y: 0.5, portador_id: 'A3' })[0].posesion.b4, 'A3');
+  eq(conFichaNueva(escena(), { id: 'b4', kind: 'balon', x: 0.5, y: 0.5 })[0].posesion.b4, null, 'sin portador, suelto:');
+});
+
+test('una ficha nueva, al recalcular, sigue quieta en las fases siguientes', () => {
+  const f = [
+    { ...nuevaFase('f1'), tramos: [], entrada: { A1: p(0.3, 0.7) } },
+    { ...nuevaFase('f2'), tramos: [], entrada: { A1: p(0.3, 0.7) } },
+  ];
+  const r = conFichaNueva(f, { id: 'A2', kind: 'jugador', x: 0.6, y: 0.4 });
+  const rc = recalcular(r.map((x) => ({ ...x, carriles: carrilesDesde(x.tramos) })), r[0].entrada);
+  eq(rc.entradas[1].A2, p(0.6, 0.4));
+});
+
+test('sin ficha o sin fases, no cambia nada', () => {
+  const f = escena();
+  eq(conFichaNueva(f, null), f);
+  eq(conFichaNueva([], { id: 'A5', kind: 'jugador', x: 0, y: 0 }), []);
+});
+
+test('QUITAR: sale de las entradas de TODAS las fases, y solo ella', () => {
+  const r = sinFichas(escena(), ['A4']);
+  ok(!('A4' in r[0].entrada) && !('A4' in r[1].entrada), 'sigue en alguna fase');
+  ok('A1' in r[0].entrada && 'A1' in r[1].entrada, 'se ha llevado a quien no debía');
+});
+
+test('quitar al portador deja su balón SUELTO al empezar; quitar el balón lo borra de la posesión', () => {
+  eq(sinFichas(escena(), ['A4'])[0].posesion.b3, null, 'el balón de A4:');
+  const s = sinFichas(escena(), 'b3');
+  ok(!('b3' in s[0].posesion), 'el balón quitado sigue con dueño');
+  eq(s[0].posesion.b1, 'A1', 'los demás no cambian:');
+  ok(!('posesion' in s[1]), 'a una fase sin posesión no se le inventa una');
+});
+
+test('quitar no toca lo que recibe ni los tramos, y sin nada que quitar devuelve lo mismo', () => {
+  const f = escena();
+  const r = sinFichas(f, ['A1']);
+  ok('A1' in f[0].entrada, 'ha tocado la original');
+  eq(r[0].tramos.length, 2, 'los tramos son decisión de quien quita:');
+  ok(sinFichas(f, []) === f, 'sin nada que quitar, la misma jugada');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

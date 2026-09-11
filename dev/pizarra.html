@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEV · la pantalla de la Pizarra</title>
+<!--
+  Arnés de la PANTALLA de la Pizarra (dev). NO se sirve en producción.
+
+  La Pizarra tal y como va a ir dentro del asistente —panel de fichas,
+  barra de arriba, pista y línea de tiempo—, sola, para probar con el
+  ratón y con el dedo lo que ningún banco de Node puede probar: sacar
+  fichas del panel arrastrando o pulsando, darle el balón a alguien
+  soltándolo encima, quitar con Supr, borrar un trazo, y que al reabrir
+  lo dibujado salga igual.
+
+  «Reabrir lo dibujado» monta una Pizarra nueva y le carga la jugada de
+  la anterior: es la ida y vuelta del guardado, sin base de datos.
+-->
+<link rel="stylesheet" href="/taller/css/tokens.css">
+<link rel="stylesheet" href="/taller/css/base.css">
+<link rel="stylesheet" href="/taller/css/canvas.css">
+<link rel="stylesheet" href="/taller/css/pizarra.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; display: flex; flex-direction: column; background: var(--color-bg); }
+  .dev {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 6px 12px;
+    font-family: var(--font-body); font-size: var(--fs-300); color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border); background: var(--surface-2);
+  }
+  .dev button, .dev select { font: inherit; padding: 3px 8px; }
+  #hueco { flex: 1 1 auto; min-height: 0; display: flex; }
+  #hueco > .pz-pantalla { flex: 1 1 auto; }
+</style>
+</head>
+<body>
+  <div class="dev">
+    <b>DEV</b> · la pantalla de la Pizarra
+    <select id="pista">
+      <option value="entera">Pista entera</option>
+      <option value="media">Media pista</option>
+    </select>
+    <button id="reabrir" type="button">Reabrir lo dibujado</button>
+    <button id="consola" type="button">Jugada a la consola</button>
+    <span id="cambios"></span>
+  </div>
+  <div id="hueco"></div>
+
+<script type="module">
+import { Pizarra } from '/taller/js/pizarra/pizarra.js';
+
+const hueco = document.getElementById('hueco');
+const elCambios = document.getElementById('cambios');
+const elPista = document.getElementById('pista');
+let pizarra = null;
+let cambios = 0;
+
+function montar(pista, jugada = null) {
+  pizarra?.destroy();
+  cambios = 0;
+  pizarra = new Pizarra({
+    pista,
+    onCambio: () => { cambios++; elCambios.textContent = `${cambios} cambios`; },
+  });
+  hueco.append(pizarra.el);
+  pizarra.medir();
+  if (jugada) pizarra.cargar(jugada);
+  window.__pizarra = pizarra;
+}
+
+elPista.addEventListener('change', () => montar(elPista.value));
+document.getElementById('reabrir').addEventListener('click', () => {
+  const j = pizarra.jugada();
+  montar(j.pista, JSON.parse(JSON.stringify(j)));
+});
+document.getElementById('consola').addEventListener('click', () => console.log(JSON.stringify(pizarra.jugada(), null, 2)));
+montar('entera');
+</script>
+</body>
+</html>

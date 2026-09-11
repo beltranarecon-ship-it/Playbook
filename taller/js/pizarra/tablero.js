@@ -46,11 +46,14 @@ import {
   estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS,
 } from './repertorio.js';
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
-import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador } from './elementos.js';
+import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
-import { nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular, posesionAlFinal } from './fases.js';
+import {
+  nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular, posesionAlFinal,
+  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas,
+} from './fases.js';
 
 let siguiente = 1;
 
@@ -61,9 +64,10 @@ export class Tablero {
    * @param onSinSoporte  (accion) — se ha elegido algo que esta capa no hace
    * @param onNoPuede     (accion, motivo) — se ha elegido algo imposible
    * @param onFases       (fases, enCurso) — ha cambiado el número de fases
+   * @param onEscena      (elementos) — se ha puesto, quitado o movido algo
    */
   constructor(lienzo, {
-    canasta = 'norte', posiciones = {}, onTramos, onAyuda, onSinSoporte, onNoPuede, onFases,
+    canasta = 'norte', posiciones = {}, onTramos, onAyuda, onSinSoporte, onNoPuede, onFases, onEscena,
   } = {}) {
     this.lienzo = lienzo;
     this.canasta = canasta;
@@ -72,6 +76,7 @@ export class Tablero {
     this.onSinSoporte = onSinSoporte;
     this.onNoPuede = onNoPuede;
     this.onFases = onFases;
+    this.onEscena = onEscena;
 
     /* TODAS las fases en una sola lista, y un índice diciendo cuál se
        está editando. La de en curso vivió un tiempo aparte, y en cuanto
@@ -105,6 +110,12 @@ export class Tablero {
       ? `llega aquí desde la fase ${this.iFase}, y ahí es donde hay que corregirlo`
       : null);
     this.fichas.onVeto = (e, motivo) => { this.onNoPuede?.({ nombre: this.nombreDe(e) }, motivo); this._pintarAyuda(); };
+    /* Dar un balón soltándolo encima de alguien (§7.3) cambia quién lo
+       tiene AL EMPEZAR. Si ese balón ya sale en algo dibujado, no: su
+       pase seguiría saliendo de las manos de quien ya no lo tiene. */
+    this.fichas.puedeAsignar = (balon) => (balonEnJuego(this.fases, balon.id)
+      ? 'ya sale en lo dibujado, y dárselo a otro dejaría pases sin balón'
+      : null);
 
     this.repaso = new Repaso(lienzo, { onFin: () => this._finDelRepaso() });
     this.fichas.donde = this.repaso.donde;
@@ -122,6 +133,7 @@ export class Tablero {
       this.repaso.parar();
       this._seguirALasFichas(elementos);
       this._recordarDonde(elementos);
+      this.onEscena?.(elementos);
     };
     this._donde = new Map();
 
@@ -141,6 +153,7 @@ export class Tablero {
       ...comun,
       onCambio: (trazo) => this._trazoCorregido(trazo),
       onSalir: () => { this._editando = null; this._pintarAyuda(); },
+      onBorrarTrazo: () => this._borrarElQueSeEdita(),
     });
 
     /* Debajo de los nodos y de la flecha fantasma, encima de las
@@ -165,9 +178,18 @@ export class Tablero {
        solo atienden la tecla cuando les toca a ellos, y el Anillo no ata
        teclado. La barra prometía «Esc cierra» y no pasaba nada. */
     this._onTecla = (ev) => {
-      if (!this.anillo.abierto || ev.key !== 'Escape') return;
-      ev.preventDefault();
-      this.cerrar();
+      if (ev.defaultPrevented) return;
+      if (ev.key === 'Escape' && this.anillo.abierto) { ev.preventDefault(); this.cerrar(); return; }
+      /* Supr quita lo seleccionado (§2.2), también con su anillo abierto:
+         tocar una ficha la selecciona y abre el anillo a la vez, y es
+         justo entonces cuando se quiere quitar. No mientras se dibuja o
+         se corrige un trazo: ahí Supr es de Nodos, que borra el nodo o el
+         trazo y deja la tecla marcada como atendida. */
+      if ((ev.key === 'Delete' || ev.key === 'Backspace')
+        && !this.dibujo.dibujando && !this.nodos.editando && this.fichas.seleccion.size) {
+        ev.preventDefault();
+        this.quitarSeleccion();
+      }
     };
     lienzo.el.addEventListener('keydown', this._onTecla);
   }
@@ -218,16 +240,131 @@ export class Tablero {
     const participa = new Set(this.tramos.flatMap((t) => [t.elemento_id, t.corre_id, t.balon_id]).filter(Boolean));
     const movidas = new Set(ids);
     const entrada = { ...this.fases[0].entrada };
+    const posesion = { ...(this.fases[0].posesion || {}) };
     let toco = false;
     for (const e of this.fichas.elementos) {
       const suyo = movidas.has(e.id) || (e.kind === 'balon' && movidas.has(e.portador_id));
-      if (!suyo || participa.has(e.id) || (e.portador_id && participa.has(e.portador_id))) continue;
+      if (!suyo) continue;
+      /* Y DE QUIÉN ES EL BALÓN AL EMPEZAR, si lo que se ha arrastrado es
+         un balón: soltado encima de alguien pasa a ser suyo (§7.3), y
+         sacado de sus manos se queda suelto. Sin apuntarlo aquí, la pista
+         decía una cosa y la jugada que se guarda, otra. Si el balón ya
+         sale en algo dibujado no se toca: ver `puedeAsignar`. */
+      if (e.kind === 'balon' && movidas.has(e.id) && !balonEnJuego(this.fases, e.id)
+        && (posesion[e.id] ?? null) !== (e.portador_id ?? null)) {
+        posesion[e.id] = e.portador_id ?? null;
+        toco = true;
+      }
+      if (participa.has(e.id) || (e.portador_id && participa.has(e.portador_id))) continue;
       entrada[e.id] = { x: e.x, y: e.y };
       toco = true;
     }
     if (!toco) return;
-    this.fases = this.fases.map((f, i) => (i === 0 ? { ...f, entrada } : f));
+    this.fases = this.fases.map((f, i) => (i === 0 ? { ...f, entrada, posesion } : f));
     this._recalcularSiguientes();
+  }
+
+  /**
+   * PONER UNA FICHA NUEVA (§2.3). Solo en la fase 1, que es donde empieza
+   * la jugada: una ficha puesta en la fase 3 existiría desde el principio
+   * sin haberse visto en las dos primeras, que es lo mismo que el §6.6
+   * no deja hacer arrastrando.
+   *
+   * Un balón que cae encima de un jugador sin balón es suyo desde el
+   * principio (§7.3). La ficha nueva queda seleccionada: si no iba ahí,
+   * Supr la quita sin tener que buscarla.
+   *
+   * @returns la ficha puesta, o null
+   */
+  anadirFicha(spec, { x, y }) {
+    if (this.iFase !== 0) {
+      this.onNoPuede?.({ nombre: 'Poner una ficha' }, 'las fichas se ponen en la fase 1, que es donde empieza la jugada');
+      return null;
+    }
+    this.cerrar();
+    this.repaso.parar();
+    const pista = this.lienzo.vista.pistaKey;
+    let lista = anadir(this.fichas.elementos, spec, x, y);
+    const nueva = lista[lista.length - 1];
+    if (nueva.kind === 'balon') {
+      const jugador = acierto(lista.filter((e) => e.kind === 'jugador'), nueva, { pista });
+      if (jugador && !llevaBalon(lista, jugador.id)) lista = asignarBalon(lista, nueva.id, jugador.id, pista);
+    }
+    this.fichas.seleccion = new Set([nueva.id]);
+    this.fichas._cambio(lista);
+    const puesta = this.fichas.elementos.find((e) => e.id === nueva.id);
+    this.fases = conFichaNueva(this.fases, puesta);
+    this._recalcularSiguientes();
+    this._pintarAyuda();
+    return puesta;
+  }
+
+  /**
+   * QUITAR LO SELECCIONADO (§2.2, Supr). Una ficha con trazos NO se
+   * quita: se dice quién y cómo, y todo se queda como estaba. Quitarla se
+   * llevaría por delante sus trazos —y los pases que recibe— sin que
+   * nadie lo haya pedido, y todavía no hay deshacer que los devuelva.
+   * Primero se borran sus trazos (pincharlos y Supr), y luego ella.
+   *
+   * Sin trazos, se quita de TODAS las fases: nunca se ha movido, así que
+   * no hay ninguna en la que no esté.
+   *
+   * @returns true si se ha quitado algo
+   */
+  quitarSeleccion() {
+    const ids = [...this.fichas.seleccion].filter((id) => this.fichas.elementos.some((e) => e.id === id));
+    if (!ids.length) return false;
+    const conTrazos = ids
+      .filter((id) => tramosConFicha(this.fases, id).length)
+      .map((id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id)));
+    if (conTrazos.length) {
+      this.onNoPuede?.({ nombre: 'Quitar' },
+        `${conTrazos.join(', ')} ${conTrazos.length > 1 ? 'tienen' : 'tiene'} trazos dibujados; bórralos antes (pincha el trazo y pulsa Supr)`);
+      return false;
+    }
+    this.cerrar();
+    this.repaso.parar();
+    this.fases = sinFichas(this.fases, ids);
+    this.fichas.seleccion = new Set();
+    this.fichas._cambio(quitar(this.fichas.elementos, ids));
+    this._pintarAyuda();
+    return true;
+  }
+
+  /**
+   * BORRAR UN TRAMO (§2.2: Supr con el trazo en edición y ningún nodo
+   * elegido). Quien lo recorría vuelve a donde estaba al empezarlo, y el
+   * balón a quien lo tuviera entonces: es volver a entrar en esta fase,
+   * que ya sabe colocar a todos a partir de lo que queda dibujado. Las
+   * fases siguientes se recalculan desde ahí (§6.5).
+   */
+  borrarTramo(id) {
+    if (!this.tramos.some((t) => t.id === id)) return false;
+    this.cerrar();
+    this.repaso.parar();
+    this.tramos = this.tramos.filter((t) => t.id !== id);
+    this._recalcularSiguientes();
+    this.irAFase(this.iFase);
+    return true;
+  }
+
+  _borrarElQueSeEdita() {
+    const t = this._editando;
+    if (t) this.borrarTramo(t.id);
+  }
+
+  /**
+   * Cambia el aro al que se ataca. Lo ya dibujado no se toca —se guarda
+   * el trazo exacto (§0)—; lo nuevo, el imán y los destinos automáticos
+   * («entra», «recoge») ya miran al aro nuevo.
+   */
+  setCanasta(canasta) {
+    if (!canasta || canasta === this.canasta) return;
+    this.canasta = canasta;
+    this.fichas.canasta = canasta;
+    this.dibujo.canasta = canasta;
+    this.nodos.canasta = canasta;
+    this.lienzo.pintar();
   }
 
   /**
@@ -361,7 +498,12 @@ export class Tablero {
     const j = r.jugada;
     const pista = this.lienzo.vista.pistaKey;
     if (j.pista !== pista) avisos.push(`La jugada es de pista «${j.pista}» y la pizarra está en «${pista}»: hay que abrirla en su pista.`);
-    if (j.canasta !== this.canasta) avisos.push(`La jugada ataca la canasta ${j.canasta} y la pizarra la ${this.canasta}.`);
+    /* La canasta, en cambio, SÍ se adopta: es un dato de la jugada y no
+       de la pizarra, y se puede cambiar en caliente. Solo avisando, al
+       reabrir un ejercicio que atacaba la canasta 2 la pizarra seguía
+       mirando a la 1, y al guardar se cambiaba de aro sin que nadie lo
+       hubiera pedido. */
+    if (j.canasta !== this.canasta) this.setCanasta(j.canasta);
 
     this.cerrar();
     this.repaso.parar();
@@ -902,8 +1044,8 @@ export class Tablero {
     if (this.dibujo.dibujando) return this.dibujo.ayuda();
     if (this.nodos.editando) return this.nodos.ayuda();
     if (this.anillo.abierto) return 'Elige qué hace esta ficha · pincha en la pista para saltarte el «cómo» · <b>Esc</b> cierra';
-    if (this.fichas.seleccion.size) return 'Arrástrala para colocarla · tócala para ver qué puede hacer · <b>Mayús</b> la pega a un sitio de la pista';
-    return 'Toca una ficha para ver qué puede hacer · arrastra para colocar · pincha un trazo para corregirlo';
+    if (this.fichas.seleccion.size) return 'Arrástrala para colocarla · tócala para ver qué puede hacer · <b>Supr</b> la quita · <b>Mayús</b> la pega a un sitio de la pista';
+    return 'Arrastra una ficha del panel a la pista, o toca una de la pista para ver lo que puede hacer · pincha un trazo para corregirlo';
   }
 
   _pintarAyuda() { this.onAyuda?.(this.ayuda()); }

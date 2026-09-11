@@ -40,7 +40,7 @@ pruebas**. Arnés para probar de punta a punta: `dev/pizarra-dibujar.html`.
 | 4.2 | `engine.js` con carriles: varios tramos por ficha y fase, arranques propios, el dueño del balón cambiando a mitad de fase. Sin cambiar cómo se ven las animaciones guardadas | ✅ |
 | 4.3 | Reabrir una jugada guardada y seguir editándola (`Tablero.cargar`), y abrir desde su animación un ejercicio de antes de la Pizarra (§11.4) | ✅ |
 | 4.4a | Guardar aunque falte una columna nueva (`supabase/columnas.js`), y la migración 043 con su comprobación. **La 043 hay que aplicarla a mano** en Supabase | ✅ |
-| 4.4b | Conectar guardar y abrir a una pantalla, y borrar lo viejo — **necesita decisiones**, ver abajo | esperando |
+| 4.4b | Conectar guardar y abrir a una pantalla, y borrar lo viejo — plan presentado, **esperando confirmación** (ver «Siguiente paso») | esperando |
 
 En 4.1 salió un fallo de la capa 3: recolocar en la fase 1 una ficha sin
 trazos no cambiaba su arranque, y al pasar de fase o volver a la 1 saltaba
@@ -55,23 +55,61 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
-**Capa 4 · El motor** (§14): compilador nuevo `jugada → animación`,
-`engine.js` con carriles conservando su interfaz pública, guardado de
-jugada + animación, y reabrir para seguir editando.
+**4.4b**, con dos decisiones ya tomadas (2026-09-11): el creador v2.1 se
+borra ya, como dice el §12, y lo guardado se trata como dice el §11.4.
 
-Tiene tres decisiones que no se pueden tomar solas, porque rompen cosas
-que hoy funcionan o tocan la base de datos en producción:
+**Hallazgo al inspeccionar (2026-09-11):** la capa 1 se dio por cerrada,
+pero la PANTALLA de la Pizarra no existe: no hay panel izquierdo
+(`paneles/izquierda.js`, §2.3), así que **no hay forma de añadir fichas**;
+tampoco barra superior con herramientas ni paneles plegables (§2.1-2.2).
+Solo existen los arneses de `dev/`, con una escena fija. Sin eso la
+Pizarra no puede sustituir al paso 1, y borrar primero dejaría la app sin
+creador.
 
-1. El §12 borra el creador actual (`wizard/paso1.js`, `paso2.js`) y todo
-   el motor viejo, pero la pantalla de la Pizarra (ruta, paneles) todavía
-   no existe: borrar ahora dejaría la app **sin creador de ejercicios**.
-2. El §11.3 pide `alter table exercises add column jugada jsonb` en
-   Supabase.
-3. El §11.4 dice que las animaciones guardadas hasta hoy se pierden.
+Otras cosas que hay que saber antes de borrar:
 
-Lo que se puede hacer sin esperar, porque solo añade: el compilador nuevo
-en `taller/js/pizarra/motor/compilar.js` con su banco, y los carriles en
-`engine.js` sin cambiar su interfaz.
+- `netlify.toml` publica `main`: lo que se sube a `main` va a producción.
+- Los 204 ejercicios de la biblioteca son todos «de antes»: con el §11.4
+  pierden la animación en la ficha, el proyector y el planificador.
+- Sin la 043 aplicada, lo guardado desde la Pizarra se reabre solo con
+  posiciones (sin sus acciones). Para distinguir viejo de nuevo no se usa
+  la columna `jugada` sino una marca dentro de la animación (`motor: 3`),
+  que se guarda siempre.
+- `pizarra/destino.js` importa dos constantes de `ia/compilador.js`; el
+  paso 3 usa `ia/molde.js`, `ia/puente.js` e `ia/lint.js`; la miniatura y
+  el guion de Equipos usan `soloPrimeraRonda` de `ia/rondas.js`; las
+  herramientas de `tools/biblioteca` usan el compilador viejo y `lint.js`.
+- Bancos que dependen del motor viejo: `eval-animacion`, `eval-frase`,
+  `eval-gestos`, `eval-rondas` (se van) y `eval-cargar`, `eval-video`,
+  `eval-acciones`, `eval-destino`, `eval-molde` (se adaptan). El recuento
+  de pruebas bajará, y no es una regresión.
+
+**Plan CONFIRMADO el 2026-09-11**, con estas respuestas:
+
+- Orden: pantalla → asistente → §11.4 → borrado. Todo en `pizarra-v3`
+  subida a GitHub como rama; **a `main` solo al final**, con los bancos en
+  verde, probado en el navegador y la 043 aplicada.
+- Pantalla: **lo imprescindible** (fichas, recuento, ayuda, zoom, encajar,
+  ▶, Supr, canasta). Zonas, «Traer» y las pestañas Fases/Texto, en sus
+  capas (6, 7, 10).
+- Equipos, ejercicio viejo: colocación quieta, aviso y **sin narración**.
+- `tools/biblioteca`: **siguen, solo con posiciones**; el linter de
+  fichas se muda junto al paso 3.
+
+Los pasos:
+
+1. Pantalla de la Pizarra: `pizarra/pizarra.js` + panel izquierdo con
+   fichas y recuento + barra superior. Solo añade. **Escrita**
+   (`pizarra.js`, `paneles/izquierda.js`, arnés `dev/pizarra.html`); el
+   Tablero ya pone fichas, las quita con Supr (se niega si tienen
+   trazos), borra un trazo (Supr sin nodo elegido), cambia la canasta y
+   da el balón al soltarlo encima de alguien. Bancos: 63 en verde, 1522
+   pruebas. La prueba en el navegador encontró que al reabrir no se
+   adoptaba la canasta de la jugada: arreglado.
+2. El asistente pasa a tres pasos: Identificación · Pizarra · Metadatos.
+   Guardar = jugada + animación compilada con marca; abrir = `cargar`.
+3. §11.4 en la ficha, el proyector, el visor de Equipos y la lista.
+4. Borrado del §12, mudando lo que sobrevive, y bancos adaptados.
 
 ## Pendiente de decidir o de arreglar (no se toca sin avisar)
 

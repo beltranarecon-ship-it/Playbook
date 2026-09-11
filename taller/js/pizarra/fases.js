@@ -363,3 +363,77 @@ export function posesionAlFinal(fases, hasta, inicial = {}) {
   }
   return duenos;
 }
+
+/* ---- La escena: poner y quitar (§2.2, §2.3) --------------------
+   Añadir o quitar una ficha no es solo cambiar la lista de lo que hay
+   en la pista. La jugada guarda, por cada fase, DÓNDE EMPIEZA cada
+   ficha (`entrada`) y, en la primera, DE QUIÉN ES cada balón al empezar
+   (`posesion`). Si esas dos cosas no cambian a la vez que la lista, una
+   ficha recién puesta salta a ninguna parte al cambiar de fase, y una
+   quitada sigue viva en la jugada que se guarda. */
+
+/**
+ * Los tramos, de cualquier fase, en los que sale una ficha: la que
+ * actúa, la que recorre el trazo, la que recibe o el balón que se
+ * recoge.
+ *
+ * @returns [{ fase, tramo }] — `fase` es el índice
+ */
+export function tramosConFicha(fases, id) {
+  if (id == null) return [];
+  const r = [];
+  (fases || []).forEach((f, i) => {
+    for (const t of (f && f.tramos) || []) {
+      if (!t) continue;
+      if (t.elemento_id === id || t.corre_id === id || t.receptor_id === id || t.balon_id === id) r.push({ fase: i, tramo: t });
+    }
+  });
+  return r;
+}
+
+/**
+ * ¿Sale este balón en algo dibujado? Mientras sí, quién lo tiene al
+ * empezar no se cambia desde la pista: dárselo a otro dejaría pases de
+ * alguien que no tiene el balón.
+ */
+export const balonEnJuego = (fases, id) => tramosConFicha(fases, id).length > 0;
+
+/**
+ * Una ficha nueva entra en la escena del PRINCIPIO: su sitio es su
+ * arranque en la fase 1 y, si es un balón, se apunta de quién es al
+ * empezar. Las fases siguientes no se tocan aquí: sus entradas se
+ * deducen recalculando (`recalcular`), y quien no hace nada en una fase
+ * sigue donde estaba.
+ */
+export function conFichaNueva(fases, ficha) {
+  if (!ficha || ficha.id == null || !(fases || []).length) return fases;
+  return fases.map((f, i) => {
+    if (i !== 0) return f;
+    const nueva = { ...f, entrada: { ...(f.entrada || {}), [ficha.id]: { x: ficha.x, y: ficha.y } } };
+    if (ficha.kind === 'balon') nueva.posesion = { ...(f.posesion || {}), [ficha.id]: ficha.portador_id ?? null };
+    return nueva;
+  });
+}
+
+/**
+ * Quita fichas de la escena de TODAS las fases. Un balón cuyo portador
+ * se quita empieza la jugada suelto, que es lo mismo que hace `quitar`
+ * en la pista: perder un balón sin decirlo sería peor.
+ *
+ * Los tramos no se tocan: quitar una ficha que tiene trazos es una
+ * decisión que se toma antes, fuera de aquí (ver `tramosConFicha`).
+ */
+export function sinFichas(fases, ids) {
+  const fuera = new Set(Array.isArray(ids) ? ids : [ids]);
+  if (!fuera.size) return fases;
+  return (fases || []).map((f) => {
+    const entrada = Object.fromEntries(Object.entries(f.entrada || {}).filter(([id]) => !fuera.has(id)));
+    if (!f.posesion) return { ...f, entrada };
+    const posesion = {};
+    for (const [balon, dueno] of Object.entries(f.posesion)) {
+      if (fuera.has(balon)) continue;
+      posesion[balon] = fuera.has(dueno) ? null : dueno;
+    }
+    return { ...f, entrada, posesion };
+  });
+}

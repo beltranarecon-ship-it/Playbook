@@ -255,3 +255,117 @@
 /* Un arranque puesto a mano deja de recalcularse (§6.3), y eso hay que
    verlo: si no, no habría manera de saber cuáles siguen la corriente. */
 .pz-barra.is-manual { background: var(--color-ball); box-shadow: inset 0 0 0 2px var(--color-ink, #0b2330); }
+
+/* ---- La pantalla (§2.1) -------------------------------------
+   Barra arriba, panel de fichas a la izquierda, y la pista con la línea
+   de tiempo debajo ocupando lo que sobra. Los `min-*: 0` son los mismos
+   del hueco del lienzo: sin ellos, el canvas y su caja se realimentan y
+   la pista crece sin parar. */
+.pz-pantalla {
+  display: flex; flex-direction: column;
+  height: 100%; min-height: 0; min-width: 0;
+  background: var(--color-bg);
+  font-family: var(--font-body);
+}
+.pz-cuerpo { flex: 1 1 auto; display: flex; min-height: 0; min-width: 0; }
+.pz-centro { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.pz-centro__tiempo { flex: 0 0 auto; display: flex; flex-direction: column; }
+.pz-lienzo.is-colocando { cursor: copy; }
+
+/* ---- La barra de arriba (§2.2) ------------------------------
+   Herramientas a la izquierda y la ayuda a la derecha. Densidad alta y
+   sin sombra (§2.7): es parte del mueble, no algo que flota. Se llama
+   `pz-arriba` porque `pz-barra` ya son las barras de los carriles. */
+.pz-arriba {
+  flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp-3);
+  min-height: 44px; padding: 4px 10px;
+  background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+  font-size: var(--fs-300);
+}
+.pz-arriba__herramientas { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
+.pz-arriba__b {
+  min-width: 34px; height: 34px; padding: 0 8px;
+  border: 1px solid var(--color-border); border-radius: var(--r-sm);
+  background: var(--color-surface); color: var(--color-text);
+  font: inherit; font-size: 16px; line-height: 1; cursor: pointer;
+}
+.pz-arriba__b:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.pz-arriba__b:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.pz-arriba__sep { align-self: stretch; width: 1px; margin: 4px; background: var(--color-border); }
+.pz-arriba__canasta { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-muted); }
+.pz-arriba__canasta select {
+  height: 34px; padding: 0 6px; font: inherit; color: var(--color-text);
+  border: 1px solid var(--color-border); border-radius: var(--r-sm); background: var(--color-surface);
+}
+.pz-arriba__ayuda {
+  flex: 1 1 auto; min-width: 0; text-align: right;
+  color: var(--color-text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pz-arriba__ayuda b { color: var(--color-text); font-weight: 600; }
+
+/* ---- El panel de las fichas (§2.3) -------------------------- */
+.pz-izq {
+  flex: 0 0 220px; overflow: auto; padding: 8px 10px;
+  background: var(--color-surface); border-right: 1px solid var(--color-border);
+  font-size: var(--fs-300);
+}
+.pz-izq__titulo {
+  margin: 6px 0; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--color-text-muted);
+}
+.pz-izq__fichas { display: flex; flex-direction: column; gap: 2px; }
+.pz-izq__ficha {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 4px 8px;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: none; color: var(--color-text); font: inherit; text-align: left;
+  cursor: grab; user-select: none;
+  /* Sin esto, arrastrar con el dedo desplaza el panel en vez de sacar la ficha. */
+  touch-action: none;
+}
+.pz-izq__ficha:hover { background: var(--surface-2); }
+.pz-izq__ficha:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.pz-izq__ficha.is-armada { border-color: var(--color-accent); background: rgba(0,111,148,.10); font-weight: 600; }
+.pz-izq__ficha.is-arrastrando { opacity: .5; }
+.pz-izq__nota { margin: 6px 0 12px; color: var(--color-text-muted); line-height: 1.35; }
+
+/* Las muestras imitan al símbolo de la pista, en pequeño. */
+.pz-muestra {
+  flex: 0 0 auto; display: inline-block; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--c, var(--color-text-muted));
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.75), 0 0 0 1px rgba(0,25,56,.25);
+}
+.pz-muestra--balon, .pz-muestra--pelota { width: 13px; height: 13px; margin: 0 2.5px; box-shadow: 0 0 0 1px rgba(0,25,56,.25); }
+.pz-muestra--cono {
+  width: 0; height: 0; margin: 0 1px; border-radius: 0; background: none; box-shadow: none;
+  border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 16px solid var(--c);
+}
+.pz-muestra--escalera {
+  width: 18px; height: 8px; margin: 5px 0; border-radius: 1px;
+  background: repeating-linear-gradient(90deg, var(--c) 0 2px, transparent 2px 5px);
+  box-shadow: inset 0 0 0 1.5px var(--c);
+}
+
+.pz-recuento { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; margin: 0; }
+.pz-recuento dt { color: var(--color-text-muted); }
+.pz-recuento dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* La ficha que se arrastra desde el panel. Flota de verdad, así que
+   aquí sí hay sombra (§2.7). */
+.pz-fantasma {
+  position: fixed; z-index: 1000; pointer-events: none;
+  display: grid; place-items: center; width: 32px; height: 32px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: var(--color-surface); box-shadow: 0 4px 12px rgba(0,25,56,.25);
+}
+
+/* Lo que no se ha podido hacer, encima de la pista: la ayuda de la barra
+   nunca es un aviso de error (§2.2). */
+.pz-aviso {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 25;
+  max-width: min(90%, 560px); padding: 8px 12px; border-radius: var(--r-sm);
+  background: var(--color-surface); color: var(--color-text);
+  box-shadow: 0 4px 16px rgba(0,25,56,.18);
+  font-size: var(--fs-300); line-height: 1.35;
+}
+.pz-aviso b { font-weight: 600; }

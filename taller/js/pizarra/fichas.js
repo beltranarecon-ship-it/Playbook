@@ -32,7 +32,7 @@
 import { COLORS } from '../canvas/colors.js';
 import { drawPlayer, drawBall, drawCone, drawPelotaTenis, drawEscalera, drawZona } from '../canvas/symbols.js';
 import { contornoDe, centroDe } from '../canvas/zonas.js';
-import { mover, seguirAlPortador, soltarBalon, numeroDe, llevaBalon } from './elementos.js';
+import { mover, seguirAlPortador, soltarBalon, asignarBalon, numeroDe, llevaBalon } from './elementos.js';
 import { acierto, marcoDesde, enMarco, alPinchar, alMarcar } from './seleccion.js';
 import { puntosDeIman, imantar } from './iman.js';
 import { guiasDe, hayGuias } from './guias.js';
@@ -66,6 +66,11 @@ export class Fichas {
     this.puedeMover = null;    // (elemento) -> null si se puede, o el motivo
     this.onVeto = null;        // (elemento, motivo) para poder decirlo
     this.onArrastrado = null;  // (ids) quien ha recolocado el entrenador, al soltar
+    /* Soltar un balón suelto encima de un jugador se lo da (§7.3), con
+       veto como el de mover: quién tiene el balón al empezar decide lo
+       que se puede dibujar, y si ese balón ya sale en algún trazo,
+       dárselo a otro dejaría pases de alguien que no lo tiene. */
+    this.puedeAsignar = null;  // (balon, jugador) -> null si se puede, o el motivo
 
     this._marco = null;        // el marco de selección mientras se arrastra
     this._guias = null;        // las guías mientras se mueve algo
@@ -192,7 +197,9 @@ export class Fichas {
         this._cambio(mover(this.elementos, destinos));
       },
       soltar: () => {
-        this._guias = null; this._pegado = null; this.lienzo.pintar();
+        this._guias = null; this._pegado = null;
+        if (agarrado.kind === 'balon' && desfase.size === 1) this._darSiCae(agarrado.id);
+        this.lienzo.pintar();
         /* Se avisa AL SOLTAR y no en cada cambio: quien necesita saber
            que el entrenador ha recolocado algo no puede fiarse de
            `onCambio`, que también salta cuando se dibuja un tramo o
@@ -210,6 +217,24 @@ export class Fichas {
         this._cambio(mover(this.elementos, destinos));
       },
     };
+  }
+
+  /**
+   * §7.3: un balón SUELTO que se suelta encima de un jugador es suyo.
+   * Sin esto no había manera de darle un balón a nadie desde la pista: el
+   * balón se quedaba a su lado y el anillo le seguía ofreciendo cortar en
+   * vez de botar. Un jugador lleva como mucho uno, así que encima de
+   * quien ya tiene balón no pasa nada.
+   */
+  _darSiCae(balonId) {
+    const pista = this.lienzo.vista.pistaKey;
+    const balon = this.elementos.find((e) => e.id === balonId);
+    if (!balon || balon.portador_id) return;
+    const jugador = acierto(this.elementos.filter((e) => e.kind === 'jugador'), balon, { pista });
+    if (!jugador || llevaBalon(this.elementos, jugador.id)) return;
+    const veto = this.puedeAsignar?.(balon, jugador);
+    if (veto) { this.onVeto?.(balon, veto); return; }
+    this._cambio(asignarBalon(this.elementos, balonId, jugador.id, pista));
   }
 
   /** Marco de selección sobre el suelo vacío. */
