@@ -128,12 +128,19 @@ if (r.nErrores) {
 
    El ALTA sí la escribe (ver «filas», más abajo): una ficha nueva no
    tiene nada en la base que machacar, y sin su colocación entraría con
-   la pista vacía. */
+   la pista vacía.
+
+   `marco` TAMPOCO está, por lo mismo: dice en qué dibujo de pista están
+   las coordenadas de la animación, así que solo puede viajar con ella.
+   Sellar marco 3 en un `--actualizar` sin reescribir la animación
+   dejaría una ficha que sigue en marco 2 marcada como 3: dejaría de
+   recolocarse al leerla (canvas/marco-lectura.js) y se pintaría fuera de
+   sitio sin que nada lo corrigiera. */
 const CAMPOS = [
   'type', 'category', 'difficulty', 'intensidad', 'duration_min', 'duration_max',
   'description', 'tags', 'tipo_pista', 'categoria_rama',
   'categoria_nivel', 'objetivos', 'descripcion_texto', 'variantes', 'notas',
-  'requisitos', 'autor_nombre', 'marco',
+  'requisitos', 'autor_nombre',
 ];
 
 /* En qué dibujo de pista están las coordenadas que salen de las tandas.
@@ -153,8 +160,7 @@ const MARCO_ACTUAL = 3;
    Se veía como una actualización que decía "97 con cambios" una y otra
    vez después de haber escrito — el actualizador no podía VACIAR nada.
    Salió al mover el contenido de `variantes` a `requisitos.niveles`. */
-const contenidoDe = (f) => Object.fromEntries(
-  CAMPOS.map((k) => [k, k === 'marco' ? MARCO_ACTUAL : (f[k] ?? null)]));
+const contenidoDe = (f) => Object.fromEntries(CAMPOS.map((k) => [k, f[k] ?? null]));
 
 /* Comparación estable para saber qué ha cambiado de verdad.
    PostgreSQL guarda `jsonb` con las claves REORDENADAS (las suyas, no
@@ -182,9 +188,11 @@ const igual = (a, b) => JSON.stringify(estable(a ?? null)) === JSON.stringify(es
 
 if (process.argv.includes('--actualizar')) {
   const escribir = process.argv.includes('--confirmar');
-  /* `marco` entró en CAMPOS con la migración 038. Sin ella, PostgREST
-     rechaza el SELECT entero y Node escupe su volcado, que no le dice
-     a nadie qué hacer. Se traduce. */
+  /* Si a la base le falta una columna de CAMPOS, PostgREST rechaza el
+     SELECT entero y Node escupe su volcado, que no le dice a nadie qué
+     hacer. El caso que ya pasó fue el de `marco`, antes de la 038: hoy
+     `marco` no se lee aquí (solo se escribe al dar de alta), pero la
+     traducción se queda por si vuelve a pasar con otra columna. */
   let enBase;
   try {
     enBase = await (await pedir(`exercises?select=id,name,${CAMPOS.join(',')}`)).json();
@@ -316,8 +324,10 @@ if (!soloNuevas && repetidas.length) {
 const filas = fichas.map((f) => ({
   name: f.name,
   ...contenidoDe(f),
-  // la colocación, solo al dar de alta: ver el comentario de CAMPOS
+  // la colocación, solo al dar de alta, y con ella su marco: ver el
+  // comentario de CAMPOS
   animacion: f.animacion ?? null,
+  marco: MARCO_ACTUAL,
   created_by: autor,
   favorito: false,
   is_archived: false,

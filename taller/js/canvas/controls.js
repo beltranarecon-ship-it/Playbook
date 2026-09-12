@@ -80,14 +80,22 @@ export function controls(engine) {
     ? `Ronda ${ronda} / ${rondas}`
     : `Fase ${Math.min(k + 1, n) || 0} / ${n}`);
 
-  engine.on('frame', (f) => {
+  const alFotograma = (f) => {
     if (!scrubbing) progress.value = Math.round(f.progress * 1000);
     if (engine.rondas <= 1) phase.textContent = `Fase ${f.phase}`;
     setPlayIcon(f.playing);
     setPill(engine.speed);
-  });
-  engine.on('phase', (p) => { phase.textContent = etiqueta(p.k, p.n, p.ronda, p.rondas); });
+  };
+  const alCambiarDeFase = (p) => { phase.textContent = etiqueta(p.k, p.n, p.ronda, p.rondas); };
+  engine.on('frame', alFotograma);
+  engine.on('phase', alCambiarDeFase);
 
   setPlayIcon(engine.playing);
-  return { el };
+  /* `destroy` suelta los dos oyentes. Quien sustituye unos mandos por
+     otros sobre el MISMO motor tiene que llamarlo: si no, los de antes
+     siguen actualizándose en cada fotograma aunque ya no se vean. */
+  return {
+    el,
+    destroy() { engine.off('frame', alFotograma); engine.off('phase', alCambiarDeFase); },
+  };
 }

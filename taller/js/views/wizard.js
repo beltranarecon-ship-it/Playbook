@@ -197,7 +197,11 @@ export function render(root, { id = null, modo = 'nuevo', paso = 0 } = {}) {
     mount(stepHost, current.el);
     mount(footHost, footer());
     current.alMontar?.();
-    if (!enPizarra) verEnLaColumna();
+    /* Dentro de la Pizarra la columna no se ve: su motor se para, o
+       seguiría pintando a ciegas cada fotograma mientras se dibuja. Al
+       salir, verEnLaColumna lo vuelve a poner en marcha. */
+    if (enPizarra) stage.pausar();
+    else verEnLaColumna();
     onDraftChange();
   }
 

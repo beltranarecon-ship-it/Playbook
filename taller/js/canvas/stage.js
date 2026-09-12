@@ -17,6 +17,7 @@ export class Stage {
   constructor({ pista = 'entera' } = {}) {
     this.view = new CourtView({ pista });
     this.engine = null;
+    this._mandos = null;
     this.controlsSlot = h('div', { class: 'court-controls-slot' });
     this.el = h('div', { class: 'court-wrap' }, this.view.root, this.controlsSlot);
     // al cambiar de tamaño solo hay una cosa que repintar: el fotograma actual
@@ -49,7 +50,12 @@ export class Stage {
   showAnimation(anim) {
     if (!this.engine) this.engine = new AnimationEngine(this.view, anim, { autoplay: true, loop: true });
     else { this.engine.preview = null; this.engine.load(anim); }
-    this.controlsSlot.replaceChildren(controls(this.engine).el);
+    /* Los mandos se crean de nuevo —deciden al crearse, por ejemplo, si
+       hay botón de ronda—, pero antes se sueltan los de antes: el motor
+       es el mismo y seguiría avisándoles en cada fotograma. */
+    this._mandos?.destroy();
+    this._mandos = controls(this.engine);
+    this.controlsSlot.replaceChildren(this._mandos.el);
     this._setTocarPausa(true);
   }
 
@@ -65,13 +71,19 @@ export class Stage {
     this.engine.preview = { canasta: anim.canasta || null };
     this.engine.render();
     this._setTocarPausa(false);
+    this._mandos?.destroy();
+    this._mandos = null;
     this.controlsSlot.replaceChildren();
   }
+
+  /** Para la reproducción sin descargar nada: para cuando el escenario
+   *  deja de verse y no tiene sentido que siga pintando. */
+  pausar() { this.engine?.pause(); }
 
   setPista(key) {
     this.view.setPista(key);
     this.engine?.render();
   }
 
-  destroy() { this.engine?.destroy(); this.view.destroy(); }
+  destroy() { this._mandos?.destroy(); this.engine?.destroy(); this.view.destroy(); }
 }

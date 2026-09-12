@@ -327,15 +327,20 @@ test('simulacion sigue siendo una familia sin acciones', () => {
 console.log('\n· lo que no debe cambiar');
 
 test('las nueve acciones de siempre siguen resolviendo', () => {
-  /* Venía del banco de la frase. Estas nueve palabras son las que están
-     escritas en las fichas ya guardadas: el día que una deje de resolver,
-     esas fichas se abrirán sin la acción que tenían. */
+  /* Venía del banco de la frase. Hoy no lo lee nada de la app —lo leían
+     la frase y el compilador viejos, y los ejercicios de antes se rehacen
+     a mano en la Pizarra—, pero es el vocabulario del catálogo, que se
+     conserva y se amplía (ESPEC-PIZARRA-v3 §12). Si una de estas nueve
+     palabras deja de resolver, no lo diría ningún otro banco. */
   for (const nombre of ['bote', 'corte', 'pase', 'tiro', 'bloqueo', 'defensa', 'zigzag', 'vuelve a la cola', 'rebote']) {
     ok(resolverAccion(nombre, idx), `«${nombre}» debería seguir resolviendo`);
   }
 });
 
 test('el rol defensor sigue saliendo del catálogo, no de una lista aparte', () => {
+  /* Tampoco lo lee hoy la app: la Pizarra saca los papeles de su propio
+     repertorio. Se vigila porque es un dato que declara el catálogo, que
+     se conserva (§12). */
   eq(parametroDe(CATALOGO_SISTEMA.find((a) => a.slug === 'defiende'), 'rol'), 'defensor');
   eq(parametroDe(CATALOGO_SISTEMA.find((a) => a.slug === 'bloquea'), 'rol'), 'sin_cambio');
 });

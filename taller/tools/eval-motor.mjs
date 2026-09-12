@@ -270,5 +270,25 @@ test('seek sigue colocando la fase y el instante', () => {
   ok(f.players.A1 && Number.isFinite(f.players.A1.x), 'y dónde está cada uno');
 });
 
+test('OFF suelta a quien escuchaba: unos mandos quitados no siguen trabajando', () => {
+  /* El asistente monta mandos nuevos cada vez que enseña una jugada en
+     su columna, sobre el mismo motor. Sin poder darse de baja, los de
+     antes seguían recibiendo cada fotograma fuera de la pantalla, y el
+     trabajo crecía con cada ida y vuelta entre pasos. */
+  const m = motor(SAMPLE_ANIMACION);
+  let a = 0, b = 0;
+  const uno = () => { a++; };
+  const otro = () => { b++; };
+  m.on('frame', uno);
+  m.on('frame', otro);
+  m._emitFrame();
+  if (a !== 1 || b !== 1) throw new Error(`antes de off: ${a} y ${b}`);
+  m.off('frame', uno);
+  m._emitFrame();
+  if (a !== 1) throw new Error(`después de off siguió llamando al que se dio de baja: ${a}`);
+  if (b !== 2) throw new Error(`off se ha llevado también al que seguía escuchando: ${b}`);
+  m.off('phase', uno);   // darse de baja de lo que no se escuchaba no revienta
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

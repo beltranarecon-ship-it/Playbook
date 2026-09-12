@@ -102,7 +102,7 @@ export function materialesDe(elementos) {
   return mats.length ? { materiales: mats } : {};
 }
 
-export function soloMontaje(elementos, pista) {
+export function soloMontaje(elementos, pista, { canasta = 'norte' } = {}) {
   return {
     pista,
     jugadores: elementos.filter((e) => e.kind === 'jugador').map((e) => ({
@@ -110,12 +110,12 @@ export function soloMontaje(elementos, pista) {
       tipo: e.equipo === 'A' ? 'atacante' : 'defensor',
       posicion_inicial: [e.x, e.y], tiene_balon: false, dorsal: null, nombre: null,
     })),
-    balones: elementos.filter((e) => e.kind === 'balon').map((e, i) => ({ id: `balon_${i + 1}`, posicion_inicial: [e.x, e.y], portador_id: null })),
+    balones: elementos.filter((e) => e.kind === 'balon').map((e, i) => ({ id: e.id || `balon_${i + 1}`, posicion_inicial: [e.x, e.y], portador_id: null })),
     conos: elementos.filter((e) => e.kind === 'cono').map((e, i) => ({ id: e.id || `cono_${i + 1}`, posicion: [e.x, e.y], funcion: e.funcion || 'decorativo', fila_config: e.fila_config || null })),
     ...zonasDe(elementos),
     ...materialesDe(elementos),
     fases: [],
-    canasta: 'norte',
+    canasta,
     warnings: [],
   };
 }
@@ -132,7 +132,12 @@ export function compilarFichas(fichas) {
     const { tablero, intent, ...ficha } = f;
     reiniciarIds();
     const elementos = tablero();
-    ficha.animacion = soloMontaje(elementos, ficha.tipo_pista);
+    /* La canasta SÍ se lee de la intención: no es movimiento, es a qué
+       aro se ataca, y sin ella las fichas que atacan la canasta 2 se
+       montaban mirando a la 1. */
+    ficha.animacion = soloMontaje(elementos, ficha.tipo_pista, {
+      canasta: intent?.canasta === 'sur' ? 'sur' : 'norte',
+    });
     ficha.autor_nombre = 'Biblioteca CBP';
     ficha.favorito = false;
     return ficha;

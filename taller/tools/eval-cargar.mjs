@@ -145,6 +145,10 @@ test('ida y vuelta: el registro sale igual', () => {
   // La prueba que de verdad importa: corregir una coma no puede
   // reescribir media ficha por el camino.
   const fila = filaGuardada();
+  /* Una COPIA de antes de abrir: borradorDeEjercicio pasa la animación
+     sin copiarla, así que comparar con `fila.animacion` era comparar el
+     objeto consigo mismo, y un cambio hecho por dentro no se vería. */
+  const animacionAntes = JSON.parse(JSON.stringify(fila.animacion));
   const { draft } = borradorDeEjercicio(fila);
   const reg = aRegistro(draft);
   eq(reg.nombre, fila.name);
@@ -154,7 +158,7 @@ test('ida y vuelta: el registro sale igual', () => {
   eq(reg.requisitos.jugadores_min, fila.requisitos.jugadores_min);
   eq(reg.requisitos.niveles, fila.requisitos.niveles);
   eq(reg.dificultad_valor, fila.difficulty);
-  eq(reg.animacion, fila.animacion, 'y la animación entera, sin tocar: el dibujo no se recompone al abrir');
+  eq(reg.animacion, animacionAntes, 'y la animación entera, sin tocar: el dibujo no se recompone al abrir');
 });
 
 console.log('\n· lo que llega roto no puede tumbar la carga');

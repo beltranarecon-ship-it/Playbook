@@ -72,6 +72,10 @@ export class AnimationEngine {
   }
 
   on(ev, cb) { (this._listeners[ev] ||= []).push(cb); return this; }
+  /* Sin esto no había forma de dejar de escuchar: el escenario del
+     asistente monta unos mandos nuevos cada vez que enseña una jugada, y
+     los de antes seguían recibiendo cada fotograma fuera de la pantalla. */
+  off(ev, cb) { this._listeners[ev] = (this._listeners[ev] || []).filter((f) => f !== cb); return this; }
   _emit(ev, d) { (this._listeners[ev] || []).forEach((f) => f(d)); }
 
   /* ---- carga y construcción de la línea de tiempo ----

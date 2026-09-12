@@ -30,7 +30,7 @@ node taller/tools/eval-fases.mjs   # y el resto de bancos: todos en verde
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **60 en verde, 1351
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **60 en verde, 1352
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -181,6 +181,22 @@ Los pasos:
    tocar la base de datos— crear con un pase, Metadatos con la
    animación, la ficha y el proyector de uno viejo, «Rehacer», la ficha
    de uno de la Pizarra (reproduce y se pausa tocando) y «Editar».
+   ✅ commit `4351ebf`.
+
+   **Revisión adversarial del borrado** (6 revisores + un escéptico por
+   hallazgo): 8 confirmados, ninguno refutado; 6 distintos, todos
+   arreglados. El importante, metido en este mismo borrado:
+   `importar.mjs --actualizar` seguía sellando `marco = 3` sin reescribir
+   la animación, y una ficha que siga en marco 2 se habría pintado
+   descolocada sin aviso. Ahora `marco` solo viaja con `animacion`, en el
+   alta, y `eval-marco` lo vigila. Los otros: una prueba de `eval-cargar`
+   que comparaba la animación consigo misma; la columna del asistente,
+   que seguía reproduciendo oculta mientras se dibuja; los mandos, que
+   se acumulaban en el motor en cada ida y vuelta entre pasos (nuevo
+   `off` en el motor y `destroy` en los mandos); el montaje, que perdía
+   la canasta sur y los ids de los balones de las tandas; y la
+   justificación de dos pruebas rescatadas. 60 bancos, 1352 pruebas; el
+   linter 52/52; las 204 fichas, 0 errores. Probado en el navegador.
 
 ## Pendiente de decidir o de arreglar (no se toca sin avisar)
 
@@ -196,7 +212,10 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
   `eval-acciones.mjs`, el de `.court-wrap.is-tocable` en `canvas.css`
   («en el paso 1 y en el paso 2»), `cargar.js` («el conteo del tablero»)
   y `supabase/posiciones.js` (líneas 14-15 y 49).
-- Código que se queda sin usuario: `draft.posiciones` (solo lo leía el
+- Código que se queda sin usuario: en `ia/acciones.js`, `resolverAccion`,
+  `indexar`, `parametroDe` y `EVENTOS_LEGADO` (los leían la frase y el
+  compilador viejos; `eval-acciones` los sigue vigilando porque el
+  catálogo se conserva); `draft.posiciones` (solo lo leía el
   paso 2), `supabase/posiciones.js` y `supabase/videos.js`,
   `taller/js/history.js`, `.btn.is-loading` en `wizard.css`, y en
   `base.css` las clases `.stub`, `.canvas-stub` y `.editor-*`, que ya
