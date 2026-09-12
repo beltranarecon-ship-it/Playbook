@@ -14,7 +14,7 @@
    El molde de la biblioteca, entero, en cuatro bloques: la tarjeta,
    cómo se hace, los tres niveles y el grupo. Y al pie, **el listón**:
    las mismas reglas que corren sobre las 204 fichas, en vivo, mientras
-   se escribe (ia/lint.js). Lo que aquí sale en verde, entra.
+   se escribe (wizard/lint.js). Lo que aquí sale en verde, entra.
 
    ── LO QUE SE HA IDO ────────────────────────────────────────
    · el TIPO de ejercicio — ya se elige en el paso 0; aquí se elige el
@@ -30,16 +30,16 @@
    ── EL PUENTE AL CHAT ───────────────────────────────────────
    Un desplegable arma el envío, el entrenador lo pega en su chat y
    trae la respuesta; la app la vuelca en los huecos VACÍOS y respeta
-   lo que ya haya escrito (§2, ia/puente.js). Sin red y sin coste.
+   lo que ya haya escrito (§2, wizard/puente.js). Sin red y sin coste.
    ============================================================ */
 
 import { h, mount } from '../ui/dom.js';
 import { field, chipsSingle, chipsMulti, slider, rangeSlider, spinner, tagInput, collapsible } from '../ui/components.js';
 import { CATEGORIAS, dificultadDe } from '../config.js';
 import { sugerirDificultad } from './draft.js';
-import { revisarBorrador, requisitosSugeridos, BLOQUES_CONTENIDO, MATERIAL } from '../ia/molde.js';
+import { revisarBorrador, requisitosSugeridos, BLOQUES_CONTENIDO, MATERIAL } from './molde.js';
 import { DENSIDAD, OPOSICION, PRESION, TAGS } from '../ia/vocabulario.js';
-import { armarEnvio, volcar } from '../ia/puente.js';
+import { armarEnvio, volcar } from './puente.js';
 import { toast } from '../ui/toast.js';
 
 const SIN_DECIDIR = 'sin decidir';

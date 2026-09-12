@@ -12,9 +12,8 @@
    hasta que se proyecta en el pabellón.
    ============================================================ */
 
-import { tieneDestinoPropio, destinoDe } from '../js/pizarra/destino.js';
+import { tieneDestinoPropio, destinoDe, METROS_FINALIZACION, METROS_RECOGIDA } from '../js/pizarra/destino.js';
 import { CATALOGO_SISTEMA } from '../js/ia/acciones.js';
-import { METROS_FINALIZACION, METROS_RECOGIDA } from '../js/ia/compilador.js';
 import { posicionesDe } from '../js/canvas/anclas.js';
 import { metrosEntre } from '../js/canvas/escala.js';
 
@@ -62,9 +61,9 @@ test('«entra» SE PARA DONDE SE APOYA, no encima del aro', () => {
 });
 
 test('Y ESA DISTANCIA ES LA DEL MOTOR, no una parecida', () => {
-  /* El catálogo declara 1,1 y el compilador usa METROS_FINALIZACION de
-     reserva: los dos números tienen que ser el mismo, o el trazo que se
-     dibuja y el que se anima no coincidirán. */
+  /* La acción declara 1,1 y su familia lo declara de reserva: los dos
+     números tienen que ser el mismo, o una acción sin `separacion`
+     propia pararía a otra distancia que la que la declara. */
   eq(de('entra').parametros.separacion, METROS_FINALIZACION,
     'si esto falla, el trazo dibujado y el animado se separan:');
   // y sin `separacion`, se cae en la constante del motor

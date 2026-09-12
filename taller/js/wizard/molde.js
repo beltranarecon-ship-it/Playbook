@@ -22,7 +22,7 @@
    ============================================================ */
 
 import { revisaFicha, revisaGeometria } from './lint.js';
-import { BLOQUES, MATERIAL_SUGERIDO } from './vocabulario.js';
+import { BLOQUES, MATERIAL_SUGERIDO } from '../ia/vocabulario.js';
 
 /**
  * El borrador con los nombres que usa la biblioteca.

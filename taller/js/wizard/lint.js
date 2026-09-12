@@ -29,7 +29,7 @@ import {
   TIPOS, RAMAS, NIVELES, PISTAS, BLOQUE_KEYS, DENSIDAD_KEYS, OPOSICION, PRESION,
   NIVELES_EXIGENCIA, REQUISITOS_OBLIGATORIOS, REQUISITOS_CONDICIONALES,
   DOSIS_UNIDADES, ORGANIZACION_REFERENCIA, tagsDesconocidos,
-} from './vocabulario.js';
+} from '../ia/vocabulario.js';
 import { aroExacto } from '../canvas/anclas.js';
 import { metrosEntre } from '../canvas/escala.js';
 import { limitesCancha } from '../canvas/medidas.js';
@@ -259,17 +259,22 @@ export function revisaGeometria(f) {
     if (c.funcion === 'fila' && !c.fila_config) errores.push(`cono ${c.id} es de fila y no tiene fila_config`);
   }
 
-  /* Conos de rodear que nadie rodea. El compilador NO deduce el slalom
-     de que haya conos en el tablero: la intención tiene que declarar un
-     evento `rodea_cono` por cada uno. Si no, el jugador va en línea
-     recta y se los salta — y la ficha promete un slalom que la
-     animación no enseña. Un recorrido que de verdad sortea conos tiene
-     más de dos nodos. */
+  /* Conos de rodear que nadie rodea. Poner los conos en el tablero no
+     dibuja el slalom: hace falta un recorrido que los sortee de verdad,
+     y uno que los sortea tiene más de dos nodos. Si no, el jugador va
+     en línea recta y se los salta — y la ficha promete un slalom que la
+     animación no enseña.
+
+     Solo se exige a las fichas CON FASES. Una ficha de solo posiciones
+     todavía no promete ningún recorrido: enseña dónde se pone cada
+     cosa, y el slalom lo dibujará después la Pizarra. Exigírselo hacía
+     fallar a cuatro fichas de la biblioteca que llevan los conos
+     puestos y el movimiento aún por dibujar. */
   const aRodear = (a.conos || []).filter((c) => c.funcion === 'rodear');
-  if (aRodear.length) {
+  if (aRodear.length && (a.fases || []).length) {
     const haySlalom = (a.fases || []).some((fa) => (fa.movimientos || []).some((m) => (m.path || []).length > 2));
     if (!haySlalom) {
-      errores.push(`${aRodear.length} cono(s) de rodear y ningún recorrido los sortea: falta declarar los eventos rodea_cono`);
+      errores.push(`${aRodear.length} cono(s) de rodear y ningún recorrido los sortea: falta dibujar un recorrido que pase entre ellos`);
     }
   }
 
@@ -396,10 +401,17 @@ export function revisaGeometria(f) {
      ahora en `presion`, y esta regla impide que vuelvan a mezclarse:
      si la ficha dice que hay oposición, en la pizarra hay un defensor.
      Al revés solo avisa: un defensor dibujado con `oposicion: 'nula'`
-     puede ser un compañero al que se le ha puesto peto por claridad. */
+     puede ser un compañero al que se le ha puesto peto por claridad.
+
+     Y también solo con FASES, por lo mismo que el slalom: en varias
+     fichas el que opone es un compañero que sale a cerrar EN MITAD de
+     la jugada —el pasador que tapa el tiro, el que persigue por
+     detrás—, y en la colocación de partida no hay nadie con peto que
+     enseñar. Sin fases no se puede saber si la defensa falta o si es
+     que todavía no se ha dibujado. */
   const op = f.requisitos?.oposicion;
   const hayDefensor = (a.jugadores || []).some((j) => j.tipo === 'defensor');
-  if (op && op !== 'nula' && !hayDefensor) {
+  if (op && op !== 'nula' && !hayDefensor && fases.length) {
     errores.push(`declara oposicion "${op}" y no hay ningún defensor en la pizarra: o se dibuja, o es presión (${PRESION.join('/')}) y no oposición`);
   }
   if ((!op || op === 'nula') && hayDefensor) {

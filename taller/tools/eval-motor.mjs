@@ -203,6 +203,41 @@ test('RECOGER: el balón es suyo al llegar a sus manos, no antes', () => {
   ok(Math.abs(alFinal.balls.b1.x - 0.5) < 0.02, `al final, en sus manos: ${txt(alFinal.balls.b1)}`);
 });
 
+test('TRAS UN TIRO EL BALÓN SE QUEDA EN EL ARO, no en la mano del tirador', () => {
+  /* Venía del banco del motor viejo probada contra rest-positions.js,
+     que se va con él; la regla es de aquí. Un tiro suelta el balón: deja
+     de ser de nadie y se queda donde acaba su trazo. Si siguiera
+     contando como suyo, en la fase siguiente el balón se iría detrás
+     del tirador —que normalmente sale corriendo— en vez de quedarse
+     en la canasta. */
+  const m = motor(conCarriles([
+    {
+      duracion_ms: 2000,
+      tiros: [{ jugador_id: 'A1', balon_id: 'b1', canasta: 'norte', path: recta([0.5, 0.5], [0.5, 0.08]) }],
+    },
+    {
+      duracion_ms: 2000,
+      movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: recta([0.5, 0.5], [0.5, 0.8]) }],
+    },
+  ],
+  [{ id: 'A1', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.5, 0.5] }],
+  [{ id: 'b1', posicion_inicial: [0.5, 0.5], portador_id: 'A1' }]));
+
+  const aro = { x: 0.5, y: 0.08 };
+  ok(cerca(en(m, 0, 2000).balls.b1, aro), `al acabar el tiro, en el aro: ${txt(en(m, 0, 2000).balls.b1)}`);
+  eq(m.restStart[1].owner.b1, null, 'un tiro deja el balón sin dueño:');
+  ok(cerca(m.restStart[1].B.b1, aro), `y la fase 2 arranca con él en el aro: ${txt(m.restStart[1].B.b1)}`);
+  /* Lo que se ve, que es lo que importa: el tirador se va y el balón no
+     le sigue. */
+  const corriendo = en(m, 1, 2000);
+  ok(cerca(corriendo.players.A1, { x: 0.5, y: 0.8 }), `A1 se ha ido: ${txt(corriendo.players.A1)}`);
+  ok(cerca(corriendo.balls.b1, aro), `y el balón sigue en el aro: ${txt(corriendo.balls.b1)}`);
+  ok(!corriendo.carrying.size, 'no lo lleva nadie');
+  /* Y donde se queda es el final de SU TRAZO, no el aro de la pista: el
+     0,08 del trazo no es el 0,1 que da la vista. */
+  ok(Math.abs(m.restStart[1].B.b1.y - 0.1) > 1e-6, 'el sitio lo da el trazo del tiro, no la canasta de court.js');
+});
+
 /* ── 4. Lo que no puede romperse ─────────────────────────── */
 
 test('UN CAMINO DE LONGITUD CERO NO REVIENTA EL MOTOR', () => {

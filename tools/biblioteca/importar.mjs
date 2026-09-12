@@ -22,7 +22,8 @@
      node tools/biblioteca/importar.mjs --solo-nuevas             → ensayo
      node tools/biblioteca/importar.mjs --solo-nuevas --confirmar → escribe
 
-   Y para corregir fichas YA importadas (una animación mal, una errata):
+   Y para corregir fichas YA importadas (una errata, un requisito que
+   cambia). Ojo: el dibujo NO se toca desde aquí, ver CAMPOS:
      node tools/biblioteca/importar.mjs --actualizar             → ensayo
      node tools/biblioteca/importar.mjs --actualizar --confirmar → escribe
 
@@ -41,7 +42,7 @@ const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '..', '..');
 const DIR_MANIFIESTOS = join(AQUI, 'manifiestos');
 const URL_BASE = 'https://tsskjoewviqixnwonpkx.supabase.co';
-const LOTE = 20;   // las fichas llevan animación jsonb: lotes cortos
+const LOTE = 20;   // lotes cortos: un fallo a medias deja menos ids sueltos
 
 /* ---- clave ------------------------------------------------------ */
 
@@ -114,10 +115,23 @@ if (r.nErrores) {
 }
 
 /* Campos que se escriben, en un solo sitio: los usan el alta y la
-   actualización, y si divergen la corrección deja fichas a medias. */
+   actualización, y si divergen la corrección deja fichas a medias.
+
+   `animacion` NO está, y es a propósito. Desde que la Pizarra es la
+   dueña del dibujo, las fases de un ejercicio se dibujan en la app y
+   viven solo en la base. Las tandas de aquí ya no las traen: montan
+   POSICIONES. Si `animacion` siguiera en la lista, un `--actualizar`
+   de rutina —hecho para corregir una errata— machacaría con ese
+   montaje suelto el trabajo hecho en la Pizarra, y las fichas de antes
+   perderían además el aviso de «rehacer la pizarra» (§11.4), que sale
+   de las fases que todavía guardan.
+
+   El ALTA sí la escribe (ver «filas», más abajo): una ficha nueva no
+   tiene nada en la base que machacar, y sin su colocación entraría con
+   la pista vacía. */
 const CAMPOS = [
   'type', 'category', 'difficulty', 'intensidad', 'duration_min', 'duration_max',
-  'description', 'tags', 'animacion', 'tipo_pista', 'categoria_rama',
+  'description', 'tags', 'tipo_pista', 'categoria_rama',
   'categoria_nivel', 'objetivos', 'descripcion_texto', 'variantes', 'notas',
   'requisitos', 'autor_nombre', 'marco',
 ];
@@ -302,6 +316,8 @@ if (!soloNuevas && repetidas.length) {
 const filas = fichas.map((f) => ({
   name: f.name,
   ...contenidoDe(f),
+  // la colocación, solo al dar de alta: ver el comentario de CAMPOS
+  animacion: f.animacion ?? null,
   created_by: autor,
   favorito: false,
   is_archived: false,

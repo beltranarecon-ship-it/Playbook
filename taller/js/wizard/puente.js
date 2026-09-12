@@ -27,7 +27,7 @@
 import {
   BLOQUE_KEYS, TAGS, DENSIDAD_KEYS, OPOSICION, PRESION,
   NIVELES_EXIGENCIA, ORGANIZACION_REFERENCIA, MATERIAL_SUGERIDO,
-} from './vocabulario.js';
+} from '../ia/vocabulario.js';
 
 /* ── El envío ──────────────────────────────────────────────── */
 

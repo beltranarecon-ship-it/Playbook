@@ -17,7 +17,7 @@
 
 import { posicionesDe, aroExacto } from '../../../taller/js/canvas/anclas.js';
 import { metrosEntre } from '../../../taller/js/canvas/escala.js';
-import { soloPrimeraRonda } from '../../../taller/js/ia/rondas.js';
+import { soloPrimeraRonda } from '../../../taller/js/pizarra/motor/rondas.js';
 
 /* ── Nombres de zona ──────────────────────────────────────────
    Se escriben ENTEROS (con artículo y género ya resueltos) en vez de

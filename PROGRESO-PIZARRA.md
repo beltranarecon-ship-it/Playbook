@@ -21,7 +21,7 @@ node taller/tools/eval-fases.mjs   # y el resto de bancos: todos en verde
 | 1 · Lienzo, zoom, gestos, fichas | ✅ cerrada | `57255ed` |
 | 2 · Dibujar: anillo, trazo, nodos, encadenado, repaso | ✅ cerrada | `2db2b91` |
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
-| 4 · El motor | ⏳ en curso — 4.1 a 4.3 hechos, 4.4 a medias: **esperando decisiones** | — |
+| 4 · El motor | ⏳ en curso — 4.1 a 4.4b hechos en la rama; falta subir a `main` (ver «Siguiente paso») | — |
 | 5 · Defensa | pendiente | — |
 | 6 · Conos y elementos | pendiente | — |
 | 7 · Texto y voz | pendiente | — |
@@ -29,8 +29,12 @@ node taller/tools/eval-fases.mjs   # y el resto de bancos: todos en verde
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
-Todo lo cerrado está en `main` en GitHub. Bancos: **59 en verde, 1441
-pruebas**. Arnés para probar de punta a punta: `dev/pizarra-dibujar.html`.
+Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **60 en verde, 1351
+pruebas**, más el del linter de la biblioteca (`node
+tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
+hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
+`dev/pizarra-dibujar.html`.
 
 ## Capa 4, paso a paso
 
@@ -40,7 +44,7 @@ pruebas**. Arnés para probar de punta a punta: `dev/pizarra-dibujar.html`.
 | 4.2 | `engine.js` con carriles: varios tramos por ficha y fase, arranques propios, el dueño del balón cambiando a mitad de fase. Sin cambiar cómo se ven las animaciones guardadas | ✅ |
 | 4.3 | Reabrir una jugada guardada y seguir editándola (`Tablero.cargar`), y abrir desde su animación un ejercicio de antes de la Pizarra (§11.4) | ✅ |
 | 4.4a | Guardar aunque falte una columna nueva (`supabase/columnas.js`), y la migración 043 con su comprobación. **La 043 hay que aplicarla a mano** en Supabase | ✅ |
-| 4.4b | Conectar guardar y abrir a una pantalla, y borrar lo viejo — plan presentado, **esperando confirmación** (ver «Siguiente paso») | esperando |
+| 4.4b | La pantalla de la Pizarra, el asistente de tres pasos, lo guardado antes (§11.4) y el borrado del motor viejo (§12) | ✅ en la rama |
 
 En 4.1 salió un fallo de la capa 3: recolocar en la fase 1 una ficha sin
 trazos no cambiaba su arranque, y al pasar de fase o volver a la 1 saltaba
@@ -138,9 +142,68 @@ Los pasos:
    salía la pista vacía. Probado en el navegador: ficha, «Rehacer»,
    visor (arnés `dev/planner.html`). **Sin probar en vivo:** la lista de
    la biblioteca, porque el navegador de pruebas ya no tiene sesión real.
-4. Borrado del §12, mudando lo que sobrevive, y bancos adaptados.
+   ✅ commit `795af81` (rama `pizarra-v3`, subida).
+4. **Borrado del §12** (en curso, 2026-09-12). El mapa lo hicieron 7
+   agentes de solo lectura y un crítico: no falta ningún importador por
+   prever, y las 14 contradicciones entre bloques están resueltas.
+   Decisiones del entrenador: las dos reglas del linter que miran el
+   movimiento (conos de rodear, oposición sin defensor) solo saltan si
+   la ficha tiene fases; los `.json` de la biblioteca NO se regeneran y
+   `importar.mjs --actualizar` deja de escribir la columna `animacion`;
+   `elementosDeAnimacion` se borra sin portar filas ni zonas («los
+   ejercicios actuales me importan poco, quiero el motor nuevo para
+   rehacerlos a mano»); y los nombres de las anclas se guardan en
+   `canvas/anclas.js`. Lo demás lo decidí yo: las dos distancias de
+   `pizarra/destino.js` salen del catálogo de `ia/acciones.js`, de
+   `rondas.js` solo sobrevive `soloPrimeraRonda`, y se borran
+   `canvas/palette.js` y los cinco arneses del creador viejo.
+
+   **Hecho (2026-09-12).** Primero las mudanzas: `lint.js`, `molde.js` y
+   `puente.js` con `git mv` a `taller/js/wizard/`; `soloPrimeraRonda` a
+   `taller/js/pizarra/motor/rondas.js`; `NOMBRE_ANCLA` a
+   `canvas/anclas.js` con su prueba en `eval-medidas`; y `destino.js`
+   tomando las distancias del catálogo. Después, siete agentes en
+   paralelo, cada uno con sus archivos y su banco: `eval-acciones` (fuera
+   las 12 pruebas de `normalizarIntent`, dentro 5 de catálogo rescatadas
+   de `eval-gestos` y `eval-frase`), `eval-video`, `cargar.js` sin
+   `elementosDeAnimacion`, 3 pruebas rescatadas de `eval-animacion` (2 de
+   geometría a `eval-trazo`, 1 del balón en el aro tras un tiro a
+   `eval-motor`), `stage.js` reducido a reproducir, el CSS muerto de
+   `canvas.css` y `wizard.css`, y la biblioteca. El agente de la
+   biblioteca se cortó por el límite de uso; lo rematé yo, corrigiendo
+   una desviación: había quitado `animacion` también del ALTA de
+   `importar.mjs`, y una ficha nueva habría entrado sin colocación.
+   Resultado de la biblioteca, medido con `lint-tanda` sin escribir nada:
+   las 18 tandas y el piloto, **0 errores**.
+   Por último, el borrado: 24 archivos. Comprobado: ningún archivo que se
+   queda importa nada borrado (los 728 imports relativos del repo
+   resuelven), 60 bancos y 1351 pruebas en verde, y en el navegador —sin
+   tocar la base de datos— crear con un pase, Metadatos con la
+   animación, la ficha y el proyector de uno viejo, «Rehacer», la ficha
+   de uno de la Pizarra (reproduce y se pausa tocando) y «Editar».
 
 ## Pendiente de decidir o de arreglar (no se toca sin avisar)
+
+Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
+
+- **Cobertura que se ha ido con el motor viejo** y que la Pizarra tendrá
+  que volver a vigilar cuando haga esas cosas: las invariantes de los
+  gestos (que acaben donde empezaron, que el trazo no quede tapado por la
+  ficha, la amplitud igual en las cuatro pistas) → capa 9; las rondas
+  con cadencia y la fusión de sus acciones → capa 6; qué desplegables
+  declara cada acción → capa 7.
+- Comentarios que todavía nombran el motor viejo: la cabecera de
+  `eval-acciones.mjs`, el de `.court-wrap.is-tocable` en `canvas.css`
+  («en el paso 1 y en el paso 2»), `cargar.js` («el conteo del tablero»)
+  y `supabase/posiciones.js` (líneas 14-15 y 49).
+- Código que se queda sin usuario: `draft.posiciones` (solo lo leía el
+  paso 2), `supabase/posiciones.js` y `supabase/videos.js`,
+  `taller/js/history.js`, `.btn.is-loading` en `wizard.css`, y en
+  `base.css` las clases `.stub`, `.canvas-stub` y `.editor-*`, que ya
+  estaban muertas desde antes.
+- `.claude/worktrees/jolly-chatelet-6ef063/` guarda una copia vieja de
+  `stage.js`, `detalle.js` y `wizard.js`: sale en cualquier búsqueda y
+  despista.
 
 - `resto()` ofrece *Pasa* y *Tira* en «⋯ más» a quien no lleva balón. Hoy
   avisa al elegirlos; no debería ofrecerlos.

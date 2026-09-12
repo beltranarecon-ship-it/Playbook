@@ -1,6 +1,6 @@
 /* ============================================================
    wizard.css — pasos, selector de pista, sliders, etiquetas,
-   IA (preguntas/warnings), requisitos y toasts.
+   requisitos, toasts y el hueco donde entra la Pizarra.
    ============================================================ */
 
 .wizard-foot {
@@ -112,25 +112,6 @@
 .collapsible__toggle.is-open .collapsible__chevron { transform: rotate(45deg); }
 .collapsible__body { margin-top: var(--sp-3); }
 
-/* ---- IA: banners y preguntas (§8.3/§8.4) ------------------ */
-.ia-status { display: grid; gap: var(--sp-3); }
-.ia-banner { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); border: 1px solid; font-size: var(--fs-400); }
-.ia-banner ul { margin: var(--sp-2) 0; padding-left: var(--sp-4); list-style: disc; }
-.ia-banner--ok { background: #ECFDF5; border-color: var(--color-confirm); color: #065F46; }
-.ia-banner--warn { background: var(--warn-bg); border-color: var(--color-warn); color: #78350F; }
-.ia-banner--error { background: #FEF2F2; border-color: var(--color-danger); color: #991B1B; }
-
-.q-card { display: grid; gap: var(--sp-3); padding: var(--sp-4); border: 1.5px solid var(--color-accent); border-radius: var(--r-md); background: var(--surface-2); }
-.q-progress { color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .08em; font-size: var(--fs-300); }
-.q-text { font-weight: 600; font-size: var(--fs-500); }
-.q-opts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.chip--otro { border-style: dashed; }
-
-/* tarjeta de confirmación de la vista previa (§Tramo 1): los chips
-   informativos (disabled) no invitan al clic; el de canasta sí. */
-.chip--info, .chip--info:hover { cursor: default; border-color: var(--color-border); color: var(--color-text-muted); }
-.preview-card .row { margin-top: var(--sp-1); }
-
 .btn.is-loading { position: relative; color: transparent; }
 .btn.is-loading::after {
   content: ""; position: absolute; inset: 0; margin: auto;
@@ -139,40 +120,6 @@
   animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* overlay de "haz clic en la pista" (pregunta tipo A) */
-.court-ask {
-  position: absolute; inset: 0; z-index: 5;
-  display: grid; place-content: center;
-  background: var(--overlay); color: #fff;
-  font-family: var(--font-display); text-transform: uppercase; letter-spacing: .04em;
-  cursor: crosshair;
-}
-.court-dot {
-  position: absolute; z-index: 6; width: 16px; height: 16px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%; background: var(--color-ball); border: 2px solid #fff;
-  pointer-events: none;
-}
-
-/* ---- Panel de ficha seleccionada (§7.4/§7.5) -------------- */
-.sel-panel { display: grid; gap: var(--sp-3); }
-.fila-ctrls { display: grid; gap: var(--sp-3); }
-
-/* Pad de dirección de la fila (§7.4): cono al centro + 8 flechas. */
-.dir-pad { display: grid; grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 34px); gap: 4px; width: fit-content; }
-.dir-pad__cono { display: grid; place-items: center; color: var(--color-accent); font-size: 18px; }
-.dir-pad__btn {
-  display: grid; place-items: center; padding: 0;
-  border: 1.5px solid var(--color-border); border-radius: var(--r-md);
-  background: var(--color-surface); color: var(--color-text); font-size: 15px; line-height: 1; cursor: pointer;
-  transition: border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
-}
-.dir-pad__btn:hover { border-color: var(--color-accent); }
-.dir-pad__btn.is-active { background: var(--accent-soft); border-color: var(--color-accent); color: var(--color-accent); font-weight: 700; }
-/* Chips de equipo de la fila: punto de color + etiqueta corta. */
-.team-chip { gap: var(--sp-2); padding: 0 var(--sp-3); height: 34px; }
-.team-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--c, var(--color-accent)); box-shadow: 0 0 0 1.5px rgba(255,255,255,.7), 0 0 0 2.5px var(--color-border); }
 
 /* ---- Requisitos (§12) ------------------------------------- */
 .reqs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-4); align-items: start; }
@@ -212,123 +159,6 @@
 }
 
 /* ============================================================
-   PASO 2 · Describir la jugada fase a fase (Tramo 2.9)
-   ============================================================ */
-
-.fases { display: grid; gap: var(--sp-3); }
-.fases__add { justify-self: start; }
-
-.fase {
-  display: grid; gap: var(--sp-2);
-  padding: var(--sp-3);
-  border: 1.5px solid var(--color-border); border-left-width: 4px;
-  border-radius: var(--r-md);
-  background: var(--color-surface);
-  transition: border-color var(--dur-1) var(--ease);
-}
-/* La fase activa se marca en el BORDE IZQUIERDO y no con un fondo: es
-   donde van a escribir el clic en la pista y la barra de acciones, y
-   tiene que verse de un vistazo sin robarle contraste al texto. */
-.fase.is-activa { border-left-color: var(--color-accent); }
-
-.fase__cab { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
-.fase__n {
-  font-family: var(--font-display); text-transform: uppercase; letter-spacing: .06em;
-  font-size: var(--fs-400); color: var(--color-accent);
-}
-.fase__ajuste {
-  display: inline-flex; align-items: center; gap: var(--sp-1);
-  font-size: var(--fs-300); color: var(--color-text-muted);
-}
-.input--ms { width: 62px; padding: var(--sp-1) var(--sp-2); font-size: var(--fs-400); text-align: right; }
-.fase__quitar {
-  margin-left: auto; width: 26px; height: 26px; flex: none;
-  border: 0; border-radius: var(--r-sm); background: transparent;
-  color: var(--color-text-muted); font-size: 18px; line-height: 1; cursor: pointer;
-}
-.fase__quitar:hover { background: var(--surface-2); color: var(--color-danger); }
-
-.frase__barra:empty { display: none; }
-
-/* ---- El campo con su espejo ------------------------------------
-   Dos capas EXACTAMENTE iguales en tipografía y caja: debajo, un
-   espejo con el mismo texto en transparente y las palabras
-   reconocidas con fondo; encima, el textarea de verdad. Así el
-   entrenador ve marcado lo que la app ha entendido sin que nada se
-   interponga entre él y lo que escribe.
-   Cualquier cambio de fuente, padding o interlineado hay que hacerlo
-   en las DOS o el resaltado se desplaza. */
-.frase { position: relative; }
-.frase__marca, .frase__campo {
-  font-family: var(--font-body);
-  font-size: var(--fs-500);
-  line-height: 1.55;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1.5px solid transparent;
-  border-radius: var(--r-md);
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  letter-spacing: normal;
-}
-.frase__marca {
-  min-height: calc(1.55em + var(--sp-2) * 2 + 3px);
-  color: transparent;
-  background: var(--color-surface);
-  border-color: var(--color-border);
-}
-.frase__campo {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  background: transparent; color: var(--color-text);
-  resize: none; overflow: hidden;
-}
-.frase__campo:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--accent-tint); }
-.frase__campo::placeholder { color: var(--color-text-muted); }
-
-/* Marcas del espejo. El texto va transparente (lo pone el campo de
-   arriba); lo que se ve aquí es solo el fondo y el subrayado. */
-.mk { border-radius: 3px; }
-.mk--accion { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--color-accent); }
-.mk--sujeto { background: rgba(234,88,12,.16); box-shadow: inset 0 -2px 0 var(--color-ball); }
-.mk--nada { box-shadow: inset 0 -2px 0 var(--color-danger); background: rgba(220,38,38,.08); }
-
-.frase__resumen { display: grid; gap: 2px; font-size: var(--fs-300); }
-.frase__ok { color: var(--color-text-muted); }
-.frase__mal { color: #92400E; }
-
-/* ---- Barra de acciones ----------------------------------------- */
-.acc-barra { display: grid; gap: var(--sp-1); }
-.acc-barra__fila { display: flex; align-items: baseline; gap: var(--sp-2); }
-.acc-barra__fam {
-  flex: none; width: 92px;
-  font-size: var(--fs-300); color: var(--color-text-muted);
-  text-transform: uppercase; letter-spacing: .05em;
-}
-.acc-barra__chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
-.chip--accion { height: 26px; padding: 0 var(--sp-3); font-size: var(--fs-300); }
-
-/* ---- Posiciones marcadas --------------------------------------- */
-.pos-panel { display: grid; gap: var(--sp-2); }
-.pos-panel__fila { display: flex; align-items: center; gap: var(--sp-2); }
-.pos-panel__fila .input { flex: 1 1 auto; padding: var(--sp-2) var(--sp-3); }
-
-/* ---- «Manualmente» (Tramo 2.10) --------------------------------
-   La misma jugada vista acción por acción. Cada fila es una frase con
-   sus huecos: quién · qué hace · hacia qué. */
-.manual { display: grid; gap: var(--sp-3); }
-.manual__lista { display: grid; gap: var(--sp-2); }
-.manual__accion {
-  display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1.5px solid var(--color-border); border-radius: var(--r-md);
-  background: var(--surface-2);
-}
-.manual__hueco { display: inline-flex; align-items: center; gap: var(--sp-1); }
-.manual__prep { font-size: var(--fs-300); color: var(--color-text-muted); }
-.select--sm { width: auto; min-width: 96px; padding: var(--sp-1) var(--sp-5) var(--sp-1) var(--sp-2); font-size: var(--fs-400); }
-.chip--sm { height: 24px; padding: 0 var(--sp-2); font-size: var(--fs-300); }
-
-/* ============================================================
    PASO 3 · La ficha completa del molde (Tramo 2.12)
    ============================================================ */
 
@@ -349,23 +179,6 @@
 }
 .liston__lista--error { color: #92400E; }
 .liston__lista--error li::marker { color: var(--color-warn); }
-
-/* ============================================================
-   Vídeos de las acciones (Tramo 2.14)
-   ============================================================ */
-.videos-lista { display: grid; gap: var(--sp-2); }
-.videos-fila {
-  padding: var(--sp-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-md);
-  background: var(--color-surface);
-}
-.videos-cab { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
-.videos-cab .row { margin-left: auto; gap: var(--sp-2); }
-.videos-tiene { color: var(--color-accent); font-weight: 600; font-size: var(--fs-300); }
-.videos-form { display: grid; gap: var(--sp-2); margin-top: var(--sp-3); }
-.videos-aviso:empty { display: none; }
-.videos-aviso { color: var(--color-danger); font-size: var(--fs-300); }
 
 /* ---- El paso de la Pizarra (ESPEC-PIZARRA-v3 §2.1) ----------
    La Pizarra ocupa todo el ancho y todo el alto que dejan la cabecera y

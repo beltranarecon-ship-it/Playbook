@@ -11,9 +11,9 @@
    media ficha propia se usa una vez.
    ============================================================ */
 
-import { fichaDeBorrador, revisarBorrador, requisitosSugeridos } from '../js/ia/molde.js';
-import { armarEnvio, extraerJSON, volcar } from '../js/ia/puente.js';
-import { revisaFicha } from '../js/ia/lint.js';
+import { fichaDeBorrador, revisarBorrador, requisitosSugeridos } from '../js/wizard/molde.js';
+import { armarEnvio, extraerJSON, volcar } from '../js/wizard/puente.js';
+import { revisaFicha } from '../js/wizard/lint.js';
 import { TAGS, BLOQUE_KEYS, NIVELES_EXIGENCIA, REQUISITOS_OBLIGATORIOS } from '../js/ia/vocabulario.js';
 import { nuevoDraft, aRegistro } from '../js/wizard/draft.js';
 

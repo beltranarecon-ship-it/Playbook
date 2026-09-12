@@ -27,7 +27,7 @@ import {
   longitudMetros, rotulo, duracionDe, suavizar,
   RADIO_NODO, nodoEn, segmentoEn, reanclar,
 } from '../js/pizarra/trazo.js';
-import { flattenPath } from '../js/canvas/geometry.js';
+import { flattenPath, manejadoresTangentes } from '../js/canvas/geometry.js';
 import { tipoFlecha } from '../js/pizarra/dibujo.js';
 import { marcoDe } from '../js/canvas/medidas.js';
 
@@ -94,6 +94,48 @@ test('insertar en un segmento que no existe no rompe nada', () => {
   const t = nuevoTrazo({ x: 0.2, y: 0.5 }, { x: 0.8, y: 0.5 });
   eq(insertarEn(t, 5, { x: 0.5, y: 0.5 }).length, 2);
   eq(insertarEn(t, -1, { x: 0.5, y: 0.5 }).length, 2);
+});
+
+/* ── 2b. Los manejadores salen TANGENTES ─────────────────── */
+/* Estas dos prueban `manejadoresTangentes` de canvas/geometry.js, que
+   es de donde `curvar` saca los manejadores de un nodo. Venían del banco
+   del motor viejo; se quedan aquí porque lo que comprueban —que curvar
+   no mueve el trazo— es la regla del §5.2, y el módulo que la cumple
+   sigue en pie. */
+
+test('LOS MANEJADORES SALEN EN LA DIRECCIÓN DE LA FLECHA, no en horizontal', () => {
+  /* Antes salían siempre en horizontal (`n.x ± 0,06`), así que en una
+     flecha que bajaba salían atravesados: curvar un nodo pegaba un
+     tirón lateral que nadie había pedido. */
+  // flecha que BAJA en vertical: los manejadores tienen que bajar con ella
+  const vertical = [{ x: 0.5, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.5, y: 0.8 }];
+  const v = manejadoresTangentes(vertical, 1, 0.02);
+  aprox(v.handle_in.x, 0.5, 1e-9, 'el de entrada se sale de la vertical:');
+  aprox(v.handle_out.x, 0.5, 1e-9, 'y el de salida también:');
+  ok(v.handle_in.y < 0.5 && v.handle_out.y > 0.5, 'uno tiene que ir hacia atrás y el otro hacia delante');
+  aprox(v.handle_out.y, 0.6, 1e-9, 'el largo es un tercio del segmento:');
+  // y una en diagonal, para que no valga con acertar en un eje
+  const d = manejadoresTangentes([{ x: 0.2, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.8, y: 0.8 }], 1, 0.02);
+  aprox(d.handle_out.x - 0.5, d.handle_out.y - 0.5, 1e-9, 'en diagonal la tangente conserva la pendiente:');
+  // último nodo: solo hay segmento por detrás, y sigue en su dirección
+  aprox(manejadoresTangentes(vertical, 2, 0.02).handle_out.x, 0.5, 1e-9,
+    'en el extremo la dirección la da el único segmento que hay:');
+});
+
+test('CURVAR UN NODO TANGENTE NO TUERCE EL TRAZO', () => {
+  /* La prueba de que salen tangentes: curvar un nodo y aplanar el path
+     tiene que dar la misma polilínea. Con los manejadores en horizontal,
+     el trazo se iba de sitio al curvar. */
+  // recta en diagonal: todos sus puntos cumplen x = y
+  const curvo = [{ x: 0.2, y: 0.2 }, { x: 0.5, y: 0.5 }, { x: 0.8, y: 0.8 }];
+  Object.assign(curvo[1], manejadoresTangentes(curvo, 1, 0.02), { tipo_nodo: 'bezier' });
+  const puntos = flattenPath(curvo);
+  let peor = 0;
+  for (const p of puntos) peor = Math.max(peor, Math.abs(p.x - p.y));
+  ok(peor <= 1e-9, `curvar un nodo tangente no debe torcer una flecha recta; se ha ido ${peor.toFixed(5)}`);
+  const primero = puntos[0], ultimo = puntos[puntos.length - 1];
+  aprox(primero.x, 0.2, 1e-9, 'y el arranque no se mueve:'); aprox(primero.y, 0.2, 1e-9);
+  aprox(ultimo.x, 0.8, 1e-9, 'ni el final:'); aprox(ultimo.y, 0.8, 1e-9);
 });
 
 /* ── 3. Curvar, enderezar, mover y borrar ────────────────── */

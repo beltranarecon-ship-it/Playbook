@@ -1,19 +1,18 @@
 /* ============================================================
    eval-cargar.mjs — banco Node del camino de vuelta: un ejercicio
-   guardado, otra vez en los cuatro pasos (taller/js/wizard/cargar.js).
+   guardado, otra vez en el asistente (taller/js/wizard/cargar.js).
    Sin red, sin DOM.
 
      node taller/tools/eval-cargar.mjs
 
    Lo que vigila: que abrir y volver a guardar NO cambie el ejercicio.
-   Un viaje de ida y vuelta que pierde un jugador de la cola, o que
-   olvida las líneas del paso 2, convierte «corregir una coma» en
-   «rehacer el ejercicio», y eso no se nota hasta que ya se guardó.
+   Un viaje de ida y vuelta que olvida las líneas de las fases, o que
+   descoloca los requisitos, convierte «corregir una coma» en «rehacer
+   el ejercicio», y eso no se nota hasta que ya se guardó.
    ============================================================ */
 
-import { borradorDeEjercicio, elementosDeAnimacion, nombreDeVariante, nombreBase, nombreRepetido } from '../js/wizard/cargar.js';
+import { borradorDeEjercicio, nombreDeVariante, nombreBase, nombreRepetido } from '../js/wizard/cargar.js';
 import { aRegistro, nuevoDraft } from '../js/wizard/draft.js';
-import { compilarAnimacion } from '../js/ia/compilador.js';
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -26,30 +25,65 @@ const eq = (real, esp, msg = '') => {
   if (r !== e) throw new Error(`${msg} esperado=${e} real=${r}`);
 };
 
-/* Un ejercicio como el que deja el Taller: con tablero guardado, líneas
-   de fase y posiciones marcadas dentro de la animación. */
-const TABLERO = [
-  { id: 'j1', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.6, dorsal: '7', nombre: 'Ana' },
-  { id: 'b1', kind: 'balon', x: 0.5, y: 0.6, portador_id: null },
-  { id: 'cf', kind: 'cono', x: 0.86, y: 0.3, funcion: 'fila', fila_config: { n_jugadores: 6, direccion_grados: 180, equipo: 'A', rondas: true, cadencia_s: null, rol: 'atacante' } },
-  { id: 'z1', kind: 'zona', tipo: 'rect', nombre: 'ZONA 1', visible: false, x: 0.1, y: 0.1, x2: 0.3, y2: 0.3 },
-  { id: 'e1', kind: 'escalera', x: 0.7, y: 0.7, rot: 90 },
-];
-
-function filaGuardada() {
-  const anim = compilarAnimacion({
+/* La animación §10 de un ejercicio guardado: una fila que bota hasta el
+   aro y tira. Está ESCRITA A MANO —antes la fabricaba el compilador del
+   motor viejo, que ya no existe— y con la forma completa a propósito:
+   este banco vigila que la animación vuelva intacta, y con media
+   animación no se vigila nada. */
+function animacionGuardada() {
+  return {
+    pista: 'media',
     canasta: 'norte',
-    fases: [
-      { eventos: [{ jugador: 'fila1', accion: 'bota', args: { destino: 'aro' } }] },
-      { eventos: [{ jugador: 'fila1', accion: 'tira', args: {} }] },
+    jugadores: [
+      { id: 'A1', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.5, 0.6], tiene_balon: false, dorsal: '7', nombre: 'Ana' },
+      { id: 'fila1', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.86, 0.3], tiene_balon: true, dorsal: null, nombre: null },
+      { id: 'fila1_2', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.79, 0.3], tiene_balon: false, dorsal: null, nombre: null },
     ],
-  }, TABLERO, 'media');
-  anim._fases_texto = [
-    { texto: 'la Fila 1 bota hasta el aro', duracion_ms: null, pausa_post_ms: null },
-    { texto: 'tira', duracion_ms: 2500, pausa_post_ms: 100 },
-  ];
-  anim._posiciones = { refugio: [0.25, 0.4] };
-  anim._elementos = TABLERO.map((e) => ({ ...e }));
+    balones: [{ id: 'b1', posicion_inicial: [0.86, 0.3], portador_id: 'fila1' }],
+    /* La cola dibujada va DESCONTADA de los que salieron a trabajar: de
+       los seis del tablero quedan cuatro esperando. */
+    conos: [{ id: 'cf', posicion: [0.86, 0.3], funcion: 'fila', fila_config: { n_jugadores: 4, direccion_grados: 180, equipo: 'A', rondas: true, cadencia_s: null, rol: 'atacante' } }],
+    zonas: [{ id: 'z1', tipo: 'rect', nombre: 'ZONA 1', visible: false, puntos: [[0.1, 0.1], [0.3, 0.3]] }],
+    materiales: [{ id: 'e1', tipo: 'escalera', posicion: [0.7, 0.7], rot: 90 }],
+    fases: [
+      {
+        id: 'fase_1', duracion_ms: 1500, pausa_post_ms: 400,
+        movimientos: [{
+          elemento_id: 'fila1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon',
+          path: [{ x: 0.86, y: 0.3, tipo_nodo: 'lineal' }, { x: 0.47, y: 0.41, tipo_nodo: 'lineal' }],
+        }],
+        pases: [], bloqueos: [], tiros: [], recogidas: [], defensores: [], acciones: ['bota'], ronda: 1,
+      },
+      {
+        id: 'fase_2', duracion_ms: 1000, pausa_post_ms: 600,
+        movimientos: [], pases: [], bloqueos: [],
+        tiros: [{ jugador_id: 'fila1', balon_id: 'b1', canasta: 'norte', path: [{ x: 0.47, y: 0.41 }, { x: 0.15, y: 0.5 }] }],
+        recogidas: [], defensores: [], acciones: ['tira'], ronda: 1,
+      },
+    ],
+    rondas: 2,
+    warnings: [],
+    /* Lo que se guardó para poder reabrirlo. Las líneas y las posiciones
+       las vuelve a leer cargar.js; el tablero (`_elementos`) ya no lo lee
+       nadie, pero está en la base de datos de los ejercicios guardados y
+       tiene que sobrevivir a abrir y volver a guardar. */
+    _fases_texto: [
+      { texto: 'la Fila 1 bota hasta el aro', duracion_ms: null, pausa_post_ms: null },
+      { texto: 'tira', duracion_ms: 2500, pausa_post_ms: 100 },
+    ],
+    _posiciones: { refugio: [0.25, 0.4] },
+    _elementos: [
+      { id: 'j1', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.6, dorsal: '7', nombre: 'Ana' },
+      { id: 'b1', kind: 'balon', x: 0.5, y: 0.6, portador_id: null },
+      { id: 'cf', kind: 'cono', x: 0.86, y: 0.3, funcion: 'fila', fila_config: { n_jugadores: 6, direccion_grados: 180, equipo: 'A', rondas: true, cadencia_s: null, rol: 'atacante' } },
+      { id: 'z1', kind: 'zona', tipo: 'rect', nombre: 'ZONA 1', visible: false, x: 0.1, y: 0.1, x2: 0.3, y2: 0.3 },
+      { id: 'e1', kind: 'escalera', x: 0.7, y: 0.7, rot: 90 },
+    ],
+  };
+}
+
+/* El ejercicio entero tal y como lo devuelve getEjercicio(). */
+function filaGuardada() {
   return {
     id: 'abc-123', name: 'Entradas desde la fila', type: 'Bote', category: 'entrada',
     tipo_pista: 'media', categoria_rama: 'Minibasket', categoria_nivel: [],
@@ -59,7 +93,7 @@ function filaGuardada() {
     notas: 'Corregir el último apoyo.', tags: ['entrada', 'doble ritmo'],
     autor_nombre: 'Beltrán',
     requisitos: { jugadores_min: 4, jugadores_max: 12, densidad: 'media', niveles: { base: 'a', intermedio: 'b', avanzado: 'c' } },
-    animacion: anim,
+    animacion: animacionGuardada(),
   };
 }
 
@@ -78,20 +112,15 @@ test('vuelve TODO lo que se escribió', () => {
   eq(draft.autor_nombre, 'Beltrán');
 });
 
-test('vuelve el paso 2 tal como se dejó', () => {
-  /* Sin esto, reabrir devolvería la geometría pero no lo que se escribió
-     para generarla: el paso 2 saldría en blanco y cualquier retoque
-     habría que hacerlo a mano sobre las flechas. */
+test('vuelven las líneas de las fases tal como se dejaron', () => {
+  /* Sin esto, reabrir devolvería el dibujo pero no lo que se escribió, y
+     el paso 3 se quedaría sin las líneas con las que arma la
+     descripción del ejercicio. */
   const { draft } = borradorDeEjercicio(filaGuardada());
   eq(draft.fases_texto.map((f) => f.texto), ['la Fila 1 bota hasta el aro', 'tira']);
   eq(draft.fases_texto[1].duracion_ms, 2500, 'y los ajustes de la cabecera');
   eq(draft.fases_texto[1].pausa_post_ms, 100);
   eq(draft.posiciones, { refugio: [0.25, 0.4] });
-});
-
-test('vuelve el tablero EXACTO, no una aproximación', () => {
-  const { elementos } = borradorDeEjercicio(filaGuardada());
-  eq(elementos, TABLERO);
 });
 
 test('los requisitos que falten quedan «sin decidir», no ausentes', () => {
@@ -125,56 +154,19 @@ test('ida y vuelta: el registro sale igual', () => {
   eq(reg.requisitos.jugadores_min, fila.requisitos.jugadores_min);
   eq(reg.requisitos.niveles, fila.requisitos.niveles);
   eq(reg.dificultad_valor, fila.difficulty);
+  eq(reg.animacion, fila.animacion, 'y la animación entera, sin tocar: el dibujo no se recompone al abrir');
 });
 
-console.log('\n· las fichas de la biblioteca, que no guardaron su tablero');
-
-test('la cola de una fila NO pierde jugadores', () => {
-  /* El fallo que este banco existe para impedir: la cola dibujada viene
-     descontada de los que salieron a trabajar. Sin devolverlos, cada
-     apertura+guardado le quitaría uno a la fila hasta vaciarla. */
-  const anim = compilarAnimacion({
-    canasta: 'norte',
-    fases: [{ eventos: [{ jugador: 'fila1', accion: 'bota', args: { destino: 'aro' } }] }],
-  }, TABLERO, 'media');
-  delete anim._elementos;
-  const dibujada = anim.conos.find((c) => c.funcion === 'fila').fila_config.n_jugadores;
-  ok(dibujada < 6, `la animación dibuja ${dibujada}, menos de los 6 que hay`);
-
-  const elementos = elementosDeAnimacion(anim);
-  const cono = elementos.find((e) => e.kind === 'cono' && e.funcion === 'fila');
-  eq(cono.fila_config.n_jugadores, 6, 'la fila tiene que volver con los seis');
-});
-
-test('los jugadores de fila no se convierten en fichas sueltas', () => {
-  // Los sintetiza el compilador desde el cono: si volvieran como fichas,
-  // el tablero tendría seis jugadores Y una cola de seis.
-  const anim = compilarAnimacion({
-    canasta: 'norte',
-    fases: [{ eventos: [{ jugador: 'fila1', accion: 'bota', args: { destino: 'aro' } }] }],
-  }, TABLERO, 'media');
-  delete anim._elementos;
-  const jugadores = elementosDeAnimacion(anim).filter((e) => e.kind === 'jugador');
-  eq(jugadores.length, 1, 'solo A1, el que está puesto a mano');
-  eq(jugadores[0].label, '1');
-});
-
-test('zonas y material vuelven de la animación', () => {
-  const anim = compilarAnimacion({ canasta: 'norte', fases: [] }, TABLERO, 'media');
-  delete anim._elementos;
-  const el = elementosDeAnimacion(anim);
-  const z = el.find((e) => e.kind === 'zona');
-  ok(z, 'falta la zona');
-  eq(z.nombre, 'ZONA 1');
-  const esc = el.find((e) => e.kind === 'escalera');
-  ok(esc, 'falta la escalera');
-  eq(esc.rot, 90, 'y su orientación');
-});
+console.log('\n· lo que llega roto no puede tumbar la carga');
 
 test('una animación vacía o rota no revienta', () => {
-  for (const v of [null, undefined, {}, 'texto', 42]) eq(elementosDeAnimacion(v), []);
-  const { draft, elementos } = borradorDeEjercicio(null);
-  ok(draft && Array.isArray(elementos), 'con null tiene que devolver algo utilizable');
+  /* Una ficha vieja puede traer cualquier cosa en `animacion`, y abrirla
+     para corregirle el nombre no puede acabar en una pantalla en blanco. */
+  for (const v of [null, undefined, {}, 'texto', 42]) {
+    const { draft } = borradorDeEjercicio({ name: 'Ficha vieja', animacion: v });
+    eq(draft.nombre, 'Ficha vieja', `con animacion=${String(v)}:`);
+  }
+  ok(borradorDeEjercicio(null).draft, 'y sin ejercicio ninguno, también');
 });
 
 console.log('\n· duplicar');
@@ -204,7 +196,7 @@ test('duplicar suelta el id: guardar crea, no pisa', () => {
   eq(draft.id, null);
   eq(draft.nombre, '1-variante de Entradas desde la fila');
   eq(draft.animacion !== null, true, 'pero se lleva la jugada entera');
-  eq(draft.fases_texto.length, 2, 'y las líneas del paso 2');
+  eq(draft.fases_texto.length, 2, 'y las líneas de las fases');
 });
 
 test('editar conserva el id: guardar corrige', () => {

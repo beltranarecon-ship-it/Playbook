@@ -51,3 +51,34 @@ export function aroExacto(pista, canasta) {
   const pos = posicionesDe(pista, canasta);
   return pos ? pos.aro : null;
 }
+
+/*
+   Las quince anclas, con el nombre que un entrenador usa en pista.
+   Las claves son las de medidas.js#anclasEnMetros: si mañana se añade
+   una, aquí falta su nombre y el banco lo dice (eval-medidas.mjs).
+
+   Venían de `ia/sujetos.js`, del motor viejo, que se borra. Se quedan
+   porque son vocabulario de pista, no del motor: los van a pedir la
+   frase automática (§9.1) y las posiciones con nombre (§7.7).
+
+   'aro' no está a propósito: la canasta se nombra aparte («el aro»,
+   «la canasta»), porque no es un sitio más de la lista sino EL
+   objetivo del ejercicio.
+*/
+export const NOMBRE_ANCLA = {
+  base: 'Base',
+  centro: 'Centro',
+  tiro_libre: 'Tiro libre',
+  escolta_der: 'Escolta derecho',
+  escolta_izq: 'Escolta izquierdo',
+  alero_der: 'Alero derecho',
+  alero_izq: 'Alero izquierdo',
+  esquina_der: 'Esquina derecha',
+  esquina_izq: 'Esquina izquierda',
+  codo_der: 'Codo derecho',
+  codo_izq: 'Codo izquierdo',
+  poste_bajo_der: 'Poste bajo derecho',
+  poste_bajo_izq: 'Poste bajo izquierdo',
+  poste_alto_der: 'Poste alto derecho',
+  poste_alto_izq: 'Poste alto izquierdo',
+};

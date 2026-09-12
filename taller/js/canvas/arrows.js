@@ -12,10 +12,11 @@ import { COLORS } from './colors.js';
 
 /* ── El símbolo de cada movimiento ────────────────────────────
    Vive AQUÍ, con los tipos que dibuja, y no copiado en cada lienzo.
-   Estaba escrito dos veces —engine.js y editor-canvas.js— con las
-   mismas tres entradas: añadir un símbolo nuevo en uno y olvidarlo en
-   el otro se ve como que la flecha aparece al animar y desaparece al
-   editar, que es de las cosas más difíciles de atribuir.
+   Estuvo escrito dos veces —en el motor y en el editor de flechas del
+   creador viejo, que ya no existe— con las mismas tres entradas:
+   añadir un símbolo nuevo en uno y olvidarlo en el otro se veía como
+   que la flecha aparece al animar y desaparece al editar, que es de
+   las cosas más difíciles de atribuir.
 
    Lo que no esté en el mapa cae en `run`, que es el trazo neutro. */
 export const MOV_TO_ARROW = {

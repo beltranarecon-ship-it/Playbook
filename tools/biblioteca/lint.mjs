@@ -4,7 +4,7 @@
    órdenes.
 
    Las dos primeras capas —la FICHA y la GEOMETRÍA— viven en
-   `taller/js/ia/lint.js`, dentro de la app, porque el paso 3 del
+   `taller/js/wizard/lint.js`, dentro de la app, porque el paso 3 del
    Taller enseña lo que el linter va a decir de la ficha MIENTRAS se
    escribe (Tramo 2.12) y dos copias de las reglas serían dos
    listones. Es la misma dirección que ya tenían las anclas y la
@@ -31,7 +31,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { huecos, revisarInvariantes, validarMapa, MAPA, OBJETIVO_TOTAL } from './mapa.mjs';
-import { revisaFicha, revisaGeometria } from '../../taller/js/ia/lint.js';
+import { revisaFicha, revisaGeometria } from '../../taller/js/wizard/lint.js';
 
 export { revisaFicha, revisaGeometria };
 

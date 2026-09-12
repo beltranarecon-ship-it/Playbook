@@ -245,9 +245,10 @@ const CASOS = [
 
   // ---- lo que salió del piloto ----
   {
-    // El compilador NO deduce el slalom de que haya conos: hay que
-    // declarar los eventos rodea_cono. Sin ellos el jugador va recto y
-    // la ficha promete un slalom que la animación no enseña.
+    // Poner conos en el tablero no dibuja el slalom: hace falta un
+    // recorrido que los sortee. Sin él el jugador va recto y la ficha
+    // promete un slalom que la animación no enseña. Esta ficha SÍ
+    // tiene fases, que es lo que hace que la regla se aplique.
     que: 'PILOTO · conos de rodear que nadie rodea',
     mut: (f) => { f.animacion.conos.push({ id: 'c1', posicion: [0.4, 0.5], funcion: 'rodear', fila_config: null }); },
     espera: /ning[úu]n recorrido los sortea/,
@@ -274,6 +275,39 @@ const CASOS = [
     que: 'PILOTO · trabajo simultáneo no dispara el aviso de colas',
     mut: (f) => { f.requisitos.jugadores_max = 16; f.requisitos.estaciones = 1; f.requisitos.simultaneo = true; },
     espera: null,
+  },
+
+  // ---- fichas de SOLO POSICIONES (Pizarra v3) ----
+  // Desde que la animación se dibuja en la Pizarra, la biblioteca se
+  // monta sin fases. Las dos reglas que miden el MOVIMIENTO no pueden
+  // exigirle nada a una colocación quieta: no promete ningún recorrido
+  // ni ha dibujado todavía la defensa. Los dos casos de abajo son
+  // exactamente los siete errores que aparecieron en las 204 fichas.
+  {
+    que: 'SOLO POSICIONES · conos de rodear sin fases no son un error',
+    mut: (f) => {
+      f.animacion.fases = [];
+      f.animacion.conos.push({ id: 'c1', posicion: [0.4, 0.5], funcion: 'rodear', fila_config: null });
+    },
+    espera: null,
+  },
+  {
+    que: 'SOLO POSICIONES · oposición declarada sin fases no exige defensor',
+    // En estas fichas el que opone es un compañero que sale a cerrar en
+    // mitad de la jugada: en la colocación de partida no hay peto que
+    // dibujar todavía.
+    mut: (f) => {
+      f.animacion.fases = [];
+      f.requisitos.oposicion = 'semiactiva';
+    },
+    espera: null,
+  },
+  {
+    que: 'CON FASES · declara oposición y no hay ningún defensor dibujado',
+    // La otra mitad del trato: en cuanto la ficha tiene jugada, la
+    // regla vuelve a apretar igual que antes.
+    mut: (f) => { f.requisitos.oposicion = 'semiactiva'; },
+    espera: /no hay ning[úu]n defensor/,
   },
 ];
 

@@ -4,7 +4,7 @@
 
    `construir.mjs --lint` revisa la biblioteca entera, y eso solo
    funciona cuando todas las tandas existen y están enchufadas. Al
-   escribir una tanda nueva hace falta el bucle corto: compilar SU
+   escribir una tanda nueva hace falta el bucle corto: montar SU
    fichero, pasarle las dos primeras capas del linter (la ficha y la
    geometría) y ver los errores propios, sin el ruido de los huecos de
    cobertura del conjunto —que dependen de las otras trece tandas y no
@@ -54,7 +54,7 @@ try {
   fichas = compilarFichas(crudas);
 } catch (e) {
   // Casi siempre: un `tablero()` que referencia un ancla que no existe.
-  console.error(`\nLa compilación de las animaciones ha reventado:\n  ${e.message}\n`);
+  console.error(`\nEl montaje de las posiciones ha reventado:\n  ${e.message}\n`);
   process.exit(1);
 }
 
@@ -77,9 +77,9 @@ for (const f of fichas) {
 /* Recuento de la tanda: sirve para no entregar ocho fichas sin
    oposición en un bloque técnico (INVARIANTES.minProporcionConOposicion). */
 const conOp = fichas.filter((f) => ['semiactiva', 'real'].includes(f.requisitos?.oposicion)).length;
-const animadas = fichas.filter((f) => f.animacion?.fases?.length).length;
+const conJugadores = fichas.filter((f) => f.animacion?.jugadores?.length).length;
 console.log(`\n  ${nErr} error(es) · ${nAvi} aviso(s)`);
-console.log(`  ${conOp}/${fichas.length} con oposición semiactiva o real · ${animadas}/${fichas.length} con animación\n`);
+console.log(`  ${conOp}/${fichas.length} con oposición semiactiva o real · ${conJugadores}/${fichas.length} con jugadores colocados\n`);
 if (!verAvisos && nAvi) console.log('  (los avisos se ven con --avisos)\n');
 
 process.exit(nErr ? 1 : 0);

@@ -16,12 +16,12 @@
    corrige pinchándolo y moviendo sus nodos, que es lo que ya funciona.
    Es la decisión tomada: automático y ajustable.
 
-   ── LAS CUENTAS SON LAS DEL MOTOR, NO UNAS PARECIDAS ────────
-   `puntoADistanciaDe` y las dos distancias de parada salen de donde
-   ya estaban —canvas/escala.js y ia/compilador.js— en vez de copiarse
-   aquí. Con dos copias del número, el trazo que se ve al dibujar y el
-   que anima el motor acabarían a distinta distancia del aro, y eso no
-   se ve hasta que se proyecta.
+   ── LAS CUENTAS NO SE COPIAN, SE PIDEN ──────────────────────
+   `puntoADistanciaDe` sale de canvas/escala.js y las dos distancias de
+   parada, del CATÁLOGO de acciones (ia/acciones.js), que es donde cada
+   familia declara la suya. Con dos copias del número, el trazo que se
+   ve al dibujar y el que anima el motor acabarían a distinta distancia
+   del aro, y eso no se ve hasta que se proyecta.
 
    ── LO QUE NO SE PUEDE SABER, SE DICE ───────────────────────
    «Vuelve a la fila» necesita saber de qué fila salió, y las filas son
@@ -31,7 +31,13 @@
 
 import { posicionesDe } from '../canvas/anclas.js';
 import { puntoADistanciaDe, metrosEntre } from '../canvas/escala.js';
-import { METROS_FINALIZACION, METROS_RECOGIDA } from '../ia/compilador.js';
+import { FAMILIAS } from '../ia/acciones.js';
+
+/** A cuánto del aro se para quien acaba «pegado», en metros. Del
+ *  catálogo: una acción puede traer la suya, y esta es la de reserva. */
+export const METROS_FINALIZACION = FAMILIAS.desplazamiento.parametros.separacion.porDefecto;
+/** Y a cuánto del balón se para quien va a recogerlo. */
+export const METROS_RECOGIDA = FAMILIAS.balon.parametros.separacion.porDefecto;
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const punto = (p) => ({ x: clamp01(p.x), y: clamp01(p.y) });

@@ -1,14 +1,16 @@
 /* ============================================================
    montaje.mjs — ayudantes compartidos por todas las tandas.
 
-   Cada tanda declara el TABLERO (dónde se coloca cada cosa) y la
-   INTENCIÓN (qué hace cada jugador, fase a fase). La geometría la
-   calcula compilarAnimacion() de forma determinista, así que escribir
-   ejercicios no cuesta API: lo que se escribe es baloncesto, no
-   coordenadas de curvas.
+   Cada tanda declara el TABLERO (dónde se coloca cada cosa), y de ahí
+   sale la ficha: SOLO CON POSICIONES. El movimiento ya no se calcula
+   aquí, se dibuja a mano en la Pizarra, que es quien manda sobre la
+   animación desde que se retiró el motor viejo.
+
+   La `intent` que todavía traen muchas tandas se IGNORA. No se borra
+   de las tandas porque sigue valiendo como referencia escrita de lo
+   que el ejercicio quería enseñar cuando toque dibujarlo.
    ============================================================ */
 
-import { compilarAnimacion } from '../../taller/js/ia/compilador.js';
 import { posicionesDe } from '../../taller/js/canvas/anclas.js';
 import { crearZona, zonaGuardable } from '../../taller/js/canvas/zonas.js';
 
@@ -27,17 +29,16 @@ export const reiniciarIds = () => { _n = 0; };
 export const jug = (equipo, label, x, y, extra = {}) =>
   ({ id: `el_${++_n}`, kind: 'jugador', equipo, label: String(label), dorsal: null, nombre: null, x, y, ...extra });
 
-/* El `id` es opcional, y se pone cuando la INTENCIÓN tiene que nombrar
-   ese balón concreto: con dos balones que acaban en el mismo sitio —dos
-   equipos tirando al mismo aro— el `recoge` por defecto elige el suelto
-   más cercano, y los dos reboteadores irían a por el mismo. */
+/* El `id` es opcional. Lo traen escrito los balones que alguna tanda
+   necesitaba nombrar uno por uno —dos equipos tirando al mismo aro—, y
+   se respeta: un id fijo no se mueve aunque cambie el orden del
+   tablero, y así las fichas ya importadas no se renumeran solas. */
 export const balon = (x, y, id = null) => ({ id: id || `el_balon_${++_n}`, kind: 'balon', x, y, portador_id: null });
 
-/* El `id` es opcional salvo en los conos de RODEAR: el compilador no
-   deduce el slalom de que haya conos en el tablero — la intención
-   tiene que declarar un evento `rodea_cono` nombrando cada uno. Sin
-   eso el jugador va en línea recta y se los salta, que es como el
-   piloto acabó con un ejercicio llamado "Slalom" dibujando una recta. */
+/* El `id` también es opcional aquí. Lo llevan sobre todo los conos de
+   RODEAR, porque el motor viejo exigía nombrarlos uno a uno para
+   dibujar el slalom; se conserva por lo mismo que en el balón: para
+   que un cono no cambie de nombre al retocar el tablero. */
 export const cono = (x, y, funcion = 'decorativo', fila_config = null, id = null) =>
   ({ id: id || `el_cono_${++_n}`, kind: 'cono', x, y, funcion, fila_config });
 
@@ -80,12 +81,12 @@ export const E = posicionesDe('entera', 'norte');
 
 /* ---- montaje estático -----------------------------------------
    Misma forma que animacionDesdeBoard() del Taller: posiciones sí,
-   fases no. Para los juegos abiertos, que pueden acabar de mil
-   maneras y donde animar una sola sería enseñar una jugada cerrada
-   donde debe haber lectura. */
-/* La clave `materiales` solo aparece si hay algo, igual que en el
-   compilador: así las fichas que no llevan material siguen siendo
-   byte a byte lo que eran. */
+   fases no. Es lo que sale de TODAS las fichas desde que la animación
+   se dibuja en la Pizarra; antes solo lo llevaban los juegos abiertos,
+   donde animar un 3c3 sería enseñar una jugada cerrada donde tiene que
+   haber lectura. */
+/* La clave `materiales` solo aparece si hay algo: así las fichas que
+   no llevan material siguen siendo byte a byte lo que eran. */
 export function zonasDe(elementos) {
   const zs = elementos.filter((e) => e.kind === 'zona').map((z, i) => zonaGuardable(z, i));
   return zs.length ? { zonas: zs } : {};
@@ -119,15 +120,19 @@ export function soloMontaje(elementos, pista) {
   };
 }
 
-/** Convierte fichas con `tablero`/`intent` en fichas listas para importar. */
+/** Convierte fichas con `tablero` en fichas listas para importar.
+    Conserva el nombre `compilarFichas` porque lo usan sus tres
+    llamadores (construir, piloto y lint-tanda) y renombrarlo solo
+    serviría para tocar tres ficheros más. */
 export function compilarFichas(fichas) {
   return fichas.map((f) => {
+    /* `intent` se desestructura para SACARLA de la ficha que se
+       importa: sigue escrita en la tanda como referencia, pero ya no
+       se compila. La animación se dibuja en la Pizarra. */
     const { tablero, intent, ...ficha } = f;
     reiniciarIds();
     const elementos = tablero();
-    ficha.animacion = intent
-      ? compilarAnimacion(intent, elementos, ficha.tipo_pista)
-      : soloMontaje(elementos, ficha.tipo_pista);
+    ficha.animacion = soloMontaje(elementos, ficha.tipo_pista);
     ficha.autor_nombre = 'Biblioteca CBP';
     ficha.favorito = false;
     return ficha;
