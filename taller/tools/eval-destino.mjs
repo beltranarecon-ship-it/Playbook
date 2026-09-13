@@ -12,11 +12,15 @@
    hasta que se proyecta en el pabellón.
    ============================================================ */
 
-import { tieneDestinoPropio, destinoDe, METROS_FINALIZACION, METROS_RECOGIDA, trasElTiro, METROS_REBOTE, METROS_CAIDA } from '../js/pizarra/destino.js';
+import {
+  tieneDestinoPropio, destinoDe, METROS_FINALIZACION, METROS_RECOGIDA, trasElTiro, METROS_REBOTE, METROS_CAIDA,
+  esAccionDeBloqueo, defensorSupuesto, sitioDelBloqueo, frenteDelBloqueo,
+  METROS_BLOQUEO, METROS_PAR_CON_BALON, METROS_PAR_SIN_BALON,
+} from '../js/pizarra/destino.js';
 import { limitesCancha } from '../js/canvas/medidas.js';
 import { CATALOGO_SISTEMA } from '../js/ia/acciones.js';
 import { posicionesDe } from '../js/canvas/anclas.js';
-import { metrosEntre } from '../js/canvas/escala.js';
+import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -188,6 +192,86 @@ test('EN LAS CUATRO PISTAS Y LAS DOS CANASTAS, el balón queda dentro de la canc
     }
   }
   ok(trasElTiro({ pista: 'no_existe', desenlace: 'falla' }) === null, 'sin aro conocido, null');
+});
+
+/* ── 6. El sitio del bloqueo (§4.4) ──────────────────────── */
+
+test('ES UN BLOQUEO LO QUE DIBUJA LA RELACIÓN DE BLOQUEO, según el catálogo', () => {
+  for (const a of CATALOGO_SISTEMA) {
+    const esperado = a.familia === 'entre_dos' && a.parametros.simbolo_relacion === 'bloqueo';
+    eq(esAccionDeBloqueo(a), esperado, `${a.slug}:`);
+  }
+  ok(esAccionDeBloqueo(de('bloquea')), 'bloquea lo es');
+  ok(!esAccionDeBloqueo(de('defiende')) && !esAccionDeBloqueo(null), 'defiende no, y nada tampoco');
+});
+
+test('SIN DEFENSA, EL DEFENSOR SE SUPONE ENTRE EL COMPAÑERO Y EL ARO: 1,2 m con balón, 2,0 sin él', () => {
+  const aro = aroDe('entera', 'norte');
+  const par = { x: 0.5, y: 0.5 };
+  for (const [conBalon, metros] of [[true, METROS_PAR_CON_BALON], [false, METROS_PAR_SIN_BALON]]) {
+    const d = defensorSupuesto({ pista: 'entera', canasta: 'norte', par, conBalon });
+    aprox(metrosEntre('entera', d, par), metros, 1e-6, `con balón ${conBalon}, a su par:`);
+    aprox(metrosEntre('entera', d, aro) + metros, metrosEntre('entera', par, aro), 1e-6, 'y sobre la línea al aro:');
+  }
+});
+
+/* El producto escalar de dos vectores medidos en METROS. */
+const escalar = (pista, a, b, c, d) => {
+  const e = escalaDe(pista);
+  return (b.x - a.x) * e.x * (d.x - c.x) * e.x + (b.y - a.y) * e.y * (d.y - c.y) * e.y;
+};
+
+test('QUIEN BLOQUEA SE PLANTA AL LADO DE ESE DEFENSOR, a 0,7 m y del lado por el que llega', () => {
+  const companero = { x: 0.5, y: 0.5 };
+  const d = defensorSupuesto({ pista: 'entera', canasta: 'norte', par: companero, conBalon: false });
+  for (const desde of [{ x: 0.85, y: 0.5 }, { x: 0.15, y: 0.5 }]) {
+    const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero, conBalon: false });
+    aprox(metrosEntre('entera', s, d), METROS_BLOQUEO, 1e-6, 'pegado a él:');
+    aprox(escalar('entera', companero, d, d, s), 0, 1e-6, 'al LADO, no en la línea al aro:');
+    ok(escalar('entera', d, s, d, desde) > 0, `del lado por el que llega (desde x=${desde.x}): ${JSON.stringify(s)}`);
+  }
+});
+
+test('NO SE QUEDA ENCIMA DEL COMPAÑERO aunque llegue desde su misma altura', () => {
+  /* Parándose en su camino hacia el defensor, el que venía desde la
+     altura del compañero acababa a medio metro de él, ficha sobre ficha. */
+  const companero = { x: 0.35, y: 0.30 };
+  const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde: { x: 0.12, y: 0.30 }, companero, conBalon: true });
+  ok(metrosEntre('entera', s, companero) > 1.3, `a ${metrosEntre('entera', s, companero).toFixed(2)} m del compañero`);
+});
+
+test('con el compañero en el aro se acerca por su camino; sin compañero o sin aro, no se inventa', () => {
+  const aro = aroDe('entera', 'norte');
+  const desde = { x: 0.5, y: 0.5 };
+  const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero: aro, conBalon: false });
+  aprox(metrosEntre('entera', s, aro), METROS_BLOQUEO, 1e-6, 'se para antes de llegar:');
+  const companero = { x: 0.5, y: 0.5 };
+  eq(sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde: { x: 0.2, y: 0.2 }, companero: null }), null);
+  eq(sitioDelBloqueo({ pista: 'no_existe', desde: { x: 0.2, y: 0.2 }, companero }), null);
+  eq(sitioDelBloqueo({ pista: 'entera', desde: null, companero }), null);
+});
+
+test('EN LAS CUATRO PISTAS Y LAS DOS CANASTAS, el bloqueador acaba dentro de la cancha', () => {
+  for (const pista of ['entera', 'media', 'entera_fiba', 'media_fiba']) {
+    for (const canasta of ['norte', 'sur']) {
+      const lim = limitesCancha(pista);
+      for (const companero of [{ x: 0.02, y: 0.5 }, { x: 0.5, y: 0.5 }, aroDe(pista, canasta)]) {
+        for (const desde of [{ x: 0.98, y: 0.02 }, { x: 0.1, y: 0.9 }]) {
+          const p = sitioDelBloqueo({ pista, canasta, desde, companero, conBalon: false });
+          ok(p && p.x >= lim.x[0] && p.x <= lim.x[1] && p.y >= lim.y[0] && p.y <= lim.y[1],
+            `${pista} ${canasta}: fuera de la cancha ${JSON.stringify(p)}`);
+        }
+      }
+    }
+  }
+});
+
+test('LA BARRA MIRA HACIA DONDE LLEGA: un punto justo delante del final', () => {
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal', handle_in: null, handle_out: null });
+  const f = frenteDelBloqueo([N(0.8, 0.5), N(0.6, 0.5)]);
+  ok(f.x < 0.6 && Math.abs(f.y - 0.5) < 1e-9, `hacia la izquierda, que es por donde iba: ${JSON.stringify(f)}`);
+  eq(frenteDelBloqueo([N(0.5, 0.5), N(0.5, 0.5)]), null, 'si no se ha movido, no tiene frente:');
+  eq(frenteDelBloqueo(null), null);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

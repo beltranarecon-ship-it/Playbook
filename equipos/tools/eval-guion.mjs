@@ -312,6 +312,23 @@ test('el bloqueo se cuenta antes que el movimiento que lo aprovecha', () => {
   eq(g.fases[0].lineas, ['El 5 bloquea para el 1', 'El 1 bota hacia el codo derecho']);
 });
 
+test('EL BLOQUEADOR NO SE CUENTA DOS VECES: su camino es su bloqueo', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A5', equipo: 'A' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 1600,
+      bloqueos: [{ bloqueador_id: 'A5', bloqueado_id: 'A1', inicio_ms: 800, duracion_ms: 800 }],
+      movimientos: [
+        { elemento_id: 'A5', tipo_elemento: 'jugador', tipo_movimiento: 'bloqueo', path: camino(P.poste_bajo_der, P.tiro_libre), inicio_ms: 0, duracion_ms: 800 },
+        { elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: camino(P.base, P.codo_der), inicio_ms: 800, duracion_ms: 800 },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 5 bloquea para el 1', 'El 1 bota hacia el codo derecho']);
+});
+
 test('la duración suma movimiento + pausa de cada fase', () => {
   const g = guionDeAnimacion({
     pista: 'entera', jugadores: [], balones: [],

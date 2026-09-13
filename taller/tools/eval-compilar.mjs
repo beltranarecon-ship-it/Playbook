@@ -25,7 +25,7 @@ import { carrilesDesde, tiemposDe } from '../js/pizarra/fases.js';
 import { AnimationEngine } from '../js/canvas/engine.js';
 import { CATALOGO_SISTEMA } from '../js/ia/acciones.js';
 import { aroExacto } from '../js/canvas/anclas.js';
-import { trasElTiro } from '../js/pizarra/destino.js';
+import { trasElTiro, frenteDelBloqueo } from '../js/pizarra/destino.js';
 import { TRAS_EL_TIRO_MS } from '../js/pizarra/fases.js';
 
 let pasan = 0, fallan = 0;
@@ -442,6 +442,69 @@ test('Y QUIEN RECOGE EL REBOTE SE LO QUEDA, cuando el balón ya ha caído', () =
   const fin = enElInstante(motor, 0, motor.fases[0].duracion_ms);
   ok(cerca(fin.balls[bal.id].x, fin.players.A2.x, 1e-6) && cerca(fin.balls[bal.id].y, fin.players.A2.y, 1e-6),
     `y el balón acaba en sus manos: ${JSON.stringify(fin.balls[bal.id])} y A2 en ${JSON.stringify(fin.players.A2)}`);
+});
+
+/* ── 7. El bloqueo (§4.4, §6.3) ───────────────────────────── */
+
+const bloqueoDe = (bloqueador, companero, desde, hasta) => ({
+  ...tramo(bloqueador.id, desde, hasta, { accion: 'bloquea', tipo: 'bloqueo' }),
+  companero_id: companero.id,
+});
+
+test('UN BLOQUEO SE COMPILA: el bloqueador va a su sitio y la barra sale al llegar', () => {
+  const { l, a1, a2 } = escena();
+  const b = bloqueoDe(a2, a1, P(0.7, 0.8), P(0.4, 0.7));
+  const sale = tramo(a1.id, P(0.3, 0.8), P(0.3, 0.4), { accion: 'bota', tipo: 'run' });
+  const a = compilar(jugadaCon(l, [{ id: 'f1', tramos: [b, sale] }]));
+  const f = a.fases[0];
+  const mv = f.movimientos.find((m) => m.elemento_id === 'A2');
+  eq(mv.tipo_movimiento, 'bloqueo', 'se desplaza con la flecha del bloqueo:');
+  eq(f.bloqueos.length, 1);
+  const bl = f.bloqueos[0];
+  eq([bl.bloqueador_id, bl.bloqueado_id], ['A2', 'A1'], 'el bloqueado es el COMPAÑERO, que es lo que narra Equipos:');
+  ok(cerca(bl.inicio_ms, mv.inicio_ms + mv.duracion_ms), `la barra sale al llegar: ${bl.inicio_ms}`);
+  ok(cerca(bl.inicio_ms + bl.duracion_ms, f.duracion_ms), 'y, si no hace nada más, aguanta hasta el final de la fase');
+  const bota = f.movimientos.find((m) => m.elemento_id === 'A1');
+  ok(cerca(bota.inicio_ms, bl.inicio_ms), `el compañero sale cuando el bloqueador llega: ${bota.inicio_ms}`);
+  const frente = frenteDelBloqueo(b.trazo);
+  eq(bl.hacia, [frente.x, frente.y], 'la barra mira hacia donde llegaba:');
+  eq(f.acciones, ['bloquea', 'bota']);
+  ok(!a.warnings.length, `sin avisos: ${a.warnings}`);
+});
+
+test('si el bloqueador hace algo después, la barra dura hasta que se va', () => {
+  const { l, a1, a2 } = escena();
+  const b = bloqueoDe(a2, a1, P(0.7, 0.8), P(0.4, 0.7));
+  const rueda = tramo(a2.id, P(0.4, 0.7), P(0.5, 0.3));
+  const f = compilar(jugadaCon(l, [{ id: 'f1', tramos: [b, rueda] }])).fases[0];
+  const bl = f.bloqueos[0];
+  const mv = f.movimientos.filter((m) => m.elemento_id === 'A2');
+  eq(mv.length, 2);
+  ok(cerca(bl.inicio_ms + bl.duracion_ms, mv[1].inicio_ms), 'hasta que rueda:');
+});
+
+test('UN BLOQUEO SIN COMPAÑERO SALE SIN BARRA, pero se desplaza y se avisa', () => {
+  const { l, a2 } = escena();
+  const b = { ...tramo(a2.id, P(0.7, 0.8), P(0.4, 0.7), { accion: 'bloquea', tipo: 'bloqueo' }), companero_id: 'no_esta' };
+  const a = compilar(jugadaCon(l, [{ id: 'f1', tramos: [b] }]));
+  eq(a.fases[0].bloqueos, []);
+  ok(a.fases[0].movimientos.some((m) => m.elemento_id === 'A2'), 'el desplazamiento sí sale');
+  ok(a.warnings.some((w) => /sin compañero/.test(w)), `y se dice: ${a.warnings}`);
+});
+
+test('EN EL MOTOR REAL, LA BARRA NO SE VE MIENTRAS EL BLOQUEADOR VA DE CAMINO', () => {
+  const { l, a1, a2 } = escena();
+  const b = bloqueoDe(a2, a1, P(0.7, 0.8), P(0.4, 0.7));
+  const anim = compilar(jugadaCon(l, [{ id: 'f1', tramos: [b, tramo(a1.id, P(0.3, 0.8), P(0.3, 0.4), { accion: 'bota', tipo: 'run' })] }]));
+  const motor = enElMotor(anim);
+  const bl = anim.fases[0].bloqueos[0];
+  const antes = bl.inicio_ms - 50;
+  eq(motor.bloqueosEn(0, antes, enElInstante(motor, 0, antes).players).length, 0, 'de camino, sin barra:');
+  const t = bl.inicio_ms + 10;
+  const f = enElInstante(motor, 0, t);
+  const v = motor.bloqueosEn(0, t, f.players);
+  eq(v.length, 1, 'plantado, con barra:');
+  ok(cerca(v[0].a.x, 0.4, 1e-6) && cerca(v[0].a.y, 0.7, 1e-6), `en su sitio: ${JSON.stringify(v[0].a)}`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

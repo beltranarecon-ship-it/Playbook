@@ -40,7 +40,7 @@ const porSlug = new Map(CATALOGO_SISTEMA.map((a) => [a.slug, a]));
 const de = (slug) => porSlug.get(slug);
 /** Los que `drawArrow` sabe dibujar. Cualquier otro se dibujaría como
  *  `run` sin avisar. */
-const DIBUJABLES = ['run', 'pass', 'cut', 'gesto'];
+const DIBUJABLES = ['run', 'pass', 'cut', 'gesto', 'bloqueo'];
 
 /* ── 1. La flecha ────────────────────────────────────────── */
 
@@ -79,16 +79,16 @@ test('sin acción, o con un símbolo desconocido, cae en el trazo neutro', () =>
   eq(tipoFlecha({ simbolo: 'algo_que_no_existe' }), 'run');
 });
 
-test('EL BLOQUEO NO ES UN TRAZO, y aquí se deja dicho', () => {
-  /* «bloquea» es una relación entre dos fichas —el motor la dibuja con
-     drawBloqueo entre bloqueador y compañero— y por eso pide compañero
-     y no destino. Si algún día entra en el modo destino, el fantasma
-     enseñaría esta flecha, que es mentira. Esta prueba está para que
-     ese día alguien lo lea aquí en vez de descubrirlo dibujando. */
+test('EL BLOQUEO TIENE SU TRAZO: sin punta, porque acaba en la barra', () => {
+  /* Cambió a propósito en la capa 5 (paso 5.2): el bloqueador va solo a su
+     sitio (§4.4) y su camino acaba en la barra del bloqueo. Con la punta
+     de un corte, la barra quedaría tapada. Y el motor dibuja lo mismo al
+     reproducirlo: el símbolo del catálogo lleva a la misma flecha. */
   eq(de('bloquea').simbolo, 'bloqueo');
-  eq(tipoFlecha(de('bloquea')), 'run', 'hoy cae en el trazo neutro:');
+  eq(tipoFlecha(de('bloquea')), 'bloqueo');
+  eq(MOV_TO_ARROW.bloqueo, 'bloqueo', 'y en el motor, igual:');
   ok(!(de('bloquea').pide || []).includes('destino'),
-    'mientras «bloquea» no pida destino, no debe entrar en este modo');
+    '«bloquea» no pide destino: su sitio lo calcula destino.js, no se dibuja a mano');
 });
 
 /* ── 2. El ritmo ─────────────────────────────────────────── */

@@ -35,13 +35,10 @@ import { puntosDeIman, imantar } from './iman.js';
  *  declara en el catálogo, así que una acción nueva del club hereda su
  *  flecha sin tocar esto.
  *
- *  El bloqueo se queda fuera a propósito: no es un trazo sino una
- *  RELACIÓN entre dos fichas —el motor lo dibuja con `drawBloqueo`
- *  entre bloqueador y compañero (engine.js)— y por eso «bloquea» pide
- *  compañero y no destino. Aquí caería en `run` y el fantasma
- *  enseñaría una flecha que luego no va a existir; el modo de elegir
- *  compañero es de una capa posterior y hasta que llegue, esta acción
- *  no debe entrar en el modo destino. */
+ *  El bloqueo tiene la suya: el camino del bloqueador SIN punta, porque
+ *  acaba en la barra del bloqueo (`drawBloqueo`), igual en la Pizarra y
+ *  en el proyector. «Bloquea» no entra nunca en este modo: pide
+ *  compañero (pizarra/companero.js) y su sitio lo calcula destino.js. */
 export function tipoFlecha(accion) {
   const s = accion && accion.simbolo;
   if (s === 'pase' || s === 'tiro') return 'pass';

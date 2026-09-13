@@ -14,7 +14,7 @@
        receptor no eche a correr con el balón todavía en el aire.
 
    Y una cosa más, que es de las que se descubren tarde: que esto NO SE
-   PUEDA COLGAR. No por un tope en el bucle, sino porque las dos
+   PUEDA COLGAR. No por un tope en el bucle, sino porque todas las
    dependencias apuntan siempre hacia atrás en el orden de dibujo, así
    que el grafo es acíclico por construcción. Eso es una propiedad de
    las REGLAS, no del código que las resuelve, y por eso se prueba
@@ -23,7 +23,7 @@
    ============================================================ */
 
 import {
-  MINIMO_TRAMO_MS, PENDIENTES,
+  MINIMO_TRAMO_MS, esBloqueo,
   nuevaFase, carrilesDesde, tramosDe,
   duracionDeTramo, tiemposDe, duracionDeCarril, posicionesFinales,
   reanclarFase, recalcular, posesionAlFinal,
@@ -61,6 +61,12 @@ const tramo = (elemento, desde, hasta, extra = {}) => ({
   manual: !!extra.manual,
 });
 const conCarriles = (tramos) => ({ ...nuevaFase('f1'), carriles: carrilesDesde(tramos) });
+/** Un bloqueo como los que produce la Pizarra: su trazo acaba en la barra
+ *  y sabe para quién es. */
+const bloqueo = (bloqueador, companero, desde, hasta) => ({
+  ...tramo(bloqueador, desde, hasta, { accion: 'bloquea', tipo: 'bloqueo' }),
+  companero_id: companero,
+});
 const P = (x, y) => ({ x, y });
 
 /* ── 1. Los carriles ─────────────────────────────────────── */
@@ -199,6 +205,13 @@ test('NO PUEDE HABER CICLOS: las dependencias apuntan siempre hacia atrás', () 
   eq(r.avisos, [], 'nada de ciclos:');
   eq(r.tramos[p1.id].inicio_ms, 0, 'el primero sale ya:');
   eq(r.tramos[p2.id].inicio_ms, r.tramos[p1.id].fin_ms, 'y el segundo cuando el balón ha llegado:');
+  /* Y dos bloqueos cruzados —A1 se lo pone a A2 y A2 a A1— tampoco: el
+     segundo espera al primero, y ya. */
+  const b1 = bloqueo('A1', 'A2', P(0.2, 0.5), P(0.4, 0.5));
+  const b2 = bloqueo('A2', 'A1', P(0.8, 0.5), P(0.6, 0.5));
+  const r2 = tiemposDe(conCarriles([b1, b2]), { pista: 'entera' });
+  eq(r2.avisos, [], 'nada de ciclos con bloqueos:');
+  eq(r2.tramos[b2.id].inicio_ms, r2.tramos[b1.id].fin_ms);
 });
 
 test('y ENCADENADO LARGO también termina, con todo el mundo colocado', () => {
@@ -286,12 +299,44 @@ test('sin entrada ni fase, devuelve algo válido en vez de romperse', () => {
   eq(posicionesFinales(nuevaFase('f1'), {}), {});
 });
 
-/* ── 6. Lo que falta, declarado ──────────────────────────── */
+/* ── 6. El tercer arranque: el bloqueo (§6.3) ────────────── */
 
-test('el tercer arranque del §6.3 sale DECLARADO como pendiente, con su motivo', () => {
-  ok(PENDIENTES.bloqueo, 'quien sale de un bloqueo espera al bloqueador');
-  ok(PENDIENTES.bloqueo.length > 30, 'un pendiente sin motivo es un olvido');
-  ok(/bloque/i.test(PENDIENTES.bloqueo));
+test('ES UN BLOQUEO LO QUE DICE EL DATO: su barra y para quién es', () => {
+  ok(esBloqueo(bloqueo('A2', 'A1', P(0.8, 0.5), P(0.6, 0.5))));
+  ok(!esBloqueo({ tipo: 'bloqueo' }), 'sin compañero, no');
+  ok(!esBloqueo({ tipo: 'cut', companero_id: 'A1' }), 'con el trazo de un corte, no');
+  ok(!esBloqueo(null));
+});
+
+test('QUIEN SALE DE UN BLOQUEO NO SALE HASTA QUE EL BLOQUEADOR HA LLEGADO', () => {
+  const b = bloqueo('A2', 'A1', P(0.8, 0.5), P(0.55, 0.45));
+  const sale = tramo('A1', P(0.5, 0.5), P(0.6, 0.2));
+  const r = tiemposDe(conCarriles([b, sale]), { pista: 'entera' });
+  eq(r.tramos[b.id].inicio_ms, 0, 'el bloqueador sale ya:');
+  eq(r.tramos[sale.id].inicio_ms, r.tramos[b.id].fin_ms, 'y el compañero cuando llega:');
+  ok(r.tramos[sale.id].inicio_ms > 0, 'que no es cero');
+});
+
+test('lo que el compañero ya estaba haciendo no se retrasa; y quien no es el compañero, tampoco', () => {
+  const antes = tramo('A1', P(0.4, 0.6), P(0.5, 0.5));
+  const b = bloqueo('A2', 'A1', P(0.9, 0.5), P(0.55, 0.45));
+  const despues = tramo('A1', P(0.5, 0.5), P(0.6, 0.2));
+  const otro = tramo('A3', P(0.2, 0.2), P(0.3, 0.3));
+  const r = tiemposDe(conCarriles([antes, b, despues, otro]), { pista: 'entera' });
+  eq(r.tramos[antes.id].inicio_ms, 0, 'lo de antes, a la vez que el bloqueo:');
+  eq(r.tramos[despues.id].inicio_ms, Math.max(r.tramos[antes.id].fin_ms, r.tramos[b.id].fin_ms), 'lo de después, cuando llega:');
+  eq(r.tramos[otro.id].inicio_ms, 0, 'y los demás, a lo suyo:');
+});
+
+test('SI ESPERA A UN PASE Y A UN BLOQUEO, SALE CUANDO HAN PASADO LAS DOS COSAS', () => {
+  /* El pase se mira primero —su carril va antes— y es lo que acaba antes.
+     Guardando una sola espera, A1 salía con el bloqueador de camino. */
+  const pase = tramo('A3', P(0.45, 0.55), P(0.5, 0.5), { corre_id: 'b1', accion: 'pasa', receptor_id: 'A1', ritmo: 'pase', tipo: 'pass' });
+  const b = bloqueo('A2', 'A1', P(0.95, 0.9), P(0.55, 0.45));
+  const sale = tramo('A1', P(0.5, 0.5), P(0.6, 0.2));
+  const r = tiemposDe(conCarriles([pase, b, sale]), { pista: 'entera' });
+  ok(r.tramos[b.id].fin_ms > r.tramos[pase.id].fin_ms, 'el bloqueo es lo que acaba más tarde (si no, esto no prueba nada)');
+  eq(r.tramos[sale.id].inicio_ms, r.tramos[b.id].fin_ms, 'sale al llegar el bloqueador:');
 });
 
 /* ── Volver atrás y arrastrar a las siguientes (§6.5) ── */
@@ -489,6 +534,11 @@ test('TRAMOS CON FICHA: la encuentra actúe, corra, reciba o sea el balón que s
   eq(tramosConFicha(f, 'A2').map((r) => `${r.fase}:${r.tramo.id}`), ['0:ta', '1:tc'], 'el que recibe, y también en la fase 2:');
   eq(tramosConFicha(f, 'b2').map((r) => r.tramo.id), ['tb'], 'el balón que se recoge:');
   eq(tramosConFicha(f, 'A4'), [], 'quien no hace nada:');
+});
+
+test('Y EL COMPAÑERO DE UN BLOQUEO: si no, Supr se lo llevaría y el bloqueo apuntaría a nadie', () => {
+  const f = [{ id: 'f1', tramos: [{ id: 'tx', elemento_id: 'A2', corre_id: 'A2', companero_id: 'A1', tipo: 'bloqueo', trazo: [] }] }];
+  eq(tramosConFicha(f, 'A1').map((r) => r.tramo.id), ['tx']);
 });
 
 test('sin id no hay tramos: un receptor vacío no es «este jugador»', () => {

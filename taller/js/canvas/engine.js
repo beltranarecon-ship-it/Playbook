@@ -194,6 +194,35 @@ export class AnimationEngine {
     }
   }
 
+  /**
+   * Los bloqueos que se ven en el instante t de la fase k, cada uno con
+   * sus dos extremos: `a`, dónde está el bloqueador, y `b`, hacia dónde
+   * mira la barra.
+   *
+   * Lo de antes no trae instante y se ve la fase entera, mirando al
+   * bloqueado, exactamente como siempre. Lo de la Pizarra trae cuándo
+   * LLEGA el bloqueador (`inicio_ms`) y cuánto aguanta (`duracion_ms`):
+   * la barra sale al plantarse y no mientras va de camino. Y mira hacia
+   * `hacia`, el frente con el que llegó; mirando al compañero, la barra
+   * giraría mientras el compañero pasa por su lado.
+   *
+   * Va aparte de `render` para poder probarlo en Node, donde no se pinta.
+   */
+  bloqueosEn(k, t, players) {
+    const lista = [];
+    for (const bl of (this.meta[k] && this.meta[k].bloqueos) || []) {
+      if (!bl) continue;
+      if (Number.isFinite(bl.inicio_ms)) {
+        const hasta = Number.isFinite(bl.duracion_ms) ? bl.inicio_ms + bl.duracion_ms : Infinity;
+        if (t < bl.inicio_ms || t > hasta) continue;
+      }
+      const a = players[bl.bloqueador_id];
+      const b = Array.isArray(bl.hacia) ? { x: bl.hacia[0], y: bl.hacia[1] } : players[bl.bloqueado_id];
+      if (a && b) lista.push({ a, b });
+    }
+    return lista;
+  }
+
   /* ---- estado de reproducción §9.5 ---- */
   get phaseCount() { return this.fases.length; }
   _dur() { return this.fases[this.k]?.duracion_ms || 1000; }
@@ -358,9 +387,8 @@ export class AnimationEngine {
     // dibujan: el fotograma 0 es el PLANTEAMIENTO estático, sin acciones.
     if (meta && !this.preview) {
       for (const ar of meta.arrows) drawArrow(ctx, ar.flat.map(toPx), ar.type, R.scale);
-      for (const bl of meta.bloqueos) {
-        const a = f.players[bl.bloqueador_id], b = f.players[bl.bloqueado_id];
-        if (a && b) drawBloqueo(ctx, toPx(a), toPx(b), R.scale);
+      for (const { a, b } of this.bloqueosEn(this.k, Math.min(this.phaseElapsed, this._dur()), f.players)) {
+        drawBloqueo(ctx, toPx(a), toPx(b), R.scale, R.jugador);
       }
     }
 

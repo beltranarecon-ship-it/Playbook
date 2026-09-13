@@ -34,12 +34,13 @@
    Y todo se puede forzar a mano: un tramo con `manual: true` conserva su
    `inicio_ms` y deja de recalcularse (§6.3).
 
-   ── LO QUE FALTA, DECLARADO ─────────────────────────────────
-   El §6.3 tiene un tercer arranque evidente: quien sale de un bloqueo
-   espera a que el bloqueador haya llegado. No está aquí porque
-   «bloquea» todavía no se dibuja —pide compañero, y eso es de la capa
-   4—, así que no hay ningún dato del que sacar la dependencia. Se
-   declara en `PENDIENTES` en vez de olvidarse.
+   El tercer arranque evidente del §6.3 es el del bloqueo: quien sale de
+   un bloqueo no sale hasta que el bloqueador ha llegado. Se lee del
+   tramo del bloqueo, que sabe para quién es (`companero_id`).
+
+   Un tramo puede esperar a VARIAS cosas a la vez —que le llegue el balón
+   y que le pongan el bloqueo—, y entonces espera a la que acabe más
+   tarde.
    ============================================================ */
 
 import { duracionDe, longitudMetros, reanclar } from './trazo.js';
@@ -58,13 +59,9 @@ export const TRAS_EL_TIRO_MS = 300;
  *  nombre de la acción: una acción de tiro del club vale igual. */
 export const esTiro = (t) => !!t && (t.desenlace === 'entra' || t.desenlace === 'falla');
 
-/** Los arranques del §6.3 que todavía no se pueden calcular, con su
- *  motivo. Verlos declarados enseña el plan; que falten sin más los
- *  convierte en un olvido. */
-export const PENDIENTES = {
-  bloqueo: 'quien sale de un bloqueo espera al bloqueador, pero «bloquea» '
-    + 'pide compañero y eso todavía no se dibuja (capa 4)',
-};
+/** ¿Es un bloqueo? Del DATO: su trazo acaba en la barra y sabe para quién
+ *  es. Un bloqueo que cree el club vale igual. */
+export const esBloqueo = (t) => !!t && t.tipo === 'bloqueo' && !!t.companero_id;
 
 /* ── El armazón ────────────────────────────────────────────── */
 
@@ -139,12 +136,21 @@ export function duracionDeTramo(tramo, pista = 'entera') {
 
 /* ── Los arranques (§6.3) ──────────────────────────────────── */
 
-/* De qué tramo depende otro para poder arrancar.
-   Se lee de lo que la capa 2 ya guarda —quién recibe un pase, qué
-   balón recoge alguien— y no de una lista escrita a mano. */
+/* De qué tramos depende otro para poder arrancar.
+   Se lee de lo que ya guarda cada tramo —quién recibe un pase, qué balón
+   recoge alguien, para quién es un bloqueo— y no de una lista escrita a
+   mano. */
 function dependencias(carriles) {
-  const espera = new Map();   // id de tramo -> id del tramo que tiene que acabar antes
+  const espera = new Map();   // id de tramo -> ids de los tramos que tienen que acabar antes
   const todos = carriles.flatMap((c) => c.tramos);
+  /* VARIAS ESPERAS, NO LA PRIMERA. Guardando una sola, si a alguien le
+     pasaban el balón y le ponían un bloqueo, esperaba a lo que se hubiera
+     mirado antes —que es el orden de los carriles, no el de la jugada— y
+     podía salir con el bloqueador todavía de camino. */
+  const apunta = (id, previo) => {
+    const lista = espera.get(id) || [];
+    if (!lista.includes(previo)) espera.set(id, [...lista, previo]);
+  };
 
   for (const p of todos) {
     /* UN PASE MANDA SOBRE EL SIGUIENTE MOVIMIENTO DEL RECEPTOR.
@@ -154,7 +160,7 @@ function dependencias(carriles) {
     if (p.receptor_id) {
       const suyos = (carriles.find((c) => c.elemento === p.receptor_id) || { tramos: [] }).tramos;
       const siguiente = suyos.find((t) => t.orden > p.orden);
-      if (siguiente && !espera.has(siguiente.id)) espera.set(siguiente.id, p.id);
+      if (siguiente) apunta(siguiente.id, p.id);
     }
     /* IR A POR UN BALÓN SUELTO ESPERA A QUE ESTÉ SUELTO. El tramo que
        lo soltó es el ÚLTIMO pase o tiro anterior sobre ESE balón. Con el
@@ -165,7 +171,16 @@ function dependencias(carriles) {
       const suelta = todos
         .filter((t) => t.corre_id === p.balon_id && t.orden < p.orden)
         .reduce((ultima, t) => (!ultima || t.orden > ultima.orden ? t : ultima), null);
-      if (suelta && !espera.has(p.id)) espera.set(p.id, suelta.id);
+      if (suelta) apunta(p.id, suelta.id);
+    }
+    /* QUIEN SALE DE UN BLOQUEO ESPERA A QUE EL BLOQUEADOR HAYA LLEGADO.
+       Como con el receptor: lo que espera es lo PRIMERO que el compañero
+       haga después de dibujado el bloqueo, y lo que ya estaba haciendo no
+       se retrasa. */
+    if (esBloqueo(p)) {
+      const suyos = (carriles.find((c) => c.elemento === p.companero_id) || { tramos: [] }).tramos;
+      const siguiente = suyos.find((t) => t.orden > p.orden);
+      if (siguiente) apunta(siguiente.id, p.id);
     }
   }
   return espera;
@@ -180,10 +195,11 @@ function dependencias(carriles) {
  * Se resuelve por pasadas y no de un tirón porque un arranque puede
  * depender de otro que a su vez depende de un tercero.
  *
- * TAL Y COMO ESTÁN LAS REGLAS HOY, NO PUEDE HABER CICLOS: las dos
+ * TAL Y COMO ESTÁN LAS REGLAS HOY, NO PUEDE HABER CICLOS: las tres
  * dependencias apuntan siempre hacia atrás en el orden de dibujo —el
- * receptor espera a un pase ANTERIOR, y quien recoge espera a la suelta
- * ANTERIOR—, así que el grafo es acíclico por construcción y el banco lo
+ * receptor espera a un pase ANTERIOR, quien recoge espera a la suelta
+ * ANTERIOR y quien sale de un bloqueo, a un bloqueo ANTERIOR—, así que el
+ * grafo es acíclico por construcción y el banco lo
  * comprueba. El tope de pasadas y la rama de «nadie ha avanzado» se
  * quedan de todas formas: una regla nueva que mire hacia delante
  * colgaría la pizarra, y colgarse es mucho peor que arrancar pronto.
@@ -213,14 +229,13 @@ export function tiemposDe(fase, { pista = 'entera' } = {}) {
     const siguen = [];
     for (const t of quedan) {
       const previo = anterior.get(t.id);
-      const esperado = espera.get(t.id);
-      if ((previo && !fin.has(previo)) || (esperado && !fin.has(esperado))) { siguen.push(t); continue; }
+      const esperados = espera.get(t.id) || [];
+      if ((previo && !fin.has(previo)) || esperados.some((e) => !fin.has(e))) { siguen.push(t); continue; }
       /* Lo que espera a un TIRO espera además a que caiga el balón: nadie
          recoge un rebote que todavía está en el aro. */
-      const trasEsperado = esperado && esTiro(porId.get(esperado)) ? TRAS_EL_TIRO_MS : 0;
       const desde = Math.max(
         previo ? fin.get(previo) : 0,
-        esperado ? fin.get(esperado) + trasEsperado : 0,
+        ...esperados.map((e) => fin.get(e) + (esTiro(porId.get(e)) ? TRAS_EL_TIRO_MS : 0)),
       );
       const i = (t.manual && Number.isFinite(t.inicio_ms)) ? t.inicio_ms : desde;
       inicio.set(t.id, i);
@@ -409,8 +424,9 @@ export function posesionAlFinal(fases, hasta, inicial = {}) {
 
 /**
  * Los tramos, de cualquier fase, en los que sale una ficha: la que
- * actúa, la que recorre el trazo, la que recibe o el balón que se
- * recoge.
+ * actúa, la que recorre el trazo, la que recibe, el balón que se recoge
+ * o el compañero al que se le pone un bloqueo. Sin este último, Supr se
+ * llevaba al compañero y el bloqueo se quedaba apuntando a nadie.
  *
  * @returns [{ fase, tramo }] — `fase` es el índice
  */
@@ -420,7 +436,7 @@ export function tramosConFicha(fases, id) {
   (fases || []).forEach((f, i) => {
     for (const t of (f && f.tramos) || []) {
       if (!t) continue;
-      if (t.elemento_id === id || t.corre_id === id || t.receptor_id === id || t.balon_id === id) r.push({ fase: i, tramo: t });
+      if (t.elemento_id === id || t.corre_id === id || t.receptor_id === id || t.balon_id === id || t.companero_id === id) r.push({ fase: i, tramo: t });
     }
   });
   return r;

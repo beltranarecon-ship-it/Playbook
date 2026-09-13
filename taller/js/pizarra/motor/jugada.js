@@ -98,6 +98,9 @@ export function normalizarJugada(bruta) {
         /* Sin protagonista SE CONSERVA (§6.5): lo marcará el recálculo
            de fases y el entrenador decidirá si lo quita. */
         if (!ids.has(t.elemento_id)) avisos.push(`Fase ${i + 1}: un tramo de «${t.accion}» se ha quedado sin protagonista.`);
+        /* Y un bloqueo sin el compañero al que se ponía, igual: se conserva
+           y se dice. */
+        if (t.companero_id && !ids.has(t.companero_id)) avisos.push(`Fase ${i + 1}: un bloqueo se ha quedado sin el compañero al que se ponía.`);
         const n = /(\d+)$/.exec(String(t.id));
         if (n) mayor = Math.max(mayor, Number(n[1]));
         /* Un tiro sabe si entra o falla (§4.4). Guardado sin eso, se abre

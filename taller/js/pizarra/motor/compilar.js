@@ -34,15 +34,15 @@
    `animacionDesdeBoard` al guardar sin fases.
 
    ── LO QUE TODAVÍA NO SE COMPILA, DECLARADO ─────────────────
-   Bloqueos, defensa, filas, puertas y zonas no los produce aún la
+   La defensa, las filas, las puertas y las zonas no los produce aún la
    Pizarra (capas 5-6). Si llegara alguno, no se inventa: sale un aviso
    en `warnings` y se sigue con lo demás.
    ============================================================ */
 
 import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
 import { MOTOR_PIZARRA } from './marca.js';
-import { carrilesDesde, tiemposDe, esTiro, TRAS_EL_TIRO_MS } from '../fases.js';
-import { trasElTiro } from '../destino.js';
+import { carrilesDesde, tiemposDe, esTiro, esBloqueo, TRAS_EL_TIRO_MS } from '../fases.js';
+import { trasElTiro, frenteDelBloqueo } from '../destino.js';
 
 export const VERSION_JUGADA = 3;
 
@@ -143,6 +143,7 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
 
   const movimientos = [];
   const pases = [];
+  const bloqueos = [];
   const tiros = [];
   const recogidas = [];
   const acciones = [];
@@ -248,6 +249,40 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
       }
       continue;
     }
+    if (esBloqueo(t)) {
+      /* El bloqueador va a su sitio —un movimiento como otro cualquiera— y
+         al llegar SE PLANTA: eso es el bloqueo, con su instante. Aguanta
+         hasta que vuelve a moverse o hasta que acaba la fase.
+         `bloqueado_id` es el COMPAÑERO al que se le pone, que es lo que ya
+         narra Equipos («el 5 bloquea para el 1»); `hacia`, el frente con
+         el que llega, para que la barra mire a su defensor. */
+      movimientos.push({
+        elemento_id: de(t.elemento_id),
+        tipo_elemento: 'jugador',
+        tipo_movimiento: 'bloqueo',
+        path: t.trazo,
+        ...cuando,
+      });
+      const companero = de(t.companero_id);
+      if (!companero) {
+        warnings.push(`Fase ${i + 1}: un bloqueo se ha quedado sin compañero: sale el desplazamiento, sin la barra.`);
+        continue;
+      }
+      const llega = m.inicio_ms + m.duracion_ms;
+      const suyos = (fase.carriles.find((c) => c.elemento === t.elemento_id) || { tramos: [] }).tramos;
+      const despues = suyos[suyos.findIndex((x) => x.id === t.id) + 1];
+      const hasta = despues && tiempos.tramos[despues.id] ? tiempos.tramos[despues.id].inicio_ms : tiempos.duracion_ms;
+      const frente = frenteDelBloqueo(t.trazo);
+      bloqueos.push({
+        id: t.id,
+        bloqueador_id: de(t.elemento_id),
+        bloqueado_id: companero,
+        ...(frente ? { hacia: [frente.x, frente.y] } : {}),
+        inicio_ms: llega,
+        duracion_ms: Math.max(0, hasta - llega),
+      });
+      continue;
+    }
     if (accion.familia === 'entre_dos') {
       warnings.push(`Fase ${i + 1}: «${accion.nombre}» es entre dos fichas y todavía no se compila.`);
       continue;
@@ -268,7 +303,7 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
     pausa_post_ms: Number.isFinite(f && f.pausa_post_ms) ? f.pausa_post_ms : PAUSA_POR_DEFECTO_MS,
     movimientos,
     pases,
-    bloqueos: [],
+    bloqueos,
     tiros,
     recogidas,
     acciones,

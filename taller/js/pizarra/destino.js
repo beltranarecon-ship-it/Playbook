@@ -27,12 +27,18 @@
    «Vuelve a la fila» necesita saber de qué fila salió, y las filas son
    de los conos (§7), que todavía no existen. Devuelve `null` con su
    motivo en vez de inventarse una esquina.
+
+   ── EL SITIO DE UN BLOQUEO ──────────────────────────────────
+   «Bloquea» tampoco pregunta a dónde: se pincha al compañero y el
+   bloqueador va solo a pegarse a su defensor (§4.4). Ver
+   `sitioDelBloqueo`.
    ============================================================ */
 
 import { posicionesDe } from '../canvas/anclas.js';
 import { puntoADistanciaDe, metrosEntre, escalaDe } from '../canvas/escala.js';
 import { limitesCancha } from '../canvas/medidas.js';
 import { FAMILIAS } from '../ia/acciones.js';
+import { flattenPath } from '../canvas/geometry.js';
 
 /** A cuánto del aro se para quien acaba «pegado», en metros. Del
  *  catálogo: una acción puede traer la suya, y esta es la de reserva. */
@@ -45,8 +51,26 @@ export const METROS_REBOTE = 2.5;
 /** Y cuánto por delante del aro cae uno que entra. */
 export const METROS_CAIDA = 0.6;
 
+/** Dónde espera el defensor de alguien con la regla de serie, «entre su
+ *  par y el aro» (§8.3): a 1,2 m si su par lleva balón y a 2,0 m si no.
+ *  La defensa de verdad (pasos 5.3-5.5) los hará ajustables. */
+export const METROS_PAR_CON_BALON = 1.2;
+export const METROS_PAR_SIN_BALON = 2.0;
+/** A cuánto de ese defensor se planta quien le bloquea: cuerpo con
+ *  cuerpo, sin llegar a pisarle. */
+export const METROS_BLOQUEO = 0.7;
+
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const punto = (p) => ({ x: clamp01(p.x), y: clamp01(p.y) });
+
+/* Un punto dentro de la CANCHA —no solo del marco—, con un margen en
+   metros: lo que cae en la línea o fuera no se puede jugar. */
+function enCancha(pista, p, margen = 0.3) {
+  const e = escalaDe(pista);
+  const lim = limitesCancha(pista);
+  const dentro = (v, [a, b], escala) => Math.min(b - margen / escala, Math.max(a + margen / escala, v));
+  return { x: dentro(p.x, lim.x, e.x), y: dentro(p.y, lim.y, e.y) };
+}
 
 /**
  * ¿Esta acción sabe sola a dónde va?
@@ -126,12 +150,92 @@ export function trasElTiro({ pista = 'entera', canasta = 'norte', desde = null, 
     dir = { x: v.x / largo, y: v.y / largo };
   }
 
-  const margen = 0.3;
-  const dentroDe = (v, [a, b], escala) => Math.min(b - margen / escala, Math.max(a + margen / escala, v));
-  return {
-    x: dentroDe(aro.x + (dir.x * metros) / e.x, lim.x, e.x),
-    y: dentroDe(aro.y + (dir.y * metros) / e.y, lim.y, e.y),
-  };
+  return enCancha(pista, { x: aro.x + (dir.x * metros) / e.x, y: aro.y + (dir.y * metros) / e.y });
+}
+
+/* ── El bloqueo (§4.4) ─────────────────────────────────────── */
+
+/**
+ * ¿Esta acción es un bloqueo? Lo dice la relación que dibuja, en el
+ * catálogo, y no su nombre: un bloqueo que cree el club vale igual.
+ */
+export const esAccionDeBloqueo = (accion) => !!accion && accion.familia === 'entre_dos'
+  && !!accion.parametros && accion.parametros.simbolo_relacion === 'bloqueo';
+
+/**
+ * Dónde está el defensor de alguien mientras la defensa no exista: donde
+ * lo pondría la regla de serie, entre él y el aro (§8.3).
+ *
+ * @returns { x, y } o null si la pista no tiene aro conocido
+ */
+export function defensorSupuesto({ pista = 'entera', canasta = 'norte', par = null, conBalon = false } = {}) {
+  if (!par || !Number.isFinite(par.x) || !Number.isFinite(par.y)) return null;
+  const pos = posicionesDe(pista, canasta);
+  if (!pos || !pos.aro) return null;
+  const aro = { x: pos.aro[0], y: pos.aro[1] };
+  return puntoADistanciaDe(pista, aro, par, conBalon ? METROS_PAR_CON_BALON : METROS_PAR_SIN_BALON);
+}
+
+/**
+ * Dónde se planta quien bloquea (§4.4: «el que actúa se desplaza hasta el
+ * sitio que le corresponde»).
+ *
+ * Un bloqueo se le pone AL DEFENSOR del compañero, y se pone AL LADO: a
+ * METROS_BLOQUEO de él, en perpendicular a la línea compañero→aro, por el
+ * lado por el que llega el bloqueador. Es por ahí por donde el compañero
+ * sale rozándole. Parándose en su camino, el bloqueador que llegaba desde
+ * la altura del compañero se quedaba encima de él.
+ *
+ * Mientras no haya defensa, el defensor es el supuesto
+ * (`defensorSupuesto`); en el paso 5.5 será el de verdad.
+ *
+ * Es automático y ajustable, como «entra»: si no gusta, se pincha el trazo
+ * y se mueve su final. Todo en METROS, y dentro de la cancha.
+ *
+ * @param desde      dónde está el bloqueador
+ * @param companero  dónde está el compañero al que se le pone
+ * @param conBalon   si el compañero lleva balón
+ * @returns { x, y } o null si no se puede saber
+ */
+export function sitioDelBloqueo({ pista = 'entera', canasta = 'norte', desde = null, companero = null, conBalon = false } = {}) {
+  if (!desde || !Number.isFinite(desde.x) || !Number.isFinite(desde.y)) return null;
+  const defensor = defensorSupuesto({ pista, canasta, par: companero, conBalon });
+  if (!defensor) return null;
+  const e = escalaDe(pista);
+  // la línea compañero→defensor (que va hacia el aro), en metros
+  const lx = (defensor.x - companero.x) * e.x, ly = (defensor.y - companero.y) * e.y;
+  const largo = Math.hypot(lx, ly);
+  /* Con el compañero debajo del aro no hay línea de la que ponerse al
+     lado: se acerca al defensor por su camino. */
+  if (largo < 1e-9) return enCancha(pista, puntoADistanciaDe(pista, desde, defensor, METROS_BLOQUEO));
+  const px = -ly / largo, py = lx / largo;
+  const lado = ((desde.x - defensor.x) * e.x * px + (desde.y - defensor.y) * e.y * py) < 0 ? -1 : 1;
+  return enCancha(pista, {
+    x: defensor.x + (px * lado * METROS_BLOQUEO) / e.x,
+    y: defensor.y + (py * lado * METROS_BLOQUEO) / e.y,
+  });
+}
+
+/**
+ * Hacia dónde mira la barra de un bloqueo: hacia delante, en la dirección
+ * con la que el bloqueador llega a su sitio, que es hacia el defensor al
+ * que se planta.
+ *
+ * Es un PUNTO un poco más allá del final y no un ángulo: así lo gira bien
+ * cualquier vista, también la del proyector, que rota la pista 90°.
+ *
+ * @returns { x, y } o null si el trazo no avanza (ya estaba en su sitio)
+ */
+export function frenteDelBloqueo(trazo) {
+  if (!Array.isArray(trazo) || trazo.length < 2) return null;
+  const flat = flattenPath(trazo);
+  const fin = flat[flat.length - 1];
+  for (let i = flat.length - 2; i >= 0; i--) {
+    const dx = fin.x - flat[i].x, dy = fin.y - flat[i].y;
+    const largo = Math.hypot(dx, dy);
+    if (largo > 1e-9) return { x: fin.x + (dx / largo) * 0.05, y: fin.y + (dy / largo) * 0.05 };
+  }
+  return null;
 }
 
 /**

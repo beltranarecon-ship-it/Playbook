@@ -41,7 +41,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **61 en verde, 1376
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **61 en verde, 1395
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -58,7 +58,7 @@ de punta a punta, con sus bancos en verde y commit en la rama.
 |---|---|---|
 | 5.0 | Arreglos que la capa destapa, ya fallando en la capa 4: recoger y pasar en la misma fase (el balón volvía al que recogió), tirar-recoger-tirar, tiro sin trazo que sale del sitio del principio. Un módulo puro del INSTANTE (muestreo, posición y dueño en t) compartido por el motor y el repaso. Guion de Equipos: el balón contado por instante | ✅ (61 bancos, 1363 pruebas; las 6 pruebas nuevas fallan con el código viejo) |
 | 5.1 | Tiros con desenlace: Tira → Entra/Falla → al aro; si falla rebota a ~2,5 m por el lado contrario al tirador, si entra cae bajo el aro suelto; «Recoge» lo encuentra. Entra/falla se cambia tocando el tiro | ✅ (61 bancos, 1376 pruebas; probado en la Pizarra: tirar, cambiar el desenlace, recoger el rebote, compilar y reabrir) |
-| 5.2 | «Pincha a quién» y bloqueo: se pincha al COMPAÑERO, el bloqueador va a su sitio, el compañero sale cuando llega. Formato: `bloqueado_id` = compañero + `defensor_id` opcional | pendiente |
+| 5.2 | «Pincha a quién» y bloqueo: se pincha al COMPAÑERO, el bloqueador va a su sitio, el compañero sale cuando llega. Formato: `bloqueado_id` = compañero + `defensor_id` opcional | ✅ (61 bancos, 1395 pruebas; probado en la Pizarra y en el motor: elegir, avisos, Esc y suelo, Supr, arranque, compilar y reabrir) |
 | 5.3 | Papeles y pares: `motor/defensa.js` + `eval-defensa.mjs`. Quién ataca, pares por dorsal y libre más cercano, situación por fase, arco del defensor y línea discontinua | pendiente |
 | 5.4 | Colocar por regla (las 6 del §8.3), pestaña «Ajustes» del panel derecho (solo defensa) y ver la regla (§8.7) | pendiente |
 | 5.5 | Seguimiento continuo (§8.4): la defensa se mueve sola igual en Pizarra y proyector; movimiento «por tiempo» en el motor (aditivo); cierra el rebote automático; carril gris «automático» | pendiente |
@@ -101,6 +101,31 @@ una de las cuatro reglas.
 
 **No tocar:** la marca `motor: 3` (lo guardado con la capa 4 dejaría de
 reproducirse); todo lo nuevo del formato de animación, aditivo.
+
+**Decidido en el paso 5.2 (dicho al entrenador al cerrarlo):**
+
+- **Sin defensa todavía, el bloqueador se planta junto a un defensor
+  SUPUESTO**: el que pondría la regla de serie, entre el compañero y el
+  aro (1,2 m si lleva balón, 2,0 si no). Se pone AL LADO de ese defensor,
+  a **0,7 m** (número nuevo, ajustable), en perpendicular a la línea
+  compañero→aro y del lado por el que llega. Primero se probó pararse en
+  su camino, y quien llegaba desde la altura del compañero acababa ficha
+  sobre ficha. En 5.5 el defensor será el de verdad.
+- **La barra sale al plantarse y aguanta** hasta que el bloqueador vuelve
+  a moverse o acaba la fase; mira hacia donde llega (`hacia` en la
+  animación, un punto y no un ángulo, para que el proyector lo gire bien).
+  `defensor_id` no se escribe todavía: llega con la defensa.
+- A un bloqueo **solo le vale un jugador del mismo equipo**; pinchar a
+  otro lo dice y sigue esperando; pinchar el suelo o Esc cancela.
+- Un tramo puede **esperar a varias cosas** a la vez (un pase y un
+  bloqueo): sale cuando han pasado todas. Antes guardaba solo la primera.
+- La barra del bloqueo va **fuera del disco** de la ficha, en la Pizarra y
+  en el motor: a 16 px fijos quedaba tapada en el proyector.
+- Guion de Equipos: el camino del bloqueador no se cuenta aparte, ya lo
+  dice «el 5 bloquea para el 1».
+- Queda sin hacer, y es de este mismo tipo que «entra»: el sitio del
+  bloqueo se calcula al dibujarlo y no se rehace si luego se mueve al
+  compañero en la fase 1 (se corrige pinchando el trazo).
 
 **Bancos que cambiarán a propósito** (no son regresiones, decirlo al
 tocarlos): `eval-repertorio` (anillo del defensor con pendientes;

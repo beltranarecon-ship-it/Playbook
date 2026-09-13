@@ -286,6 +286,9 @@ export function guionDeAnimacion(anim) {
     for (const m of f.movimientos || []) {
       if (m.tipo_elemento === 'balon') continue;      // el balón se narra en pases/tiros
       if (recogen.has(m.elemento_id)) continue;
+      // el camino del bloqueador ya lo cuenta su bloqueo (punto 1):
+      // «bloquea para el 1» y «corta hacia el codo» serían el mismo camino
+      if (m.tipo_movimiento === 'bloqueo') continue;
       const r = ref.get(m.elemento_id);
       const conBalon = m.tipo_movimiento === 'carrera_con_balon' || lleva.has(m.elemento_id);
       if (vuelveAFila(m.path, conos, defensores.has(m.elemento_id))) {

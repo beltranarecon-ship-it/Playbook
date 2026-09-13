@@ -295,6 +295,33 @@ test('UN CAMINO DE LONGITUD CERO NO REVIENTA EL MOTOR', () => {
   ok(cerca(f.players.A1, { x: 0.3, y: 0.3 }), `se queda quieto: ${txt(f.players.A1)}`);
 });
 
+test('LOS BLOQUEOS DE ANTES SE VEN LA FASE ENTERA, mirando al bloqueado', () => {
+  const m = motor(SAMPLE_ANIMACION);
+  const k = SAMPLE_ANIMACION.fases.findIndex((f) => (f.bloqueos || []).length);
+  ok(k >= 0, 'la muestra tiene un bloqueo');
+  const fase = SAMPLE_ANIMACION.fases[k];
+  for (const u of [0, 0.5, 1]) {
+    const t = u * fase.duracion_ms;
+    const f = en(m, k, t);
+    const v = m.bloqueosEn(k, t, f.players);
+    eq(v.length, fase.bloqueos.length, `al ${u * 100}%:`);
+    ok(cerca(v[0].a, f.players[fase.bloqueos[0].bloqueador_id]) && cerca(v[0].b, f.players[fase.bloqueos[0].bloqueado_id]),
+      'entre bloqueador y bloqueado, como siempre');
+  }
+});
+
+test('CON INSTANTE, LA BARRA SOLO MIENTRAS DURA; y con frente, mira hacia él', () => {
+  const m = motor(conCarriles([{
+    duracion_ms: 3000,
+    bloqueos: [{ bloqueador_id: 'A2', bloqueado_id: 'A1', inicio_ms: 1000, duracion_ms: 1000, hacia: [0.5, 0.5] }],
+  }]));
+  const v = (t) => m.bloqueosEn(0, t, en(m, 0, t).players);
+  eq(v(500).length, 0, 'antes de llegar:');
+  eq(v(1500).length, 1, 'plantado:');
+  eq(v(2500).length, 0, 'ya se ha ido:');
+  ok(cerca(v(1500)[0].b, { x: 0.5, y: 0.5 }), `mira a su frente: ${txt(v(1500)[0].b)}`);
+});
+
 test('LA INTERFAZ PÚBLICA SIGUE ENTERA: la usan proyector, miniatura y visor', () => {
   const m = motor(SAMPLE_ANIMACION);
   for (const k of ['load', 'play', 'pause', 'toggle', 'restart', 'nextPhase', 'prevPhase', 'siguienteRonda',

@@ -216,5 +216,15 @@ test('el que ya lo tiene lo conserva, y a lo que no es un tiro no se le pone', (
   ok(!r.avisos.some((a) => /desenlace/.test(a)), 'y no se avisa de nada');
 });
 
+test('UN BLOQUEO SIN SU COMPAÑERO SE CONSERVA, y se dice', () => {
+  const j = buena();
+  j.fases[0].tramos.push({ id: 'tr11', elemento_id: 'jugador_2', corre_id: 'jugador_2', companero_id: 'jugador_9', accion: 'bloquea', trazo: [N(0.7, 0.3), N(0.5, 0.3)], tipo: 'bloqueo', ritmo: 'normal' });
+  const r = normalizarJugada(j);
+  const t = r.jugada.fases[0].tramos.find((x) => x.id === 'tr11');
+  ok(t && t.companero_id === 'jugador_9', 'se conserva tal cual');
+  ok(r.avisos.some((a) => /compañero/.test(a)), `y se dice: ${r.avisos}`);
+  ok(!normalizarJugada(buena()).avisos.some((a) => /compañero/.test(a)), 'sin bloqueos no se habla de compañeros');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

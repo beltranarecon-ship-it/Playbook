@@ -26,13 +26,11 @@
    mitad no deja a nadie plantado en medio de la pista, y el
    encadenado puede salir en la punta desde el primer momento.
 
-   ── LO QUE ESTA CAPA TODAVÍA NO HACE ────────────────────────
-   El §4.4 tiene cuatro filas y aquí solo está la primera, la de las
-   acciones con destino. Las otras tres —el gesto que se aplica en el
-   sitio, las acciones entre dos fichas y el desenlace del tiro— piden
-   cosas que no existen hasta las capas 3 y 4. No se fingen: se avisa
-   por `onSinSoporte` y quien nos usa lo dice en voz alta, que es mejor
-   que un clic que no hace nada.
+   ── LO QUE TODAVÍA NO SE HACE ───────────────────────────────
+   Del §4.4 faltan el gesto que se aplica en el sitio y, de las acciones
+   entre dos fichas, las de la defensa (el bloqueo ya está). No se
+   fingen: se avisa por `onSinSoporte` y quien nos usa lo dice en voz
+   alta, que es mejor que un clic que no hace nada.
    ============================================================ */
 
 import { h } from '../ui/dom.js';
@@ -41,20 +39,21 @@ import { Fichas } from './fichas.js';
 import { Anillo } from './anillo.js';
 import { Dibujo, ritmoDe, tipoFlecha } from './dibujo.js';
 import { Nodos } from './nodos.js';
+import { Companero } from './companero.js';
 import { Repaso, VELOCIDAD_REPASO, duracionRepaso } from './repaso.js';
-import { drawArrow } from '../canvas/arrows.js';
+import { drawArrow, drawBloqueo } from '../canvas/arrows.js';
 import { flattenPath } from '../canvas/geometry.js';
 import {
-  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS,
+  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS, porQueNoCompanero,
 } from './repertorio.js';
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto } from './seleccion.js';
-import { tieneDestinoPropio, destinoDe, trasElTiro } from './destino.js';
+import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
 import {
   nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular, posesionAlFinal,
-  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS,
+  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS, esBloqueo,
 } from './fases.js';
 
 let siguiente = 1;
@@ -158,6 +157,15 @@ export class Tablero {
       onBorrarTrazo: () => this._borrarElQueSeEdita(),
     });
 
+    /* «Pincha a quién» (§4.4): entre elegir una acción entre dos fichas y
+       señalar la otra. */
+    this.companero = new Companero(lienzo, {
+      elementos: () => this.fichas.elementos,
+      onElegido: (ficha, datos) => this._companeroElegido(ficha, datos),
+      onNoVale: (ficha, motivo, accion) => { this.onNoPuede?.(accion, `${this.nombreDe(ficha)} ${motivo}`); this._pintarAyuda(); },
+      onCancelar: () => { this._enCurso = null; this._pintarAyuda(); },
+    });
+
     /* Debajo de los nodos y de la flecha fantasma, encima de las
        fichas: los trazos ya hechos son el fondo sobre el que se
        trabaja, no lo que se está tocando. */
@@ -191,7 +199,7 @@ export class Tablero {
          se corrige un trazo: ahí Supr es de Nodos, que borra el nodo o el
          trazo y deja la tecla marcada como atendida. */
       if ((ev.key === 'Delete' || ev.key === 'Backspace')
-        && !this.dibujo.dibujando && !this.nodos.editando && this.fichas.seleccion.size) {
+        && !this.dibujo.dibujando && !this.nodos.editando && !this.companero.eligiendo && this.fichas.seleccion.size) {
         ev.preventDefault();
         this.quitarSeleccion();
       }
@@ -324,7 +332,9 @@ export class Tablero {
       .map((id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id)));
     if (conTrazos.length) {
       this.onNoPuede?.({ nombre: 'Quitar' },
-        `${conTrazos.join(', ')} ${conTrazos.length > 1 ? 'tienen' : 'tiene'} trazos dibujados; bórralos antes (pincha el trazo y pulsa Supr)`);
+        /* «Aparece» y no «tiene trazos»: también cuenta quien recibe un pase
+           o a quien se le pone un bloqueo, que no han dibujado nada. */
+        `${conTrazos.join(', ')} ${conTrazos.length > 1 ? 'aparecen' : 'aparece'} en lo dibujado; borra antes esos trazos (pincha el trazo y pulsa Supr)`);
       return false;
     }
     this.cerrar();
@@ -751,6 +761,7 @@ export class Tablero {
     this._cerrarDesenlace();
     this.anillo.cerrar();
     this.dibujo.cancelar();
+    this.companero.cancelar();
     this.nodos.soltar();
     this._enCurso = null;
     this._editando = null;
@@ -868,9 +879,19 @@ export class Tablero {
 
     this.anillo.cerrar();
 
-    /* Lo que esta capa todavía no sabe preguntar —el compañero de un
-       bloqueo— se declara y se para aquí. */
-    if (pide.companero) { this.onSinSoporte?.(accion); this._pintarAyuda(); return; }
+    /* «PINCHA A QUIÉN» (§4.4). De las acciones entre dos, el bloqueo ya se
+       dibuja: se señala al compañero y el bloqueador va solo a su sitio.
+       Las de la defensa llegan con los pasos siguientes y se declaran. */
+    if (pide.companero) {
+      if (!esAccionDeBloqueo(accion)) { this.onSinSoporte?.(accion); this._pintarAyuda(); return; }
+      this._enCurso = { elemento, accion, variante };
+      this.companero.empezar({
+        elemento, accion, variante, conDedo: this._conDedo,
+        vale: (ficha) => porQueNoCompanero(accion, elemento, ficha),
+      });
+      this._pintarAyuda();
+      return;
+    }
 
     /* LO QUE YA SABE A DÓNDE VA, NO SE PREGUNTA. «Entra» va al aro y
        «recoge» va a por el balón suelto: el catálogo lo dice, así que se
@@ -904,6 +925,34 @@ export class Tablero {
     this.dibujo.empezar({ elemento, accion, variante, conDedo: this._conDedo });
   }
 
+  /**
+   * El compañero de un bloqueo ya está señalado: el bloqueador va solo a
+   * su sitio (§4.4) y el trazo se dibuja hecho, como el de «entra». Si el
+   * sitio no gusta, se pincha el trazo y se mueve su final.
+   */
+  _companeroElegido(ficha, { elemento, accion, variante }) {
+    this._enCurso = null;
+    const lista = this.fichas.elementos;
+    const desde = lista.find((e) => e.id === elemento.id) || elemento;
+    const sitio = sitioDelBloqueo({
+      pista: this.lienzo.vista.pistaKey,
+      canasta: this.canasta,
+      desde,
+      companero: ficha,
+      conBalon: llevaBalon(lista, ficha.id),
+    });
+    if (!sitio) { this.onNoPuede?.(accion, 'en esta pista no hay un aro desde el que saber dónde ponerlo'); this._pintarAyuda(); return; }
+    this._trazoHecho({
+      elemento: desde, accion, variante,
+      trazo: nuevoTrazo({ x: desde.x, y: desde.y }, sitio),
+      /* La marca de bloqueo va en el DATO: es lo que leen los arranques,
+         el compilador y el dibujo, y no depende del símbolo que traiga
+         una acción del club. */
+      tipo: 'bloqueo',
+      companero: ficha.id,
+    });
+  }
+
   /** El motivo por el que esta ficha no puede hacer esto ahora, o
    *  `null` si sí puede. */
   _porQueNo(accion, elemento) {
@@ -932,7 +981,7 @@ export class Tablero {
    * «conBalón» la próxima vez que se la toque. Si termina en el suelo,
    * es un pase a un sitio y el balón se queda ahí.
    */
-  _trazoHecho({ elemento, accion, variante, trazo, tipo, balon = null, desenlace = null }) {
+  _trazoHecho({ elemento, accion, variante, trazo, tipo, balon = null, desenlace = null, companero = null }) {
     const fin = trazo[trazo.length - 1];
     const ritmo = ritmoDe(accion);
     const pista = this.lienzo.vista.pistaKey;
@@ -996,6 +1045,8 @@ export class Tablero {
       trazo, tipo, ritmo,
       // si entra o falla: solo los tiros, y es lo que dice dónde cae el balón
       ...(tirando ? { desenlace: desenlace === 'falla' ? 'falla' : 'entra' } : {}),
+      // para quién es: solo los bloqueos, y es de quien sale cuando llega
+      ...(companero ? { companero_id: companero } : {}),
     };
     this.tramos = [...this.tramos, nuevo];
     this._enCurso = null;
@@ -1172,6 +1223,7 @@ export class Tablero {
 
   ayuda() {
     if (this.dibujo.dibujando) return this.dibujo.ayuda();
+    if (this.companero.eligiendo) return this.companero.ayuda();
     if (this.nodos.editando) return (this._desenlace ? '<b>Entra</b> o <b>Falla</b>, junto al aro, cambia el tiro · ' : '') + this.nodos.ayuda();
     if (this.anillo.abierto) return 'Elige qué hace esta ficha · pincha en la pista para saltarte el «cómo» · <b>Esc</b> cierra';
     if (this.fichas.seleccion.size) return 'Arrástrala para colocarla · tócala para ver qué puede hacer · <b>Supr</b> la quita · <b>Mayús</b> la pega a un sitio de la pista';
@@ -1198,9 +1250,21 @@ export class Tablero {
          encima: pintarlo dos veces lo dejaría más grueso que los
          demás y parecería otro tipo de trazo. */
       if (this._editando && this._editando.id === t.id) continue;
-      const flat = flattenPath(t.trazo).map((p) => { const [x, y] = toPx(p.x, p.y); return { x, y }; });
-      drawArrow(ctx, flat, t.tipo, R.scale);
+      this._pintarTramo(ctx, R, toPx, t);
     }
+  }
+
+  /* Un tramo con su flecha; y si es un bloqueo, con su barra al final,
+     mirando hacia donde llega. Es lo mismo que pinta el motor al
+     reproducirlo (engine.js, bloqueosEn). */
+  _pintarTramo(ctx, R, toPx, t) {
+    const flat = flattenPath(t.trazo).map((p) => { const [x, y] = toPx(p.x, p.y); return { x, y }; });
+    drawArrow(ctx, flat, t.tipo, R.scale);
+    if (!esBloqueo(t) || !flat.length) return;
+    const frente = frenteDelBloqueo(t.trazo) || this.fichas.elementos.find((e) => e.id === t.companero_id);
+    if (!frente) return;
+    const [x, y] = toPx(frente.x, frente.y);
+    drawBloqueo(ctx, flat[flat.length - 1], { x, y }, R.scale, R.jugador);
   }
 
   /* El fantasma de la fase anterior: sus trazos, apagados. Se ve de
@@ -1210,10 +1274,7 @@ export class Tablero {
     if (!previa) return;
     ctx.save();
     ctx.globalAlpha = 0.28;
-    for (const t of previa.tramos) {
-      const flat = flattenPath(t.trazo).map((p) => { const [x, y] = toPx(p.x, p.y); return { x, y }; });
-      drawArrow(ctx, flat, t.tipo, R.scale);
-    }
+    for (const t of previa.tramos) this._pintarTramo(ctx, R, toPx, t);
     ctx.restore();
   }
 
@@ -1231,6 +1292,7 @@ export class Tablero {
     this._cerrarDesenlace();
     this.repaso.destroy();
     this.nodos.destroy();
+    this.companero.destroy();
     this.dibujo.destroy();
     this.fichas.destroy?.();
   }

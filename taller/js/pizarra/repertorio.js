@@ -214,6 +214,27 @@ export const tieneVariantes = (slug) => variantesDe(slug).length > 0;
 /** La variante por defecto: la primera, la de toda la vida. */
 export const variantePorDefecto = (slug) => variantesDe(slug)[0] || null;
 
+/* ── «Pincha a quién» (§4.4) ───────────────────────────────── */
+
+/**
+ * Por qué esta ficha NO vale como la otra de una acción entre dos, o
+ * `null` si vale. El motivo va detrás del nombre de la ficha («B1 es del
+ * otro equipo…»), así que empieza en minúscula y sin sujeto.
+ *
+ * Sale de la relación que declara el catálogo (`simbolo_relacion`), no
+ * del nombre de la acción: un bloqueo se le pone a alguien del MISMO
+ * equipo. Las relaciones de la defensa llegan con los pasos 5.3 y 5.6.
+ */
+export function porQueNoCompanero(accion, actor, candidato) {
+  if (!candidato || candidato.kind !== 'jugador') return 'no es un jugador';
+  if (actor && candidato.id === actor.id) return 'no puede hacérselo a sí mismo';
+  const relacion = accion && accion.parametros && accion.parametros.simbolo_relacion;
+  if (relacion === 'bloqueo' && actor && (candidato.equipo || 'A') !== (actor.equipo || 'A')) {
+    return 'es del otro equipo, y un bloqueo se le pone a un compañero';
+  }
+  return null;
+}
+
 /* ── Qué le falta a una acción para poder dibujarse ────────── */
 
 /**

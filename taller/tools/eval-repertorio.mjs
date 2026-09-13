@@ -19,7 +19,7 @@
 import {
   ESTADOS, ANILLO, VARIANTES, estadoDe, anilloDe, resto,
   trasAccion,
-  variantesDe, tieneVariantes, variantePorDefecto, necesita,
+  variantesDe, tieneVariantes, variantePorDefecto, necesita, porQueNoCompanero,
 } from '../js/pizarra/repertorio.js';
 import { CATALOGO_SISTEMA, normalizarNombre } from '../js/ia/acciones.js';
 import { TAGS } from '../js/ia/vocabulario.js';
@@ -176,6 +176,17 @@ test('un pase pide destino y un tiro pide desenlace', () => {
 test('las acciones entre dos piden compañero', () => {
   eq(necesita(porSlug.get('bloquea')).companero, true);
   eq(necesita(porSlug.get('defiende')).companero, true);
+});
+
+test('«PINCHA A QUIÉN»: a un bloqueo le vale un jugador de su equipo que no sea él', () => {
+  const a2 = { id: 'a2', kind: 'jugador', equipo: 'A' };
+  const a1 = { id: 'a1', kind: 'jugador', equipo: 'A' };
+  const b1 = { id: 'b1', kind: 'jugador', equipo: 'B' };
+  eq(porQueNoCompanero(de('bloquea'), a2, a1), null, 'un compañero vale:');
+  ok(/otro equipo/.test(porQueNoCompanero(de('bloquea'), a2, b1)), 'uno del otro equipo no, y se dice por qué');
+  ok(/sí mismo/.test(porQueNoCompanero(de('bloquea'), a2, a2)), 'ni él mismo');
+  ok(/jugador/.test(porQueNoCompanero(de('bloquea'), a2, { id: 'x', kind: 'balon' })), 'ni un balón');
+  ok(porQueNoCompanero(de('bloquea'), a2, null), 'y sin nada, tampoco');
 });
 
 test('un gesto en el sitio no pide nada', () => {

@@ -256,11 +256,11 @@ export const CATALOGO_SISTEMA = [
     slug: 'bloquea', nombre: 'Bloquea', familia: 'entre_dos', _legado: 'bloqueo', tag: 'bloqueo',
     sinonimos: ['bloqueo', 'pone un bloqueo', 'cortina'],
     descripcion: 'Se planta al lado del defensor del compañero para dejarle salir.',
-    // `colocacion: 'ninguna'` dice la verdad de lo que hace hoy el motor:
-    // al bloqueador lo coloca el entrenador en el paso 1 y el motor solo
-    // dibuja la relación. Moverlo solo hasta el defensor del compañero es
-    // una mejora posible, pero sería inventar movimiento que nadie pidió.
-    parametros: { companero: null, colocacion: 'ninguna', avance: 0.25, simbolo_relacion: 'bloqueo', rol: 'sin_cambio' },
+    // Va SOLO a su sitio (§4.4): se pincha al compañero y el bloqueador se
+    // desplaza hasta pegarse al defensor de ese compañero
+    // (pizarra/destino.js, sitioDelBloqueo). Mientras la defensa no exista,
+    // ese defensor se supone donde lo pondría la regla de serie.
+    parametros: { companero: null, colocacion: 'al_lado', avance: 0.25, simbolo_relacion: 'bloqueo', rol: 'sin_cambio' },
     pide: ['companero'],
     simbolo: 'bloqueo',
   }),
