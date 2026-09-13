@@ -33,7 +33,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 2 · Dibujar: anillo, trazo, nodos, encadenado, repaso | ✅ cerrada | `2db2b91` |
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
-| 5 · Defensa | ⏳ en curso: comprensión y preguntas | — |
+| 5 · Defensa | ⏳ en curso: plan CONFIRMADO, empezando por el paso 5.0 (ver «Capa 5, paso a paso») | — |
 | 6 · Conos y elementos | pendiente | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
@@ -46,6 +46,67 @@ pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
 `dev/pizarra-dibujar.html`.
+
+## Capa 5, paso a paso
+
+Plan confirmado por el entrenador el 2026-09-13. Sale de un mapa de solo
+lectura (6 lectores, uno por subsistema, y un crítico que ordenó los
+pasos y separó las preguntas de verdad). Cada paso deja algo que se prueba
+de punta a punta, con sus bancos en verde y commit en la rama.
+
+| Paso | Qué queda funcionando | Estado |
+|---|---|---|
+| 5.0 | Arreglos que la capa destapa, ya fallando en la capa 4: recoger y pasar en la misma fase (el balón volvía al que recogió), tirar-recoger-tirar, tiro sin trazo que sale del sitio del principio. Un módulo puro del INSTANTE (muestreo, posición y dueño en t) compartido por el motor y el repaso. Guion de Equipos: el balón contado por instante | pendiente |
+| 5.1 | Tiros con desenlace: Tira → Entra/Falla → al aro; si falla rebota a ~2,5 m por el lado contrario al tirador, si entra cae bajo el aro suelto; «Recoge» lo encuentra. Entra/falla se cambia tocando el tiro | pendiente |
+| 5.2 | «Pincha a quién» y bloqueo: se pincha al COMPAÑERO, el bloqueador va a su sitio, el compañero sale cuando llega. Formato: `bloqueado_id` = compañero + `defensor_id` opcional | pendiente |
+| 5.3 | Papeles y pares: `motor/defensa.js` + `eval-defensa.mjs`. Quién ataca, pares por dorsal y libre más cercano, situación por fase, arco del defensor y línea discontinua | pendiente |
+| 5.4 | Colocar por regla (las 6 del §8.3), pestaña «Ajustes» del panel derecho (solo defensa) y ver la regla (§8.7) | pendiente |
+| 5.5 | Seguimiento continuo (§8.4): la defensa se mueve sola igual en Pizarra y proyector; movimiento «por tiempo» en el motor (aditivo); cierra el rebote automático; carril gris «automático» | pendiente |
+| 5.6 | Acciones declaradas del defensor: ayuda y recupera, es sobrepasado, cambia con…, cierra el rebote, va al dos contra uno | pendiente |
+| 5.7 | Robo, rebote defensivo y canasta: cambio de papeles y de aro desde la fase siguiente. Cierre de la capa | pendiente |
+
+**Respuestas del entrenador (2026-09-13):**
+
+- Sin atacante claro (nadie tiene el balón, o lo tienen dos equipos):
+  **nadie defiende** hasta elegirlo en Ajustes, que ofrece además
+  «nadie defiende» (ejercicios de dos colores sin oposición).
+- Cambian los papeles: **el robo, el rebote defensivo y la canasta
+  anotada**. El que roba o recoge se queda el balón en ese instante; el
+  resto cambia de papel (y de aro, si hay dos) **desde la fase
+  siguiente** —así casan el §8.2 («nadie cambia a mitad de fase») y el
+  §8.6—.
+- El robo se señala **pinchando al portador (en el bote) o el trazo del
+  pase (intercepción)**; lo que el receptor tuviera dibujado después se
+  marca «ya no encaja».
+- Tras el tiro: si **falla**, rebota solo a ~2,5 m del aro por el lado
+  contrario al tirador; si **entra**, cae bajo el aro y queda suelto.
+- Guion de Equipos: **adaptarlo lo mínimo** (la defensa automática en una
+  frase aparte, desenlace, robo y balón por instante).
+- Números que la especificación no fija, **aceptados** y ajustables por
+  ejercicio: paso hacia el balón de negar = 0,8 m; zona de tiro de
+  retrasa = 6,75 m del aro; «metro largo» de es sobrepasado = 1,2 m;
+  cierra el rebote a 0,8 m de su par hasta el final de la fase.
+- Movimientos automáticos de la defensa al reproducir: **sin flecha**.
+
+**Decidido sin preguntar (se le dijo al entrenador):** bloqueo pinchando
+al compañero; un defensor arrastrado en la fase 1 se queda donde se deja
+y la regla lo lleva desde ahí (al sacarlo del panel sí se coloca solo,
+§8.1); «Defiende a…» y la línea cambian el par desde el principio, y
+«Defiende» del anillo desde esa fase; si el atacante ya tiene defensor,
+se intercambian; con varios balones cada defensor mira el de su par;
+etiquetas de las acciones nuevas con palabras que ya existen; los tramos
+se siguen guardando PLANOS como en la capa 4 (se aparta del §11.1, que
+habla de `args`), y `jugada.defensa` añade `ataca` y usa como preajuste
+una de las cuatro reglas.
+
+**No tocar:** la marca `motor: 3` (lo guardado con la capa 4 dejaría de
+reproducirse); todo lo nuevo del formato de animación, aditivo.
+
+**Bancos que cambiarán a propósito** (no son regresiones, decirlo al
+tocarlos): `eval-repertorio` (anillo del defensor con pendientes;
+«defender no se pierde»), `eval-fases` (`PENDIENTES.bloqueo`),
+`eval-compilar` (B1 pasa a defender y a moverse), `eval-dibujo` (texto
+del bloqueo) y `eval-acciones` si cambian las mecánicas.
 
 ## Capa 4, paso a paso
 
