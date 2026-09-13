@@ -124,11 +124,24 @@ function posesionPorFase(anim) {
   const porFase = [];
   for (const f of anim.fases || []) {
     porFase.push({ ...owner });
-    for (const p of f.pases || []) owner[p.balon_id] = p.a_id || null;
-    for (const t of f.tiros || []) owner[t.balon_id] = null;
+    /* Los cambios de manos EN EL ORDEN EN QUE PASAN, como el motor: con
+       carriles, «recoge y pasa» en la misma fase es lo normal, y contando
+       primero los pases y luego las recogidas, el balón acababa en el que
+       lo recogió en vez de en el que lo recibió. Lo de antes no trae
+       instantes: todo cae al final de la fase, y el orden estable deja
+       el de siempre —pases, tiros y recogidas—, así que se narra igual. */
+    const dur = f.duracion_ms || 1000;
+    const finDe = (x) => (Number.isFinite(x && x.inicio_ms)
+      ? x.inicio_ms + (Number.isFinite(x.duracion_ms) && x.duracion_ms > 0 ? x.duracion_ms : Math.max(1, dur - x.inicio_ms))
+      : dur);
+    const cambios = [];
+    for (const p of f.pases || []) cambios.push({ t: finDe(p), balon: p.balon_id, quien: p.a_id || null });
+    for (const t of f.tiros || []) cambios.push({ t: finDe(t), balon: t.balon_id, quien: null });
     // el rebote devuelve la posesión: sin esto, quien coge su propio
     // tiro y vuelve botando aparecería "cortando" en la fase siguiente.
-    for (const r of f.recogidas || []) owner[r.balon_id] = r.jugador_id || null;
+    for (const r of f.recogidas || []) cambios.push({ t: Number.isFinite(r.t_ms) ? r.t_ms : dur, balon: r.balon_id, quien: r.jugador_id || null });
+    cambios.sort((a, z) => a.t - z.t);
+    for (const c of cambios) owner[c.balon] = c.quien;
   }
   return porFase;
 }

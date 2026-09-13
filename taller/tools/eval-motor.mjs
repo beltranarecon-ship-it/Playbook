@@ -203,6 +203,49 @@ test('RECOGER: el balón es suyo al llegar a sus manos, no antes', () => {
   ok(Math.abs(alFinal.balls.b1.x - 0.5) < 0.02, `al final, en sus manos: ${txt(alFinal.balls.b1)}`);
 });
 
+test('RECOGER Y PASAR EN LA MISMA FASE: el balón acaba en el que recibe', () => {
+  /* El fallo que se encontró midiendo el motor real: la recogida se
+     fechaba al final del último viaje del balón —el pase—, así que el
+     balón volvía al que lo recogió después de llegar al que lo recibió. */
+  const jug = [
+    { id: 'A1', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.2, 0.8] },
+    { id: 'A2', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.8, 0.8] },
+    { id: 'A3', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.5, 0.5] },
+  ];
+  const m = motor(conCarriles([{
+    duracion_ms: 3800,
+    movimientos: [
+      { elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_sin_balon', path: recta([0.8, 0.8], [0.5, 0.2]), inicio_ms: 0, duracion_ms: 2000 },
+      { elemento_id: 'b1', tipo_elemento: 'balon', tipo_movimiento: 'recogida', path: recta([0.52, 0.2], [0.5, 0.2]), inicio_ms: 1500, duracion_ms: 500 },
+    ],
+    recogidas: [{ jugador_id: 'A2', balon_id: 'b1', t_ms: 2000 }],
+    pases: [{ de_id: 'A2', a_id: 'A3', balon_id: 'b1', path: recta([0.5, 0.2], [0.5, 0.5]), inicio_ms: 3000, duracion_ms: 500 }],
+  }, { duracion_ms: 1000 }], jug, [{ id: 'b1', posicion_inicial: [0.52, 0.2], portador_id: null }]));
+  ok(en(m, 0, 2600).carrying.has('A2'), 'recién recogido, es de A2');
+  const tras = en(m, 0, 3700);   // ya llegado: en el instante justo del final el balón aún va en vuelo
+  ok(tras.carrying.has('A3') && !tras.carrying.has('A2'), `pasado, es de A3: ${[...tras.carrying]}`);
+  ok(en(m, 1, 0).carrying.has('A3'), 'y la fase siguiente empieza con A3');
+});
+
+test('TIRAR, RECOGER Y VOLVER A TIRAR: el balón acaba en el aro, no en las manos', () => {
+  const m = motor(conCarriles([{
+    duracion_ms: 4500,
+    movimientos: [
+      { elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_sin_balon', path: recta([0.8, 0.8], [0.5, 0.15]), inicio_ms: 1000, duracion_ms: 1500 },
+      { elemento_id: 'b1', tipo_elemento: 'balon', tipo_movimiento: 'recogida', path: recta([0.5, 0.1], [0.5, 0.15]), inicio_ms: 2125, duracion_ms: 375 },
+    ],
+    tiros: [
+      { jugador_id: 'A1', balon_id: 'b1', canasta: 'norte', path: recta([0.2, 0.8], [0.5, 0.1]), inicio_ms: 0, duracion_ms: 1000 },
+      { jugador_id: 'A2', balon_id: 'b1', canasta: 'norte', path: recta([0.5, 0.15], [0.5, 0.1]), inicio_ms: 3000, duracion_ms: 1000 },
+    ],
+    recogidas: [{ jugador_id: 'A2', balon_id: 'b1', t_ms: 2500 }],
+  }]));
+  ok(en(m, 0, 2700).carrying.has('A2'), 'entre los dos tiros lo tiene A2');
+  const fin = en(m, 0, 4500);
+  ok(!fin.carrying.has('A2'), `tras el segundo tiro nadie lo lleva: ${[...fin.carrying]}`);
+  ok(cerca(fin.balls.b1, { x: 0.5, y: 0.1 }, 1e-6), `y está en el aro: ${txt(fin.balls.b1)}`);
+});
+
 test('TRAS UN TIRO EL BALÓN SE QUEDA EN EL ARO, no en la mano del tirador', () => {
   /* Venía del banco del motor viejo probada contra rest-positions.js,
      que se va con él; la regla es de aquí. Un tiro suelta el balón: deja

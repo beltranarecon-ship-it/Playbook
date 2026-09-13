@@ -155,7 +155,9 @@ test('RECOGER: va el jugador, el balón hace el último trozo y cambia de dueño
   ok(cerca(delBalon.inicio_ms + delBalon.duracion_ms, delJugador.inicio_ms + delJugador.duracion_ms, 1e-6),
     'el balón llega justo cuando llega él');
   ok(cerca(delBalon.duracion_ms, delJugador.duracion_ms * RECOGIDA_FRACCION, 1e-6), 'en el último cuarto de la carrera');
-  eq(f.recogidas, [{ jugador_id: 'A2', balon_id: bal.id }]);
+  /* Con su instante: al llegar a sus manos. Esta prueba CAMBIA A PROPÓSITO
+     en el paso 5.0 (antes no lo llevaba y el motor lo fechaba mal). */
+  eq(f.recogidas, [{ jugador_id: 'A2', balon_id: bal.id, t_ms: delJugador.inicio_ms + delJugador.duracion_ms }]);
 });
 
 test('EL BALÓN QUE SE RECOGE VIAJA DESDE EL SUELO, no aparece en las manos', () => {

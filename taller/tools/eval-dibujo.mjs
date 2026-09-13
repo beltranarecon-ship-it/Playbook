@@ -105,6 +105,9 @@ test('TODO ritmo que salga de aquí lo entiende duracionDe', () => {
 test('lo que viaja es el balón, y el balón vuela', () => {
   eq(ritmoDe(de('pasa')), 'pase');
   eq(ritmoDe(de('tira')), 'pase');
+  /* Pero en «recoge» quien va es el JUGADOR, corriendo. Con la familia a
+     secas corría a 9 m/s, que es la velocidad de un pase. */
+  eq(ritmoDe(de('recoge')), 'normal', 'recoge:');
   ok(duracionDe(10, 'pase') < duracionDe(10, 'sprint'), 'un pase llega antes que el más rápido corriendo');
 });
 

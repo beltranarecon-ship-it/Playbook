@@ -5,7 +5,10 @@
    Estado del motor §9.5. Coordenadas normalizadas [0–1].
    ============================================================ */
 
-import { makeSampler, easeInOut } from './geometry.js';
+import { easeInOut } from './geometry.js';
+/* Dónde está cada uno en t: la misma cuenta que usan el repaso de la
+   Pizarra y la defensa (ver instante.js). */
+import { muestreador, posicionEn, duenoEn } from './instante.js';
 import { drawArrow, drawBloqueo, MOV_TO_ARROW } from './arrows.js';
 import { drawPlayer, drawBall, drawCone, drawFila, drawPelotaTenis, drawEscalera, drawZona, radii } from './symbols.js';
 import { zonaDesdeGuardada, contornoDe, centroDe as centroZona } from './zonas.js';
@@ -14,47 +17,6 @@ import { COLORS, TAU } from './colors.js';
 const clone = (m) => { const o = {}; for (const k in m) o[k] = { ...m[k] }; return o; };
 const lastNode = (path) => (path && path.length ? { x: path[path.length - 1].x, y: path[path.length - 1].y } : null);
 const numLabel = (j) => (j.dorsal ?? (String(j.id).match(/\d+/)?.[0] ?? j.id));
-
-/* Un camino de LONGITUD CERO —soltar el destino encima de la ficha, un
-   balón que ya está en las manos a las que va— hace que `makeSampler`
-   reparta por una longitud de arco que no existe, se salga de su propia
-   tabla y reviente a mitad del recorrido. Aquí eso es simplemente
-   quedarse quieto. */
-function muestreador(path) {
-  const s = makeSampler(path);
-  const flat = s.flat || [];
-  let largo = 0;
-  for (let i = 1; i < flat.length; i++) largo += Math.hypot(flat[i].x - flat[i - 1].x, flat[i].y - flat[i - 1].y);
-  if (largo > 0) return s;
-  const p = flat[flat.length - 1] || lastNode(path) || { x: 0.5, y: 0.5 };
-  const quieto = () => ({ x: p.x, y: p.y });
-  quieto.flat = flat.length ? flat : [p];
-  quieto.totalLen = 0;
-  return quieto;
-}
-
-/* Dónde está alguien en el instante t, con sus tramos ordenados por
-   arranque. Tres casos, y los tres importan: mientras uno está activo,
-   sobre su camino; ANTES del primero, en su salida —si no, esperaría de
-   pie en el destino—; y ENTRE dos, donde acabó el anterior. */
-function posicionEn(movs, t) {
-  if (!movs || !movs.length) return null;
-  let ultimo = null;
-  for (const x of movs) {
-    if (t < x.inicio) break;
-    if (t <= x.fin) return x.sampler(easeInOut((t - x.inicio) / x.dur));
-    ultimo = x;
-  }
-  return ultimo ? ultimo.sampler(1) : movs[0].sampler(0);
-}
-
-/* De quién es un balón en el instante t: el último cambio de manos que
-   ya haya ocurrido, o el dueño con el que empezó la fase. */
-function duenoEn(eventos, t, inicial) {
-  let quien = inicial ?? null;
-  for (const ev of eventos || []) { if (ev.t <= t) quien = ev.quien; else break; }
-  return quien;
-}
 
 export class AnimationEngine {
   constructor(view, animacion, opts = {}) {
@@ -198,14 +160,22 @@ export class AnimationEngine {
         acaba(t.balon_id, c.fin, lastNode(effPath) || basket);
       }
 
-      // recogidas: alguien va a por un balón suelto y se lo queda. Es suyo
-      // cuando el balón llega a sus manos —el final de su último viaje en
-      // esta fase—, y si no viaja, al acabar la fase, como antes. Va
-      // DESPUÉS de los tiros: en la misma fase, primero se suelta.
+      // recogidas: alguien va a por un balón suelto y se lo queda.
+      /* Es suyo EN EL INSTANTE EN QUE LE LLEGA a las manos. Lo que viene
+         del compilador lo trae escrito (`t_ms`). Lo de antes no lo trae, y
+         se sigue fechando como siempre: el final del último viaje del
+         balón en la fase, o el final de la fase si no viaja.
+
+         Esa cuenta vieja fallaba en cuanto el balón hace algo DESPUÉS de
+         recogerse: si A2 recoge y luego pasa a A3, «el último viaje» es el
+         pase, así que la recogida quedaba fechada al final del pase y el
+         balón volvía a A2 después de haber llegado a A3. Con tiros y
+         rebotes eso es lo normal. */
       for (const rec of (fase.recogidas || [])) {
         if (!rec || !rec.balon_id) continue;
         const viajes = m.ballMovs[rec.balon_id] || [];
-        const t = viajes.length ? Math.max(...viajes.map((x) => x.fin)) : dur;
+        const t = Number.isFinite(rec.t_ms) ? rec.t_ms
+          : (viajes.length ? Math.max(...viajes.map((x) => x.fin)) : dur);
         pon(m.duenos, rec.balon_id, { t, quien: rec.jugador_id || null });
       }
 

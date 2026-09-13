@@ -329,5 +329,25 @@ test('singular y plural, y lo que vale cero no se escribe', () => {
   eq(resumenMaterial(null), '');
 });
 
+test('RECOGE Y PASA EN LA MISMA FASE: la siguiente empieza con el balón en el que recibió', () => {
+  /* Contando primero los pases y luego las recogidas, el balón se quedaba
+     en el que lo recogió, y en la fase 2 el que lo tiene «cortaba». */
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A2', equipo: 'A' }, { id: 'A3', equipo: 'A' }],
+    balones: [{ id: 'b1', portador_id: null }],
+    fases: [
+      {
+        duracion_ms: 3500,
+        movimientos: [{ elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: camino(P.esquina_izq, P.base), inicio_ms: 0, duracion_ms: 2000 }],
+        recogidas: [{ jugador_id: 'A2', balon_id: 'b1', t_ms: 2000 }],
+        pases: [{ de_id: 'A2', a_id: 'A3', balon_id: 'b1', path: camino(P.base, P.codo_der), inicio_ms: 3000, duracion_ms: 500 }],
+      },
+      { duracion_ms: 800, movimientos: [{ elemento_id: 'A3', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: camino(P.codo_der, P.aro) }] },
+    ],
+  });
+  eq(g.fases[1].lineas, ['El 3 bota hacia el aro']);
+});
+
 console.log(`\n${pasan} pasan · ${fallan} fallan`);
 process.exit(fallan ? 1 : 0);

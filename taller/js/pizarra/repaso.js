@@ -33,7 +33,9 @@
    del trazo. Va por fotograma y por reloj, y gana el primero.
    ============================================================ */
 
-import { makeSampler, easeInOut } from '../canvas/geometry.js';
+/* La misma cuenta del instante que usa el motor de reproducción: lo que
+   se ve al dibujar tiene que ser lo que se ve al proyectar. */
+import { muestreador, posicionEn } from '../canvas/instante.js';
 import { longitudMetros, duracionDe } from './trazo.js';
 import { sitioDelBalon } from './elementos.js';
 
@@ -119,7 +121,7 @@ export class Repaso {
     const porElemento = new Map();
     for (const t of buenos) {
       const paso = {
-        muestra: makeSampler(t.trazo),
+        sampler: muestreador(t.trazo),
         inicio: Math.max(0, t.inicio_ms || 0) / velocidad,
         dur: Math.max(1, t.duracion_ms || 0) / velocidad,
       };
@@ -186,16 +188,7 @@ export class Repaso {
     if (!a) return null;
     const suyos = id === undefined ? [...a.porElemento.values()][0] : a.porElemento.get(id);
     if (!suyos || !suyos.length) return null;
-    const t = this._ahora() - a.t0;
-
-    let ultimoAcabado = null;
-    for (const p of suyos) {
-      if (t < p.inicio) break;
-      if (t < p.fin) return p.muestra(easeInOut((t - p.inicio) / p.dur));
-      ultimoAcabado = p;
-    }
-    if (ultimoAcabado) return ultimoAcabado.muestra(1);
-    return suyos[0].muestra(0);
+    return posicionEn(suyos, this._ahora() - a.t0);
   }
 
   _ahora() { return typeof performance !== 'undefined' ? performance.now() : Date.now(); }

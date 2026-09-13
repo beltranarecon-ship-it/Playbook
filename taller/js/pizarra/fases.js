@@ -148,9 +148,14 @@ function dependencias(carriles) {
       if (siguiente && !espera.has(siguiente.id)) espera.set(siguiente.id, p.id);
     }
     /* IR A POR UN BALÓN SUELTO ESPERA A QUE ESTÉ SUELTO. El tramo que
-       lo soltó es el pase o el tiro anterior sobre ESE balón. */
+       lo soltó es el ÚLTIMO pase o tiro anterior sobre ESE balón. Con el
+       primero que se encontrara —y se buscaba carril a carril—, en «A1
+       pasa a A2, A2 tira y A3 recoge», A3 salía al acabar el pase, con el
+       balón todavía en las manos de A2. */
     if (p.accion === 'recoge' && p.balon_id) {
-      const suelta = todos.find((t) => t.corre_id === p.balon_id && t.orden < p.orden);
+      const suelta = todos
+        .filter((t) => t.corre_id === p.balon_id && t.orden < p.orden)
+        .reduce((ultima, t) => (!ultima || t.orden > ultima.orden ? t : ultima), null);
       if (suelta && !espera.has(p.id)) espera.set(p.id, suelta.id);
     }
   }
@@ -323,14 +328,23 @@ export function recalcular(fases, entrada = {}, pista = 'entera') {
  */
 export function posicionesFinales(fase, entrada = {}) {
   const salida = { ...entrada };
-  for (const c of (fase && fase.carriles) || []) {
-    for (const t of c.tramos) {
-      if (!t.trazo || t.trazo.length < 2) continue;
-      const fin = t.trazo[t.trazo.length - 1];
-      /* Se mueve QUIEN RECORRE el trazo. En un pase eso es el balón, y
-         el que pasa se queda donde estaba. */
-      salida[t.corre_id || t.elemento_id] = { x: fin.x, y: fin.y };
-    }
+  /* EN EL ORDEN EN QUE OCURREN, no carril a carril. Un mismo balón pasa
+     por varios carriles —lo pasa A1 y lo tira A2—, y recorriéndolos por
+     carril ganaba el que venía después en la lista: si A2 tenía un corte
+     dibujado antes del pase, su carril iba primero y el balón acababa en
+     sus manos en vez de en el aro. `orden` es el orden en que se
+     dibujaron, que es el orden en que pasan. */
+  const tramos = ((fase && fase.carriles) || [])
+    .flatMap((c) => c.tramos)
+    .map((t, i) => ({ t, i }))
+    .sort((a, z) => ((a.t.orden ?? a.i) - (z.t.orden ?? z.i)) || (a.i - z.i))
+    .map((x) => x.t);
+  for (const t of tramos) {
+    if (!t.trazo || t.trazo.length < 2) continue;
+    const fin = t.trazo[t.trazo.length - 1];
+    /* Se mueve QUIEN RECORRE el trazo. En un pase eso es el balón, y
+       el que pasa se queda donde estaba. */
+    salida[t.corre_id || t.elemento_id] = { x: fin.x, y: fin.y };
   }
   return salida;
 }

@@ -209,7 +209,10 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
           inicio_ms: m.inicio_ms + m.duracion_ms * (1 - RECOGIDA_FRACCION),
           duracion_ms: m.duracion_ms * RECOGIDA_FRACCION,
         });
-        recogidas.push({ jugador_id: de(t.elemento_id), balon_id: t.balon_id });
+        /* Y CUÁNDO es suyo: al llegarle a las manos. Sin el instante, el
+           motor lo fechaba al final del último viaje del balón en la fase,
+           y si después lo pasaba, el balón volvía a él. */
+        recogidas.push({ jugador_id: de(t.elemento_id), balon_id: t.balon_id, t_ms: m.inicio_ms + m.duracion_ms });
       }
       continue;
     }

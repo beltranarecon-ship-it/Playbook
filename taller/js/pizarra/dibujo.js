@@ -57,7 +57,10 @@ export function tipoFlecha(accion) {
  *  4,0: casi el triple. */
 export function ritmoDe(accion) {
   if (!accion) return 'normal';
-  if (accion.familia === 'balon') return 'pase';
+  /* Lo que viaja en un pase o un tiro es el balón, y va a su ritmo. En
+     «recoge» NO: quien va es el jugador, corriendo. Con la familia a secas,
+     el que iba a por un rebote corría a 9 m/s. */
+  if (accion.familia === 'balon' && (accion.parametros && accion.parametros.modo) !== 'recoge') return 'pase';
   const r = accion.parametros && accion.parametros.ritmo;
   return RITMOS[r] ? r : 'normal';
 }

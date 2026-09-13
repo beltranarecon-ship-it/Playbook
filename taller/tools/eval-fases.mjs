@@ -396,6 +396,30 @@ test('sin fases ni entrada, no rompe', () => {
 
 const pase = (de, a, bal) => ({ id: `tp${++n}`, elemento_id: de, corre_id: bal, receptor_id: a, accion: 'pasa', trazo: [] });
 
+test('QUIEN RECOGE ESPERA A LA ÚLTIMA SUELTA, no a la primera que encuentra', () => {
+  /* El caso medido: A1 pasa a A2, A2 tira y A3 recoge. Buscando la
+     primera suelta carril a carril salía el pase, y A3 echaba a correr
+     con el balón todavía en las manos de A2. */
+  const psa = tramo('A1', P(0.2, 0.8), P(0.7, 0.6), { corre_id: 'b1', receptor_id: 'A2', accion: 'pasa', ritmo: 'pase' });
+  const tir = tramo('A2', P(0.7, 0.6), P(0.5, 0.1), { corre_id: 'b1', accion: 'tira', ritmo: 'pase' });
+  const rec = tramo('A3', P(0.3, 0.5), P(0.5, 0.15), { accion: 'recoge', balon_id: 'b1' });
+  const r = tiemposDe(conCarriles([psa, tir, rec]), { pista: 'entera' });
+  eq(r.tramos[rec.id].inicio_ms, r.tramos[tir.id].fin_ms, 'sale cuando se suelta el tiro:');
+  ok(r.tramos[rec.id].inicio_ms > r.tramos[psa.id].fin_ms, 'y no al acabar el pase');
+});
+
+test('LAS POSICIONES FINALES VAN EN EL ORDEN EN QUE PASAN, no carril a carril', () => {
+  /* A2 corta, A1 le pasa y A2 tira. El carril de A2 va primero (su corte
+     se dibujó antes), y recorriendo por carril el pase de A1 pisaba el
+     tiro: el balón acababa en las manos de A2 en vez de en el aro. */
+  const corte = tramo('A2', P(0.8, 0.8), P(0.7, 0.6));
+  const psa = tramo('A1', P(0.2, 0.8), P(0.7, 0.6), { corre_id: 'b1', receptor_id: 'A2', accion: 'pasa' });
+  const tir = tramo('A2', P(0.7, 0.6), P(0.5, 0.1), { corre_id: 'b1', accion: 'tira' });
+  const fin = posicionesFinales(conCarriles([corte, psa, tir]), { A1: P(0.2, 0.8), A2: P(0.8, 0.8), b1: P(0.22, 0.8) });
+  eq(fin.b1, P(0.5, 0.1), 'el balón, en el aro:');
+  eq(fin.A2, P(0.7, 0.6), 'A2, donde acabó su corte:');
+});
+
 test('VOLVER A UNA FASE DEVUELVE EL BALÓN A QUIEN LO TENÍA ENTONCES', () => {
   /* A1 pasa a A2 en la fase 1 y A2 se lo devuelve en la 2. El modelo
      dice que es de A1 (lo último dibujado); al volver a la 1, es de A2. */
