@@ -156,12 +156,13 @@ export class Anillo {
    * @param cx,cy     centro, en píxeles del host
    * @param opciones  [{ slug, nombre, icono, pendiente, motivo }]
    * @param centro    texto del centro (null en el anillo interior)
-   * @param nivel     'interior' | 'exterior'
+   * @param nivel     'interior' | 'exterior' | 'desenlace'
+   * @param variante  la variante ya elegida, que viaja hasta el desenlace
    * @param conMas    si se ofrece «⋯ más»
    */
-  abrir({ cx, cy, opciones, centro = null, nivel = 'interior', conMas = true, accion = null }) {
+  abrir({ cx, cy, opciones, centro = null, nivel = 'interior', conMas = true, accion = null, variante = null }) {
     this.cerrar();
-    this.estado = { cx, cy, opciones, centro, nivel, accion };
+    this.estado = { cx, cy, opciones, centro, nivel, accion, variante };
     const r = this.host.getBoundingClientRect();
     const vw = r.width, vh = r.height;
     const radio = radioDe(vw, vh, nivel === 'exterior' ? RADIO_EXTERIOR : RADIO_INTERIOR);
@@ -178,7 +179,9 @@ export class Anillo {
     if (centro) {
       const c = h('div', { class: 'pz-anillo__centro' },
         h('b', null, centro),
-        h('small', null, 'o pincha ya en la pista'));
+        /* Saltarse el «cómo» pinchando en la pista vale en las variantes;
+           en el desenlace, pinchar fuera es cancelar el tiro. */
+        h('small', null, nivel === 'desenlace' ? 'pincha fuera para cancelar' : 'o pincha ya en la pista'));
       this._piezas.push({ el: c, tipo: 'centro' });
       this.capa.append(c);
     }
@@ -243,8 +246,9 @@ export class Anillo {
   }
 
   _elegir(o) {
-    const { nivel, accion } = this.estado;
+    const { nivel, accion, variante } = this.estado;
     if (nivel === 'exterior') { this.cerrar(); this.onElegir?.(accion, { variante: o.slug }); return; }
+    if (nivel === 'desenlace') { this.cerrar(); this.onElegir?.(accion, { variante, desenlace: o.slug }); return; }
     this.onElegir?.(o.slug, { variante: null, opcion: o });
   }
 

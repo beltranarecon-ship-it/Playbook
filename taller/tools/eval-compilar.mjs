@@ -24,6 +24,9 @@ import { nuevoTrazo } from '../js/pizarra/trazo.js';
 import { carrilesDesde, tiemposDe } from '../js/pizarra/fases.js';
 import { AnimationEngine } from '../js/canvas/engine.js';
 import { CATALOGO_SISTEMA } from '../js/ia/acciones.js';
+import { aroExacto } from '../js/canvas/anclas.js';
+import { trasElTiro } from '../js/pizarra/destino.js';
+import { TRAS_EL_TIRO_MS } from '../js/pizarra/fases.js';
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -391,6 +394,54 @@ test('SOLO SE AVISA DE LO QUE SE MOVÍA: lo de antes sin fases no ha perdido nad
     ok(!perdioLaAnimacion(v), `${JSON.stringify(v)}`);
     eq(soloColocacion(v), v ?? null, `soloColocacion(${JSON.stringify(v)}):`);
   }
+});
+
+/* ── 7. Los tiros ────────────────────────────────────────── */
+
+const [AX, AY] = aroExacto('entera', 'norte');
+const tiroDe = (a1, bal, desenlace) => ({ ...tramo(a1.id, P(0.3, 0.8), P(AX, AY), { accion: 'tira', corre_id: bal.id, tipo: 'pass', ritmo: 'tiro' }), desenlace });
+
+test('UN TIRO SE COMPILA: al aro, con su desenlace, y el balón cae aparte', () => {
+  const { l, a1, bal } = escena();
+  const a = compilar(jugadaCon(l, [{ id: 'f1', tramos: [tiroDe(a1, bal, 'entra')] }]));
+  const f = a.fases[0];
+  eq(f.tiros.length, 1);
+  const t = f.tiros[0];
+  eq([t.jugador_id, t.balon_id, t.canasta, t.desenlace], ['A1', bal.id, 'norte', 'entra']);
+  const fin = t.path[t.path.length - 1];
+  eq([fin.x, fin.y], [AX, AY], 'el trazo acaba en el aro, que es lo que mide el linter:');
+  const cae = f.movimientos.find((m) => m.tipo_elemento === 'balon' && m.tipo_movimiento === 'caida');
+  ok(cae, 'el balón cae bajo el aro');
+  ok(cerca(cae.inicio_ms, t.inicio_ms + t.duracion_ms) && cae.duracion_ms === TRAS_EL_TIRO_MS, 'justo al llegar, en 0,3 s');
+  ok(!a.warnings.some((w) => /tiro/i.test(w)), `ya no hay aviso de tiros: ${a.warnings}`);
+});
+
+test('EN EL MOTOR REAL, UN TIRO FALLADO REBOTA Y EL BALÓN QUEDA SUELTO', () => {
+  const { l, a1, bal } = escena();
+  const motor = enElMotor(compilar(jugadaCon(l, [{ id: 'f1', tramos: [tiroDe(a1, bal, 'falla')] }])));
+  const f = enElInstante(motor, 0, motor.fases[0].duracion_ms);
+  const esperado = trasElTiro({ pista: 'entera', canasta: 'norte', desde: P(0.3, 0.8), desenlace: 'falla' });
+  ok(cerca(f.balls[bal.id].x, esperado.x, 1e-6) && cerca(f.balls[bal.id].y, esperado.y, 1e-6), `en el rebote: ${JSON.stringify(f.balls[bal.id])}`);
+  ok(!f.carrying.has('A1'), 'y nadie lo lleva');
+});
+
+test('Y QUIEN RECOGE EL REBOTE SE LO QUEDA, cuando el balón ya ha caído', () => {
+  const { l, a1, a2, bal } = escena();
+  const rebote = trasElTiro({ pista: 'entera', canasta: 'norte', desde: P(0.3, 0.8), desenlace: 'falla' });
+  const rec = { ...tramo(a2.id, P(0.7, 0.8), P(rebote.x, rebote.y + 0.03), { accion: 'recoge', balon_id: bal.id }), balon_desde: rebote };
+  const anim = compilar(jugadaCon(l, [{ id: 'f1', tramos: [tiroDe(a1, bal, 'falla'), rec] }]));
+  const t = anim.fases[0].tiros[0];
+  const r = anim.fases[0].movimientos.find((m) => m.elemento_id === 'A2');
+  ok(r.inicio_ms >= t.inicio_ms + t.duracion_ms + TRAS_EL_TIRO_MS - 1e-6, `sale cuando ha caído: ${r.inicio_ms}`);
+  const motor = enElMotor(anim);
+  /* En el milisegundo final el balón aún está llegando a las manos (su
+     último viaje acaba justo ahí), así que se mira lo que decide el motor:
+     de quién es al acabar, y dónde está. */
+  const duenos = motor.meta[0].duenos[bal.id];
+  eq(duenos[duenos.length - 1].quien, 'A2', 'el último dueño:');
+  const fin = enElInstante(motor, 0, motor.fases[0].duracion_ms);
+  ok(cerca(fin.balls[bal.id].x, fin.players.A2.x, 1e-6) && cerca(fin.balls[bal.id].y, fin.players.A2.y, 1e-6),
+    `y el balón acaba en sus manos: ${JSON.stringify(fin.balls[bal.id])} y A2 en ${JSON.stringify(fin.players.A2)}`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

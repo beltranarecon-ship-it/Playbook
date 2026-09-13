@@ -199,5 +199,22 @@ test('continuarIds solo sube la cuenta, nunca la baja', () => {
   eq(nuevoId('cono'), 'cono_21');
 });
 
+test('UN TIRO GUARDADO SIN DESENLACE SE ABRE COMO «ENTRA», y se dice', () => {
+  const j = buena();
+  j.fases[1].tramos.push({ id: 'tr10', elemento_id: 'jugador_1', corre_id: 'balon_3', accion: 'tira', trazo: [N(0.3, 0.4), N(0.5, 0.1)], tipo: 'pass', ritmo: 'tiro' });
+  const r = normalizarJugada(j);
+  eq(r.jugada.fases[1].tramos.find((t) => t.id === 'tr10').desenlace, 'entra');
+  ok(r.avisos.some((a) => /sin desenlace/.test(a)), `tiene que decirlo: ${r.avisos}`);
+});
+
+test('el que ya lo tiene lo conserva, y a lo que no es un tiro no se le pone', () => {
+  const j = buena();
+  j.fases[1].tramos.push({ id: 'tr10', elemento_id: 'jugador_1', corre_id: 'balon_3', accion: 'tira', desenlace: 'falla', trazo: [N(0.3, 0.4), N(0.5, 0.1)], tipo: 'pass', ritmo: 'tiro' });
+  const r = normalizarJugada(j);
+  eq(r.jugada.fases[1].tramos.find((t) => t.id === 'tr10').desenlace, 'falla');
+  ok(!('desenlace' in r.jugada.fases[0].tramos[0]), 'un corte no tiene desenlace');
+  ok(!r.avisos.some((a) => /desenlace/.test(a)), 'y no se avisa de nada');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

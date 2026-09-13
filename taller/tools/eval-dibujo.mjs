@@ -97,14 +97,18 @@ test('TODO ritmo que salga de aquí lo entiende duracionDe', () => {
   const salidas = new Set(CATALOGO_SISTEMA.map(ritmoDe));
   salidas.add(ritmoDe(null));
   for (const r of salidas) {
-    ok(r === 'pase' || r in RITMOS, `"${r}" no está en RITMOS: los segundos saldrían mal en silencio`);
+    ok(r === 'pase' || r === 'tiro' || r in RITMOS, `"${r}" no está en RITMOS: los segundos saldrían mal en silencio`);
     ok(Number.isFinite(duracionDe(10, r)) && duracionDe(10, r) > 0, `duracionDe(10, "${r}") no da un número`);
   }
 });
 
 test('lo que viaja es el balón, y el balón vuela', () => {
   eq(ritmoDe(de('pasa')), 'pase');
-  eq(ritmoDe(de('tira')), 'pase');
+  /* Un tiro no va a ritmo de pase: tarda 0,9 s hasta el aro venga de
+     donde venga (§6.2). CAMBIA A PROPÓSITO en el paso 5.1. */
+  eq(ritmoDe(de('tira')), 'tiro');
+  eq(duracionDe(3, 'tiro'), duracionDe(12, 'tiro'), 'no depende de la distancia:');
+  eq(duracionDe(6, 'tiro'), 0.9);
   /* Pero en «recoge» quien va es el JUGADOR, corriendo. Con la familia a
      secas corría a 9 m/s, que es la velocidad de un pase. */
   eq(ritmoDe(de('recoge')), 'normal', 'recoge:');

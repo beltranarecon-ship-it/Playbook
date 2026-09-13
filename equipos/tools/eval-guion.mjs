@@ -349,5 +349,17 @@ test('RECOGE Y PASA EN LA MISMA FASE: la siguiente empieza con el balón en el q
   eq(g.fases[1].lineas, ['El 3 bota hacia el aro']);
 });
 
+test('EL TIRO DICE SI ANOTA O FALLA, cuando se sabe', () => {
+  const base = (desenlace) => guionDeAnimacion({
+    pista: 'entera', canasta: 'norte',
+    jugadores: [{ id: 'A5', equipo: 'A' }],
+    balones: [{ id: 'b1', portador_id: 'A5' }],
+    fases: [{ duracion_ms: 700, tiros: [{ jugador_id: 'A5', balon_id: 'b1', canasta: 'norte', desenlace, path: camino(P.poste_bajo_izq, P.aro) }] }],
+  });
+  eq(base('entra').fases[0].lineas, ['El 5 tira desde el poste bajo izquierdo y anota']);
+  eq(base('falla').fases[0].lineas, ['El 5 tira desde el poste bajo izquierdo y falla']);
+  eq(base(undefined).fases[0].lineas, ['El 5 tira desde el poste bajo izquierdo'], 'lo guardado antes, igual:');
+});
+
 console.log(`\n${pasan} pasan · ${fallan} fallan`);
 process.exit(fallan ? 1 : 0);

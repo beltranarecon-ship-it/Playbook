@@ -369,3 +369,9 @@
   font-size: var(--fs-300); line-height: 1.35;
 }
 .pz-aviso b { font-weight: 600; }
+
+/* ---- El desenlace de un tiro (§4.4) -------------------------
+   Los dos botones que salen junto al aro al corregir un tiro. Son los
+   botoncitos de nodo, con texto: más anchos, y el que vale, marcado. */
+.pz-desenlace .pz-nodo__b { width: auto; min-width: 72px; padding: 0 12px; border-radius: 22px; font-weight: 600; }
+.pz-nodo__b.is-activo { background: var(--color-accent); color: #fff; }

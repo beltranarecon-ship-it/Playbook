@@ -35,11 +35,13 @@
    que un clic que no hace nada.
    ============================================================ */
 
+import { h } from '../ui/dom.js';
+import { posicionesDe } from '../canvas/anclas.js';
 import { Fichas } from './fichas.js';
 import { Anillo } from './anillo.js';
 import { Dibujo, ritmoDe, tipoFlecha } from './dibujo.js';
 import { Nodos } from './nodos.js';
-import { Repaso } from './repaso.js';
+import { Repaso, VELOCIDAD_REPASO, duracionRepaso } from './repaso.js';
 import { drawArrow } from '../canvas/arrows.js';
 import { flattenPath } from '../canvas/geometry.js';
 import {
@@ -48,11 +50,11 @@ import {
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto } from './seleccion.js';
-import { tieneDestinoPropio, destinoDe } from './destino.js';
+import { tieneDestinoPropio, destinoDe, trasElTiro } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
 import {
   nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular, posesionAlFinal,
-  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas,
+  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS,
 } from './fases.js';
 
 let siguiente = 1;
@@ -152,7 +154,7 @@ export class Tablero {
     this.nodos = new Nodos(lienzo, {
       ...comun,
       onCambio: (trazo) => this._trazoCorregido(trazo),
-      onSalir: () => { this._editando = null; this._pintarAyuda(); },
+      onSalir: () => { this._editando = null; this._cerrarDesenlace(); this._pintarAyuda(); },
       onBorrarTrazo: () => this._borrarElQueSeEdita(),
     });
 
@@ -173,6 +175,9 @@ export class Tablero {
       const [x, y] = vista.toPx(this._ancla.en.x, this._ancla.en.y);
       this.anillo.recolocar(x, y);
     }, { tipo: 'pantalla', orden: 30 });
+    /* Los botones «Entra / Falla» de un tiro que se corrige van junto al
+       aro, y el aro se mueve con el zoom: se recolocan en cada pintada. */
+    this._quitarCapaDesenlace = lienzo.capa('desenlace-sitio', ({ vista }) => this._colocarDesenlace(vista), { tipo: 'pantalla', orden: 31 });
 
     /* `Esc` con el anillo abierto no lo escuchaba nadie: Dibujo y Nodos
        solo atienden la tecla cuando les toca a ellos, y el Anillo no ata
@@ -425,6 +430,10 @@ export class Tablero {
       const mios = tramos.filter((t) => t.corre_id === e.id);
       if (!mios.length) continue;
       const ultimo = mios[mios.length - 1];
+      /* UN TIRO NO SE ESTIRA: su final es el aro (§5.3), y el balón queda
+         donde cae, no en la punta. Sin esto, al soltar el tiro el final se
+         iba del aro al rebote. */
+      if (esTiro(ultimo)) continue;
       const fin = ultimo.trazo.length - 1;
       if (ultimo.trazo[fin].x === e.x && ultimo.trazo[fin].y === e.y) continue;
       const trazo = moverNodo(ultimo.trazo, fin, { x: e.x, y: e.y });
@@ -515,7 +524,7 @@ export class Tablero {
 
     const entrada = Object.fromEntries(j.elementos.map((e) => [e.id, { x: e.x, y: e.y }]));
     const posesion = Object.fromEntries(j.elementos.filter((e) => e.kind === 'balon').map((e) => [e.id, e.portador_id ?? null]));
-    const rc = recalcular(j.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) })), entrada, pista);
+    const rc = recalcular(j.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) })), entrada, pista, { canasta: this.canasta });
     this.fases = j.fases.map((f, i) => ({
       ...nuevaFase(f.id),
       ...f,
@@ -567,14 +576,7 @@ export class Tablero {
     if (!this.tramos.length) { this.onNoPuede?.({ nombre: 'Siguiente fase' }, 'no has dibujado nada en esta fase'); return false; }
     this.cerrar();
     const { tiempos } = this.faseEnCurso();
-    this.repaso.reproducirFase({
-      tramos: this.tramos.map((t) => ({
-        corre_id: t.corre_id,
-        trazo: t.trazo,
-        inicio_ms: tiempos.tramos[t.id].inicio_ms,
-        duracion_ms: tiempos.tramos[t.id].duracion_ms,
-      })),
-    });
+    this.repaso.reproducirFase({ tramos: this._paraRepaso(this.tramos, tiempos) });
     this._cerrarFaseAlAcabar = true;
     return true;
   }
@@ -585,13 +587,7 @@ export class Tablero {
     if (!this.tramos.length) return false;
     this.cerrar();
     const { tiempos } = this.faseEnCurso();
-    this.repaso.reproducirFase({
-      tramos: this.tramos.map((t) => ({
-        corre_id: t.corre_id, trazo: t.trazo,
-        inicio_ms: tiempos.tramos[t.id].inicio_ms,
-        duracion_ms: tiempos.tramos[t.id].duracion_ms,
-      })),
-    });
+    this.repaso.reproducirFase({ tramos: this._paraRepaso(this.tramos, tiempos) });
     return true;
   }
 
@@ -611,19 +607,43 @@ export class Tablero {
     for (const f of this.fases) {
       const fase = { ...f, carriles: carrilesDesde(f.tramos) };
       const tiempos = tiemposDe(fase, { pista });
-      for (const t of f.tramos) {
-        const m = tiempos.tramos[t.id];
-        todos.push({
-          corre_id: t.corre_id, trazo: t.trazo,
-          inicio_ms: desfase + m.inicio_ms, duracion_ms: m.duracion_ms,
-        });
-      }
+      todos.push(...this._paraRepaso(f.tramos, tiempos, desfase));
       desfase += tiempos.duracion_ms;
     }
     if (!todos.length) return false;
     this.repaso.reproducirFase({ tramos: todos });
     return true;
   }
+
+  /**
+   * Lo que el repaso tiene que recorrer de unos tramos: cada uno con su
+   * arranque, y después de cada tiro, el balón hasta donde cae. Sin ese
+   * último trozo el balón saltaba del aro al rebote de golpe, y en el
+   * proyector se le ve caer (principio 4).
+   */
+  _paraRepaso(tramos, tiempos, desfase = 0) {
+    const lista = [];
+    for (const t of tramos) {
+      const m = tiempos.tramos[t.id];
+      if (!m) continue;
+      lista.push({ corre_id: t.corre_id, trazo: t.trazo, inicio_ms: desfase + m.inicio_ms, duracion_ms: m.duracion_ms });
+      if (esTiro(t)) {
+        const tras = this._trasElTiro(t);
+        if (tras) lista.push({ corre_id: t.corre_id, trazo: tras, inicio_ms: desfase + m.fin_ms, duracion_ms: TRAS_EL_TIRO_MS });
+      }
+    }
+    return lista;
+  }
+
+  /** El viaje del balón después de un tiro: del aro a donde cae. */
+  _trasElTiro(t) {
+    const fin = t.trazo[t.trazo.length - 1];
+    const cae = trasElTiro({ pista: this.lienzo.vista.pistaKey, canasta: this.canasta, desde: t.trazo[0], desenlace: t.desenlace });
+    return cae ? [{ x: fin.x, y: fin.y, tipo_nodo: 'lineal' }, { x: cae.x, y: cae.y, tipo_nodo: 'lineal' }] : null;
+  }
+
+  /** La pista y la canasta con las que se calcula dónde acaba cada cosa. */
+  _opcionesFase() { return { pista: this.lienzo.vista.pistaKey, canasta: this.canasta }; }
 
   /**
    * Adelanta o retrasa un tramo dentro de su fase (§2.5), y lo marca
@@ -661,7 +681,7 @@ export class Tablero {
       this.fases = [...this.fases, {
         ...nuevaFase(`f${this.fases.length + 1}`),
         tramos: [],
-        entrada: posicionesFinales(fase, this.entrada),
+        entrada: posicionesFinales(fase, this.entrada, this._opcionesFase()),
       }];
     }
     this.irAFase(this.iFase + 1);
@@ -680,7 +700,7 @@ export class Tablero {
     this.repaso.parar();
     this.iFase = n;
     const { fase } = this.faseEnCurso();
-    const finales = posicionesFinales(fase, this.entrada);
+    const finales = posicionesFinales(fase, this.entrada, this._opcionesFase());
     /* Y de quién es cada balón AL ACABAR ESA FASE, repasando lo dibujado
        desde el principio: el modelo solo sabe de quién es ahora, que es
        lo último que se dibujó, y al volver a una fase anterior eso ya no
@@ -709,7 +729,7 @@ export class Tablero {
     if (this.iFase >= this.fases.length - 1) return;
     const pista = this.lienzo.vista.pistaKey;
     const conCarriles = this.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) }));
-    const r = recalcular(conCarriles, this.fases[0].entrada, pista);
+    const r = recalcular(conCarriles, this.fases[0].entrada, pista, { canasta: this.canasta });
     this.fases = this.fases.map((f, i) => (i <= this.iFase ? f : {
       ...f,
       entrada: r.entradas[i] || f.entrada,
@@ -728,6 +748,7 @@ export class Tablero {
   /** Cierra lo que haya abierto y guarda. Es lo que hace «tocar
    *  fuera» y lo que hace `Esc`. */
   cerrar() {
+    this._cerrarDesenlace();
     this.anillo.cerrar();
     this.dibujo.cancelar();
     this.nodos.soltar();
@@ -758,14 +779,14 @@ export class Tablero {
   }
 
   _abrirAnillo(elemento, en, {
-    opciones = null, nivel = 'interior', centro = null, accion = null, conMas = null,
+    opciones = null, nivel = 'interior', centro = null, accion = null, conMas = null, variante = null,
   } = {}) {
     const estado = estadoDe(this.estadoDe(elemento));
     const lista = opciones || anilloDe(estado);
     const [cx, cy] = this.lienzo.vista.toPx(en.x, en.y);
     this._ancla = { elemento, en, estado };
     this.anillo.abrir({
-      cx, cy, opciones: lista, nivel, centro, accion,
+      cx, cy, opciones: lista, nivel, centro, accion, variante,
       conMas: conMas === null ? resto(estado).length > 0 : conMas,
     });
     /* Y el foco vuelve al lienzo, como hacen Dibujo y Nodos al entrar.
@@ -776,7 +797,7 @@ export class Tablero {
     this._pintarAyuda();
   }
 
-  _elegir(slug, { variante = null, opcion = null } = {}) {
+  _elegir(slug, { variante = null, opcion = null, desenlace = null } = {}) {
     const { elemento, en, estado } = this._ancla || {};
     if (!elemento) return;
 
@@ -829,12 +850,27 @@ export class Tablero {
       return;
     }
 
+    const pide = necesita(accion);
+    /* UN TIRO PREGUNTA SI ENTRA O FALLA (§4.4), con dos botones grandes
+       junto al aro: es lo que decide dónde acaba el balón. Va después del
+       «cómo» y antes de dibujar nada. */
+    if (pide.desenlace && !desenlace) {
+      const aro = posicionesDe(this.lienzo.vista.pistaKey, this.canasta)?.aro;
+      this._abrirAnillo(elemento, aro ? { x: aro[0], y: aro[1] } : en, {
+        opciones: [
+          { slug: 'entra', nombre: 'Entra', icono: '✓', descripcion: 'Entra: el balón cae bajo el aro' },
+          { slug: 'falla', nombre: 'Falla', icono: '✗', descripcion: 'Falla: el balón rebota y queda suelto' },
+        ],
+        nivel: 'desenlace', centro: `${accion.nombre}: ¿entra?`, accion: slug, variante, conMas: false,
+      });
+      return;
+    }
+
     this.anillo.cerrar();
 
-    /* Lo que pide algo que esta capa no sabe preguntar —el desenlace de
-       un tiro, el compañero de un bloqueo— se declara y se para aquí. */
-    const pide = necesita(accion);
-    if (pide.desenlace || pide.companero) { this.onSinSoporte?.(accion); this._pintarAyuda(); return; }
+    /* Lo que esta capa todavía no sabe preguntar —el compañero de un
+       bloqueo— se declara y se para aquí. */
+    if (pide.companero) { this.onSinSoporte?.(accion); this._pintarAyuda(); return; }
 
     /* LO QUE YA SABE A DÓNDE VA, NO SE PREGUNTA. «Entra» va al aro y
        «recoge» va a por el balón suelto: el catálogo lo dice, así que se
@@ -858,6 +894,7 @@ export class Tablero {
            llegar —para no taparlo— y a esa distancia el acierto ya no
            lo alcanza. */
         balon: d.balon || null,
+        desenlace,
       });
       return;
     }
@@ -895,7 +932,7 @@ export class Tablero {
    * «conBalón» la próxima vez que se la toque. Si termina en el suelo,
    * es un pase a un sitio y el balón se queda ahí.
    */
-  _trazoHecho({ elemento, accion, variante, trazo, tipo, balon = null }) {
+  _trazoHecho({ elemento, accion, variante, trazo, tipo, balon = null, desenlace = null }) {
     const fin = trazo[trazo.length - 1];
     const ritmo = ritmoDe(accion);
     const pista = this.lienzo.vista.pistaKey;
@@ -903,7 +940,9 @@ export class Tablero {
        jugador, a por él. Metido en el mismo saco que el pase, la ficha
        se quedaba quieta y lo que se movía era el balón —al revés de lo
        que dice la acción. */
-    const recogiendo = (accion.parametros && accion.parametros.modo) === 'recoge';
+    const modo = accion.parametros && accion.parametros.modo;
+    const recogiendo = modo === 'recoge';
+    const tirando = modo === 'tiro';
     const vuelaElBalon = accion.familia === 'balon' && !recogiendo;
 
     let lista = this.fichas.elementos;
@@ -914,11 +953,19 @@ export class Tablero {
       const balon = lista.find((e) => e.kind === 'balon' && e.portador_id === elemento.id);
       if (balon) {
         corre = balon;
-        receptor = acierto(lista, fin, { pista, excluir: [elemento.id, balon.id] });
-        if (receptor && receptor.kind !== 'jugador') receptor = null;
-        lista = receptor
-          ? asignarBalon(soltarBalon(lista, balon.id), balon.id, receptor.id, pista)
-          : mover(soltarBalon(lista, balon.id), { [balon.id]: { x: fin.x, y: fin.y } });
+        if (tirando) {
+          /* UN TIRO NO TIENE RECEPTOR: va al aro. Buscándolo en la punta,
+             un jugador debajo del aro convertía el tiro en un pase. El
+             balón acaba donde lo deja el desenlace, suelto (§4.4). */
+          const cae = trasElTiro({ pista, canasta: this.canasta, desde: trazo[0], desenlace });
+          lista = mover(soltarBalon(lista, balon.id), { [balon.id]: cae || { x: fin.x, y: fin.y } });
+        } else {
+          receptor = acierto(lista, fin, { pista, excluir: [elemento.id, balon.id] });
+          if (receptor && receptor.kind !== 'jugador') receptor = null;
+          lista = receptor
+            ? asignarBalon(soltarBalon(lista, balon.id), balon.id, receptor.id, pista)
+            : mover(soltarBalon(lista, balon.id), { [balon.id]: { x: fin.x, y: fin.y } });
+        }
       }
     } else {
       lista = mover(lista, { [elemento.id]: { x: fin.x, y: fin.y } });
@@ -927,7 +974,7 @@ export class Tablero {
       if (recogiendo && balon) lista = asignarBalon(lista, balon, elemento.id, pista);
     }
 
-    this.tramos = [...this.tramos, {
+    const nuevo = {
       id: `tr${siguiente++}`,
       elemento_id: elemento.id,
       corre_id: corre.id,
@@ -947,13 +994,26 @@ export class Tablero {
       accion: accion.slug,
       variante,
       trazo, tipo, ritmo,
-    }];
+      // si entra o falla: solo los tiros, y es lo que dice dónde cae el balón
+      ...(tirando ? { desenlace: desenlace === 'falla' ? 'falla' : 'entra' } : {}),
+    };
+    this.tramos = [...this.tramos, nuevo];
     this._enCurso = null;
 
     /* Ya está todo en su sitio final (§5.4); el repaso solo pinta por el
        camino a quien viaja, mientras dura. */
     this.fichas._cambio(lista);
-    this.repaso.reproducir({ elemento: corre, trazo, ritmo });
+    if (tirando && corre !== elemento) {
+      /* Un tiro se repasa entero: al aro, y el balón hasta donde cae. */
+      const d = duracionRepaso(trazo, pista, ritmo) * 1000;
+      const tras = this._trasElTiro(nuevo);
+      this.repaso.reproducirFase({ tramos: [
+        { corre_id: corre.id, trazo, inicio_ms: 0, duracion_ms: d },
+        ...(tras ? [{ corre_id: corre.id, trazo: tras, inicio_ms: d, duracion_ms: TRAS_EL_TIRO_MS / VELOCIDAD_REPASO }] : []),
+      ] });
+    } else {
+      this.repaso.reproducir({ elemento: corre, trazo, ritmo });
+    }
 
     this._recalcularSiguientes();
     this.onTramos?.(this.tramos);
@@ -999,6 +1059,7 @@ export class Tablero {
          el trazo. Sin excluirlo, el último nodo se imanta a sí mismo. */
       excluir: [tramo.corre_id],
     });
+    if (esTiro(tramo)) this._abrirDesenlace(tramo); else this._cerrarDesenlace();
     this._pintarAyuda();
   }
 
@@ -1022,7 +1083,11 @@ export class Tablero {
          el balón, arrastrar la punta a otro sitio dejaba la flecha
          apuntando a uno y el balón en poder de otro: el anillo le
          ofrecía tirar a quien ya no lo tenía. */
-      if (mio.corre_id !== mio.elemento_id) {
+      if (esTiro(mio)) {
+        /* Un tiro corregido deja el balón donde cae, no en su punta. */
+        const cae = trasElTiro({ pista, canasta: this.canasta, desde: trazo[0], desenlace: mio.desenlace });
+        lista = mover(soltarBalon(this.fichas.elementos, mio.corre_id), { [mio.corre_id]: cae || { x: fin.x, y: fin.y } });
+      } else if (mio.corre_id !== mio.elemento_id) {
         const balon = lista.find((e) => e.id === mio.corre_id);
         let receptor = acierto(lista, fin, { pista, excluir: [mio.elemento_id, mio.corre_id] });
         if (receptor && receptor.kind !== 'jugador') receptor = null;
@@ -1038,11 +1103,76 @@ export class Tablero {
     this.onTramos?.(this.tramos);
   }
 
+  /* ---- el desenlace de un tiro ------------------------------ */
+
+  /**
+   * Cambia si un tiro entra o falla, sin borrarlo. Si es lo último que le
+   * pasa a ese balón en la fase, el balón se va a su sitio nuevo; y las
+   * fases de después se recalculan desde ahí.
+   */
+  cambiarDesenlace(id, desenlace) {
+    if (desenlace !== 'entra' && desenlace !== 'falla') return false;
+    const t = this.tramos.find((x) => x.id === id);
+    if (!t || !esTiro(t) || t.desenlace === desenlace) return false;
+    this.tramos = this.tramos.map((x) => (x.id === id ? { ...x, desenlace } : x));
+    const actual = this.tramos.find((x) => x.id === id);
+    if (this._editando && this._editando.id === id) this._editando = actual;
+    const ultimo = [...this.tramos].reverse().find((x) => x.corre_id === t.corre_id);
+    if (ultimo && ultimo.id === id) {
+      const cae = trasElTiro({ pista: this.lienzo.vista.pistaKey, canasta: this.canasta, desde: t.trazo[0], desenlace });
+      if (cae) this.fichas._cambio(mover(this.fichas.elementos, { [t.corre_id]: cae }));
+    }
+    this._recalcularSiguientes();
+    this.onTramos?.(this.tramos);
+    if (this._desenlace && this._desenlace.id === id) this._abrirDesenlace(actual);
+    this.lienzo.pintar();
+    return true;
+  }
+
+  /* Dos botones junto al aro mientras se corrige un tiro. Sin velo: la
+     pista sigue siendo de los nodos, y esto solo añade dos pulsadores. */
+  _abrirDesenlace(tramo) {
+    this._cerrarDesenlace();
+    const capa = h('div', { class: 'pz-nodo pz-desenlace' });
+    const boton = (valor, texto) => {
+      const b = h('button', {
+        class: 'pz-nodo__b' + (tramo.desenlace === valor ? ' is-activo' : ''),
+        type: 'button',
+        title: valor === 'entra' ? 'El tiro entra' : 'El tiro falla',
+        'aria-pressed': tramo.desenlace === valor ? 'true' : 'false',
+      }, texto);
+      b.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+      b.addEventListener('click', (ev) => { ev.stopPropagation(); this.cambiarDesenlace(tramo.id, valor); });
+      return b;
+    };
+    capa.append(h('div', { class: 'pz-nodo__caja' }, boton('entra', '✓ Entra'), boton('falla', '✗ Falla')));
+    this.lienzo.el.append(capa);
+    this._desenlace = { capa, id: tramo.id };
+    this._colocarDesenlace(this.lienzo.vista);
+  }
+
+  _cerrarDesenlace() {
+    this._desenlace?.capa.remove();
+    this._desenlace = null;
+  }
+
+  _colocarDesenlace(vista) {
+    if (!this._desenlace || !vista || !vista.vw) return;
+    const aro = posicionesDe(vista.pistaKey, this.canasta)?.aro;
+    if (!aro) return;
+    const [px, py] = vista.toPx(aro[0], aro[1]);
+    const caja = this._desenlace.capa.firstChild;
+    // debajo del aro, que es donde queda sitio; recortado al lienzo
+    const limitar = (v, min, max) => (v < min ? min : v > max ? max : v);
+    caja.style.left = `${limitar(px, 90, Math.max(90, vista.vw - 90))}px`;
+    caja.style.top = `${limitar(py + 56, 30, Math.max(30, vista.vh - 30))}px`;
+  }
+
   /* ---- la barra de arriba ------------------------------------ */
 
   ayuda() {
     if (this.dibujo.dibujando) return this.dibujo.ayuda();
-    if (this.nodos.editando) return this.nodos.ayuda();
+    if (this.nodos.editando) return (this._desenlace ? '<b>Entra</b> o <b>Falla</b>, junto al aro, cambia el tiro · ' : '') + this.nodos.ayuda();
     if (this.anillo.abierto) return 'Elige qué hace esta ficha · pincha en la pista para saltarte el «cómo» · <b>Esc</b> cierra';
     if (this.fichas.seleccion.size) return 'Arrástrala para colocarla · tócala para ver qué puede hacer · <b>Supr</b> la quita · <b>Mayús</b> la pega a un sitio de la pista';
     return 'Arrastra una ficha del panel a la pista, o toca una de la pista para ver lo que puede hacer · pincha un trazo para corregirlo';
@@ -1097,6 +1227,8 @@ export class Tablero {
     this._quitarCapa?.();
     this._quitarCapaFantasma?.();
     this._quitarCapaAnillo?.();
+    this._quitarCapaDesenlace?.();
+    this._cerrarDesenlace();
     this.repaso.destroy();
     this.nodos.destroy();
     this.dibujo.destroy();

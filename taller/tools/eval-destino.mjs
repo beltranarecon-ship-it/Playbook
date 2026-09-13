@@ -12,7 +12,8 @@
    hasta que se proyecta en el pabellón.
    ============================================================ */
 
-import { tieneDestinoPropio, destinoDe, METROS_FINALIZACION, METROS_RECOGIDA } from '../js/pizarra/destino.js';
+import { tieneDestinoPropio, destinoDe, METROS_FINALIZACION, METROS_RECOGIDA, trasElTiro, METROS_REBOTE, METROS_CAIDA } from '../js/pizarra/destino.js';
+import { limitesCancha } from '../js/canvas/medidas.js';
 import { CATALOGO_SISTEMA } from '../js/ia/acciones.js';
 import { posicionesDe } from '../js/canvas/anclas.js';
 import { metrosEntre } from '../js/canvas/escala.js';
@@ -140,6 +141,53 @@ test('entradas imposibles no rompen nada', () => {
   ok(destinoDe(de('entra'), { id: 'x', kind: 'jugador' }, {}).motivo, 'sin coordenadas:');
   eq(tieneDestinoPropio(null), false);
   eq(tieneDestinoPropio({}), false);
+});
+
+/* ── 4. Después del tiro ─────────────────────────────────── */
+
+const aroDe = (pista, canasta) => { const a = posicionesDe(pista, canasta).aro; return { x: a[0], y: a[1] }; };
+
+test('UN TIRO QUE FALLA REBOTA A 2,5 M, hacia dentro y al lado CONTRARIO al tirador', () => {
+  const aro = aroDe('entera', 'norte');
+  const izq = trasElTiro({ pista: 'entera', canasta: 'norte', desde: { x: aro.x - 0.25, y: aro.y + 0.2 }, desenlace: 'falla' });
+  aprox(metrosEntre('entera', izq, aro), METROS_REBOTE, 1e-6, 'a qué distancia del aro:');
+  ok(izq.x > aro.x, `tirando desde la izquierda, rebota a la derecha: ${izq.x} frente a ${aro.x}`);
+  ok(izq.y > aro.y, 'y hacia dentro de la pista, no fuera de la línea de fondo');
+  const der = trasElTiro({ pista: 'entera', canasta: 'norte', desde: { x: aro.x + 0.25, y: aro.y + 0.2 }, desenlace: 'falla' });
+  ok(der.x < aro.x, 'desde la derecha, a la izquierda');
+});
+
+test('en la OTRA canasta, dentro es hacia el otro lado', () => {
+  const aro = aroDe('entera', 'sur');
+  const p = trasElTiro({ pista: 'entera', canasta: 'sur', desde: { x: aro.x + 0.25, y: aro.y - 0.2 }, desenlace: 'falla' });
+  aprox(metrosEntre('entera', p, aro), METROS_REBOTE, 1e-6);
+  ok(p.y < aro.y && p.x < aro.x, `hacia dentro y al otro lado: ${JSON.stringify(p)}`);
+});
+
+test('desde el centro rebota recto; y un tiro que ENTRA cae bajo el aro', () => {
+  const aro = aroDe('entera', 'norte');
+  const recto = trasElTiro({ pista: 'entera', canasta: 'norte', desde: { x: aro.x, y: aro.y + 0.3 }, desenlace: 'falla' });
+  aprox(recto.x, aro.x, 1e-9, 'sin elegir lado por un centímetro:');
+  const cae = trasElTiro({ pista: 'entera', canasta: 'norte', desde: { x: aro.x - 0.3, y: aro.y + 0.2 }, desenlace: 'entra' });
+  aprox(metrosEntre('entera', cae, aro), METROS_CAIDA, 1e-6, 'bajo el aro:');
+  aprox(cae.x, aro.x, 1e-9, 'justo delante, venga de donde venga:');
+});
+
+test('EN LAS CUATRO PISTAS Y LAS DOS CANASTAS, el balón queda dentro de la cancha', () => {
+  for (const pista of ['entera', 'media', 'entera_fiba', 'media_fiba']) {
+    for (const canasta of ['norte', 'sur']) {
+      const aro = aroDe(pista, canasta);
+      const lim = limitesCancha(pista);
+      for (const desenlace of ['entra', 'falla']) {
+        for (const desde of [{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }, { x: aro.x, y: aro.y }]) {
+          const p = trasElTiro({ pista, canasta, desde, desenlace });
+          ok(p && p.x >= lim.x[0] && p.x <= lim.x[1] && p.y >= lim.y[0] && p.y <= lim.y[1],
+            `${pista} ${canasta} ${desenlace}: fuera de la cancha ${JSON.stringify(p)}`);
+        }
+      }
+    }
+  }
+  ok(trasElTiro({ pista: 'no_existe', desenlace: 'falla' }) === null, 'sin aro conocido, null');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

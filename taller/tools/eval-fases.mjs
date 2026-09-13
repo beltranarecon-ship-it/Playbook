@@ -27,8 +27,9 @@ import {
   nuevaFase, carrilesDesde, tramosDe,
   duracionDeTramo, tiemposDe, duracionDeCarril, posicionesFinales,
   reanclarFase, recalcular, posesionAlFinal,
-  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas,
+  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS,
 } from '../js/pizarra/fases.js';
+import { trasElTiro } from '../js/pizarra/destino.js';
 import { duracionDe, longitudMetros, nuevoTrazo } from '../js/pizarra/trazo.js';
 
 let pasan = 0, fallan = 0;
@@ -556,6 +557,41 @@ test('quitar no toca lo que recibe ni los tramos, y sin nada que quitar devuelve
   ok('A1' in f[0].entrada, 'ha tocado la original');
   eq(r[0].tramos.length, 2, 'los tramos son decisión de quien quita:');
   ok(sinFichas(f, []) === f, 'sin nada que quitar, la misma jugada');
+});
+
+/* ── Los tiros ───────────────────────────────────────────── */
+
+const tiro = (de, desde, hasta, desenlace, extra = {}) => ({ ...tramo(de, desde, hasta, { corre_id: 'b1', accion: 'tira', ritmo: 'tiro', ...extra }), desenlace });
+
+test('ES TIRO LO QUE SABE SI ENTRA O FALLA, se llame como se llame', () => {
+  ok(esTiro(tiro('A1', P(0.3, 0.5), P(0.5, 0.1), 'falla')), 'un tiro');
+  ok(esTiro({ accion: 'tiro_del_club', desenlace: 'entra' }), 'una acción de tiro del club');
+  ok(!esTiro(tramo('A1', P(0.3, 0.5), P(0.5, 0.1), { accion: 'tira' })), 'sin desenlace no se da por tiro');
+  ok(!esTiro(null), 'nada');
+});
+
+test('UN TIRO TARDA 0,9 S HASTA EL ARO, y la fase dura hasta que cae el balón', () => {
+  const t = tiro('A1', P(0.3, 0.5), P(0.5, 0.1), 'falla');
+  const r = tiemposDe(conCarriles([t]), { pista: 'entera' });
+  eq(r.tramos[t.id].duracion_ms, 900, 'venga de donde venga:');
+  eq(r.duracion_ms, 900 + TRAS_EL_TIRO_MS, 'la fase:');
+});
+
+test('QUIEN VA AL REBOTE ESPERA A QUE CAIGA, no a que el balón llegue al aro', () => {
+  const t = tiro('A1', P(0.3, 0.5), P(0.5, 0.1), 'falla');
+  const rec = tramo('A2', P(0.7, 0.5), P(0.55, 0.2), { accion: 'recoge', balon_id: 'b1' });
+  const r = tiemposDe(conCarriles([t, rec]), { pista: 'entera' });
+  eq(r.tramos[rec.id].inicio_ms, r.tramos[t.id].fin_ms + TRAS_EL_TIRO_MS);
+});
+
+test('AL ACABAR LA FASE EL BALÓN ESTÁ DONDE CAE, sabiendo la pista y la canasta', () => {
+  const t = tiro('A1', P(0.3, 0.5), P(0.5, 0.1), 'falla');
+  const entrada = { A1: P(0.3, 0.5), b1: P(0.32, 0.5) };
+  const esperado = trasElTiro({ pista: 'entera', canasta: 'norte', desde: P(0.3, 0.5), desenlace: 'falla' });
+  eq(posicionesFinales(conCarriles([t]), entrada, { pista: 'entera', canasta: 'norte' }).b1, esperado, 'con pista:');
+  eq(posicionesFinales(conCarriles([t]), entrada).b1, P(0.5, 0.1), 'sin ella, en la punta como antes:');
+  const rc = recalcular([conCarriles([t]), conCarriles([])], entrada, 'entera', { canasta: 'norte' });
+  eq(rc.entradas[1].b1, esperado, 'y la fase siguiente empieza con el balón ahí:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

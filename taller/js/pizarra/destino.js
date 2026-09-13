@@ -30,7 +30,8 @@
    ============================================================ */
 
 import { posicionesDe } from '../canvas/anclas.js';
-import { puntoADistanciaDe, metrosEntre } from '../canvas/escala.js';
+import { puntoADistanciaDe, metrosEntre, escalaDe } from '../canvas/escala.js';
+import { limitesCancha } from '../canvas/medidas.js';
 import { FAMILIAS } from '../ia/acciones.js';
 
 /** A cuánto del aro se para quien acaba «pegado», en metros. Del
@@ -38,6 +39,11 @@ import { FAMILIAS } from '../ia/acciones.js';
 export const METROS_FINALIZACION = FAMILIAS.desplazamiento.parametros.separacion.porDefecto;
 /** Y a cuánto del balón se para quien va a recogerlo. */
 export const METROS_RECOGIDA = FAMILIAS.balon.parametros.separacion.porDefecto;
+
+/** A cuánto del aro rebota un tiro que falla, en metros. */
+export const METROS_REBOTE = 2.5;
+/** Y cuánto por delante del aro cae uno que entra. */
+export const METROS_CAIDA = 0.6;
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const punto = (p) => ({ x: clamp01(p.x), y: clamp01(p.y) });
@@ -74,6 +80,58 @@ export function destinoDe(accion, elemento, {
     return { motivo: 'todavía no hay filas en la pista' };
   }
   return { motivo: 'esta acción no tiene un destino propio' };
+}
+
+/**
+ * Dónde queda el balón SUELTO después de un tiro (§4.4).
+ *
+ *   falla  rebota a METROS_REBOTE del aro, hacia dentro de la pista y
+ *          hacia el lado CONTRARIO al del tirador (desde la izquierda,
+ *          sale por la derecha); desde el centro, recto hacia fuera.
+ *   entra  cae bajo el aro, METROS_CAIDA hacia dentro de la pista.
+ *
+ * Es un cálculo y no un dato guardado: si el tirador se mueve en una
+ * fase anterior, el rebote cambia con él. Todo se mide en METROS —los
+ * dos ejes no escalan igual— y se recorta dentro de la cancha.
+ *
+ * @param desde  de dónde sale el tiro (el primer nodo de su trazo)
+ * @returns { x, y } o null si la pista no tiene aro conocido
+ */
+export function trasElTiro({ pista = 'entera', canasta = 'norte', desde = null, desenlace = 'entra' } = {}) {
+  const pos = posicionesDe(pista, canasta);
+  if (!pos || !pos.aro) return null;
+  const aro = { x: pos.aro[0], y: pos.aro[1] };
+  const e = escalaDe(pista);
+  const lim = limitesCancha(pista);
+
+  /* HACIA DENTRO DE LA PISTA es el eje largo, del aro hacia el centro de
+     la cancha: así vale igual en vertical y en horizontal, y para las
+     dos canastas. Lo de al lado es el eje perpendicular. */
+  const cx = ((lim.x[0] + lim.x[1]) / 2 - aro.x) * e.x;
+  const cy = ((lim.y[0] + lim.y[1]) / 2 - aro.y) * e.y;
+  const dentro = Math.abs(cx) >= Math.abs(cy) ? { x: Math.sign(cx) || 1, y: 0 } : { x: 0, y: Math.sign(cy) || 1 };
+  const lado = { x: dentro.y, y: dentro.x };
+
+  let dir = dentro;
+  let metros = METROS_CAIDA;
+  if (desenlace === 'falla') {
+    metros = METROS_REBOTE;
+    const d = desde && Number.isFinite(desde.x) ? { x: (desde.x - aro.x) * e.x, y: (desde.y - aro.y) * e.y } : { x: 0, y: 0 };
+    const deLado = d.x * lado.x + d.y * lado.y;
+    /* Medio metro de margen: un tiro casi centrado no elige lado por un
+       centímetro, sale recto. */
+    const signo = deLado > 0.5 ? -1 : deLado < -0.5 ? 1 : 0;
+    const v = { x: dentro.x + lado.x * signo, y: dentro.y + lado.y * signo };
+    const largo = Math.hypot(v.x, v.y) || 1;
+    dir = { x: v.x / largo, y: v.y / largo };
+  }
+
+  const margen = 0.3;
+  const dentroDe = (v, [a, b], escala) => Math.min(b - margen / escala, Math.max(a + margen / escala, v));
+  return {
+    x: dentroDe(aro.x + (dir.x * metros) / e.x, lim.x, e.x),
+    y: dentroDe(aro.y + (dir.y * metros) / e.y, lim.y, e.y),
+  };
 }
 
 /**

@@ -24,6 +24,9 @@
    ============================================================ */
 
 import { VERSION_JUGADA } from './compilar.js';
+import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
+
+const DE_TIRO = new Set(CATALOGO_SISTEMA.filter((a) => a.parametros && a.parametros.modo === 'tiro').map((a) => a.slug));
 
 const finito = (v) => Number.isFinite(v);
 const nodoBueno = (n) => !!n && finito(n.x) && finito(n.y);
@@ -97,7 +100,14 @@ export function normalizarJugada(bruta) {
         if (!ids.has(t.elemento_id)) avisos.push(`Fase ${i + 1}: un tramo de «${t.accion}» se ha quedado sin protagonista.`);
         const n = /(\d+)$/.exec(String(t.id));
         if (n) mayor = Math.max(mayor, Number(n[1]));
-        tramos.push({ ...t, trazo: t.trazo.map((x) => ({ ...x })) });
+        /* Un tiro sabe si entra o falla (§4.4). Guardado sin eso, se abre
+           como «entra» y se dice: es lo que se veía, con el balón en el aro. */
+        const extra = {};
+        if (DE_TIRO.has(t.accion) && t.desenlace !== 'entra' && t.desenlace !== 'falla') {
+          extra.desenlace = 'entra';
+          avisos.push(`Fase ${i + 1}: un tiro guardado sin desenlace se abre como «entra».`);
+        }
+        tramos.push({ ...t, ...extra, trazo: t.trazo.map((x) => ({ ...x })) });
       }
       let id = f.id || `f${i + 1}`;
       if (deFase.has(id)) id = `f${i + 1}_${deFase.size}`;

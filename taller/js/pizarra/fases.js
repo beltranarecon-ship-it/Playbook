@@ -43,11 +43,20 @@
    ============================================================ */
 
 import { duracionDe, longitudMetros, reanclar } from './trazo.js';
+import { trasElTiro } from './destino.js';
 
 /** Ningún tramo dura menos que esto: un movimiento de dos palmos
  *  seguiría siendo un movimiento, y con duración cero el motor tendría
  *  que dividir por cero para repartir el recorrido. */
 export const MINIMO_TRAMO_MS = 120;
+
+/** Lo que tarda el balón en caer o rebotar después de llegar al aro
+ *  (§6.2: «más 0,3 s de vuelo»). */
+export const TRAS_EL_TIRO_MS = 300;
+
+/** ¿Es un tiro? Se lee del DATO —el tramo sabe si entra o falla—, no del
+ *  nombre de la acción: una acción de tiro del club vale igual. */
+export const esTiro = (t) => !!t && (t.desenlace === 'entra' || t.desenlace === 'falla');
 
 /** Los arranques del §6.3 que todavía no se pueden calcular, con su
  *  motivo. Verlos declarados enseña el plan; que falten sin más los
@@ -186,6 +195,7 @@ export function tiemposDe(fase, { pista = 'entera' } = {}) {
   const avisos = [];
 
   const dur = new Map(todos.map((t) => [t.id, duracionDeTramo(t, pista)]));
+  const porId = new Map(todos.map((t) => [t.id, t]));
   const inicio = new Map();
   const fin = new Map();
 
@@ -205,9 +215,12 @@ export function tiemposDe(fase, { pista = 'entera' } = {}) {
       const previo = anterior.get(t.id);
       const esperado = espera.get(t.id);
       if ((previo && !fin.has(previo)) || (esperado && !fin.has(esperado))) { siguen.push(t); continue; }
+      /* Lo que espera a un TIRO espera además a que caiga el balón: nadie
+         recoge un rebote que todavía está en el aro. */
+      const trasEsperado = esperado && esTiro(porId.get(esperado)) ? TRAS_EL_TIRO_MS : 0;
       const desde = Math.max(
         previo ? fin.get(previo) : 0,
-        esperado ? fin.get(esperado) : 0,
+        esperado ? fin.get(esperado) + trasEsperado : 0,
       );
       const i = (t.manual && Number.isFinite(t.inicio_ms)) ? t.inicio_ms : desde;
       inicio.set(t.id, i);
@@ -232,7 +245,8 @@ export function tiemposDe(fase, { pista = 'entera' } = {}) {
   for (const t of todos) {
     tramos[t.id] = { inicio_ms: inicio.get(t.id) || 0, duracion_ms: dur.get(t.id), fin_ms: fin.get(t.id) || 0 };
   }
-  const calculada = todos.length ? Math.max(...todos.map((t) => tramos[t.id].fin_ms)) : 0;
+  /* Y la fase no acaba mientras el balón de un tiro siga en el aire. */
+  const calculada = todos.length ? Math.max(...todos.map((t) => tramos[t.id].fin_ms + (esTiro(t) ? TRAS_EL_TIRO_MS : 0))) : 0;
   return {
     tramos,
     /* La fase dura lo que el carril más largo, salvo que se le haya
@@ -299,7 +313,7 @@ export function reanclarFase(fase, entrada = {}, pista = 'entera') {
  * @param entrada  dónde está cada ficha al empezar la PRIMERA
  * @returns { fases, entradas, huerfanos }
  */
-export function recalcular(fases, entrada = {}, pista = 'entera') {
+export function recalcular(fases, entrada = {}, pista = 'entera', { canasta = 'norte' } = {}) {
   const salida = [];
   const entradas = [];
   const huerfanos = [];
@@ -311,7 +325,7 @@ export function recalcular(fases, entrada = {}, pista = 'entera') {
       for (const t of c.tramos) if (t.huerfano) huerfanos.push({ fase: reanclada.id, tramo: t.id, elemento: c.elemento });
     }
     salida.push(reanclada);
-    actual = posicionesFinales(reanclada, actual);
+    actual = posicionesFinales(reanclada, actual, { pista, canasta });
   }
   return { fases: salida, entradas, huerfanos };
 }
@@ -326,7 +340,7 @@ export function recalcular(fases, entrada = {}, pista = 'entera') {
  * partir de las posiciones de entrada y no de los carriles, que solo
  * hablan de quien hace algo.
  */
-export function posicionesFinales(fase, entrada = {}) {
+export function posicionesFinales(fase, entrada = {}, { pista = null, canasta = 'norte' } = {}) {
   const salida = { ...entrada };
   /* EN EL ORDEN EN QUE OCURREN, no carril a carril. Un mismo balón pasa
      por varios carriles —lo pasa A1 y lo tira A2—, y recorriéndolos por
@@ -345,6 +359,13 @@ export function posicionesFinales(fase, entrada = {}) {
     /* Se mueve QUIEN RECORRE el trazo. En un pase eso es el balón, y
        el que pasa se queda donde estaba. */
     salida[t.corre_id || t.elemento_id] = { x: fin.x, y: fin.y };
+    /* Un tiro deja el balón donde cae, no en el aro. Hace falta saber la
+       pista y la canasta; sin ellas se queda en la punta del trazo, como
+       antes. */
+    if (esTiro(t) && pista) {
+      const cae = trasElTiro({ pista, canasta, desde: t.trazo[0], desenlace: t.desenlace });
+      if (cae) salida[t.corre_id] = cae;
+    }
   }
   return salida;
 }

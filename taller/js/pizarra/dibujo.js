@@ -60,7 +60,11 @@ export function ritmoDe(accion) {
   /* Lo que viaja en un pase o un tiro es el balón, y va a su ritmo. En
      «recoge» NO: quien va es el jugador, corriendo. Con la familia a secas,
      el que iba a por un rebote corría a 9 m/s. */
-  if (accion.familia === 'balon' && (accion.parametros && accion.parametros.modo) !== 'recoge') return 'pase';
+  const modo = accion.parametros && accion.parametros.modo;
+  /* Un tiro tampoco va a ritmo de pase: tarda lo que tarda en llegar al
+     aro, y eso no depende de la distancia (§6.2). */
+  if (accion.familia === 'balon' && modo === 'tiro') return 'tiro';
+  if (accion.familia === 'balon' && modo !== 'recoge') return 'pase';
   const r = accion.parametros && accion.parametros.ritmo;
   return RITMOS[r] ? r : 'normal';
 }

@@ -317,14 +317,16 @@ export function guionDeAnimacion(anim) {
       const salida = nodoIni(t.path);
       // pegado al aro no es un tiro, es una entrada: "tira desde el aro"
       // no lo dice ningún entrenador.
+      // lo que ha pasado, si se sabe: lo guardado de antes no lo dice
+      const final = t.desenlace === 'entra' ? ' y anota' : t.desenlace === 'falla' ? ' y falla' : '';
       if (esFinalizacion(pista, canasta, salida)) {
-        lineas.push(r ? `${txt(r)} entra a canasta` : 'entrada a canasta');
+        lineas.push((r ? `${txt(r)} entra a canasta` : 'entrada a canasta') + final);
         continue;
       }
       const desde = zonaDe(pista, canasta, salida);
-      lineas.push(r
+      lineas.push((r
         ? `${txt(r)} tira${desde ? ` desde ${desde}` : ' a canasta'}`
-        : `tiro a canasta${desde ? ` desde ${desde}` : ''}`);
+        : `tiro a canasta${desde ? ` desde ${desde}` : ''}`) + final);
     }
 
     // 5) recogidas: el rebote. Va al final porque cierra la acción — y

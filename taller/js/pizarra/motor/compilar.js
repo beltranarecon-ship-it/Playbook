@@ -34,14 +34,15 @@
    `animacionDesdeBoard` al guardar sin fases.
 
    ── LO QUE TODAVÍA NO SE COMPILA, DECLARADO ─────────────────
-   Tiros, bloqueos, defensa, filas, puertas y zonas no los produce aún
-   la Pizarra (capas 4-6). Si llegara alguno, no se inventa: sale un
-   aviso en `warnings` y se sigue con lo demás.
+   Bloqueos, defensa, filas, puertas y zonas no los produce aún la
+   Pizarra (capas 5-6). Si llegara alguno, no se inventa: sale un aviso
+   en `warnings` y se sigue con lo demás.
    ============================================================ */
 
 import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
 import { MOTOR_PIZARRA } from './marca.js';
-import { carrilesDesde, tiemposDe } from '../fases.js';
+import { carrilesDesde, tiemposDe, esTiro, TRAS_EL_TIRO_MS } from '../fases.js';
+import { trasElTiro } from '../destino.js';
 
 export const VERSION_JUGADA = 3;
 
@@ -142,6 +143,7 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
 
   const movimientos = [];
   const pases = [];
+  const tiros = [];
   const recogidas = [];
   const acciones = [];
   const variantes = [];
@@ -218,7 +220,32 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
     }
 
     if (accion.familia === 'balon' && modo === 'tiro') {
-      warnings.push(`Fase ${i + 1}: los tiros todavía no se compilan (capa 4).`);
+      /* El tiro, con su trazo hasta el aro —que es lo que miden el motor y
+         el linter—, y lo que hace el balón DESPUÉS como un viaje aparte:
+         rebota o cae bajo el aro, y queda suelto (§4.4). Así el tiro sigue
+         acabando en el aro para quien lo lea. */
+      const desenlace = esTiro(t) ? t.desenlace : 'entra';
+      tiros.push({
+        id: t.id,
+        jugador_id: de(t.elemento_id),
+        balon_id: t.corre_id,
+        canasta,
+        desenlace,
+        path: t.trazo,
+        ...cuando,
+      });
+      const fin = t.trazo[t.trazo.length - 1];
+      const cae = trasElTiro({ pista, canasta, desde: t.trazo[0], desenlace });
+      if (cae) {
+        movimientos.push({
+          elemento_id: t.corre_id,
+          tipo_elemento: 'balon',
+          tipo_movimiento: desenlace === 'falla' ? 'rebote' : 'caida',
+          path: [{ x: fin.x, y: fin.y, tipo_nodo: 'lineal' }, { x: cae.x, y: cae.y, tipo_nodo: 'lineal' }],
+          inicio_ms: m.inicio_ms + m.duracion_ms,
+          duracion_ms: TRAS_EL_TIRO_MS,
+        });
+      }
       continue;
     }
     if (accion.familia === 'entre_dos') {
@@ -242,7 +269,7 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
     movimientos,
     pases,
     bloqueos: [],
-    tiros: [],
+    tiros,
     recogidas,
     acciones,
     variantes,

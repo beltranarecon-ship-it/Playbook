@@ -70,7 +70,13 @@ export const PASE_MINIMO_S = 0.25;
  *  —arranques, carriles, la fase que dura lo que el carril más largo—
  *  es de la capa 3; esto es lo justo para poder decirlo mientras se
  *  dibuja. */
+/** Lo que tarda un tiro en llegar al aro, venga de donde venga (§6.2:
+ *  «0,9 s hasta el aro»). No sale de la distancia: un tiro de tres no
+ *  tarda el doble que uno de media distancia, cambia la parábola. */
+export const TIRO_S = 0.9;
+
 export function duracionDe(metros, ritmo = 'normal') {
+  if (ritmo === 'tiro') return TIRO_S;
   if (ritmo === 'pase') return Math.max(PASE_MINIMO_S, metros / VELOCIDAD_PASE);
   const v = RITMOS[ritmo] || RITMOS.normal;
   return metros / v;
