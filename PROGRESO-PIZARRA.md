@@ -16,13 +16,24 @@ node taller/tools/eval-fases.mjs   # y el resto de bancos: todos en verde
 
 ## Dónde estamos
 
+**Decisión del entrenador (2026-09-13): NADA se sube a `main` ni se
+publica hasta que estén acabadas TODAS las capas (1 a 10).** Todo sigue
+en la rama `pizarra-v3`. La 043 ya está aplicada.
+
+**Capa 5, decidido (2026-09-13):** ataca el equipo que tiene el balón al
+empezar y los demás defienden (se puede cambiar en los ajustes); los
+ajustes de la defensa van en la pestaña «Ajustes» del panel derecho,
+solo con lo de la defensa; entran además los tiros con su desenlace y
+el «pincha a quién» con el bloqueo; «romper la regla a propósito»
+(§8.8) NO entra en esta capa.
+
 | Capa | Estado | Último commit |
 |---|---|---|
 | 1 · Lienzo, zoom, gestos, fichas | ✅ cerrada | `57255ed` |
 | 2 · Dibujar: anillo, trazo, nodos, encadenado, repaso | ✅ cerrada | `2db2b91` |
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
-| 4 · El motor | ⏳ en curso — 4.1 a 4.4b hechos en la rama; falta subir a `main` (ver «Siguiente paso») | — |
-| 5 · Defensa | pendiente | — |
+| 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
+| 5 · Defensa | ⏳ en curso: comprensión y preguntas | — |
 | 6 · Conos y elementos | pendiente | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
