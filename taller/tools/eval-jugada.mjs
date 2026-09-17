@@ -55,6 +55,26 @@ test('UNA JUGADA BUENA SE ABRE ENTERA Y SIN AVISOS', () => {
   eq(r.jugada.elementos.length, 3);
   eq(r.jugada.fases.map((f) => f.tramos.length), [1, 1]);
   eq(r.jugada.fases[1].pausa_post_ms, 800, 'lo puesto a mano se conserva:');
+  eq(r.jugada.defensa, { preajuste: 'entre_par_y_aro', parametros: {}, situacion: null, ataca: null },
+    'sin defensa guardada, la de serie, sin avisar:');
+});
+
+test('LA DEFENSA GUARDADA SE CONSERVA, y la rota se arregla diciéndolo', () => {
+  const j = buena();
+  j.defensa = { preajuste: 'presion', parametros: { presion: 0.6 }, situacion: null, ataca: 'nadie' };
+  eq(normalizarJugada(j).jugada.defensa, j.defensa);
+  j.defensa = { preajuste: 'inventada' };
+  const r = normalizarJugada(j);
+  eq(r.jugada.defensa.preajuste, 'entre_par_y_aro');
+  ok(r.avisos.some((a) => /regla de la defensa/.test(a)), `y se dice: ${r.avisos}`);
+});
+
+test('UN DEFENSOR QUE DEFENDÍA A ALGUIEN QUE NO ESTÁ SE EMPAREJA SOLO, y se dice', () => {
+  const j = buena();
+  j.elementos[1] = { ...j.elementos[1], defiende_a: 'jugador_9', regla_defensa: 'zona' };
+  const r = normalizarJugada(j);
+  eq([r.jugada.elementos[1].defiende_a, r.jugada.elementos[1].regla_defensa], [null, null]);
+  ok(r.avisos.some((a) => /ya no está/.test(a)) && r.avisos.some((a) => /regla que no se conoce/.test(a)), `${r.avisos}`);
 });
 
 test('y lo abierto se compila como lo guardado', () => {

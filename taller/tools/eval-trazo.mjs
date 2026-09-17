@@ -25,7 +25,7 @@ import {
   nuevoTrazo, desdePuntos, nodosFijos, moverNodo, insertarEn,
   curvar, enderezar, alternarCurva, esCurvo, borrarNodo,
   longitudMetros, rotulo, duracionDe, suavizar,
-  RADIO_NODO, nodoEn, segmentoEn, reanclar,
+  RADIO_NODO, nodoEn, segmentoEn, reanclar, fraccionMasCercana,
 } from '../js/pizarra/trazo.js';
 import { flattenPath, manejadoresTangentes } from '../js/canvas/geometry.js';
 import { tipoFlecha } from '../js/pizarra/dibujo.js';
@@ -461,6 +461,18 @@ test('entradas imposibles devuelven lo que había', () => {
   eq(reanclar(uno, { x: 0.1, y: 0.1 }), uno);
   const t = desdePuntos([{ x: 0.2, y: 0.2 }, { x: 0.8, y: 0.8 }]);
   eq(reanclar(t, null), t);
+});
+
+test('POR DÓNDE PASA MÁS CERCA: la fracción del recorrido, medida en metros', () => {
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal', handle_in: null, handle_out: null });
+  const recto = [N(0.2, 0.5), N(0.8, 0.5)];
+  ok(Math.abs(fraccionMasCercana(recto, { x: 0.5, y: 0.45 }, 'entera') - 0.5) < 1e-9, 'enfrente de la mitad, la mitad');
+  eq(fraccionMasCercana(recto, { x: 0.1, y: 0.5 }, 'entera'), 0, 'antes de la salida, la salida');
+  eq(fraccionMasCercana(recto, { x: 0.95, y: 0.4 }, 'entera'), 1, 'pasada la llegada, la llegada');
+  const quebrado = [N(0.2, 0.2), N(0.2, 0.8), N(0.5, 0.8)];
+  const f = fraccionMasCercana(quebrado, { x: 0.25, y: 0.8 }, 'entera');
+  ok(f > 0.5 && f < 1, `en el segundo tramo: ${f}`);
+  eq(fraccionMasCercana(null, { x: 0.5, y: 0.5 }), 0, 'sin trazo no rompe');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

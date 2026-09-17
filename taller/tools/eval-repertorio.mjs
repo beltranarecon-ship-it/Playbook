@@ -19,7 +19,7 @@
 import {
   ESTADOS, ANILLO, VARIANTES, estadoDe, anilloDe, resto,
   trasAccion,
-  variantesDe, tieneVariantes, variantePorDefecto, necesita, porQueNoCompanero,
+  variantesDe, tieneVariantes, variantePorDefecto, necesita, porQueNoCompanero, saleEn,
 } from '../js/pizarra/repertorio.js';
 import { CATALOGO_SISTEMA, normalizarNombre } from '../js/ia/acciones.js';
 import { TAGS } from '../js/ia/vocabulario.js';
@@ -105,6 +105,25 @@ test('«⋯ más» ofrece lo que no cabe, y nada de lo que ya está', () => {
     for (const a of resto(e)) ok(!dentro.has(a.slug), `${a.slug} sale dos veces en ${e}`);
   }
   ok(resto('conBalon').length > 0, 'algo tiene que quedar fuera de seis casillas');
+});
+
+test('«⋯ MÁS» SOLO OFRECE LO QUE SE PUEDE HACER: sin balón no se pasa, y un defensor no bota', () => {
+  const sin = resto('sinBalon').map((a) => a.slug);
+  for (const s of ['pasa', 'tira', 'bota', 'entra']) ok(!sin.includes(s), `sin balón no debería ofrecer ${s}`);
+  const def = resto('defensor').map((a) => a.slug);
+  for (const s of ['bota', 'pasa', 'tira', 'corta', 'bloquea']) ok(!def.includes(s), `un defensor no debería ver ${s}`);
+  ok(def.includes('recoge'), 'un defensor sí puede ir a por un balón suelto');
+  ok(!resto('conBalon').some((a) => a.slug === 'defiende') && !resto('sinBalon').some((a) => a.slug === 'defiende'),
+    'y a un atacante no se le ofrece defender');
+});
+
+test('SALE DEL CATÁLOGO: el papel, el modo y el símbolo, no una lista de slugs', () => {
+  eq(saleEn({ familia: 'entre_dos', parametros: { rol: 'defensor' } }, 'defensor'), true, 'una del club con papel de defensor:');
+  eq(saleEn({ familia: 'entre_dos', parametros: { rol: 'defensor' } }, 'conBalon'), false);
+  eq(saleEn({ familia: 'balon', parametros: { modo: 'pase' } }, 'sinBalon'), false);
+  eq(saleEn({ familia: 'desplazamiento', simbolo: 'carrera_con_balon', parametros: {} }, 'sinBalon'), false);
+  eq(saleEn({ familia: 'gesto', parametros: {} }, 'defensor'), false, 'ni cambiar de mano ni proteger un balón que no tiene:');
+  eq(saleEn(null, 'conBalon'), false);
 });
 
 /* ── 3. Las variantes ────────────────────────────────────── */

@@ -145,7 +145,13 @@ export class Pizarra {
     if (sel) sel.value = this.tablero.canasta;
     this.panel.recuento(recuento(this.tablero.fichas.elementos));
     this.linea.refrescar();
-    if (r.avisos.length) this.avisar(r.avisos.join(' '));
+    /* Los avisos de la carga y el de la defensa, JUNTOS: al abrir ya se ha
+       dicho lo de la defensa, y el aviso de la carga lo tapaba para
+       siempre, porque no se repite mientras no cambie. */
+    const papeles = this._mensajePapeles();
+    this._noEncajan = papeles.clave;
+    const textos = [...r.avisos, papeles.html].filter(Boolean);
+    if (textos.length) this.avisar(textos.join(' '));
     return r;
   }
 
@@ -172,7 +178,30 @@ export class Pizarra {
     this._relojAviso = setTimeout(() => { this.elAviso.hidden = true; }, AVISO_MS);
   }
 
-  _cambio() { this.onCambio?.(); }
+  _cambio() { this._vigilarPapeles(); this.onCambio?.(); }
+
+  /* Si quien defiende tiene trazos de ataque dibujados —pasa al dar el
+     balón a otro equipo cuando ya había cortes—, se dice UNA vez por cada
+     cambio de lo que no encaja. No se borra nada: lo decide el entrenador. */
+  _vigilarPapeles() {
+    if (!this.tablero) return;
+    const { clave, html } = this._mensajePapeles();
+    if (clave && clave !== this._noEncajan) this.avisar(html);
+    this._noEncajan = clave;
+  }
+
+  /** Qué hay que decir de la defensa, y la clave para no repetirlo. */
+  _mensajePapeles() {
+    const malos = this.tablero ? this.tablero.tramosQueNoEncajan() : [];
+    const clave = malos.map((m) => m.tramo.id).join(',');
+    if (!clave) return { clave, html: null };
+    const quienes = [...new Set(malos.map((m) => this.tablero.nombreDe(this.tablero.fichas.elementos.find((e) => e.id === m.tramo.elemento_id))))];
+    const varios = quienes.length > 1;
+    return {
+      clave,
+      html: `<b>${quienes.join(', ')}</b> ${varios ? 'defienden y tienen' : 'defiende y tiene'} trazos de ataque dibujados: la defensa no corta ni bota. Bórralos, o cambia quién tiene el balón al empezar.`,
+    };
+  }
 
   _pintarAyuda() {
     const f = this.panel.armada;

@@ -16,6 +16,7 @@
    ============================================================ */
 
 import { makeSampler, easeInOut } from './geometry.js';
+export { easeInOut };
 
 const ultimoNodo = (path) => (path && path.length ? { x: path[path.length - 1].x, y: path[path.length - 1].y } : null);
 
@@ -55,6 +56,27 @@ export function posicionEn(movs, t) {
     ultimo = x;
   }
   return ultimo ? ultimo.sampler(1) : movs[0].sampler(0);
+}
+
+/**
+ * La inversa de la curva: en qué fracción del TIEMPO de un tramo se llega
+ * a una fracción de su RECORRIDO. Con easeInOut se sale despacio, así que
+ * la mitad del camino se alcanza a la mitad del tiempo, pero el primer
+ * cuarto tarda más de un cuarto.
+ *
+ * Lo necesita quien espera a que otro PASE por un sitio (el bloqueador
+ * que aguanta hasta que su compañero le roza): el sitio se mide en
+ * recorrido, y la espera, en tiempo.
+ */
+export function tiempoDeRecorrido(s) {
+  if (!(s > 0)) return 0;
+  if (s >= 1) return 1;
+  let a = 0, b = 1;
+  for (let i = 0; i < 50; i++) {
+    const m = (a + b) / 2;
+    if (easeInOut(m) < s) a = m; else b = m;
+  }
+  return (a + b) / 2;
 }
 
 /**

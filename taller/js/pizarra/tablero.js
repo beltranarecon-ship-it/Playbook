@@ -44,13 +44,15 @@ import { Repaso, VELOCIDAD_REPASO, duracionRepaso } from './repaso.js';
 import { drawArrow, drawBloqueo } from '../canvas/arrows.js';
 import { flattenPath } from '../canvas/geometry.js';
 import {
-  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS, porQueNoCompanero,
+  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS, porQueNoCompanero, saleEn,
 } from './repertorio.js';
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
+import { defensaPorDefecto, papelesDeJugada, tramosQueNoEncajan } from './motor/defensa.js';
+import { COLORS } from '../canvas/colors.js';
 import {
   nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular, posesionAlFinal,
   tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS, esBloqueo,
@@ -97,10 +99,16 @@ export class Tablero {
        es donde la regla del §4.5 se puede probar en Node. */
     this._enCurso = null;   // { elemento, accion, variante } mientras se traza
     this._editando = null;  // el tramo que se está corrigiendo
+    /* Los ajustes de la defensa del ejercicio (§8, §11.1). Quién defiende
+       a quién NO se guarda aparte: sale de aquí y de la escena cada vez
+       que se pregunta (ver `papeles`). */
+    this.defensa = defensaPorDefecto();
+    this._papeles = null;   // { clave, valor }: la última respuesta de `papeles`
 
     const comun = { canasta, posiciones, elementos: () => this.fichas.elementos };
 
     this.fichas = new Fichas(lienzo, { canasta, posiciones });
+    this.fichas.esDefensor = (e) => this.papelesDeFase().defensores.includes(e.id);
     this.fichas.onTocarFicha = (e, o) => this._tocarFicha(e, o);
     this.fichas.onTocarSuelo = (p) => this._tocarSuelo(p);
     this.fichas.onArrastrado = (ids) => this._recolocadas(ids);
@@ -174,6 +182,9 @@ export class Tablero {
        de dónde viene cada uno sin que compita con lo que se está
        dibujando ahora. */
     this._quitarCapaFantasma = lienzo.capa('fantasma', (c) => this._dibujarFantasma(c), { tipo: 'mundo', orden: 8 });
+    /* La línea fina discontinua de cada par (§8.1), debajo de las fichas:
+       se lee quién defiende a quién sin tapar a nadie. */
+    this._quitarCapaParejas = lienzo.capa('parejas', (c) => this._dibujarParejas(c), { tipo: 'mundo', orden: 9 });
     /* El anillo vive en píxeles y la pista se mueve debajo de él: la
        rueda atraviesa el velo, que solo intercepta `pointerdown`. Se
        recoloca con cada pintada, que es justo cuando la vista ha podido
@@ -217,6 +228,7 @@ export class Tablero {
        no está. */
     this.cerrar();
     this.repaso.parar();
+    this.defensa = defensaPorDefecto();
     this.fases = [{
       ...nuevaFase('f1'),
       tramos: [],
@@ -275,6 +287,12 @@ export class Tablero {
     if (!toco) return;
     this.fases = this.fases.map((f, i) => (i === 0 ? { ...f, entrada, posesion } : f));
     this._recalcularSiguientes();
+    /* Y se avisa DESPUÉS: el cambio de la pista ya se avisó, pero con la
+       posesión vieja, y quién tiene el balón decide quién ataca. Con una
+       sola fase no llegaba ningún aviso más, y lo que dependía de eso —el
+       «defiende y tiene trazos de ataque», el autoguardado— se enteraba
+       tarde. */
+    this.onEscena?.(this.fichas.elementos);
   }
 
   /**
@@ -308,6 +326,8 @@ export class Tablero {
     const puesta = this.fichas.elementos.find((e) => e.id === nueva.id);
     this.fases = conFichaNueva(this.fases, puesta);
     this._recalcularSiguientes();
+    // lo mismo que al recolocar: avisar con la escena ya apuntada
+    this.onEscena?.(this.fichas.elementos);
     this._pintarAyuda();
     return puesta;
   }
@@ -406,7 +426,51 @@ export class Tablero {
         pausa_post_ms: f.pausa_post_ms ?? null,
         tramos: f.tramos,
       })),
+      defensa: this.defensa,
     };
+  }
+
+  /* ---- los papeles (§8.1, §8.2) ---------------------------- */
+
+  /**
+   * Quién ataca, quién defiende a quién y en qué situación, al empezar y
+   * en cada fase. Lo contesta motor/defensa.js con la jugada tal y como se
+   * guarda: es la misma respuesta que usa el compilador, así que la
+   * Pizarra y el proyector no pueden enseñar defensas distintas.
+   *
+   * Se pregunta en cada pintada —el arco de cada defensor, las líneas de
+   * los pares—, así que se recuerda la última respuesta mientras no cambie
+   * nada de lo que la decide: los jugadores, dónde empiezan, quién tiene
+   * el balón y los ajustes.
+   */
+  papeles() {
+    const entrada = this.fases[0].entrada || {};
+    const clave = JSON.stringify([
+      this.lienzo.vista.pistaKey, this.defensa, this.fases.length, this.fases[0].posesion || {},
+      this.fichas.elementos.filter((e) => e.kind === 'jugador').map((e) => [
+        e.id, e.equipo, e.label, e.dorsal, e.en_juego, e.defiende_a ?? null,
+        entrada[e.id] ? entrada[e.id].x : e.x, entrada[e.id] ? entrada[e.id].y : e.y,
+      ]),
+    ]);
+    if (!this._papeles || this._papeles.clave !== clave) {
+      this._papeles = { clave, valor: papelesDeJugada(this.jugada()) };
+    }
+    return this._papeles.valor;
+  }
+
+  /** Los papeles de la fase que se está editando. */
+  papelesDeFase() {
+    const p = this.papeles();
+    return p.fases[this.iFase] || p.inicio;
+  }
+
+  /** Los trazos de quien defiende que no son cosa de la defensa (ver
+   *  motor/defensa.js, `tramosQueNoEncajan`). */
+  tramosQueNoEncajan() {
+    return tramosQueNoEncajan(this.jugada(), this.papeles(), (slug) => {
+      const a = this._accionDe(slug);
+      return !a || saleEn(a, 'defensor');
+    });
   }
 
   _recordarDonde(elementos) {
@@ -440,6 +504,15 @@ export class Tablero {
       const mios = tramos.filter((t) => t.corre_id === e.id);
       if (!mios.length) continue;
       const ultimo = mios[mios.length - 1];
+      /* UN BALÓN QUE LLEVA ALGUIEN NO ESTIRA SU PASE si ese alguien ya ha
+         hecho algo después: el balón se ha movido con él, no lo ha
+         arrastrado nadie, y el pase acabó donde lo recibió. Sin esto, al
+         botar el receptor el final del pase se iba hasta donde acababa el
+         bote, y en el proyector el balón volaba al sitio equivocado. */
+      if (e.kind === 'balon' && e.portador_id) {
+        const i = tramos.indexOf(ultimo);
+        if (tramos.some((t, k) => k > i && t.corre_id === e.portador_id)) continue;
+      }
       /* UN TIRO NO SE ESTIRA: su final es el aro (§5.3), y el balón queda
          donde cae, no en la punta. Sin esto, al soltar el tiro el final se
          iba del aro al rebote. */
@@ -469,13 +542,11 @@ export class Tablero {
        jugador que ya había actuado dejaba su anillo ofreciéndole tirar
        con las manos vacías.
 
-       `esDefensor` se queda en false a propósito y no por olvido: el
-       modelo de elementos.js no tiene rol —un jugador es equipo A o B,
-       y eso no dice quién defiende—, y quien lo va a decir es el
-       reparto de marcas del §8, que es de la capa 5. */
+       Y quién defiende sale de los papeles de ESTA fase (§8.1), que se
+       calculan cada vez: tampoco se guarda en la ficha. */
     return {
       llevaBalon: llevaBalon(this.fichas.elementos, elemento.id),
-      esDefensor: false,
+      esDefensor: this.papelesDeFase().defensores.includes(elemento.id),
     };
   }
 
@@ -516,6 +587,9 @@ export class Tablero {
     if (!r.jugada) return { ok: false, avisos };
     const j = r.jugada;
     const pista = this.lienzo.vista.pistaKey;
+    /* La defensa se adopta TAL CUAL, sin recolocar a nadie: lo guardado
+       es lo que se dibujó. */
+    this.defensa = j.defensa || defensaPorDefecto();
     if (j.pista !== pista) avisos.push(`La jugada es de pista «${j.pista}» y la pizarra está en «${pista}»: hay que abrirla en su pista.`);
     /* La canasta, en cambio, SÍ se adopta: es un dato de la jugada y no
        de la pizarra, y se puede cambiar en caliente. Solo avisando, al
@@ -1267,6 +1341,30 @@ export class Tablero {
     drawBloqueo(ctx, flat[flat.length - 1], { x, y }, R.scale, R.jugador);
   }
 
+  /* La línea de cada par, entre defensor y atacante, donde se les ve
+     ahora: si el repaso está moviendo a uno, la línea va con él. */
+  _dibujarParejas({ ctx, toPx, hairline }) {
+    const { pares } = this.papelesDeFase();
+    const donde = (id) => {
+      const e = this.fichas.elementos.find((x) => x.id === id);
+      return e ? (this.fichas.donde?.(e) || e) : null;
+    };
+    ctx.save();
+    ctx.strokeStyle = COLORS.ink;
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = hairline(1.5);
+    ctx.setLineDash([5, 5]);
+    for (const [d, a] of Object.entries(pares)) {
+      const pd = a && donde(d);
+      const pa = a && donde(a);
+      if (!pd || !pa) continue;
+      const [x1, y1] = toPx(pd.x, pd.y);
+      const [x2, y2] = toPx(pa.x, pa.y);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   /* El fantasma de la fase anterior: sus trazos, apagados. Se ve de
      dónde viene cada uno sin que compita con lo que se dibuja ahora. */
   _dibujarFantasma({ ctx, R, toPx }) {
@@ -1287,6 +1385,7 @@ export class Tablero {
     this.lienzo.el.removeEventListener('keydown', this._onTecla);
     this._quitarCapa?.();
     this._quitarCapaFantasma?.();
+    this._quitarCapaParejas?.();
     this._quitarCapaAnillo?.();
     this._quitarCapaDesenlace?.();
     this._cerrarDesenlace();

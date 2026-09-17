@@ -41,7 +41,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **61 en verde, 1395
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **63 en verde, 1432
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -59,7 +59,7 @@ de punta a punta, con sus bancos en verde y commit en la rama.
 | 5.0 | Arreglos que la capa destapa, ya fallando en la capa 4: recoger y pasar en la misma fase (el balón volvía al que recogió), tirar-recoger-tirar, tiro sin trazo que sale del sitio del principio. Un módulo puro del INSTANTE (muestreo, posición y dueño en t) compartido por el motor y el repaso. Guion de Equipos: el balón contado por instante | ✅ (61 bancos, 1363 pruebas; las 6 pruebas nuevas fallan con el código viejo) |
 | 5.1 | Tiros con desenlace: Tira → Entra/Falla → al aro; si falla rebota a ~2,5 m por el lado contrario al tirador, si entra cae bajo el aro suelto; «Recoge» lo encuentra. Entra/falla se cambia tocando el tiro | ✅ (61 bancos, 1376 pruebas; probado en la Pizarra: tirar, cambiar el desenlace, recoger el rebote, compilar y reabrir) |
 | 5.2 | «Pincha a quién» y bloqueo: se pincha al COMPAÑERO, el bloqueador va a su sitio, el compañero sale cuando llega. Formato: `bloqueado_id` = compañero + `defensor_id` opcional | ✅ (61 bancos, 1395 pruebas; probado en la Pizarra y en el motor: elegir, avisos, Esc y suelo, Supr, arranque, compilar y reabrir) |
-| 5.3 | Papeles y pares: `motor/defensa.js` + `eval-defensa.mjs`. Quién ataca, pares por dorsal y libre más cercano, situación por fase, arco del defensor y línea discontinua | pendiente |
+| 5.3 | Papeles y pares: `motor/defensa.js` + `eval-defensa.mjs`. Quién ataca, pares por dorsal y libre más cercano, situación por fase, arco del defensor y línea discontinua | ✅ (63 bancos, 1432 pruebas; revisión adversarial con 11 hallazgos confirmados, todos arreglados; banco nuevo del Tablero; probado en la Pizarra) |
 | 5.4 | Colocar por regla (las 6 del §8.3), pestaña «Ajustes» del panel derecho (solo defensa) y ver la regla (§8.7) | pendiente |
 | 5.5 | Seguimiento continuo (§8.4): la defensa se mueve sola igual en Pizarra y proyector; movimiento «por tiempo» en el motor (aditivo); cierra el rebote automático; carril gris «automático» | pendiente |
 | 5.6 | Acciones declaradas del defensor: ayuda y recupera, es sobrepasado, cambia con…, cierra el rebote, va al dos contra uno | pendiente |
@@ -126,6 +126,46 @@ reproducirse); todo lo nuevo del formato de animación, aditivo.
 - Queda sin hacer, y es de este mismo tipo que «entra»: el sitio del
   bloqueo se calcula al dibujarlo y no se rehace si luego se mueve al
   compañero en la fase 1 (se corrige pinchando el trazo).
+
+**Respuestas del entrenador (2026-09-14 y 2026-09-17):**
+
+- Bloqueo y continuación: **el bloqueador aguanta hasta que su compañero
+  le pasa** (el punto del trazo del compañero más cercano al bloqueo); su
+  siguiente movimiento sale entonces, y la barra se ve hasta ese instante.
+  En un «mano a mano» (lo siguiente es entregarle el balón) no se aguanta:
+  la entrega es ese momento.
+- Paso 5.4, INFERIORIDAD: retrasa **el defensor más cercano al aro que no
+  marca al que tiene el balón**; los demás siguen con su par; con un solo
+  defensor, retrasa él.
+- Paso 5.4, SUPERIORIDAD con varios sobrantes: **el primero forma la V**
+  con el defensor del portador; **los demás, entre el balón y el aro a 2 m
+  del balón**.
+
+**Decidido en el paso 5.3 (dicho al entrenador):** los pares se deciden
+al empezar la jugada y se mantienen (los cambian las acciones, no el
+sitio); a un defensor, «⋯ más» solo le ofrece recoger un balón suelto;
+«Defiende» del anillo sigue avisando que llega después y se hace en el
+5.6 junto a «Cambia con…»; si al dar el balón a otro equipo un defensor
+se queda con trazos de ataque, se avisa y no se borra nada; con tres o
+cuatro equipos defienden todos los que no tienen el balón; los números
+de la defensa viven en `motor/defensa.js` (`PARAMETROS`) y destino.js los
+lee de ahí.
+
+**Revisión adversarial de 5.2 y 5.3 (2026-09-17)**, 5 revisores y 2
+escépticos por hallazgo: 17 hallazgos, 11 confirmados, 1 dudoso, 5
+refutados. Arreglados: el aviso de «defiende y tiene trazos de ataque»
+llegaba tarde con una sola fase y al reabrir lo tapaba el aviso de la
+carga; la barra del bloqueo duraba 0 ms en bloqueo y continuación (se
+resolvió con la respuesta del entrenador); **un fallo de antes de la capa
+5**: al botar el receptor después de un pase, el final del pase se
+desplazaba y en el proyector el balón volaba al sitio equivocado; y
+pruebas que no vigilaban lo que decían (dorsal a mano, dos «defiende a…»
+al mismo atacante, perpendicular del bloqueo en diagonal, situación
+forzada sin defensa). También, aunque se refutaron por no poder darse
+hoy: claves heredadas en los números de la defensa, números que no son un
+objeto y el empate por redondeo en sitios simétricos. Banco nuevo:
+`eval-tablero.mjs`, un Tablero de verdad sobre un DOM de mentira, para
+los fallos que solo viven en el pegamento.
 
 **Bancos que cambiarán a propósito** (no son regresiones, decirlo al
 tocarlos): `eval-repertorio` (anillo del defensor con pendientes;
@@ -321,8 +361,8 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
   `stage.js`, `detalle.js` y `wizard.js`: sale en cualquier búsqueda y
   despista.
 
-- `resto()` ofrece *Pasa* y *Tira* en «⋯ más» a quien no lleva balón. Hoy
-  avisa al elegirlos; no debería ofrecerlos.
+- ~~`resto()` ofrece *Pasa* y *Tira* en «⋯ más» a quien no lleva balón.~~
+  Arreglado en la 5.3 (`saleEn`), salvo los gestos con balón (ver abajo).
 - El anillo promete «o pincha ya en la pista» y su velo se come ese clic.
 - `fichas.js`: abortar el arrastre de un balón no se lo devuelve a su
   portador, ni restaura la selección que cambió el `pointerdown`.
@@ -333,6 +373,14 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
 - `engine.js:239` usa `view.w` donde `rotate: 90` necesita `view.h`: los
   símbolos del proyector salen un 50 % más grandes en pista entera.
 - Probar los gestos con dedos en una tablet de verdad.
+- **Capa 6, filas:** quién ataca cuenta también a los que esperan (`en_juego:
+  false`). Con una fila de atacantes con balón y un defensor en pista es lo
+  que se quiere (ataca la fila); pero si en una fila espera alguien del otro
+  equipo con balón, nadie defendería. Decidirlo con el entrenador al hacer
+  las filas (lo señaló la revisión de la 5.3).
+- «⋯ más» ofrece «Cambia de mano» y «Protege el balón» a quien no lleva
+  balón: el catálogo no dice qué gestos necesitan balón. Decidir cómo se
+  marca cuando los gestos en el sitio se puedan dibujar.
 - Una vez, en una prueba automatizada, apareció un aviso de «Defiende» que
   nadie eligió. No se ha podido reproducir; se comprobó que las 12 casillas
   de los anillos disparan exactamente su acción.

@@ -10,7 +10,7 @@
    busca: que se equivoque en un solo sitio y aquí se vea.
    ============================================================ */
 
-import { muestreador, posicionEn, duenoEn } from '../js/canvas/instante.js';
+import { muestreador, posicionEn, duenoEn, tiempoDeRecorrido } from '../js/canvas/instante.js';
 import { easeInOut } from '../js/canvas/geometry.js';
 
 let pasan = 0, fallan = 0;
@@ -68,6 +68,17 @@ test('EL ÚLTIMO CAMBIO DE MANOS QUE YA HA OCURRIDO', () => {
   ok(duenoEn(ev, 2500, 'A1') === null, 'tras un tiro, de nadie');
   ok(duenoEn(ev, 3500, 'A1') === 'A3', 'y al final, el último');
   ok(duenoEn(null, 5, undefined) === null, 'sin nada, de nadie');
+});
+
+console.log('\n· cuándo se llega a un punto del camino');
+
+test('LA INVERSA DE LA CURVA: se llega a la fracción s del camino en tiempoDeRecorrido(s)', () => {
+  for (const s of [0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99]) {
+    const u = tiempoDeRecorrido(s);
+    ok(Math.abs(easeInOut(u) - s) < 1e-9, `s=${s}: u=${u} da ${easeInOut(u)}`);
+  }
+  ok(tiempoDeRecorrido(0.25) > 0.25, 'el primer cuarto tarda más de un cuarto: se sale despacio');
+  ok(tiempoDeRecorrido(0) === 0 && tiempoDeRecorrido(1) === 1 && tiempoDeRecorrido(-3) === 0 && tiempoDeRecorrido(7) === 1, 'y en los extremos, los extremos');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

@@ -308,6 +308,32 @@ export function longitudMetros(trazo, pista = 'entera') {
   return m;
 }
 
+/**
+ * En qué punto de un trazo se pasa MÁS CERCA de un sitio, como fracción de
+ * su recorrido (0 = la salida, 1 = la llegada). Con lo que tarda en
+ * recorrerse sale el instante en que un jugador pasa junto a otro.
+ *
+ * En metros, como todo lo que se mide aquí. Si pasa igual de cerca por dos
+ * sitios, vale el primero: es cuando le roza por primera vez.
+ */
+export function fraccionMasCercana(trazo, punto, pista = 'entera') {
+  const flat = flattenPath(trazo || []);
+  if (flat.length < 2 || !punto || !Number.isFinite(punto.x)) return 0;
+  const e = escalaDe(pista);
+  const largos = [];
+  let total = 0;
+  for (let i = 1; i < flat.length; i++) { const l = metrosEntre(pista, flat[i - 1], flat[i]); largos.push(l); total += l; }
+  if (!(total > 0)) return 0;
+  let recorrido = 0;
+  let mejor = { metros: Infinity, en: 0 };
+  for (let i = 1; i < flat.length; i++) {
+    const c = masCercaDelSegmento(punto, flat[i - 1], flat[i], e);
+    if (c.metros < mejor.metros - 1e-9) mejor = { metros: c.metros, en: recorrido + c.t * largos[i - 1] };
+    recorrido += largos[i - 1];
+  }
+  return mejor.en / total;
+}
+
 /** Lo que se enseña mientras se dibuja: «8,4 m · 2,1 s». */
 export function rotulo(trazo, pista = 'entera', ritmo = 'normal') {
   const m = longitudMetros(trazo, pista);

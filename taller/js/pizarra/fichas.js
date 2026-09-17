@@ -71,6 +71,9 @@ export class Fichas {
        que se puede dibujar, y si ese balón ya sale en algún trazo,
        dárselo a otro dejaría pases de alguien que no lo tiene. */
     this.puedeAsignar = null;  // (balon, jugador) -> null si se puede, o el motivo
+    /* Quién defiende lo sabe el Tablero, que es quien tiene los papeles
+       (motor/defensa.js): aquí solo se pregunta, para pintar el arco. */
+    this.esDefensor = null;    // (elemento) -> true si defiende
 
     this._marco = null;        // el marco de selección mientras se arrastra
     this._guias = null;        // las guías mientras se mueve algo
@@ -277,6 +280,7 @@ export class Fichas {
           drawPlayer(ctx, px, py, R.jugador, {
             color: COLORS[e.equipo] || COLORS.A,
             label: numeroDe(e),
+            defender: !!this.esDefensor?.(e),
             selected: sel,
             carrying: llevaBalon(this.elementos, e.id),
             alpha: e.en_juego === false ? 0.45 : 1,

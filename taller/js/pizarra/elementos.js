@@ -92,6 +92,10 @@ export function crear(spec, x = 0.5, y = 0.5) {
         dorsal: null,          // null = vale el automático
         nombre: null,
         en_juego: true,
+        /* La defensa (§8.1, §11.1): a quién defiende puesto a mano —null,
+           el que le toque— y su regla si no es la del ejercicio. */
+        defiende_a: null,
+        regla_defensa: null,
       };
     case 'balon':
       return { ...base, portador_id: null };
@@ -145,7 +149,8 @@ export function anadir(lista, spec, x, y) {
 /**
  * Quita, y con ello suelta lo que dependiera de lo quitado: un balón
  * que llevaba un jugador que ya no está se queda suelto donde estaba,
- * y un cono emparejado como puerta deja de estarlo. Si no, quedan
+ * un cono emparejado como puerta deja de estarlo, y quien defendía a
+ * mano al que se va vuelve a emparejarse solo. Si no, quedan
  * referencias a fantasmas que fallan mucho más tarde y en otro sitio.
  */
 export function quitar(lista, ids) {
@@ -154,6 +159,7 @@ export function quitar(lista, ids) {
   return renumerar(quedan.map((e) => {
     if (e.kind === 'balon' && fuera.has(e.portador_id)) return { ...e, portador_id: null };
     if (e.kind === 'cono' && fuera.has(e.puerta_con)) return { ...e, puerta_con: null };
+    if (e.kind === 'jugador' && fuera.has(e.defiende_a)) return { ...e, defiende_a: null };
     return e;
   }));
 }

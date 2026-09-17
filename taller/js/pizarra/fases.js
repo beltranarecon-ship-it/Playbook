@@ -41,9 +41,16 @@
    Un tramo puede esperar a VARIAS cosas a la vez —que le llegue el balón
    y que le pongan el bloqueo—, y entonces espera a la que acabe más
    tarde.
+
+   Y el bloqueador AGUANTA: lo siguiente que haga después de bloquear
+   —rodar al aro, abrirse— no sale hasta que su compañero le pasa por el
+   lado, que es el punto de su trazo más cercano al bloqueo. Lo decidió el
+   entrenador: saliendo en cuanto llegaba, la barra del bloqueo duraba cero
+   y en el proyector no se veía.
    ============================================================ */
 
-import { duracionDe, longitudMetros, reanclar } from './trazo.js';
+import { duracionDe, longitudMetros, reanclar, fraccionMasCercana } from './trazo.js';
+import { tiempoDeRecorrido } from '../canvas/instante.js';
 import { trasElTiro } from './destino.js';
 
 /** Ningún tramo dura menos que esto: un movimiento de dos palmos
@@ -139,18 +146,24 @@ export function duracionDeTramo(tramo, pista = 'entera') {
 /* De qué tramos depende otro para poder arrancar.
    Se lee de lo que ya guarda cada tramo —quién recibe un pase, qué balón
    recoge alguien, para quién es un bloqueo— y no de una lista escrita a
-   mano. */
-function dependencias(carriles) {
-  const espera = new Map();   // id de tramo -> ids de los tramos que tienen que acabar antes
+   mano.
+
+   Cada espera es { id, u }: esperar a que el tramo `id` llegue a la
+   fracción `u` de su TIEMPO. u = 1 es esperar a que acabe, que es lo de
+   casi siempre; menos de 1 es esperar a que pase por un sitio. */
+function dependencias(carriles, pista = 'entera') {
+  const espera = new Map();   // id de tramo -> [{ id, u }] que tienen que haber pasado antes
   const todos = carriles.flatMap((c) => c.tramos);
+  const carrilDe = (id) => (carriles.find((c) => c.elemento === id) || { tramos: [] }).tramos;
   /* VARIAS ESPERAS, NO LA PRIMERA. Guardando una sola, si a alguien le
      pasaban el balón y le ponían un bloqueo, esperaba a lo que se hubiera
      mirado antes —que es el orden de los carriles, no el de la jugada— y
      podía salir con el bloqueador todavía de camino. */
-  const apunta = (id, previo) => {
+  const apunta = (id, previo, u = 1) => {
     const lista = espera.get(id) || [];
-    if (!lista.includes(previo)) espera.set(id, [...lista, previo]);
+    if (!lista.some((e) => e.id === previo && e.u === u)) espera.set(id, [...lista, { id: previo, u }]);
   };
+  const aguantes = [];
 
   for (const p of todos) {
     /* UN PASE MANDA SOBRE EL SIGUIENTE MOVIMIENTO DEL RECEPTOR.
@@ -178,10 +191,42 @@ function dependencias(carriles) {
        haga después de dibujado el bloqueo, y lo que ya estaba haciendo no
        se retrasa. */
     if (esBloqueo(p)) {
-      const suyos = (carriles.find((c) => c.elemento === p.companero_id) || { tramos: [] }).tramos;
-      const siguiente = suyos.find((t) => t.orden > p.orden);
+      const siguiente = carrilDe(p.companero_id).find((t) => t.orden > p.orden);
       if (siguiente) apunta(siguiente.id, p.id);
+      /* Y lo siguiente del BLOQUEADOR espera a que ese compañero le pase. */
+      const propios = carrilDe(p.elemento_id);
+      const despues = propios[propios.findIndex((t) => t.id === p.id) + 1];
+      if (siguiente && despues && Array.isArray(p.trazo) && p.trazo.length) {
+        aguantes.push({ quien: despues.id, espera: siguiente, sitio: p.trazo[p.trazo.length - 1] });
+      }
     }
+  }
+
+  /* El aguante es la única espera que puede mirar HACIA DELANTE en el
+     orden de dibujo, así que se comprueba que no cierra un círculo. Pasa
+     en un bloqueo «mano a mano»: el bloqueador entrega el balón a su
+     compañero, y el compañero ya espera a esa entrega. Ahí no se aguanta:
+     la entrega ES el momento en que le pasa. */
+  const anterior = new Map();
+  for (const c of carriles) for (let i = 1; i < c.tramos.length; i++) anterior.set(c.tramos[i].id, c.tramos[i - 1].id);
+  const depende = (desde, de) => {
+    const vistos = new Set();
+    const pila = [desde];
+    while (pila.length) {
+      const x = pila.pop();
+      if (x === de) return true;
+      if (vistos.has(x)) continue;
+      vistos.add(x);
+      if (anterior.has(x)) pila.push(anterior.get(x));
+      for (const e of espera.get(x) || []) pila.push(e.id);
+    }
+    return false;
+  };
+  for (const a of aguantes) {
+    if (depende(a.espera.id, a.quien)) continue;
+    const trazo = a.espera.trazo;
+    const s = Array.isArray(trazo) && trazo.length >= 2 ? fraccionMasCercana(trazo, a.sitio, pista) : 0;
+    apunta(a.quien, a.espera.id, tiempoDeRecorrido(s));
   }
   return espera;
 }
@@ -195,19 +240,19 @@ function dependencias(carriles) {
  * Se resuelve por pasadas y no de un tirón porque un arranque puede
  * depender de otro que a su vez depende de un tercero.
  *
- * TAL Y COMO ESTÁN LAS REGLAS HOY, NO PUEDE HABER CICLOS: las tres
+ * TAL Y COMO ESTÁN LAS REGLAS HOY, NO PUEDE HABER CICLOS: tres de las
  * dependencias apuntan siempre hacia atrás en el orden de dibujo —el
  * receptor espera a un pase ANTERIOR, quien recoge espera a la suelta
- * ANTERIOR y quien sale de un bloqueo, a un bloqueo ANTERIOR—, así que el
- * grafo es acíclico por construcción y el banco lo
- * comprueba. El tope de pasadas y la rama de «nadie ha avanzado» se
+ * ANTERIOR y quien sale de un bloqueo, a un bloqueo ANTERIOR—, y la cuarta
+ * —el bloqueador que aguanta— se descarta si cerraría un círculo. El banco
+ * lo comprueba. El tope de pasadas y la rama de «nadie ha avanzado» se
  * quedan de todas formas: una regla nueva que mire hacia delante
  * colgaría la pizarra, y colgarse es mucho peor que arrancar pronto.
  */
 export function tiemposDe(fase, { pista = 'entera' } = {}) {
   const carriles = (fase && fase.carriles) || [];
   const todos = carriles.flatMap((c) => c.tramos);
-  const espera = dependencias(carriles);
+  const espera = dependencias(carriles, pista);
   const avisos = [];
 
   const dur = new Map(todos.map((t) => [t.id, duracionDeTramo(t, pista)]));
@@ -230,12 +275,15 @@ export function tiemposDe(fase, { pista = 'entera' } = {}) {
     for (const t of quedan) {
       const previo = anterior.get(t.id);
       const esperados = espera.get(t.id) || [];
-      if ((previo && !fin.has(previo)) || esperados.some((e) => !fin.has(e))) { siguen.push(t); continue; }
-      /* Lo que espera a un TIRO espera además a que caiga el balón: nadie
-         recoge un rebote que todavía está en el aro. */
+      if ((previo && !fin.has(previo)) || esperados.some((e) => !fin.has(e.id))) { siguen.push(t); continue; }
+      /* Lo que espera a que acabe un TIRO espera además a que caiga el
+         balón: nadie recoge un rebote que todavía está en el aro. Lo que
+         espera a que otro pase por un sitio, a ese instante de su tramo. */
       const desde = Math.max(
         previo ? fin.get(previo) : 0,
-        ...esperados.map((e) => fin.get(e) + (esTiro(porId.get(e)) ? TRAS_EL_TIRO_MS : 0)),
+        ...esperados.map((e) => (e.u >= 1
+          ? fin.get(e.id) + (esTiro(porId.get(e.id)) ? TRAS_EL_TIRO_MS : 0)
+          : inicio.get(e.id) + dur.get(e.id) * e.u)),
       );
       const i = (t.manual && Number.isFinite(t.inicio_ms)) ? t.inicio_ms : desde;
       inicio.set(t.id, i);

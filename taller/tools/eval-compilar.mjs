@@ -100,6 +100,33 @@ test('quién tiene el balón al empezar, en los dos sitios donde se mira', () =>
   eq(a.balones[0].portador_id, 'A1', 'el portador, con su nombre de fuera:');
 });
 
+test('EL PAPEL AL EMPEZAR: B1 DEFIENDE porque el balón es del A', () => {
+  const { l } = escena();
+  const a = compilar(jugadaCon(l, []));
+  eq(a.jugadores.map((j) => j.tipo), ['atacante', 'atacante', 'defensor']);
+});
+
+test('Y QUIÉN DEFIENDE, EN TODAS LAS FASES: con eso el motor lee los papeles por fase', () => {
+  const { l, a2 } = escena();
+  const t1 = tramo(a2.id, P(0.7, 0.8), P(0.7, 0.5));
+  const t2 = tramo(a2.id, P(0.7, 0.5), P(0.6, 0.3));
+  const anim = compilar(jugadaCon(l, [{ id: 'f1', tramos: [t1] }, { id: 'f2', tramos: [t2] }]));
+  eq(anim.fases.map((f) => f.defensores), [['B1'], ['B1']]);
+  const motor = new AnimationEngine({ w: 0, basket: () => [0.5, 0.1] }, anim, { autoplay: false, loop: false, paused: true });
+  ok(motor.usesPhaseRoles, 'el motor usa los papeles por fase');
+  ok(motor.meta[1].defenders.has('B1') && !motor.meta[1].defenders.has('A2'));
+});
+
+test('SIN ATACANTE CLARO NO DEFIENDE NADIE, tampoco en la animación', () => {
+  const { l, bal } = escena();
+  const suelto = l.map((e) => (e.id === bal.id ? { ...e, portador_id: null } : e));
+  const a = compilar(jugadaCon(suelto, [{ id: 'f1', tramos: [tramo(l[1].id, P(0.7, 0.8), P(0.7, 0.5))] }]));
+  eq(a.jugadores.map((j) => j.tipo), ['atacante', 'atacante', 'atacante']);
+  eq(a.fases[0].defensores, []);
+  const forzado = compilar({ ...jugadaCon(l, []), defensa: { ataca: 'nadie' } });
+  eq(forzado.jugadores.map((j) => j.tipo), ['atacante', 'atacante', 'atacante'], '«nadie defiende» de Ajustes:');
+});
+
 test('las posiciones de arranque salen como pares [x, y]', () => {
   const { l } = escena();
   const a = compilar(jugadaCon(l, []));
@@ -472,15 +499,27 @@ test('UN BLOQUEO SE COMPILA: el bloqueador va a su sitio y la barra sale al lleg
   ok(!a.warnings.length, `sin avisos: ${a.warnings}`);
 });
 
-test('si el bloqueador hace algo después, la barra dura hasta que se va', () => {
+test('BLOQUEO Y CONTINUACIÓN: LA BARRA SE VE hasta que el bloqueador rueda, cuando le pasan', () => {
+  /* Con la barra en 0 ms el proyector no la enseñaba nunca: ahora el
+     bloqueador aguanta hasta que su compañero le pasa (fases.js). */
   const { l, a1, a2 } = escena();
   const b = bloqueoDe(a2, a1, P(0.7, 0.8), P(0.4, 0.7));
   const rueda = tramo(a2.id, P(0.4, 0.7), P(0.5, 0.3));
-  const f = compilar(jugadaCon(l, [{ id: 'f1', tramos: [b, rueda] }])).fases[0];
+  const bota = tramo(a1.id, P(0.3, 0.8), P(0.45, 0.5), { accion: 'bota', tipo: 'run' });
+  const anim = compilar(jugadaCon(l, [{ id: 'f1', tramos: [b, rueda, bota] }]));
+  const f = anim.fases[0];
   const bl = f.bloqueos[0];
   const mv = f.movimientos.filter((m) => m.elemento_id === 'A2');
   eq(mv.length, 2);
+  ok(bl.duracion_ms > 100, `la barra dura de verdad: ${bl.duracion_ms} ms`);
   ok(cerca(bl.inicio_ms + bl.duracion_ms, mv[1].inicio_ms), 'hasta que rueda:');
+  const motor = new AnimationEngine({ w: 0, basket: () => [0.5, 0.1] }, anim, { autoplay: false, loop: false, paused: true });
+  let fotogramas = 0;
+  for (let t = 0; t <= f.duracion_ms; t += 1000 / 60) {
+    motor.k = 0; motor.phaseElapsed = t;
+    if (motor.bloqueosEn(0, t, motor._computePositions().players).length) fotogramas++;
+  }
+  ok(fotogramas >= 6, `y en el motor se ve en varios fotogramas a 60 por segundo: ${fotogramas}`);
 });
 
 test('UN BLOQUEO SIN COMPAÑERO SALE SIN BARRA, pero se desplaza y se avisa', () => {

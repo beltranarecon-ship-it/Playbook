@@ -30,7 +30,10 @@ import {
   tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS,
 } from '../js/pizarra/fases.js';
 import { trasElTiro } from '../js/pizarra/destino.js';
-import { duracionDe, longitudMetros, nuevoTrazo } from '../js/pizarra/trazo.js';
+import { duracionDe, longitudMetros, nuevoTrazo, fraccionMasCercana } from '../js/pizarra/trazo.js';
+import { muestreador, tiempoDeRecorrido } from '../js/canvas/instante.js';
+import { easeInOut } from '../js/canvas/geometry.js';
+import { metrosEntre } from '../js/canvas/escala.js';
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -326,6 +329,45 @@ test('lo que el compañero ya estaba haciendo no se retrasa; y quien no es el co
   eq(r.tramos[antes.id].inicio_ms, 0, 'lo de antes, a la vez que el bloqueo:');
   eq(r.tramos[despues.id].inicio_ms, Math.max(r.tramos[antes.id].fin_ms, r.tramos[b.id].fin_ms), 'lo de después, cuando llega:');
   eq(r.tramos[otro.id].inicio_ms, 0, 'y los demás, a lo suyo:');
+});
+
+test('BLOQUEO Y CONTINUACIÓN: EL BLOQUEADOR AGUANTA HASTA QUE SU COMPAÑERO LE PASA', () => {
+  /* Lo decidió el entrenador. Saliendo al llegar, la barra duraba cero. */
+  const b = bloqueo('A2', 'A1', P(0.8, 0.45), P(0.55, 0.42));
+  const rueda = tramo('A2', P(0.55, 0.42), P(0.5, 0.15));
+  const bota = tramo('A1', P(0.4, 0.5), P(0.7, 0.35));
+  const r = tiemposDe(conCarriles([b, rueda, bota]), { pista: 'entera' });
+  ok(r.tramos[rueda.id].inicio_ms > r.tramos[b.id].fin_ms, `rueda después de plantarse: ${r.tramos[rueda.id].inicio_ms} > ${r.tramos[b.id].fin_ms}`);
+  /* Y sale JUSTO cuando A1 pasa más cerca del sitio del bloqueo: se busca
+     ese instante recorriendo el bote de milisegundo en milisegundo. */
+  const sitio = b.trazo[1];
+  const m = r.tramos[bota.id];
+  const s = muestreador(bota.trazo);
+  let mejor = { t: 0, d: Infinity };
+  for (let t = m.inicio_ms; t <= m.fin_ms; t++) {
+    const d = metrosEntre('entera', s(easeInOut((t - m.inicio_ms) / m.duracion_ms)), sitio);
+    if (d < mejor.d) mejor = { t, d };
+  }
+  ok(Math.abs(r.tramos[rueda.id].inicio_ms - mejor.t) <= 2, `rueda en ${r.tramos[rueda.id].inicio_ms} y A1 le pasa en ${mejor.t}`);
+  eq(r.tramos[rueda.id].inicio_ms, m.inicio_ms + m.duracion_ms * tiempoDeRecorrido(fraccionMasCercana(bota.trazo, sitio, 'entera')));
+  eq(r.avisos, []);
+});
+
+test('«MANO A MANO»: SI LO SIGUIENTE ES ENTREGARLE EL BALÓN, NO SE AGUANTA (sería un círculo)', () => {
+  const b = bloqueo('A2', 'A1', P(0.8, 0.45), P(0.55, 0.42));
+  const entrega = tramo('A2', P(0.55, 0.42), P(0.5, 0.45), { corre_id: 'b1', accion: 'pasa', receptor_id: 'A1', ritmo: 'pase', tipo: 'pass' });
+  const bota = tramo('A1', P(0.5, 0.5), P(0.7, 0.35));
+  const r = tiemposDe(conCarriles([b, entrega, bota]), { pista: 'entera' });
+  eq(r.avisos, [], 'nada de ciclos:');
+  eq(r.tramos[entrega.id].inicio_ms, r.tramos[b.id].fin_ms, 'la entrega sale al plantarse:');
+  eq(r.tramos[bota.id].inicio_ms, r.tramos[entrega.id].fin_ms, 'y el compañero sale con el balón en las manos:');
+});
+
+test('si el compañero no hace nada después, el bloqueador no espera a nadie', () => {
+  const b = bloqueo('A2', 'A1', P(0.8, 0.45), P(0.55, 0.42));
+  const rueda = tramo('A2', P(0.55, 0.42), P(0.5, 0.15));
+  const r = tiemposDe(conCarriles([b, rueda]), { pista: 'entera' });
+  eq(r.tramos[rueda.id].inicio_ms, r.tramos[b.id].fin_ms);
 });
 
 test('SI ESPERA A UN PASE Y A UN BLOQUEO, SALE CUANDO HAN PASADO LAS DOS COSAS', () => {

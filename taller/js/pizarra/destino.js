@@ -39,6 +39,7 @@ import { puntoADistanciaDe, metrosEntre, escalaDe } from '../canvas/escala.js';
 import { limitesCancha } from '../canvas/medidas.js';
 import { FAMILIAS } from '../ia/acciones.js';
 import { flattenPath } from '../canvas/geometry.js';
+import { PARAMETROS } from './motor/defensa.js';
 
 /** A cuánto del aro se para quien acaba «pegado», en metros. Del
  *  catálogo: una acción puede traer la suya, y esta es la de reserva. */
@@ -53,12 +54,12 @@ export const METROS_CAIDA = 0.6;
 
 /** Dónde espera el defensor de alguien con la regla de serie, «entre su
  *  par y el aro» (§8.3): a 1,2 m si su par lleva balón y a 2,0 m si no.
- *  La defensa de verdad (pasos 5.3-5.5) los hará ajustables. */
-export const METROS_PAR_CON_BALON = 1.2;
-export const METROS_PAR_SIN_BALON = 2.0;
-/** A cuánto de ese defensor se planta quien le bloquea: cuerpo con
- *  cuerpo, sin llegar a pisarle. */
-export const METROS_BLOQUEO = 0.7;
+ *  Y a cuánto de ese defensor se planta quien le bloquea: cuerpo con
+ *  cuerpo, sin llegar a pisarle. Los números viven en motor/defensa.js,
+ *  que es donde se ajustan por ejercicio; aquí solo se leen. */
+export const METROS_PAR_CON_BALON = PARAMETROS.par_con_balon;
+export const METROS_PAR_SIN_BALON = PARAMETROS.par_sin_balon;
+export const METROS_BLOQUEO = PARAMETROS.bloqueo;
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const punto = (p) => ({ x: clamp01(p.x), y: clamp01(p.y) });

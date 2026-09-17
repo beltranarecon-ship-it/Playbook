@@ -43,6 +43,7 @@ import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
 import { MOTOR_PIZARRA } from './marca.js';
 import { carrilesDesde, tiemposDe, esTiro, esBloqueo, TRAS_EL_TIRO_MS } from '../fases.js';
 import { trasElTiro, frenteDelBloqueo } from '../destino.js';
+import { papelesDeJugada } from './defensa.js';
 
 export const VERSION_JUGADA = 3;
 
@@ -86,14 +87,18 @@ export function compilar(jugada) {
   }
   const de = (id) => (id == null ? null : (nombre.get(id) ?? null));
 
+  /* ── los papeles (§8.1) ── los mismos que ve la Pizarra */
+  const papeles = papelesDeJugada({ ...j, pista, elementos });
+  const defiendeAlEmpezar = new Set(papeles.inicio.defensores);
+
   /* ── la escena ── */
   const conBalon = new Set(elementos.filter((e) => e.kind === 'balon' && e.portador_id).map((e) => e.portador_id));
   const jugadores = elementos.filter((e) => e.kind === 'jugador').map((e) => ({
     id: de(e.id),
     equipo: e.equipo || 'A',
-    /* El papel de defensor lo reparte el §8, que es de la capa 5. Hasta
-       entonces todos atacan; el motor lo leerá por fase cuando exista. */
-    tipo: 'atacante',
+    /* El papel AL EMPEZAR. Es lo que miran la miniatura y el linter; al
+       reproducir, el motor lo lee fase a fase (`defensores`). */
+    tipo: defiendeAlEmpezar.has(e.id) ? 'defensor' : 'atacante',
     posicion_inicial: punto(e),
     tiene_balon: conBalon.has(e.id),
     dorsal: e.dorsal ?? null,
@@ -129,14 +134,14 @@ export function compilar(jugada) {
      fase que ve el entrenador. */
   const fases = (j.fases || [])
     .map((f, i) => (f && Array.isArray(f.tramos) && f.tramos.length
-      ? compilarFase(f, i, { pista, canasta, de, nombre, warnings })
+      ? compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles: papeles.fases[i] })
       : null))
     .filter(Boolean);
 
   return { motor: MOTOR_PIZARRA, pista, canasta, jugadores, balones, conos, materiales, fases, warnings };
 }
 
-function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
+function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = null }) {
   const tramos = (f && f.tramos) || [];
   const fase = { ...(f || {}), carriles: carrilesDesde(tramos) };
   const tiempos = tiemposDe(fase, { pista });
@@ -306,6 +311,9 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings }) {
     bloqueos,
     tiros,
     recogidas,
+    /* Quién defiende en esta fase, en TODAS: con que una fase lo diga, el
+       motor deja de mirar el `tipo` del jugador y lee esto. */
+    defensores: ((papeles && papeles.defensores) || []).map(de).filter(Boolean),
     acciones,
     variantes,
   };

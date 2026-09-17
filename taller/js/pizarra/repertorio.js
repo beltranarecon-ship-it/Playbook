@@ -146,10 +146,41 @@ export function anilloDe(estado, catalogo = CATALOGO_SISTEMA) {
   });
 }
 
-/** Todo lo que NO cabe en el anillo, para el «⋯ más». */
+/**
+ * ¿Sale esta acción para una ficha en este estado?
+ *
+ * Se lee de lo que la acción declara en el catálogo —su familia, su
+ * modo, su papel, su símbolo—, no de una lista de slugs: una acción del
+ * club lo hereda sin tocar esto.
+ *
+ *   defensor   lo suyo (las entre dos con papel) y recoger un balón
+ *              suelto. Un corte, un bote o un gesto con balón de un
+ *              defensor es «romper la regla» (§8.8), que no entra.
+ *   atacante   todo menos lo del defensor; y sin balón, tampoco lo que
+ *              necesita balón (pasar, tirar, botar, entrar).
+ */
+export function saleEn(accion, estado) {
+  if (!accion) return false;
+  const p = accion.parametros || {};
+  const deDefensa = accion.familia === 'entre_dos' && (p.rol === 'defensor' || p.rol === 'atacante');
+  if (estado === 'defensor') {
+    if (deDefensa) return true;
+    return accion.familia === 'balon' && p.modo === 'recoge';
+  }
+  if (deDefensa) return false;
+  if (estado === 'sinBalon') {
+    if (accion.familia === 'balon' && (p.modo === 'pase' || p.modo === 'tiro')) return false;
+    if (accion.simbolo === 'carrera_con_balon') return false;
+  }
+  return true;
+}
+
+/** Lo que NO cabe en el anillo y SÍ vale en este estado, para el
+ *  «⋯ más». Antes salía el catálogo entero: sin balón se ofrecía pasar,
+ *  y a un defensor, botar. */
 export function resto(estado, catalogo = CATALOGO_SISTEMA) {
   const dentro = new Set(ANILLO[estado] || []);
-  return catalogo.filter((a) => !dentro.has(a.slug));
+  return catalogo.filter((a) => !dentro.has(a.slug) && saleEn(a, estado));
 }
 
 /* ── El anillo exterior: las variantes ─────────────────────── */

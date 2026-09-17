@@ -25,6 +25,7 @@
 
 import { VERSION_JUGADA } from './compilar.js';
 import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
+import { normalizarDefensa, REGLAS } from './defensa.js';
 
 const DE_TIRO = new Set(CATALOGO_SISTEMA.filter((a) => a.parametros && a.parametros.modo === 'tiro').map((a) => a.slug));
 
@@ -66,12 +67,28 @@ export function normalizarJugada(bruta) {
     ids.add(e.id);
     elementos.push({ ...e });
   }
+  const esJugador = new Set(elementos.filter((e) => e.kind === 'jugador').map((e) => e.id));
   for (const b of elementos) {
     if (b.kind === 'balon' && b.portador_id && !ids.has(b.portador_id)) {
       avisos.push('Un balón era de alguien que ya no está: se ha quedado suelto.');
       b.portador_id = null;
     }
+    /* La defensa puesta a mano (§8.1): a quién defiende y con qué regla.
+       Lo que no vale se quita y se dice; y el jugador vuelve a
+       emparejarse solo. */
+    if (b.kind === 'jugador') {
+      if (b.defiende_a != null && (!esJugador.has(b.defiende_a) || b.defiende_a === b.id)) {
+        avisos.push('Un defensor defendía a alguien que ya no está: se empareja solo.');
+        b.defiende_a = null;
+      }
+      if (b.regla_defensa != null && !REGLAS.includes(b.regla_defensa)) {
+        avisos.push('Un defensor tenía una regla que no se conoce: usa la del ejercicio.');
+        b.regla_defensa = null;
+      }
+    }
   }
+  const { defensa, avisos: deDefensa } = normalizarDefensa(bruta.defensa);
+  avisos.push(...deDefensa);
 
   /* ── las fases y sus tramos ── */
   const deTramo = new Set();
@@ -134,6 +151,7 @@ export function normalizarJugada(bruta) {
       canasta: bruta.canasta === 'sur' ? 'sur' : 'norte',
       elementos,
       fases,
+      defensa,
     },
     avisos,
     siguienteTramo: mayor + 1,

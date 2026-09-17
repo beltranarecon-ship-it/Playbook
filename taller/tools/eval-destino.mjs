@@ -232,6 +232,16 @@ test('QUIEN BLOQUEA SE PLANTA AL LADO DE ESE DEFENSOR, a 0,7 m y del lado por el
   }
 });
 
+test('LA PERPENDICULAR ES EN METROS: también con el compañero en el ala, fuera del eje del aro', () => {
+  /* Con la línea al aro vertical, medir en [0,1] o en metros da lo mismo;
+     en diagonal no, porque la pista entera mide 18 por 27. */
+  const companero = { x: 0.2, y: 0.3 };
+  const d = defensorSupuesto({ pista: 'entera', canasta: 'norte', par: companero, conBalon: false });
+  const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde: { x: 0.05, y: 0.5 }, companero, conBalon: false });
+  aprox(escalar('entera', companero, d, d, s), 0, 1e-6, 'a 90° en metros:');
+  aprox(metrosEntre('entera', s, d), METROS_BLOQUEO, 1e-6);
+});
+
 test('NO SE QUEDA ENCIMA DEL COMPAÑERO aunque llegue desde su misma altura', () => {
   /* Parándose en su camino hacia el defensor, el que venía desde la
      altura del compañero acababa a medio metro de él, ficha sobre ficha. */
