@@ -246,5 +246,27 @@ test('UN BLOQUEO SIN SU COMPAÑERO SE CONSERVA, y se dice', () => {
   ok(!normalizarJugada(buena()).avisos.some((a) => /compañero/.test(a)), 'sin bloqueos no se habla de compañeros');
 });
 
+test('LO QUE UN DEFENSOR HACE DISTINTO SE GUARDA EN SU FASE, y lo roto se dice', () => {
+  const j = normalizarJugada({
+    version: 3, pista: 'entera', canasta: 'norte',
+    elementos: [
+      { id: 'A1', kind: 'jugador', equipo: 'A', x: 0.3, y: 0.7 },
+      { id: 'B1', kind: 'jugador', equipo: 'B', x: 0.3, y: 0.5 },
+    ],
+    fases: [{
+      id: 'f1', tramos: [],
+      defensa: {
+        B1: { accion: 'ayuda', objetivo_id: 'A1' },
+        B9: { accion: 'sobrepasado' },
+        A1: { accion: 'baila' },
+      },
+    }],
+  });
+  eq(j.jugada.fases[0].defensa, { B1: { accion: 'ayuda', objetivo_id: 'A1' } });
+  eq(j.avisos.filter((a) => /defensa/.test(a)).length, 2, 'las dos que se caen se dicen:');
+  const vacia = normalizarJugada({ version: 3, elementos: [], fases: [{ id: 'f1', tramos: [] }] });
+  eq(vacia.jugada.fases[0].defensa, {}, 'una fase sin nada declarado trae el hueco vacío:');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

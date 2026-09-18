@@ -98,6 +98,24 @@ export const SEGUIMIENTO = Object.freeze({
   apartarse: 1.0,      // nunca atraviesa a su par: se aparta a 1 m (§3.6)
 });
 
+/**
+ * Lo que un defensor puede hacer DISTINTO en una fase (§8.5).
+ *
+ * No son tramos: no dibujan un camino, dicen a qué apunta mientras dura
+ * la fase, y el seguimiento (§8.4) le lleva hasta ahí. Por eso se
+ * guardan como EXCEPCIONES de la fase (§11.1) y no en un carril.
+ *
+ * «roba» llega en el paso siguiente: cambia la posesión y los papeles.
+ */
+export const ACCIONES_DEFENSOR = Object.freeze(['ayuda', 'sobrepasado', 'cambia_marca', 'cierra_rebote', 'dos_contra_uno']);
+
+/** Las que hay que señalar a alguien, y a quién. */
+export const SENALA = Object.freeze({ ayuda: 'atacante', cambia_marca: 'defensor' });
+
+/** Cuándo vuelve con su par el que ayuda: en el último cuarto de la
+ *  fase, para que se vea ir, tapar y volver (§8.5). */
+export const AYUDA_VUELVE = 0.75;
+
 /** Una defensa nueva: nada decidido a mano. */
 export function defensaPorDefecto() {
   return { preajuste: REGLA_POR_DEFECTO, parametros: {}, situacion: null, ataca: null };
@@ -199,6 +217,44 @@ function girar(pista, centro, p, angulo) {
   return { x: centro.x + (vx * c - vy * s) / e.x, y: centro.y + (vx * s + vy * c) / e.y };
 }
 
+/* LA V DE LA TRAMPA (§8.3): uno corta el camino al aro y el otro tapa la
+   salida hacia el medio de la pista. Los dos a `presion` del que lleva el
+   balón y separados `trampa`; si esa separación no cabe en ese círculo,
+   el segundo se aleja lo justo para que sea la pedida. */
+/* El medio de la pista: hacia donde se tapa la salida. */
+function medioDe(pista) {
+  const lim = limitesCancha(pista);
+  return { x: (lim.x[0] + lim.x[1]) / 2, y: (lim.y[0] + lim.y[1]) / 2 };
+}
+
+/* SUMARSE A LA TRAMPA que ya hay (§8.5): a `presion` del que lleva el
+   balón y a `trampa` del defensor que YA ESTÁ —esté donde esté, que no
+   tiene por qué estar en el sitio ideal—, por el lado del medio de la
+   pista. Si a esa distancia no cabe, se queda lo más cerca que puede. */
+function alLadoDelQueEsta(pista, C, otro, p) {
+  const d0 = metrosEntre(pista, C, otro);
+  if (!(d0 > 1e-6)) return null;
+  const cos = (p.presion * p.presion + d0 * d0 - p.trampa * p.trampa) / (2 * p.presion * d0);
+  const ang = Math.acos(Math.max(-1, Math.min(1, cos)));
+  const desde = hacia(pista, C, otro, p.presion);
+  const a = girar(pista, C, desde, ang);
+  const b = girar(pista, C, desde, -ang);
+  const medio = medioDe(pista);
+  return metrosEntre(pista, a, medio) <= metrosEntre(pista, b, medio) ? a : b;
+}
+
+function laTrampa(pista, C, aro, p) {
+  const linea = hacia(pista, C, aro, p.presion);
+  const medio = medioDe(pista);
+  const cabe = p.trampa < 2 * p.presion;
+  const angulo = cabe ? 2 * Math.asin(p.trampa / (2 * p.presion)) : Math.PI;
+  const radio = cabe ? p.presion : p.trampa - p.presion;
+  const desde = hacia(pista, C, aro, radio);
+  const a = girar(pista, C, desde, angulo);
+  const b = girar(pista, C, desde, -angulo);
+  return { linea, lado: metrosEntre(pista, a, medio) <= metrosEntre(pista, b, medio) ? a : b };
+}
+
 /* `p` desplazado `metros` en perpendicular a la línea a→b. */
 function alLado(pista, p, a, b, metros) {
   const e = escalaDe(pista);
@@ -206,6 +262,47 @@ function alLado(pista, p, a, b, metros) {
   const largo = Math.hypot(dx, dy) || 1;
   return { x: p.x + (-dy / largo) * metros / e.x, y: p.y + (dx / largo) * metros / e.y };
 }
+
+/**
+ * Lo declarado de UNA fase, en condiciones (§11.1).
+ *
+ * Lo que no se entiende se quita y SE DICE; una fase sin nada declarado
+ * no es un error, es lo normal.
+ *
+ * @param bruta  { [defensor]: { accion, objetivo_id } } tal y como venga
+ * @param ids    los ids que existen en la jugada
+ * @returns { declaradas, avisos }
+ */
+export function normalizarDeclaradas(bruta, { ids = null, fase = 0 } = {}) {
+  const declaradas = {};
+  const avisos = [];
+  if (bruta == null) return { declaradas, avisos };
+  if (typeof bruta !== 'object' || Array.isArray(bruta)) {
+    avisos.push(`Fase ${fase + 1}: lo que hacía la defensa estaba roto y se ha dejado fuera.`);
+    return { declaradas, avisos };
+  }
+  const existe = (id) => !ids || ids.has(id);
+  for (const [d, v] of Object.entries(bruta)) {
+    if (!v || typeof v !== 'object' || !ACCIONES_DEFENSOR.includes(v.accion)) {
+      avisos.push(`Fase ${fase + 1}: una acción de la defensa no se conoce y se ha dejado fuera.`);
+      continue;
+    }
+    if (!existe(d)) {
+      avisos.push(`Fase ${fase + 1}: una acción de la defensa era de alguien que ya no está.`);
+      continue;
+    }
+    const pide = SENALA[v.accion];
+    if (pide && !(v.objetivo_id && existe(v.objetivo_id))) {
+      avisos.push(`Fase ${fase + 1}: «${v.accion}» se ha quedado sin a quién, y se ha dejado fuera.`);
+      continue;
+    }
+    declaradas[d] = { accion: v.accion, objetivo_id: pide ? v.objetivo_id : null };
+  }
+  return { declaradas, avisos };
+}
+
+/** Lo declarado de una fase, ya limpio. */
+export const declaradasDe = (fase) => normalizarDeclaradas(fase && fase.defensa).declaradas;
 
 /* ── Quién ataca ───────────────────────────────────────────── */
 
@@ -336,25 +433,48 @@ function quienRetrasa({ elementos = [], papeles = null, pista = 'entera', canast
 /**
  * Los papeles de una jugada (§11.1): al empezar y en cada fase.
  *
- * Hoy son los mismos en todas las fases: lo que los cambia —robar,
- * cambiar de par— llega en los pasos 5.6 y 5.7, y entrará aquí, que es
- * donde todos lo van a leer.
+ * Lo que los cambia dentro de una jugada es «cambia con…» (§8.5), que
+ * intercambia dos pares y SIGUE VALIENDO en las fases siguientes: por
+ * eso los pares se arrastran de una fase a la otra en vez de calcularse
+ * otra vez. Robar (§8.6) llega en el paso siguiente, y entrará aquí.
  *
  * @param jugada { pista, elementos (la escena al empezar), fases, defensa }
  * @returns { inicio, fases: [papeles] } con
- *          papeles = { ataca, atacantes, defensores, pares, situacion, retrasa }
+ *          papeles = { ataca, atacantes, defensores, pares, situacion,
+ *                      retrasa, acciones }
  */
 export function papelesDeJugada(jugada) {
   const j = jugada || {};
-  const base = emparejar({ elementos: j.elementos || [], defensa: j.defensa, pista: j.pista || 'entera' });
+  const pista = j.pista || 'entera';
+  const canasta = j.canasta || 'norte';
+  const base = emparejar({ elementos: j.elementos || [], defensa: j.defensa, pista });
   const conSituacion = { ...base, situacion: situacionDe({ ...base, defensa: j.defensa }) };
-  const papeles = {
-    ...conSituacion,
-    retrasa: quienRetrasa({
-      elementos: j.elementos || [], papeles: conSituacion, pista: j.pista || 'entera', canasta: j.canasta || 'norte',
-    }),
-  };
-  return { inicio: papeles, fases: (j.fases || []).map(() => papeles) };
+  const conRetrasa = (papeles) => ({
+    ...papeles,
+    retrasa: quienRetrasa({ elementos: j.elementos || [], papeles, pista, canasta }),
+  });
+  const inicio = { ...conRetrasa(conSituacion), acciones: {} };
+  let pares = inicio.pares;
+  const fases = (j.fases || []).map((f) => {
+    const acciones = declaradasDe(f);
+    pares = conCambiosDeMarca(pares, acciones, inicio.defensores);
+    return { ...conRetrasa({ ...conSituacion, pares }), acciones };
+  });
+  return { inicio, fases };
+}
+
+/* «Cambia con…»: los dos se intercambian el par. Un cambio con alguien
+   que no defiende, o consigo mismo, no es un cambio. */
+function conCambiosDeMarca(pares, acciones, defensores) {
+  let r = pares;
+  for (const [d, a] of Object.entries(acciones || {})) {
+    if (a.accion !== 'cambia_marca') continue;
+    const otro = a.objetivo_id;
+    if (!otro || otro === d || !defensores.includes(d) || !defensores.includes(otro)) continue;
+    r = { ...r, [d]: pares[otro] ?? null, [otro]: pares[d] ?? null };
+    pares = r;
+  }
+  return r;
 }
 
 /* ── La defensa se mueve sola (§8.4) ───────────────────────── */
@@ -434,6 +554,9 @@ export function seguirDefensa({
     const objetivos = colocar({
       pista, canasta, elementos: visto.elementos, papeles, defensa,
       cerrandoRebote: falla != null && t >= falla,
+      /* Por dónde va la fase: lo mira «ayuda», que vuelve con su par
+         antes de que acabe (§8.5). */
+      u: duracion_ms > 0 ? t / duracion_ms : 0,
     });
     for (const d of defensores) {
       if (!donde[d]) continue;
@@ -485,6 +608,10 @@ export function seguirDefensa({
  * @param papeles    los de esa fase (`papelesDeJugada`)
  * @param solo       si se pasa, solo esos defensores
  * @param cerrandoRebote  tras un tiro fallado: todos cierran el rebote
+ * @param acciones   lo declarado en esta fase (§8.5); si no se pasa, lo
+ *                   que traigan los papeles
+ * @param u          por dónde va la fase (0 a 1): lo mira «ayuda», que
+ *                   vuelve con su par antes de acabarla
  * @returns { [defensor]: { x, y, regla, aplica, balon, portador, trampa } }
  *   regla    la que tiene (la suya o la del ejercicio)
  *   aplica   la que cumple de verdad: si niega pero su par está lejos del
@@ -492,7 +619,7 @@ export function seguirDefensa({
  *            mandar retrasar, hacer la trampa o proteger el aro
  *   balon    el sitio del balón que mira, si mira alguno
  */
-export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, solo = null, cerrandoRebote = false } = {}) {
+export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, solo = null, cerrandoRebote = false, acciones = null, u = 0 } = {}) {
   const r = {};
   const pos = posicionesDe(pista, canasta);
   if (!pos || !pos.aro || !papeles || !papeles.ataca || !(papeles.defensores || []).length) return r;
@@ -519,12 +646,63 @@ export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], p
     if (x && REGLAS.includes(x.regla_defensa)) return x.regla_defensa;
     return defensa && REGLAS.includes(defensa.preajuste) ? defensa.preajuste : REGLA_POR_DEFECTO;
   };
+  const { defensores, pares, situacion } = papeles;
+  /* EL ORDEN MANDA: quien ya tiene sitio no se recoloca. Lo declarado por
+     el entrenador va primero, después el cierre del rebote, después la
+     situación y al final la regla de cada uno. Sin esto, el que retrasa
+     se ponía encima de lo que ya se había decidido. */
+  const hechos = new Set();
   const pon = (id, sitio, aplica, extra = {}) => {
-    if (!sitio || (solo && !solo.includes(id))) return;
+    if (!sitio || hechos.has(id) || (solo && !solo.includes(id))) return;
     r[id] = { ...enCancha(pista, sitio), regla: reglaDe(id), aplica, balon: null, portador: null, trampa: null, ...extra };
   };
-  const { defensores, pares, situacion } = papeles;
-  const hechos = new Set();
+
+  /* LO QUE EL ENTRENADOR HA DICHO QUE HACE ESTE DEFENSOR (§8.5). Manda
+     sobre la regla, sobre la situación y sobre el cierre automático del
+     rebote: lo ha dicho él. */
+  const declaradas = acciones || papeles.acciones || {};
+  /* Los que se suman a una trampa se colocan AL FINAL: hay que saber
+     dónde acaba el que ya está para ponerse a su lado. */
+  const dobles = [];
+  /* Quién lleva el balón, que lo miran la trampa y el dos contra uno: el
+     de un atacante, y con varios, el más cercano al aro. */
+  const conElBalon = () => balones
+    .filter((b) => b.dueno && (papeles.atacantes || []).includes(b.dueno))
+    .reduce((m, b) => { const x = metrosEntre(pista, b.sitio, aro); return !m || x < m.x - 1e-9 ? { b, x } : m; }, null);
+  for (const d of defensores) {
+    const dec = declaradas[d];
+    if (!dec) continue;
+    const par = pares[d];
+    const P = par ? en(par) : null;
+    if (dec.accion === 'cierra_rebote' && P) {
+      pon(d, hacia(pista, P, aro, p.cierra_rebote), 'cierra_rebote');
+      hechos.add(d);
+    } else if (dec.accion === 'sobrepasado' && P) {
+      /* Le deja pasar y le persigue POR DETRÁS: al otro lado de su par
+         mirando desde el aro, a un metro largo. */
+      const detras = { x: 2 * P.x - aro.x, y: 2 * P.y - aro.y };
+      pon(d, aDistancia(pista, P, detras, p.sobrepasado), 'sobrepasado', { balon: lleva(par) ? P : null });
+      hechos.add(d);
+    } else if (dec.accion === 'ayuda') {
+      /* Va a tapar al que se le ha señalado —entre él y el aro, que es lo
+         que hace una ayuda— y VUELVE con su par en el último cuarto de la
+         fase: pasado ese punto se le deja con su regla, que es
+         exactamente «recupera». */
+      const O = dec.objetivo_id ? en(dec.objetivo_id) : null;
+      if (!O || u >= AYUDA_VUELVE) continue;
+      const suyo = lleva(dec.objetivo_id);
+      pon(d, hacia(pista, O, aro, suyo ? p.par_con_balon : p.par_sin_balon), 'ayuda', { balon: suyo ? O : null, objetivo: dec.objetivo_id });
+      hechos.add(d);
+    } else if (dec.accion === 'dos_contra_uno') {
+      /* Se suma a la trampa JUNTO AL QUE YA ESTÁ: sin nadie sobre el
+         balón no hay trampa a la que sumarse, y se queda con su regla. */
+      const portador = conElBalon();
+      const suDefensor = portador ? defensores.find((x) => x !== d && pares[x] === portador.b.dueno && en(x)) : null;
+      if (!portador || !suDefensor) continue;
+      dobles.push({ d, otro: suDefensor, C: portador.b.sitio });
+      hechos.add(d);
+    }
+  }
 
   /* TRAS UN TIRO QUE FALLA, TODOS CIERRAN EL REBOTE (§8.3): entre su par
      y el aro, pegados, hasta el final de la fase. Manda sobre la regla y
@@ -585,26 +763,14 @@ export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], p
         .map((o) => o.d);
       const trampa = [...(suDefensor ? [suDefensor] : []), ...sobran];
       const ids = trampa.slice(0, 2);
-      const linea = hacia(pista, C, aro, p.presion);
-      const lim = limitesCancha(pista);
-      const medio = { x: (lim.x[0] + lim.x[1]) / 2, y: (lim.y[0] + lim.y[1]) / 2 };
       /* La V es de DOS: uno corta el camino al aro y el otro tapa la salida
          hacia el medio. Con uno solo no hay trampa que hacer, y se queda
          con su regla. */
       if (trampa.length >= 2) {
-        pon(trampa[0], linea, 'trampa', { balon: C, portador: C, trampa: ids });
+        const v = laTrampa(pista, C, aro, p);
+        pon(trampa[0], v.linea, 'trampa', { balon: C, portador: C, trampa: ids });
         hechos.add(trampa[0]);
-        /* Los dos a `presion` del portador, separados `trampa`. Si esa
-           separación no cabe en ese círculo, el segundo se aleja lo justo
-           para que la separación sea la pedida. */
-        const cabe = p.trampa < 2 * p.presion;
-        const angulo = cabe ? 2 * Math.asin(p.trampa / (2 * p.presion)) : Math.PI;
-        const radio = cabe ? p.presion : p.trampa - p.presion;
-        const desde = hacia(pista, C, aro, radio);
-        const a = girar(pista, C, desde, angulo);
-        const b = girar(pista, C, desde, -angulo);
-        const lado = metrosEntre(pista, a, medio) <= metrosEntre(pista, b, medio) ? a : b;
-        pon(trampa[1], lado, 'trampa', { balon: C, portador: C, trampa: ids });
+        pon(trampa[1], v.lado, 'trampa', { balon: C, portador: C, trampa: ids });
         hechos.add(trampa[1]);
       }
       /* Los que sobran después: entre el balón y el aro, a `par_sin_balon`
@@ -658,6 +824,18 @@ export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], p
     }
     pon(d, entre, 'entre_par_y_aro', { balon: conBalon ? P : null });
   }
+
+  /* Y ahora sí, los que se suman a la trampa: junto al que ya está, DONDE
+     VA A ESTAR. Calculándolo antes se pondrían al lado de un sitio que el
+     otro todavía no ocupa. Se les quita la marca de «hecho» un momento,
+     que es lo que impide recolocar a nadie. */
+  for (const t of dobles) {
+    const ref = r[t.otro] ? { x: r[t.otro].x, y: r[t.otro].y } : en(t.otro);
+    const sitio = (ref && alLadoDelQueEsta(pista, t.C, ref, p)) || laTrampa(pista, t.C, aro, p).lado;
+    hechos.delete(t.d);
+    pon(t.d, sitio, 'dos_contra_uno', { balon: t.C, portador: t.C, trampa: [t.otro, t.d] });
+    hechos.add(t.d);
+  }
   return r;
 }
 
@@ -704,8 +882,22 @@ export function explicarRegla({ pista = 'entera', canasta = 'norte', elementos =
     }
     case 'protege':
       return { aplica: s.aplica, texto: `Sobra en superioridad: protege entre el balón y el aro, a ${metros(p.par_sin_balon)} del balón.`, primitivas: [linea(s.balon, aro), aqui] };
-    case 'cierra_rebote':
-      return { aplica: s.aplica, texto: `El tiro ha fallado: cierra el rebote entre su par y el aro, a ${metros(p.cierra_rebote)}, hasta el final de la fase.`, primitivas: [linea(P, aro), aqui] };
+    case 'cierra_rebote': {
+      /* Lo mismo se hace solo tras un tiro fallado y se puede declarar
+         (§8.5): la frase dice de dónde viene. */
+      const dicho = ((papeles.acciones || {})[defensor] || {}).accion === 'cierra_rebote';
+      const porQue = dicho ? 'Cierra el rebote' : 'El tiro ha fallado: cierra el rebote';
+      return { aplica: s.aplica, texto: `${porQue} entre su par y el aro, a ${metros(p.cierra_rebote)}, hasta el final de la fase.`, primitivas: [linea(P, aro), aqui] };
+    }
+    case 'sobrepasado':
+      return { aplica: s.aplica, texto: `Le han superado: persigue a su par por detrás, a ${metros(p.sobrepasado)}, hasta el final de la fase.`, primitivas: [linea(P, aro), aqui] };
+    case 'ayuda': {
+      const o = porId.get(s.objetivo);
+      const quien = o ? `al ${numeroDe(o) || 'otro'}` : 'a otro';
+      return { aplica: s.aplica, texto: `Ayuda ${quien}: va a taparle entre él y el aro, y vuelve con su par antes de acabar la fase.`, primitivas: [linea({ x: o ? o.x : s.x, y: o ? o.y : s.y }, aro), aqui] };
+    }
+    case 'dos_contra_uno':
+      return { aplica: s.aplica, texto: `Va al dos contra uno: a ${metros(p.presion)} del que lleva el balón y a ${metros(p.trampa)} del defensor que ya estaba, tapando la salida hacia el medio.`, primitivas: [{ tipo: 'circulo', centro: s.portador, metros: p.presion }, linea(s.portador, aro), aqui] };
     default: {
       const conBalon = !!s.balon;
       const texto = s.regla === 'entre_par_y_aro'

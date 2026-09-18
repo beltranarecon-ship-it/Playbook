@@ -15,8 +15,17 @@
 
 import {
   REGLAS, NOMBRE_REGLA, SITUACIONES, PARAMETROS, parametrosDe, defensaPorDefecto, quienAtaca, situacionDe,
+  ACCIONES_DEFENSOR, SENALA,
 } from '../motor/defensa.js';
 import { EQUIPOS } from '../elementos.js';
+import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
+
+/* Cómo se llama cada cosa que un defensor puede hacer distinto (§8.5).
+   Sale del catálogo compartido: escribir aquí los nombres otra vez sería
+   tener dos vocabularios. */
+export const NOMBRE_ACCION = Object.fromEntries(CATALOGO_SISTEMA
+  .filter((a) => ACCIONES_DEFENSOR.includes(a.slug))
+  .map((a) => [a.slug, a.nombre]));
 
 export const NOMBRE_EQUIPO = { A: 'Equipo 1', B: 'Equipo 2', C: 'Equipo 3', D: 'Equipo 4' };
 export const NOMBRE_SITUACION = {
@@ -103,10 +112,26 @@ export function modeloAjustes({
     const j = elegidos[0];
     if (p.defensores.includes(j.id)) {
       const actual = p.pares[j.id] ?? null;
+      /* Lo que hace DISTINTO en esta fase (§8.5). Las que hay que señalar
+         a alguien se eligen pinchándole en la pista, así que aquí solo
+         salen para verlas y para quitarlas. */
+      const dicha = (p.acciones || {})[j.id] || null;
+      const suelta = ACCIONES_DEFENSOR.filter((a) => !SENALA[a]);
+      const hace = {
+        valor: dicha ? dicha.accion : null,
+        opciones: [
+          opcion(null, 'Defender a su par'),
+          ...suelta.map((a) => opcion(a, NOMBRE_ACCION[a] || a)),
+          ...(dicha && SENALA[dicha.accion]
+            ? [opcion(dicha.accion, `${NOMBRE_ACCION[dicha.accion]}${dicha.objetivo_id ? ` ${nombre(dicha.objetivo_id)}` : ''}`)]
+            : []),
+        ],
+      };
       return {
         tipo: 'defensor',
         id: j.id,
         nombre: nombreDe(j),
+        hace,
         par: {
           valor: j.defiende_a ?? null,
           opciones: [

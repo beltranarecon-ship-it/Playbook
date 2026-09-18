@@ -77,14 +77,39 @@ test('cada casilla lista trae su acción del catálogo compartido', () => {
 
 test('lo que aún no existe sale DECLARADO como pendiente y con su motivo', () => {
   const pend = anilloDe('defensor').filter((c) => c.pendiente);
-  ok(pend.length > 0, 'la defensa todavía no está: alguna tiene que salir pendiente');
+  ok(pend.length > 0, 'robar todavía no está: tiene que salir pendiente');
   for (const c of pend) {
     ok(c.motivo && c.motivo.length > 10, `${c.slug}: un pendiente sin motivo es un olvido`);
     eq(c.accion, null);
   }
-  // y la que SÍ existe no puede estar marcada
-  const def = anilloDe('defensor').find((c) => c.slug === 'defiende');
-  eq(def.pendiente, false, '«defiende» existe en el catálogo desde siempre');
+  eq(pend.map((c) => c.slug), ['roba'], 'y ya solo queda esa:');
+});
+
+test('EL ANILLO DEL DEFENSOR OFRECE LO QUE HACE DISTINTO (§8.5), y se puede usar', () => {
+  const anillo = anilloDe('defensor');
+  for (const slug of ['defiende', 'ayuda', 'sobrepasado', 'cambia_marca', 'cierra_rebote']) {
+    const c = anillo.find((x) => x.slug === slug);
+    ok(c && !c.pendiente && c.accion, `${slug} tiene que estar y poder usarse`);
+    ok(c.icono && c.icono !== '•', `${slug}: le falta icono`);
+  }
+  /* «Va al dos contra uno» no cabe en las seis casillas: está en «⋯ más». */
+  ok(!anillo.some((c) => c.slug === 'dos_contra_uno'), 'el dos contra uno no ocupa casilla');
+  ok(resto('defensor').some((a) => a.slug === 'dos_contra_uno'), 'pero sale en «⋯ más»');
+});
+
+test('A QUIÉN SE PUEDE SEÑALAR LO DICE LA ACCIÓN: ayudar a un rival, cambiar con un compañero', () => {
+  const B1 = { id: 'B1', kind: 'jugador', equipo: 'B' };
+  const B2 = { id: 'B2', kind: 'jugador', equipo: 'B' };
+  const A1 = { id: 'A1', kind: 'jugador', equipo: 'A' };
+  const de = (slug) => CATALOGO_SISTEMA.find((a) => a.slug === slug);
+  eq(porQueNoCompanero(de('ayuda'), B1, A1), null, 'ayudar sobre un rival vale:');
+  ok(porQueNoCompanero(de('ayuda'), B1, B2), 'y sobre un compañero no');
+  eq(porQueNoCompanero(de('cambia_marca'), B1, B2), null, 'cambiarse con otro defensor vale:');
+  ok(porQueNoCompanero(de('cambia_marca'), B1, A1), 'y con un atacante no');
+  eq(porQueNoCompanero(de('defiende'), B1, A1), null, 'defender a un rival vale:');
+  ok(porQueNoCompanero(de('bloquea'), B1, A1), 'y el bloqueo sigue siendo para un compañero');
+  /* Una del club que no diga a quién se señala no se bloquea. */
+  eq(porQueNoCompanero({ parametros: {} }, B1, A1), null);
 });
 
 test('el anillo del que lleva balón ofrece lo que se hace con balón', () => {
@@ -195,6 +220,11 @@ test('un pase pide destino y un tiro pide desenlace', () => {
 test('las acciones entre dos piden compañero', () => {
   eq(necesita(porSlug.get('bloquea')).companero, true);
   eq(necesita(porSlug.get('defiende')).companero, true);
+  eq(necesita(porSlug.get('ayuda')).companero, true, 'ayudar es a alguien:');
+  eq(necesita(porSlug.get('cambia_marca')).companero, true, 'y cambiarse el par, con alguien:');
+  for (const s of ['sobrepasado', 'cierra_rebote', 'dos_contra_uno']) {
+    eq(necesita(porSlug.get(s)).companero, false, `«${s}» se le hace a su propio par, no hay a quién preguntar:`);
+  }
 });
 
 test('«PINCHA A QUIÉN»: a un bloqueo le vale un jugador de su equipo que no sea él', () => {

@@ -91,27 +91,18 @@ export const ICONOS = {
   bota: '⛹', pasa: '➜', tira: '◎', entra: '⇥', finta: '↯', para: '■',
   corta: '⤳', bloquea: '▮', recoge: '↺', vuelve_a_fila: '⟲', pivota: '↻',
   defiende: '⌒', rodea: '∿', cambia_de_mano: '⇄', protege: '⊙',
+  ayuda: '↔', sobrepasado: '⇢', cambia_marca: '⇆', cierra_rebote: '⊔', dos_contra_uno: '⋀',
 };
 
 /*
-   Las acciones de defensa que faltan —robar, ser sobrepasado, cambiar
-   de par, cerrar el rebote— NO se inventan aquí, y es deliberado:
-
-     · «robo» no existe en el vocabulario de la biblioteca, y meter una
-       palabra que la rúbrica no sabe leer rompe la promesa de que el
-       vocabulario es único;
-     · y las tres últimas no dibujan un movimiento: cambian a QUIÉN
-       marca cada uno, que es el modelo de la capa 5.
-
-   Así que salen en el anillo, desactivadas y diciendo por qué. Verlas
-   apagadas es mejor que no verlas: enseña el plan y no se olvidan.
+   Lo que un defensor hace distinto (§8.5) ya está en el catálogo desde
+   el paso 5.6: no dibuja un trazo, dice a qué apunta mientras dura la
+   fase. Queda «robar», que cambia la posesión y los papeles: sale en el
+   anillo desactivada y diciendo por qué. Verla apagada es mejor que no
+   verla: enseña el plan y no se olvida.
 */
 const PENDIENTES = {
-  roba: { nombre: 'Roba', icono: '✚', motivo: 'llega con la defensa (capa 5): cambia la posesión y los papeles' },
-  ayuda: { nombre: 'Ayuda', icono: '↔', motivo: 'llega con la defensa (capa 5)' },
-  sobrepasado: { nombre: 'Es sobrepasado', icono: '⇢', motivo: 'llega con la defensa (capa 5)' },
-  cambia_marca: { nombre: 'Cambia con…', icono: '⇄', motivo: 'llega con la defensa (capa 5): cambia el emparejamiento' },
-  cierra_rebote: { nombre: 'Cierra el rebote', icono: '⊔', motivo: 'llega con la defensa (capa 5)' },
+  roba: { nombre: 'Roba', icono: '✚', motivo: 'llega en el paso siguiente de la defensa: cambia la posesión y los papeles' },
 };
 
 export const ANILLO = {
@@ -259,10 +250,19 @@ export const variantePorDefecto = (slug) => variantesDe(slug)[0] || null;
 export function porQueNoCompanero(accion, actor, candidato) {
   if (!candidato || candidato.kind !== 'jugador') return 'no es un jugador';
   if (actor && candidato.id === actor.id) return 'no puede hacérselo a sí mismo';
-  const relacion = accion && accion.parametros && accion.parametros.simbolo_relacion;
-  if (relacion === 'bloqueo' && actor && (candidato.equipo || 'A') !== (actor.equipo || 'A')) {
-    return 'es del otro equipo, y un bloqueo se le pone a un compañero';
+  const p = (accion && accion.parametros) || {};
+  /* A quién se puede señalar lo DECLARA la acción (`senala`). Una del
+     club que no lo diga cae en lo de siempre: un bloqueo se le pone a un
+     compañero y lo demás, a cualquiera. */
+  const senala = p.senala || (p.simbolo_relacion === 'bloqueo' ? 'companero' : 'cualquiera');
+  if (!actor || senala === 'cualquiera') return null;
+  const mismo = (candidato.equipo || 'A') === (actor.equipo || 'A');
+  if (senala === 'companero' && !mismo) {
+    return p.simbolo_relacion === 'bloqueo'
+      ? 'es del otro equipo, y un bloqueo se le pone a un compañero'
+      : 'es del otro equipo, y esto se hace con un compañero';
   }
+  if (senala === 'rival' && mismo) return 'es de tu equipo, y esto se le hace a un rival';
   return null;
 }
 
@@ -290,7 +290,12 @@ export function necesita(accion) {
     : (familia === 'balon' && p.modo === 'pase');
   return {
     destino: !!destino || pide.has('destino'),
-    companero: familia === 'entre_dos' && (pide.has('companero') || p.companero == null),
+    /* A quién se le hace SOLO se pregunta si la acción lo pide. En esta
+       familia el compañero es opcional —«sin él: cuenta el rol pero no se
+       mueve»—, así que mirar si está fijado haría preguntar también por
+       las que no señalan a nadie: ser sobrepasado o cerrar el rebote es
+       algo que se le hace a su propio par (§8.5). */
+    companero: familia === 'entre_dos' && pide.has('companero'),
     desenlace: familia === 'balon' && (p.modo === 'tiro'),
   };
 }

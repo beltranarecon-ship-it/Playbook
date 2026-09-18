@@ -118,5 +118,45 @@ test('SIN DATOS NO ROMPE', () => {
   eq(modeloAjustes({ seleccion: ['x'] }).tipo, 'ejercicio');
 });
 
+test('EL PANEL DEL DEFENSOR ENSEÑA LO QUE HACE DISTINTO EN ESTA FASE (§8.5)', () => {
+  const m = modeloAjustes({
+    seleccion: ['B1'],
+    elementos: [
+      { id: 'A1', kind: 'jugador', equipo: 'A', label: '1', x: 0.3, y: 0.7 },
+      { id: 'A2', kind: 'jugador', equipo: 'A', label: '2', x: 0.7, y: 0.7 },
+      { id: 'B1', kind: 'jugador', equipo: 'B', label: '1', x: 0.3, y: 0.5 },
+    ],
+    papeles: {
+      ataca: 'A', atacantes: ['A1', 'A2'], defensores: ['B1'], pares: { B1: 'A1' },
+      situacion: 'inferioridad', acciones: {},
+    },
+    nombreDe: (e) => `${e.equipo}${e.label}`,
+  });
+  eq(m.hace.valor, null, 'sin nada dicho, defiende a su par:');
+  eq(m.hace.opciones.map((o) => o.valor), [null, 'sobrepasado', 'cierra_rebote', 'dos_contra_uno'],
+    'y se pueden elegir las que no hay que señalar a nadie:');
+  ok(m.hace.opciones.every((o) => o.nombre && o.nombre.length > 3), 'todas con su nombre');
+});
+
+test('y si ya hace algo que se señala, se ve con a quién (y se puede quitar)', () => {
+  const m = modeloAjustes({
+    seleccion: ['B1'],
+    elementos: [
+      { id: 'A1', kind: 'jugador', equipo: 'A', label: '1', x: 0.3, y: 0.7 },
+      { id: 'A2', kind: 'jugador', equipo: 'A', label: '2', x: 0.7, y: 0.7 },
+      { id: 'B1', kind: 'jugador', equipo: 'B', label: '1', x: 0.3, y: 0.5 },
+    ],
+    papeles: {
+      ataca: 'A', atacantes: ['A1', 'A2'], defensores: ['B1'], pares: { B1: 'A1' },
+      situacion: 'inferioridad', acciones: { B1: { accion: 'ayuda', objetivo_id: 'A2' } },
+    },
+    nombreDe: (e) => `${e.equipo}${e.label}`,
+  });
+  eq(m.hace.valor, 'ayuda');
+  const suya = m.hace.opciones.find((o) => o.valor === 'ayuda');
+  ok(suya && /A2/.test(suya.nombre), `dice a quién ayuda: ${suya && suya.nombre}`);
+  ok(m.hace.opciones.some((o) => o.valor === null), 'y se puede volver a defender a su par');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

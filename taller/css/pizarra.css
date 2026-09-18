@@ -267,6 +267,9 @@
   cursor: default;
 }
 .pz-barra--auto:active { cursor: default; }
+/* Lo que ha DICHO el entrenador (§8.5) no es lo que saldría solo: se ve
+   con el celeste de la selección, sin llegar al azul de lo dibujado. */
+.pz-barra--auto.is-dicha { background: var(--accent-soft); color: var(--color-text); }
 
 /* ---- La pantalla (§2.1) -------------------------------------
    Barra arriba, panel de fichas a la izquierda, y la pista con la línea

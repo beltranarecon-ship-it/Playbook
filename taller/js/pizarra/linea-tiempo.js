@@ -130,6 +130,7 @@ export class LineaTiempo {
     }
     const total = Math.max(1, tiempos.duracion_ms);
     const automaticos = t._defensaDeLasFases()[t.iFase] || {};
+    const declaradas = t.declaradas();
     for (const c of fase.carriles) {
       const ficha = t.fichas.elementos.find((e) => e.id === c.elemento);
       const fila = h('div', { class: 'pz-carril' },
@@ -150,13 +151,21 @@ export class LineaTiempo {
       fila.append(pista, h('span', { class: 'pz-carril__dur' }, segundos(duracionDeCarril(c, tiempos))));
       caja.append(fila);
     }
-    /* Y los que se mueven solos: toda la fase, en gris y quietos. */
-    for (const id of Object.keys(automaticos)) {
+    /* Y los que se mueven solos: toda la fase, en gris y quietos. El que
+       hace algo DICHO por el entrenador (§8.5) se ve distinto: sigue sin
+       poder arrastrarse, pero no es lo que saldría solo. */
+    for (const id of [...new Set([...Object.keys(automaticos), ...Object.keys(declaradas)])]) {
       const ficha = t.fichas.elementos.find((e) => e.id === id);
+      const dicha = declaradas[id] || null;
+      const accion = dicha ? t._accionDe(dicha.accion) : null;
+      const objetivo = dicha && dicha.objetivo_id ? t.fichas.elementos.find((e) => e.id === dicha.objetivo_id) : null;
+      const conQuien = objetivo ? ` · ${t.nombreDe(objetivo)}` : '';
       const barra = h('div', {
-        class: 'pz-barra pz-barra--auto',
-        title: 'la defensa sigue a su par (§8.4): no se dibuja ni se arrastra',
-      }, 'defiende');
+        class: 'pz-barra pz-barra--auto' + (dicha ? ' is-dicha' : ''),
+        title: dicha
+          ? `lo has dicho tú (§8.5): ${(accion ? accion.nombre : dicha.accion).toLowerCase()}${objetivo ? ` a ${t.nombreDe(objetivo)}` : ''}`
+          : 'la defensa sigue a su par (§8.4): no se dibuja ni se arrastra',
+      }, dicha ? `${accion ? accion.nombre : dicha.accion}${conQuien}` : 'defiende');
       barra.style.left = '0%';
       barra.style.width = '100%';
       caja.append(h('div', { class: 'pz-carril pz-carril--auto' },

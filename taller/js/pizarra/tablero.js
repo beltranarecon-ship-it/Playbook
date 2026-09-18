@@ -54,6 +54,7 @@ import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
 import { compilar } from './motor/compilar.js';
 import {
   defensaPorDefecto, papelesDeJugada, tramosQueNoEncajan, normalizarDefensa, colocar, explicarRegla, REGLAS,
+  ACCIONES_DEFENSOR, SENALA,
 } from './motor/defensa.js';
 import { COLORS } from '../canvas/colors.js';
 import {
@@ -486,6 +487,8 @@ export class Tablero {
         duracion_ms: f.duracion_ms ?? null,
         pausa_post_ms: f.pausa_post_ms ?? null,
         tramos: f.tramos,
+        // lo que algún defensor hace distinto en esa fase (§8.5)
+        defensa: f.defensa || {},
       })),
       defensa: this.defensa,
     };
@@ -508,6 +511,9 @@ export class Tablero {
     const entrada = this.fases[0].entrada || {};
     const clave = JSON.stringify([
       this.lienzo.vista.pistaKey, this.defensa, this.fases.length, this.fases[0].posesion || {},
+      /* Lo declarado cambia los pares (§8.5), así que la respuesta de
+         antes ya no vale. */
+      this.fases.map((f) => f.defensa || null),
       this.fichas.elementos.filter((e) => e.kind === 'jugador').map((e) => [
         e.id, e.equipo, e.label, e.dorsal, e.en_juego, e.defiende_a ?? null,
         entrada[e.id] ? entrada[e.id].x : e.x, entrada[e.id] ? entrada[e.id].y : e.y,
@@ -1190,9 +1196,28 @@ export class Tablero {
 
     this.anillo.cerrar();
 
-    /* «PINCHA A QUIÉN» (§4.4). De las acciones entre dos, el bloqueo ya se
-       dibuja: se señala al compañero y el bloqueador va solo a su sitio.
-       Las de la defensa llegan con los pasos siguientes y se declaran. */
+    /* LO QUE UN DEFENSOR HACE DISTINTO (§8.5). No dibuja un trazo: se
+       declara para esa fase y la defensa que se mueve sola (§8.4) le
+       lleva. «Defiende» es volver a lo de siempre: marcar a quien se le
+       señale, sin nada declarado. */
+    if (ACCIONES_DEFENSOR.includes(accion.slug) || accion.slug === 'defiende') {
+      if (!this.papelesDeFase().defensores.includes(elemento.id)) {
+        this.onNoPuede?.(accion, 'ahora mismo no está defendiendo');
+        this._pintarAyuda();
+        return;
+      }
+      if (!pide.companero) { this._declarar(elemento, accion, null); return; }
+      this._enCurso = { elemento, accion, variante };
+      this.companero.empezar({
+        elemento, accion, variante, conDedo: this._conDedo,
+        vale: (ficha) => porQueNoCompanero(accion, elemento, ficha) || this._porQueNoObjetivo(accion, ficha),
+      });
+      this._pintarAyuda();
+      return;
+    }
+
+    /* «PINCHA A QUIÉN» (§4.4). De las acciones entre dos, el bloqueo se
+       dibuja: se señala al compañero y el bloqueador va solo a su sitio. */
     if (pide.companero) {
       if (!esAccionDeBloqueo(accion)) { this.onSinSoporte?.(accion); this._pintarAyuda(); return; }
       this._enCurso = { elemento, accion, variante };
@@ -1245,6 +1270,8 @@ export class Tablero {
     this._enCurso = null;
     const lista = this.fichas.elementos;
     const desde = lista.find((e) => e.id === elemento.id) || elemento;
+    /* Lo de la defensa no dibuja trazo: se declara (§8.5). */
+    if (!esAccionDeBloqueo(accion)) { this._declarar(desde, accion, ficha.id); return; }
     /* A quién se bloquea de verdad: al defensor de su compañero, si lo
        hay. Sin defensa en la pista se sigue usando el supuesto. */
     const { pares } = this.papelesDeFase();
@@ -1270,6 +1297,63 @@ export class Tablero {
       defensor: defensor ? defensor.id : null,
     });
   }
+
+  /* Un objetivo que no vale para lo que se está declarando: ayudar es a
+     un ATACANTE y cambiarse el par, con otro DEFENSOR. El equipo no
+     basta: en una pista puede haber cuatro colores y solo dos papeles. */
+  _porQueNoObjetivo(accion, ficha) {
+    const { atacantes, defensores } = this.papelesDeFase();
+    const pide = accion.slug === 'defiende' ? 'atacante' : SENALA[accion.slug];
+    if (pide === 'atacante' && !atacantes.includes(ficha.id)) return 'no está atacando';
+    if (pide === 'defensor' && !defensores.includes(ficha.id)) return 'no está defendiendo';
+    return null;
+  }
+
+  /**
+   * UN DEFENSOR HACE ALGO DISTINTO EN ESTA FASE (§8.5).
+   *
+   * No se dibuja nada: se declara, y el seguimiento (§8.4) le lleva. Se
+   * guarda en la fase y no en un carril porque no es un camino (§11.1).
+   *
+   * «Defiende» es lo contrario: marca a quien se le señale y deja de
+   * hacer lo que hubiera declarado, que es como se quita.
+   */
+  _declarar(defensor, accion, objetivoId) {
+    const slug = accion.slug;
+    if (slug === 'defiende') {
+      if (objetivoId) this.setParDe(defensor.id, objetivoId);
+      this.declararDefensa(defensor.id, null);
+    } else {
+      this.declararDefensa(defensor.id, { accion: slug, objetivo_id: objetivoId || null });
+    }
+    /* Y el anillo vuelve a salir sobre la ficha, como después de un
+       trazo (§4.5): lo normal es encadenar. */
+    this._pintarAyuda();
+  }
+
+  /**
+   * Guarda (o quita, con `null`) lo que un defensor hace distinto en la
+   * fase que se está editando.
+   */
+  declararDefensa(defensor, valor = null) {
+    if (valor && !ACCIONES_DEFENSOR.includes(valor.accion)) return false;
+    if (!this.papelesDeFase().defensores.includes(defensor)) return false;
+    const defensa = { ...(this.fases[this.iFase].defensa || {}) };
+    if (valor) defensa[defensor] = { accion: valor.accion, objetivo_id: valor.objetivo_id || null };
+    else if (!(defensor in defensa)) return false;
+    else delete defensa[defensor];
+    this.fases = this.fases.map((f, i) => (i === this.iFase ? { ...f, defensa } : f));
+    /* Las respuestas guardadas —los papeles y el seguimiento— se sueltan
+       solas: lo declarado entra en las dos claves, y con una clave nueva
+       se vuelve a calcular. Borrarlas aquí a mano no haría nada. */
+    this._avisarDeFases();
+    this.onTramos?.(this.tramos);
+    this.lienzo.pintar();
+    return true;
+  }
+
+  /** Lo que hace cada defensor en la fase que se edita (§8.5). */
+  declaradas() { return this.fases[this.iFase].defensa || {}; }
 
   /** El motivo por el que esta ficha no puede hacer esto ahora, o
    *  `null` si sí puede. */

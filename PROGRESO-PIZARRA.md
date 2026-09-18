@@ -41,7 +41,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **65 en verde, 1507
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **65 en verde, 1531
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -62,7 +62,7 @@ de punta a punta, con sus bancos en verde y commit en la rama.
 | 5.3 | Papeles y pares: `motor/defensa.js` + `eval-defensa.mjs`. Quién ataca, pares por dorsal y libre más cercano, situación por fase, arco del defensor y línea discontinua | ✅ (63 bancos, 1432 pruebas; revisión adversarial con 11 hallazgos confirmados, todos arreglados; banco nuevo del Tablero; probado en la Pizarra) |
 | 5.4 | Colocar por regla (las 6 del §8.3), pestaña «Ajustes» del panel derecho (solo defensa) y ver la regla (§8.7) | ✅ (64 bancos, 1474 pruebas; revisión adversarial de 28 hallazgos, arreglados los ciertos; bancos nuevos eval-ajustes y más pruebas de defensa) |
 | 5.5 | Seguimiento continuo (§8.4): la defensa se mueve sola igual en Pizarra y proyector; movimiento «por tiempo» en el motor (aditivo); cierra el rebote automático; carril gris «automático» | ✅ (65 bancos, 1507 pruebas; 16 mutantes, los 16 muertos; probado en la Pizarra y en el motor sobre la misma jugada) |
-| 5.6 | Acciones declaradas del defensor: ayuda y recupera, es sobrepasado, cambia con…, cierra el rebote, va al dos contra uno | pendiente |
+| 5.6 | Acciones declaradas del defensor: ayuda y recupera, es sobrepasado, cambia con…, cierra el rebote, va al dos contra uno | ✅ (65 bancos, 1531 pruebas; 23 mutantes, los 23 muertos; probado en la Pizarra: anillo, «pincha a quién», panel y carriles) |
 | 5.7 | Robo, rebote defensivo y canasta: cambio de papeles y de aro desde la fase siguiente. Cierre de la capa | pendiente |
 
 **Respuestas del entrenador (2026-09-13):**
@@ -178,6 +178,54 @@ los números ya cambiados. Y ocho pruebas que pasaban por casualidad.
   la defensa de esa fase la manda el seguimiento, así que al cambiar de
   fase vuelve a donde le toca. Mover a un defensor «a mano» a mitad de
   jugada es de las acciones declaradas (5.6).
+
+**Decidido en el paso 5.6 (dicho al entrenador):**
+
+- **Lo que un defensor hace distinto entra en el CATÁLOGO** (familia
+  «entre dos»), no en una lista aparte de la Pizarra: el nombre, los
+  sinónimos, el icono y a quién se señala salen de ahí, y una acción del
+  club lo hereda sin tocar nada.
+- **«ayuda» deja de ser sinónimo de «defiende»**: es otra acción. Un
+  ejercicio que decía «ayuda» se leía como «marca», que es justo lo
+  contrario de lo que hace una ayuda.
+- **No se guardan como tramos, sino como excepciones de la fase**
+  (`fase.defensa`), que es lo que manda el §11.1: no dibujan un camino,
+  dicen a qué apunta el defensor mientras dura la fase.
+- **A quién se puede señalar lo dice la acción** (`senala`: compañero,
+  rival o cualquiera), no una lista de slugs. Y **preguntar a quién sale
+  solo de `pide`**: en «entre dos» el compañero es opcional, así que
+  mirar si estaba fijado hacía preguntar también por las que no señalan a
+  nadie.
+- **Orden de mando al colocar**: lo dicho por el entrenador → el cierre
+  automático del rebote → la situación → la regla de cada uno. Quien ya
+  tiene sitio no se recoloca; de paso se arregla que el que retrasa se
+  ponía encima de lo ya decidido.
+- **Ayuda y recupera**: se pone entre el que tapa y el aro, y vuelve con
+  su par en el último cuarto de la fase.
+- **Es sobrepasado**: al otro lado de su par mirando desde el aro, a
+  1,2 m, hasta el final de la fase.
+- **Va al dos contra uno**: se coloca AL FINAL, junto a donde acaba el
+  defensor que ya está —no junto a un sitio ideal que el otro no ocupa—,
+  a 1,0 m del balón y 1,5 m de él.
+- **«Cambia con…» sigue valiendo en las fases siguientes** (§8.5); las
+  demás son de su fase.
+- **«Defiende» es como se quita lo declarado**: marca a quien se le
+  señale y deja de hacer lo que hubiera dicho.
+- El panel «Ajustes» enseña **«En esta fase»** con las que no hay que
+  señalar a nadie; ayudar y cambiar el par se eligen en el anillo.
+- En la línea de tiempo, **lo dicho por el entrenador se ve en celeste** y
+  lo que sale solo, en gris.
+
+**Lo que no cuadra, dicho y NO tocado (paso 5.6):**
+
+- **Una acción declarada sola en una fase no se puede cerrar**:
+  «Siguiente fase» pide que haya algo dibujado, y la línea de tiempo no
+  enseña carriles si no hay ningún trazo. Una fase que solo dijera «el 4
+  cierra el rebote» no se puede dejar cerrada. Pendiente de decidir si
+  una fase así debe valer.
+- **Arrastrar un defensor en una fase que no es la primera sigue sin
+  guardarse** (viene del 5.5): la defensa de esa fase la manda el
+  seguimiento.
 
 **Lo que no cuadra, dicho y NO tocado (paso 5.5):**
 

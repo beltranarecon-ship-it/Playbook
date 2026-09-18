@@ -368,6 +368,82 @@ test('UN BLOQUEO SE LE PONE AL DEFENSOR DE VERDAD, y se guarda a quién', () => 
   ok(Math.abs(m - defensaMod.PARAMETROS.bloqueo) < 1e-6, `se planta a ${m.toFixed(2)} m del defensor de verdad`);
 });
 
+console.log('\n· lo que un defensor hace distinto (§8.5)');
+
+/* A1 con balón, A2 sin él, y dos defensores puestos desde el panel. */
+function conDefensa() {
+  const m = conAtaque();
+  const b1 = m.t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.35, y: 0.40 });
+  const b2 = m.t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.75, y: 0.40 });
+  m.avisos.length = 0;
+  return { ...m, b1, b2 };
+}
+const elegir = (t, id, slug) => { t._tocarFicha(ficha(t, id)); t._elegir(slug, {}); };
+
+test('DECLARAR DESDE EL ANILLO: se guarda en la fase y no dibuja ningún tramo', () => {
+  const { t, b1 } = conDefensa();
+  elegir(t, b1.id, 'sobrepasado');
+  eq(t.declaradas()[b1.id], { accion: 'sobrepasado', objetivo_id: null });
+  eq(t.tramos.length, 0, 'lo declarado no es un trazo (§11.1):');
+  eq(t.jugada().fases[0].defensa[b1.id].accion, 'sobrepasado', 'y la jugada se lo lleva:');
+});
+
+test('«AYUDA» PREGUNTA A QUIÉN, y solo vale un atacante', () => {
+  const { t, a2, b1, b2 } = conDefensa();
+  elegir(t, b1.id, 'ayuda');
+  ok(t.companero.eligiendo, 'se queda esperando a que se pinche a alguien');
+  const vale = t.companero.activo.vale;
+  ok(vale(ficha(t, b2.id)), 'otro defensor no vale para ayudar');
+  eq(vale(ficha(t, a2.id)), null, 'un atacante sí:');
+  t._companeroElegido(ficha(t, a2.id), t.companero.activo);
+  eq(t.declaradas()[b1.id], { accion: 'ayuda', objetivo_id: a2.id });
+});
+
+test('«CAMBIA CON…» CRUZA LOS PARES, y sigue cruzado en la fase siguiente', () => {
+  const { t, a1, a2, b1, b2 } = conDefensa();
+  eq([t.papelesDeFase().pares[b1.id], t.papelesDeFase().pares[b2.id]], [a1.id, a2.id], 'cada uno con el suyo:');
+  elegir(t, b1.id, 'cambia_marca');
+  const vale = t.companero.activo.vale;
+  ok(vale(ficha(t, a1.id)), 'con un atacante no se cambia el par');
+  eq(vale(ficha(t, b2.id)), null, 'con otro defensor sí:');
+  t._companeroElegido(ficha(t, b2.id), t.companero.activo);
+  eq([t.papelesDeFase().pares[b1.id], t.papelesDeFase().pares[b2.id]], [a2.id, a1.id], 'cruzados:');
+  corta(t, a2.id, { x: 0.5, y: 0.3 });
+  t._cerrarFase();
+  eq([t.papelesDeFase().pares[b1.id], t.papelesDeFase().pares[b2.id]], [a2.id, a1.id], 'y en la fase 2 siguen cruzados:');
+});
+
+test('«DEFIENDE» ES VOLVER A LO NORMAL: marca a quien se le diga y deja de hacer lo declarado', () => {
+  const { t, a1, a2, b1 } = conDefensa();
+  elegir(t, b1.id, 'cierra_rebote');
+  eq(t.declaradas()[b1.id].accion, 'cierra_rebote');
+  elegir(t, b1.id, 'defiende');
+  t._companeroElegido(ficha(t, a2.id), t.companero.activo);
+  eq(t.declaradas()[b1.id], undefined, 'ya no hace nada distinto:');
+  eq(t.papelesDeFase().pares[b1.id], a2.id, 'y marca al que se le ha dicho:');
+  eq(t.papeles().inicio.pares[b1.id], a2.id, 'desde el principio, que es donde vive el par:');
+  ok(a1, 'y el otro atacante sigue ahí');
+});
+
+test('un atacante no puede hacer lo de la defensa, y se dice', () => {
+  const { t, a1, avisos } = conDefensa();
+  elegir(t, a1.id, 'cierra_rebote');
+  eq(t.declaradas(), {}, 'no se guarda nada:');
+  ok(avisos.some(([tipo, , motivo]) => tipo === 'noPuede' && /no está defendiendo/.test(motivo || '')), JSON.stringify(avisos));
+});
+
+test('Y LO DECLARADO MUEVE A LA DEFENSA DE VERDAD: al que superan se queda por detrás', () => {
+  const { t, a1, b1 } = conDefensa();
+  corta(t, a1.id, { x: 0.45, y: 0.30 });   // A1 avanza hacia el aro
+  const normal = t._defensaDeLasFases()[0][b1.id].fin;
+  elegir(t, b1.id, 'sobrepasado');
+  const detras = t._defensaDeLasFases()[0][b1.id].fin;
+  /* Defendiendo se queda ENTRE su par y el aro; superado, al otro lado:
+     más lejos del aro que antes, y bastante. */
+  const alAro = (q) => metrosEntre('entera', q, { x: 0.5, y: 0.1007 });   // el aro norte
+  ok(alAro(detras) > alAro(normal) + 1, `más lejos del aro: ${alAro(detras).toFixed(2)} m frente a ${alAro(normal).toFixed(2)}`);
+});
+
 console.log('\n· la defensa se mueve sola (§8.4)');
 
 /* A1 con balón, B1 defendiéndole, y A1 bota hacia el aro. */

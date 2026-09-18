@@ -15,6 +15,7 @@ import {
   REGLAS, PARAMETROS, SITUACIONES, defensaPorDefecto, parametrosDe, normalizarDefensa,
   quienAtaca, emparejar, situacionDe, papelesDeJugada, tramosQueNoEncajan,
   colocar, explicarRegla, enCancha, seguirDefensa, SEGUIMIENTO,
+  ACCIONES_DEFENSOR, SENALA, AYUDA_VUELVE, normalizarDeclaradas, declaradasDe,
 } from '../js/pizarra/motor/defensa.js';
 import { metaDeFase, fotograma } from '../js/canvas/fotograma.js';
 import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
@@ -666,6 +667,182 @@ test('sin defensores, sin escena o sin fase no se sigue a nadie', () => {
   eq(seguirDefensa({}), {});
   eq(seguirDefensa({ papeles: { defensores: ['B1'], pares: {} }, inicio: null, duracion_ms: 1000 }), {});
   eq(seguirDefensa({ papeles: { defensores: [], pares: {} }, inicio: { P: {} }, duracion_ms: 1000 }), {});
+});
+
+/* ── 9. Lo que un defensor hace DISTINTO (§8.5) ──────────── */
+
+test('LO QUE SE PUEDE DECLARAR, Y A QUIÉN HAY QUE SEÑALAR', () => {
+  eq(ACCIONES_DEFENSOR, ['ayuda', 'sobrepasado', 'cambia_marca', 'cierra_rebote', 'dos_contra_uno']);
+  eq(SENALA, { ayuda: 'atacante', cambia_marca: 'defensor' }, 'las dos que piden a quién:');
+  ok(AYUDA_VUELVE > 0.5 && AYUDA_VUELVE < 1, 'y el que ayuda vuelve antes de acabar la fase');
+});
+
+test('LO QUE NO SE ENTIENDE SE QUITA Y SE DICE', () => {
+  const ids = new Set(['B1', 'A1']);
+  const r = normalizarDeclaradas({
+    B1: { accion: 'ayuda', objetivo_id: 'A1' },
+    B2: { accion: 'sobrepasado' },                 // no está en la pista
+    B1x: { accion: 'baila' },                      // no se conoce
+  }, { ids });
+  eq(r.declaradas, { B1: { accion: 'ayuda', objetivo_id: 'A1' } });
+  eq(r.avisos.length, 2, 'y las dos que se caen se dicen:');
+  eq(normalizarDeclaradas({ B1: { accion: 'ayuda' } }, { ids }).declaradas, {}, 'una ayuda sin a quién no vale:');
+  eq(normalizarDeclaradas({ B1: { accion: 'cierra_rebote', objetivo_id: 'A1' } }, { ids }).declaradas,
+    { B1: { accion: 'cierra_rebote', objetivo_id: null } }, 'y la que no señala a nadie no se lo queda:');
+  eq(normalizarDeclaradas(null).declaradas, {}, 'una fase sin nada declarado es lo normal:');
+  eq(normalizarDeclaradas('rota').avisos.length, 1);
+  eq(declaradasDe({ defensa: { B1: { accion: 'sobrepasado' } } }), { B1: { accion: 'sobrepasado', objetivo_id: null } });
+});
+
+test('«CAMBIA CON…» INTERCAMBIA LOS PARES, Y SIGUE VALIENDO EN LAS FASES SIGUIENTES', () => {
+  const e = escena([['A1', 'jugador', 'A', 0.3, 0.8], ['A2', 'jugador', 'A', 0.7, 0.8],
+    ['B1', 'jugador', 'B', 0.3, 0.6], ['B2', 'jugador', 'B', 0.7, 0.6], ['bal', 'balon', null, 0.3, 0.8]]);
+  const l = e.dar('bal', 'A1');
+  const p = papelesDeJugada({
+    pista: 'entera', elementos: l,
+    fases: [{}, { defensa: { [e.ids.B1]: { accion: 'cambia_marca', objetivo_id: e.ids.B2 } } }, {}],
+  });
+  eq(paresEn(e.ids, p.fases[0].pares), { B1: 'A1', B2: 'A2' }, 'antes del cambio, cada uno con el suyo:');
+  eq(paresEn(e.ids, p.fases[1].pares), { B1: 'A2', B2: 'A1' }, 'en la fase del cambio, cruzados:');
+  eq(paresEn(e.ids, p.fases[2].pares), { B1: 'A2', B2: 'A1' }, 'y en la siguiente siguen cruzados:');
+  eq(paresEn(e.ids, p.inicio.pares), { B1: 'A1', B2: 'A2' }, 'lo de antes de empezar no se toca:');
+  eq(p.fases[1].acciones[e.ids.B1].accion, 'cambia_marca', 'y los papeles llevan lo declarado:');
+});
+
+test('un cambio consigo mismo o con quien no defiende no cambia nada', () => {
+  const e = escena([['A1', 'jugador', 'A', 0.3, 0.8], ['A2', 'jugador', 'A', 0.7, 0.8],
+    ['B1', 'jugador', 'B', 0.3, 0.6], ['B2', 'jugador', 'B', 0.7, 0.6], ['bal', 'balon', null, 0.3, 0.8]]);
+  const l = e.dar('bal', 'A1');
+  const con = (objetivo) => paresEn(e.ids, papelesDeJugada({
+    pista: 'entera', elementos: l, fases: [{ defensa: { [e.ids.B1]: { accion: 'cambia_marca', objetivo_id: objetivo } } }],
+  }).fases[0].pares);
+  eq(con(e.ids.B1), { B1: 'A1', B2: 'A2' }, 'consigo mismo:');
+  eq(con(e.ids.A2), { B1: 'A1', B2: 'A2' }, 'con un atacante:');
+});
+
+/* Una escena con una acción declarada para B1. */
+function conDeclarada(accion, objetivo = null, extra = {}) {
+  const fichas = [['A1', 'jugador', 'A', 0.5, 0.55], ['A2', 'jugador', 'A', 0.8, 0.5],
+    ['B1', 'jugador', 'B', 0.5, 0.45], ['B2', 'jugador', 'B', 0.8, 0.45], ['bal', 'balon', null, 0.5, 0.55]];
+  const e = escena(fichas);
+  const l = e.dar('bal', 'A1');
+  const declarada = { [e.ids.B1]: { accion, objetivo_id: objetivo ? e.ids[objetivo] : null } };
+  const papeles = papelesDeJugada({ pista: 'entera', elementos: l, fases: [{ defensa: declarada }] }).fases[0];
+  const donde = (n) => { const x = l.find((z) => z.id === e.ids[n]); return { x: x.x, y: x.y }; };
+  const col = (opts = {}) => colocar({ pista: 'entera', canasta: 'norte', elementos: l, papeles, ...opts, ...extra });
+  return { e, l, papeles, donde, col, sitio: (opts) => col(opts)[e.ids.B1] };
+}
+
+test('CIERRA EL REBOTE DICHO: entre su par y el aro desde el principio de la fase', () => {
+  const c = conDeclarada('cierra_rebote');
+  const s = c.sitio();
+  eq(s.aplica, 'cierra_rebote');
+  ok(cerca(M(s, c.donde('A1')), PARAMETROS.cierra_rebote, 1e-6), `a ${M(s, c.donde('A1')).toFixed(2)} m de su par`);
+  ok(enLaLinea(c.donde('A1'), AR, s), 'y entre su par y el aro');
+});
+
+test('ES SOBREPASADO: le persigue POR DETRÁS, a un metro largo, al otro lado que el aro', () => {
+  const c = conDeclarada('sobrepasado');
+  const s = c.sitio();
+  const par = c.donde('A1');
+  eq(s.aplica, 'sobrepasado');
+  ok(cerca(M(s, par), PARAMETROS.sobrepasado, 1e-6), `a ${M(s, par).toFixed(2)} m de su par`);
+  ok(enLaLinea(AR, s, par), 'y su par queda ENTRE el aro y él, que es ir por detrás');
+});
+
+test('AYUDA: va a tapar al que se le señala, y al final de la fase vuelve con su par', () => {
+  const c = conDeclarada('ayuda', 'A2');
+  const yendo = c.sitio({ u: 0 });
+  eq([yendo.aplica, yendo.objetivo], ['ayuda', c.e.ids.A2]);
+  ok(cerca(M(yendo, c.donde('A2')), PARAMETROS.par_sin_balon, 1e-6), `a ${M(yendo, c.donde('A2')).toFixed(2)} m del que tapa`);
+  ok(enLaLinea(c.donde('A2'), AR, yendo), 'entre él y el aro');
+  const volviendo = c.sitio({ u: 0.9 });
+  eq(volviendo.aplica, 'entre_par_y_aro', 'pasado el punto de vuelta, su regla de siempre:');
+  ok(cerca(M(volviendo, c.donde('A1')), PARAMETROS.par_con_balon, 1e-6), 'y con su par, que lleva el balón');
+});
+
+test('VA AL DOS CONTRA UNO: junto al que ya está, a 1,0 m del balón y 1,5 m de él', () => {
+  /* B2 defiende a A2; se le manda a doblar sobre A1, que lleva el balón
+     y al que ya defiende B1. */
+  const e = escena([['A1', 'jugador', 'A', 0.5, 0.55], ['A2', 'jugador', 'A', 0.8, 0.5],
+    ['B1', 'jugador', 'B', 0.5, 0.45], ['B2', 'jugador', 'B', 0.8, 0.45], ['bal', 'balon', null, 0.5, 0.55]]);
+  const l = e.dar('bal', 'A1');
+  const papeles = papelesDeJugada({
+    pista: 'entera', elementos: l, fases: [{ defensa: { [e.ids.B2]: { accion: 'dos_contra_uno' } } }],
+  }).fases[0];
+  const sitios = colocar({ pista: 'entera', canasta: 'norte', elementos: l, papeles });
+  const s = sitios[e.ids.B2], otro = sitios[e.ids.B1];
+  const A1 = { x: 0.5, y: 0.55 };
+  eq(s.aplica, 'dos_contra_uno');
+  ok(cerca(M(s, A1), PARAMETROS.presion, 1e-6), `a ${M(s, A1).toFixed(2)} m del que lleva el balón`);
+  ok(cerca(M(s, otro), PARAMETROS.trampa, 0.05), `y a ${M(s, otro).toFixed(2)} m del que ya estaba`);
+  eq(nombres(e.ids, s.trampa), ['B1', 'B2'], 'la trampa la forman los dos:');
+});
+
+test('y sin nadie sobre el balón, el dos contra uno no se hace: se queda con su regla', () => {
+  const e = escena([['A1', 'jugador', 'A', 0.5, 0.55], ['A2', 'jugador', 'A', 0.8, 0.5],
+    ['B2', 'jugador', 'B', 0.8, 0.45], ['bal', 'balon', null, 0.5, 0.55]]);
+  const l = e.dar('bal', 'A1');
+  const papeles = papelesDeJugada({
+    pista: 'entera', elementos: l, fases: [{ defensa: { [e.ids.B2]: { accion: 'dos_contra_uno' } } }],
+  }).fases[0];
+  const s = colocar({ pista: 'entera', canasta: 'norte', elementos: l, papeles })[e.ids.B2];
+  ok(s && s.aplica !== 'dos_contra_uno', `se queda con lo suyo: ${s && s.aplica}`);
+});
+
+test('LO DICHO MANDA SOBRE EL CIERRE AUTOMÁTICO DEL REBOTE Y SOBRE LA SITUACIÓN', () => {
+  const c = conDeclarada('sobrepasado');
+  eq(c.sitio({ cerrandoRebote: true }).aplica, 'sobrepasado', 'tras un tiro fallado sigue haciendo lo suyo:');
+  /* Y en inferioridad, el que retrasa no se pone encima de lo declarado. */
+  const e = escena([['A1', 'jugador', 'A', 0.5, 0.55], ['A2', 'jugador', 'A', 0.8, 0.5],
+    ['B1', 'jugador', 'B', 0.5, 0.45], ['bal', 'balon', null, 0.5, 0.55]]);
+  const l = e.dar('bal', 'A1');
+  const papeles = papelesDeJugada({
+    pista: 'entera', elementos: l, fases: [{ defensa: { [e.ids.B1]: { accion: 'cierra_rebote' } } }],
+  }).fases[0];
+  eq(papeles.situacion, 'inferioridad');
+  eq(colocar({ pista: 'entera', canasta: 'norte', elementos: l, papeles })[e.ids.B1].aplica, 'cierra_rebote');
+});
+
+test('Y TODO LO DICHO SE EXPLICA (§8.7)', () => {
+  const dice = (accion, objetivo) => {
+    const c = conDeclarada(accion, objetivo);
+    return explicarRegla({ pista: 'entera', canasta: 'norte', elementos: c.l, papeles: c.papeles, defensor: c.e.ids.B1 });
+  };
+  const reb = dice('cierra_rebote');
+  eq(reb.aplica, 'cierra_rebote');
+  ok(/^Cierra el rebote/.test(reb.texto), `dicho, no por un tiro fallado: ${reb.texto}`);
+  ok(/persigue a su par por detrás/.test(dice('sobrepasado').texto));
+  const ayuda = dice('ayuda', 'A2');
+  ok(/ayuda/i.test(ayuda.texto) && /recupera|vuelve/.test(ayuda.texto), ayuda.texto);
+  const e = escena([['A1', 'jugador', 'A', 0.5, 0.55], ['A2', 'jugador', 'A', 0.8, 0.5],
+    ['B1', 'jugador', 'B', 0.5, 0.45], ['B2', 'jugador', 'B', 0.8, 0.45], ['bal', 'balon', null, 0.5, 0.55]]);
+  const l = e.dar('bal', 'A1');
+  const papeles = papelesDeJugada({ pista: 'entera', elementos: l, fases: [{ defensa: { [e.ids.B2]: { accion: 'dos_contra_uno' } } }] }).fases[0];
+  const dos = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: l, papeles, defensor: e.ids.B2 });
+  ok(/dos contra uno/.test(dos.texto), dos.texto);
+});
+
+test('EL SEGUIMIENTO HACE LO DICHO: el que ayuda va, tapa y vuelve', () => {
+  const jugadores = [{ id: 'A1', equipo: 'A' }, { id: 'A2', equipo: 'A' }, { id: 'B1', equipo: 'B' }];
+  const balones = [{ id: 'b1' }];
+  const papeles = {
+    ataca: 'A', atacantes: ['A1', 'A2'], defensores: ['B1'], pares: { B1: 'A1' },
+    situacion: 'inferioridad', retrasa: null, acciones: { B1: { accion: 'ayuda', objetivo_id: 'A2' } },
+  };
+  const inicio = {
+    P: { A1: { x: 0.35, y: 0.55 }, A2: { x: 0.65, y: 0.55 }, B1: { x: 0.35, y: 0.45 } },
+    B: { b1: { x: 0.35, y: 0.55 } }, owner: { b1: 'A1' },
+  };
+  const fase = { duracion_ms: 4000, movimientos: [], pases: [], tiros: [], recogidas: [], bloqueos: [] };
+  const r = metaDeFase(fase, { jugadores, balones, escena: inicio, aro: () => AR });
+  const s = seguirDefensa({ pista: 'entera', canasta: 'norte', papeles, jugadores, balones, meta: r.meta, inicio, duracion_ms: 4000 });
+  const m = s.B1.muestras;
+  const aA2 = (q) => M(q, { x: 0.65, y: 0.55 }), aA1 = (q) => M(q, { x: 0.35, y: 0.55 });
+  const yendo = m[Math.floor(m.length * 0.6)];
+  ok(aA2(yendo) < aA2(m[0]), `se acerca al que va a tapar: ${aA2(yendo).toFixed(2)} m frente a ${aA2(m[0]).toFixed(2)}`);
+  const fin = m[m.length - 1];
+  ok(aA1(fin) < aA1(yendo), `y al final vuelve con su par: ${aA1(fin).toFixed(2)} m frente a ${aA1(yendo).toFixed(2)}`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

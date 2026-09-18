@@ -562,6 +562,26 @@ test('Y EL BLOQUEO LLEVA A QUIÉN SE LE PONE: el motor mira al defensor donde es
   eq(barra.b, f.players.B1, 'y la barra mira al defensor donde está ahora, no a un punto fijo:');
 });
 
+test('LO QUE EL ENTRENADOR HA DICHO QUE HACE UN DEFENSOR LLEGA A LA ANIMACIÓN (§8.5)', () => {
+  const { l, a1, a2, b1 } = escena();
+  const t = tramo(a1.id, P(0.3, 0.8), P(0.3, 0.4), { accion: 'bota', tipo: 'run' });
+  const anim = compilar(jugadaCon(l, [{
+    id: 'f1', tramos: [t],
+    defensa: { [b1.id]: { accion: 'ayuda', objetivo_id: a2.id } },
+  }]));
+  eq(anim.fases[0].defensa, { B1: { accion: 'ayuda', objetivo_id: 'A2' } }, 'con los nombres de la animación:');
+  /* Y la defensa la hace: va hacia el que tiene que tapar, cosa que sin
+     decirlo no haría. */
+  const suya = anim.fases[0].movimientos.find((m) => m.elemento_id === 'B1');
+  const sinDecir = compilar(jugadaCon(l, [{ id: 'f1', tramos: [t] }]))
+    .fases[0].movimientos.find((m) => m.elemento_id === 'B1');
+  const d = (p, q) => Math.hypot((p.x - q.x) * 18, (p.y - q.y) * 27);
+  const A2 = { x: 0.7, y: 0.8 };
+  const media = suya.muestras[10];
+  ok(d(media, A2) < d(suya.muestras[0], A2) - 1, `se va hacia A2: ${d(media, A2).toFixed(2)} m frente a ${d(suya.muestras[0], A2).toFixed(2)}`);
+  ok(d(media, A2) < d(sinDecir.muestras[10], A2) - 1, 'y más cerca de A2 que si no se hubiera dicho nada');
+});
+
 /* ── 8. La defensa se mueve sola (§8.4) ──────────────────── */
 
 test('LA DEFENSA SALE EN LA ANIMACIÓN: muestreada, automática y sin flecha', () => {

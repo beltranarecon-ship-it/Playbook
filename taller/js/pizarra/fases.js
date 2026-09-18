@@ -82,6 +82,9 @@ export function nuevaFase(id, { nombre = null } = {}) {
     rama_nombre: null,
     reune: [],
     carriles: [],
+    /* Lo que algún defensor haga distinto en esta fase (§8.5). No son
+       tramos: no dibujan un camino (§11.1). */
+    defensa: {},
     texto: null,            // null = frase automática
   };
 }

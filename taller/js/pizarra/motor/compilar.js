@@ -72,7 +72,7 @@ const punto = (p) => [p.x, p.y];
  * @param jugada { version, pista, canasta, elementos, fases }
  *   elementos: la escena AL EMPEZAR la fase 1, con quién tiene cada
  *              balón en ese momento
- *   fases:     [{ id, duracion_ms, pausa_post_ms, tramos }]
+ *   fases:     [{ id, duracion_ms, pausa_post_ms, tramos, defensa }]
  * @returns la animación en el formato del §10, más lo del §11.2
  */
 export function compilar(jugada) {
@@ -158,6 +158,12 @@ export function compilar(jugada) {
     pares: Object.fromEntries(Object.entries(p.pares || {}).map(([d, a]) => [de(d), a ? de(a) : null]).filter(([d]) => d)),
     situacion: p.situacion,
     retrasa: p.retrasa ? de(p.retrasa) : null,
+    /* Y lo que cada defensor hace distinto en esa fase (§8.5), con los
+       nombres de la animación: sin esto, la defensa del proyector no
+       haría lo que el entrenador ha dicho. */
+    acciones: Object.fromEntries(Object.entries(p.acciones || {})
+      .map(([d, a]) => [de(d), { accion: a.accion, objetivo_id: a.objetivo_id ? de(a.objetivo_id) : null }])
+      .filter(([d]) => d)),
   });
   let escena = {
     P: Object.fromEntries(jugadores.map((x) => [x.id, { x: x.posicion_inicial[0], y: x.posicion_inicial[1] }])),
@@ -167,6 +173,11 @@ export function compilar(jugada) {
   for (const fase of fases) {
     const r = metaDeFase(fase, { jugadores, balones, escena, aro });
     const papelesFase = papeles.fases[fase.indice] || papeles.inicio;
+    /* Lo que algún defensor hace distinto en esta fase (§8.5), con los
+       nombres de la animación: lo lee el guion de Equipos, que si no
+       contaría «ajusta el marcaje» de una ayuda. */
+    const declaradas = comoFuera(papelesFase).acciones;
+    if (Object.keys(declaradas).length) fase.defensa = declaradas;
     const seguida = seguirDefensa({
       pista, canasta, defensa: j.defensa, papeles: comoFuera(papelesFase),
       jugadores, balones, reglas, meta: r.meta, inicio: escena,

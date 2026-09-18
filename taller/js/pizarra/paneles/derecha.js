@@ -22,11 +22,14 @@ export class PanelDerecho {
    * @param onDefensa  (parcial) — cambiar los ajustes del ejercicio
    * @param onParDe    (defensor, atacante|null)
    * @param onReglaDe  (defensor, regla|null)
+   * @param onHaceDe   (defensor, accion|null) — lo que hace distinto en
+   *                   esta fase (§8.5); `null` es defender a su par
    */
-  constructor({ onDefensa = null, onParDe = null, onReglaDe = null } = {}) {
+  constructor({ onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null } = {}) {
     this.onDefensa = onDefensa;
     this.onParDe = onParDe;
     this.onReglaDe = onReglaDe;
+    this.onHaceDe = onHaceDe;
     this._clave = null;
     this._modelo = null;
 
@@ -111,8 +114,9 @@ export class PanelDerecho {
       h('h4', { class: 'pz-der__titulo' }, `${m.nombre} · defiende`),
       this._campoSelect('Defiende a…', m.par, (v) => this.onParDe?.(m.id, v)),
       this._campoSelect('Regla', m.regla, (v) => this.onReglaDe?.(m.id, v)),
+      m.hace ? this._campoSelect('En esta fase', m.hace, (v) => this.onHaceDe?.(m.id, v)) : null,
       m.explicacion ? h('p', { class: 'pz-der__porque' }, m.explicacion) : null,
-      h('p', { class: 'pz-der__nota' }, 'También se cambia el par arrastrando su línea discontinua hasta otro atacante.'),
+      h('p', { class: 'pz-der__nota' }, 'También se cambia el par arrastrando su línea discontinua hasta otro atacante. Ayudar y cambiar el par con otro defensor se eligen en el anillo, pinchando a quién.'),
     ];
   }
 

@@ -361,6 +361,42 @@ test('con un solo defensor automático, la frase es suya', () => {
   eq(g.fases[0].lineas, ['El 1 del equipo 2 ajusta el marcaje']);
 });
 
+test('LO QUE UN DEFENSOR HACE DISTINTO SE CUENTA, y no como «ajusta el marcaje»', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }, { id: 'B2', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1', 'B2'],
+      defensa: { B1: { accion: 'ayuda', objetivo_id: 'A1' }, B2: { accion: 'cierra_rebote', objetivo_id: null } },
+      movimientos: [
+        { elemento_id: 'B1', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.5, y: 0.3 }, { t: 900, x: 0.55, y: 0.28 }] },
+        { elemento_id: 'B2', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.3, y: 0.3 }, { t: 900, x: 0.32, y: 0.28 }] },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 ayuda sobre el 1 del equipo 1 y recupera', 'El 2 cierra el rebote']);
+});
+
+test('y el que no hace nada distinto sigue contándose con los demás', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }, { id: 'B2', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1', 'B2'],
+      defensa: { B1: { accion: 'sobrepasado', objetivo_id: null } },
+      movimientos: [
+        { elemento_id: 'B1', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.5, y: 0.3 }, { t: 900, x: 0.55, y: 0.28 }] },
+        { elemento_id: 'B2', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.3, y: 0.3 }, { t: 900, x: 0.32, y: 0.28 }] },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 es superado y persigue por detrás', 'El 2 ajusta el marcaje']);
+});
+
 test('la duración suma movimiento + pausa de cada fase', () => {
   const g = guionDeAnimacion({
     pista: 'entera', jugadores: [], balones: [],

@@ -104,7 +104,12 @@ export const FAMILIAS = {
       // hueco. Sin este hueco, una ayuda sin par al que marcar no movía a
       // nadie y la fase salía vacía.
       destino: { tipo: 'referencia', admite: ['aro', 'posicion', 'jugador', 'punto', 'zona'], requerido: false },
-      colocacion: { tipo: 'opcion', valores: ['goal_side', 'linea_de_pase', 'al_lado', 'delante', 'ninguna'], porDefecto: 'goal_side' },
+      colocacion: { tipo: 'opcion', valores: ['goal_side', 'linea_de_pase', 'al_lado', 'delante', 'detras', 'ninguna'], porDefecto: 'goal_side' },
+      /* A QUIÉN se señala al usarla (§4.4): un bloqueo se le pone a un
+         compañero, una ayuda se le hace a un rival y el cambio de marca
+         se hace con otro defensor. Sin esto, cada acción nueva habría
+         que escribirla otra vez en la Pizarra. */
+      senala: { tipo: 'opcion', valores: ['companero', 'rival', 'cualquiera'], porDefecto: 'cualquiera' },
       avance: { tipo: 'fraccion', porDefecto: 0.25 },   // cuánto recorre hacia esa colocación
       simbolo_relacion: { tipo: 'opcion', valores: ['bloqueo', 'marca', 'ninguno'], porDefecto: 'ninguno' },
       rol: { tipo: 'opcion', valores: ['atacante', 'defensor', 'sin_cambio'], porDefecto: 'sin_cambio' },
@@ -266,10 +271,59 @@ export const CATALOGO_SISTEMA = [
   }),
   A({
     slug: 'defiende', nombre: 'Defiende', familia: 'entre_dos', _legado: 'defiende', tag: 'defensa individual',
-    sinonimos: ['defensa', 'marca', 'marcar', 'defender', 'ayuda'],
+    /* «ayuda» YA NO ES SINÓNIMO DE DEFENDER: es otra acción, la de ir a
+       tapar a otro y volver. Mientras no existía, un ejercicio que decía
+       «ayuda» se leía como «marca», que es justo lo contrario de lo que
+       hace una ayuda. */
+    sinonimos: ['defensa', 'marca', 'marcar', 'defender'],
     descripcion: 'Se coloca entre su par y el aro. Sin par al que marcar, cuenta como defensor y no se mueve.',
-    parametros: { companero: null, colocacion: 'goal_side', avance: 0.25, simbolo_relacion: 'marca', rol: 'defensor' },
+    parametros: { companero: null, colocacion: 'goal_side', avance: 0.25, simbolo_relacion: 'marca', rol: 'defensor', senala: 'rival' },
     pide: ['companero'],
+    simbolo: 'carrera_sin_balon',
+  }),
+
+  /* ── Lo que un defensor hace DISTINTO (§8.5) ──────────────────
+     No dibujan un trazo: dicen a qué apunta el defensor mientras dura
+     la fase, y el seguimiento (§8.4) le lleva. Por eso se guardan como
+     EXCEPCIONES de la fase y no como tramos (§11.1). */
+  A({
+    slug: 'ayuda', nombre: 'Ayuda y recupera', familia: 'entre_dos', tag: 'ayuda',
+    sinonimos: ['ayuda', 'ayuda defensiva', 'dobla', 'va a ayudar', 'tapa'],
+    descripcion: 'Va a tapar a otro atacante y vuelve con su par antes de acabar la fase.',
+    parametros: { companero: null, colocacion: 'goal_side', avance: 0.25, simbolo_relacion: 'marca', rol: 'defensor', senala: 'rival' },
+    pide: ['companero'],
+    simbolo: 'carrera_sin_balon',
+  }),
+  A({
+    slug: 'sobrepasado', nombre: 'Es sobrepasado', familia: 'entre_dos', tag: 'defensa del bote',
+    sinonimos: ['le superan', 'le pasan', 'es superado', 'le desbordan', 'persigue por detrás'],
+    descripcion: 'Deja pasar a su par y le persigue por detrás, a un metro largo, hasta el final de la fase.',
+    parametros: { companero: null, colocacion: 'detras', avance: 0.25, simbolo_relacion: 'marca', rol: 'defensor', senala: 'rival' },
+    pide: [],
+    simbolo: 'carrera_sin_balon',
+  }),
+  A({
+    slug: 'cambia_marca', nombre: 'Cambia con…', familia: 'entre_dos', tag: 'defensa individual',
+    sinonimos: ['cambio defensivo', 'cambian', 'se cambian el par', 'cambio de marca'],
+    descripcion: 'Intercambia el par con otro defensor. El cambio sigue en las fases siguientes.',
+    parametros: { companero: null, colocacion: 'goal_side', avance: 0.25, simbolo_relacion: 'marca', rol: 'defensor', senala: 'companero' },
+    pide: ['companero'],
+    simbolo: 'carrera_sin_balon',
+  }),
+  A({
+    slug: 'cierra_rebote', nombre: 'Cierra el rebote', familia: 'entre_dos', tag: 'bloqueo de rebote',
+    sinonimos: ['bloqueo de rebote', 'cierra', 'tapa el rebote', 'blocar', 'box out'],
+    descripcion: 'Se interpone entre su par y el aro y aguanta hasta el final de la fase.',
+    parametros: { companero: null, colocacion: 'goal_side', avance: 0.25, simbolo_relacion: 'marca', rol: 'defensor', senala: 'rival' },
+    pide: [],
+    simbolo: 'carrera_sin_balon',
+  }),
+  A({
+    slug: 'dos_contra_uno', nombre: 'Va al dos contra uno', familia: 'entre_dos', tag: 'superioridad',
+    sinonimos: ['dos contra uno', 'va a la trampa', 'doblan al balón', 'atrapan', 'trampa'],
+    descripcion: 'Se suma a la trampa sobre el que lleva el balón, junto al defensor que ya está.',
+    parametros: { companero: null, colocacion: 'al_lado', avance: 0.25, simbolo_relacion: 'marca', rol: 'defensor', senala: 'rival' },
+    pide: [],
     simbolo: 'carrera_sin_balon',
   }),
 

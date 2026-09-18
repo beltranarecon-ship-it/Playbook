@@ -25,13 +25,13 @@
 
 import { VERSION_JUGADA } from './compilar.js';
 import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
-import { normalizarDefensa, REGLAS } from './defensa.js';
+import { normalizarDefensa, normalizarDeclaradas, REGLAS } from './defensa.js';
 
 const DE_TIRO = new Set(CATALOGO_SISTEMA.filter((a) => a.parametros && a.parametros.modo === 'tiro').map((a) => a.slug));
 
 const finito = (v) => Number.isFinite(v);
 const nodoBueno = (n) => !!n && finito(n.x) && finito(n.y);
-const faseVacia = (id = 'f1') => ({ id, nombre: null, duracion_ms: null, pausa_post_ms: null, tramos: [] });
+const faseVacia = (id = 'f1') => ({ id, nombre: null, duracion_ms: null, pausa_post_ms: null, tramos: [], defensa: {} });
 
 /**
  * Deja una jugada guardada en condiciones de abrirse.
@@ -132,12 +132,18 @@ export function normalizarJugada(bruta) {
       let id = f.id || `f${i + 1}`;
       if (deFase.has(id)) id = `f${i + 1}_${deFase.size}`;
       deFase.add(id);
+      /* Lo que un defensor hace distinto en esta fase (§8.5). No son
+         tramos —no dibujan un camino—, así que se guardan aparte, y lo
+         que no se entienda se queda fuera y se dice. */
+      const declaradas = normalizarDeclaradas(f.defensa, { ids, fase: i });
+      avisos.push(...declaradas.avisos);
       return {
         id,
         nombre: f.nombre ?? null,
         duracion_ms: finito(f.duracion_ms) ? f.duracion_ms : null,
         pausa_post_ms: finito(f.pausa_post_ms) ? f.pausa_post_ms : null,
         tramos,
+        defensa: declaradas.declaradas,
       };
     });
   /* Una jugada sin fases no se puede editar: siempre hay por lo menos

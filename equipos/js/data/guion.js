@@ -230,6 +230,17 @@ function conosSorteados(path, conos) {
  *   fases: [{ n, ms, lineas: string[] }]  // n empieza en 1
  * }}
  */
+/* Cómo se cuenta lo que un defensor hace distinto (§8.5). Una frase por
+   acción, en el mismo tono que el resto del guion: lo que se vería desde
+   la banda. */
+const FRASE_DEFENSA = {
+  ayuda: (q, o) => (o ? `${q} ayuda sobre ${o} y recupera` : `${q} ayuda y recupera`),
+  sobrepasado: (q) => `${q} es superado y persigue por detrás`,
+  cambia_marca: (q, o) => `${q} cambia el marcaje${o ? ` con ${o}` : ''}`,
+  cierra_rebote: (q) => `${q} cierra el rebote`,
+  dos_contra_uno: (q) => `${q} va al dos contra uno sobre el balón`,
+};
+
 export function guionDeAnimacion(anim) {
   /* De un ejercicio de seis en fila se narra UNA ronda (Tramo 2.8). Las
      seis son la misma, y un guion que repita seis veces «sale el
@@ -307,8 +318,19 @@ export function guionDeAnimacion(anim) {
       lineas.push(`${txt(r)} ${verbo}${hacia}${sorteo}`);
     }
 
-    // 2b) la defensa automática, en una sola frase
-    const automaticos = (f.movimientos || []).filter((m) => m && m.automatico && m.tipo_elemento !== 'balon');
+    /* 2b) LO QUE UN DEFENSOR HACE DISTINTO (§8.5) SÍ SE CUENTA: lo ha
+       dicho el entrenador, y es lo que hay que ver en ese ejercicio. */
+    const dichas = f.defensa || {};
+    for (const [d, a] of Object.entries(dichas)) {
+      const quien = txt(ref.get(d));
+      if (!quien) continue;
+      const otro = a.objetivo_id ? txt(ref.get(a.objetivo_id)) : null;
+      lineas.push(FRASE_DEFENSA[a.accion] ? FRASE_DEFENSA[a.accion](quien, otro) : `${quien} ajusta el marcaje`);
+    }
+
+    /* Y la defensa que se mueve sola, en UNA frase: jugador a jugador
+       serían tantas líneas como defensores, todas diciendo lo mismo. */
+    const automaticos = (f.movimientos || []).filter((m) => m && m.automatico && m.tipo_elemento !== 'balon' && !dichas[m.elemento_id]);
     if (automaticos.length) {
       const quienes = automaticos.map((m) => txt(ref.get(m.elemento_id))).filter(Boolean);
       lineas.push(quienes.length === 1
