@@ -41,7 +41,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **63 en verde, 1432
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **64 en verde, 1474
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -60,7 +60,7 @@ de punta a punta, con sus bancos en verde y commit en la rama.
 | 5.1 | Tiros con desenlace: Tira → Entra/Falla → al aro; si falla rebota a ~2,5 m por el lado contrario al tirador, si entra cae bajo el aro suelto; «Recoge» lo encuentra. Entra/falla se cambia tocando el tiro | ✅ (61 bancos, 1376 pruebas; probado en la Pizarra: tirar, cambiar el desenlace, recoger el rebote, compilar y reabrir) |
 | 5.2 | «Pincha a quién» y bloqueo: se pincha al COMPAÑERO, el bloqueador va a su sitio, el compañero sale cuando llega. Formato: `bloqueado_id` = compañero + `defensor_id` opcional | ✅ (61 bancos, 1395 pruebas; probado en la Pizarra y en el motor: elegir, avisos, Esc y suelo, Supr, arranque, compilar y reabrir) |
 | 5.3 | Papeles y pares: `motor/defensa.js` + `eval-defensa.mjs`. Quién ataca, pares por dorsal y libre más cercano, situación por fase, arco del defensor y línea discontinua | ✅ (63 bancos, 1432 pruebas; revisión adversarial con 11 hallazgos confirmados, todos arreglados; banco nuevo del Tablero; probado en la Pizarra) |
-| 5.4 | Colocar por regla (las 6 del §8.3), pestaña «Ajustes» del panel derecho (solo defensa) y ver la regla (§8.7) | pendiente |
+| 5.4 | Colocar por regla (las 6 del §8.3), pestaña «Ajustes» del panel derecho (solo defensa) y ver la regla (§8.7) | ✅ (64 bancos, 1474 pruebas; revisión adversarial de 28 hallazgos, arreglados los ciertos; bancos nuevos eval-ajustes y más pruebas de defensa) |
 | 5.5 | Seguimiento continuo (§8.4): la defensa se mueve sola igual en Pizarra y proyector; movimiento «por tiempo» en el motor (aditivo); cierra el rebote automático; carril gris «automático» | pendiente |
 | 5.6 | Acciones declaradas del defensor: ayuda y recupera, es sobrepasado, cambia con…, cierra el rebote, va al dos contra uno | pendiente |
 | 5.7 | Robo, rebote defensivo y canasta: cambio de papeles y de aro desde la fase siguiente. Cierre de la capa | pendiente |
@@ -98,6 +98,52 @@ etiquetas de las acciones nuevas con palabras que ya existen; los tramos
 se siguen guardando PLANOS como en la capa 4 (se aparta del §11.1, que
 habla de `args`), y `jugada.defensa` añade `ataca` y usa como preajuste
 una de las cuatro reglas.
+
+**Respuestas del entrenador (2026-09-17 y 2026-09-18):**
+
+- INFERIORIDAD: retrasa **el defensor más cercano al aro que no marca al
+  que tiene el balón**; con uno solo, él.
+- SUPERIORIDAD con varios que sobran: **el primero hace la V** con el
+  defensor del portador; **los demás, entre el balón y el aro a 2 m del
+  balón**.
+- Al soltar un defensor del panel se **recolocan todos los defensores que
+  no se hayan arrastrado a mano**; el que se movió a mano se queda.
+
+**Decidido en el paso 5.4 (dicho al entrenador):**
+
+- El que retrasa **sale al que tiene el balón solo si no le marca nadie**;
+  si ya tiene defensor, se queda protegiendo el aro un paso por detrás.
+  Sin esto los dos acababan en el mismo punto.
+- **Quién retrasa se decide al empezar la fase**, con la escena de salida
+  (§8.2): decidiéndolo por dónde está cada uno, colocar los movía y en la
+  consulta siguiente retrasaba el otro.
+- Los que sobran en superioridad van **sobre el arco de 2 m del balón**,
+  abiertos a los lados para no taparse: así es verdad lo que dice la
+  explicación.
+- La **trampa es de dos**: con un solo defensor —o con la superioridad
+  forzada sin nadie que sobre— cada uno se queda con su regla. Y si la
+  separación pedida no cabe en el círculo de la presión, el segundo se
+  aleja lo justo para que sea la pedida.
+- Solo cuentan los **balones que se pueden jugar**: los de un atacante en
+  juego y los sueltos.
+- El defensor se coloca con **la escena que se está viendo**, que es la
+  misma con la que se explica su regla.
+- El panel **conserva el bloque de números abierto y el foco** al
+  repintarse: si no, escribir dos números seguidos era imposible.
+
+**Revisión adversarial del 5.4 (2026-09-18)**, 3 revisores y 2 escépticos
+por hallazgo: 28 hallazgos (7 de geometría, 9 de integración, 12 de los
+bancos). Dos quedaron confirmados por votación antes de que se agotara el
+límite de sesión y el resto se comprobó leyendo y reproduciendo. Lo
+arreglado: dos defensores en el mismo punto; el papel de retrasar que se
+intercambiaba en cada consulta; el panel que perdía foco y bloque abierto;
+los balones que no se pueden jugar moviendo a la defensa; la separación de
+la trampa y la trampa de uno solo; flotar con un límite menor que 2 m; el
+«lo que saldría solo» de Ajustes calculado con la pista de después de lo
+dibujado; el equipo forzado que desaparecía del desplegable al quedarse
+sin fichas; el gesto de la línea, que cogía la primera y no la más
+cercana, y que borraba la selección con Mayús; y `setDefensa`, que perdía
+los números ya cambiados. Y ocho pruebas que pasaban por casualidad.
 
 **No tocar:** la marca `motor: 3` (lo guardado con la capa 4 dejaría de
 reproducirse); todo lo nuevo del formato de animación, aditivo.

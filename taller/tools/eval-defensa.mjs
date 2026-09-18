@@ -14,7 +14,10 @@
 import {
   REGLAS, PARAMETROS, SITUACIONES, defensaPorDefecto, parametrosDe, normalizarDefensa,
   quienAtaca, emparejar, situacionDe, papelesDeJugada, tramosQueNoEncajan,
+  colocar, explicarRegla, enCancha,
 } from '../js/pizarra/motor/defensa.js';
+import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
+import { limitesCancha } from '../js/canvas/medidas.js';
 import { anadir, asignarBalon, reiniciarIds } from '../js/pizarra/elementos.js';
 import { posicionesDe } from '../js/canvas/anclas.js';
 
@@ -253,6 +256,300 @@ test('LO QUE LLEGA MAL SE QUITA Y SE DICE; lo que falta, no se dice', () => {
   }
   eq(normalizarDefensa({ preajuste: 'presion', situacion: 'superioridad', ataca: 'nadie' }).defensa,
     { preajuste: 'presion', parametros: {}, situacion: 'superioridad', ataca: 'nadie' }, 'lo bueno se conserva:');
+});
+
+/* ── 6. Dónde se coloca cada uno (§8.3) ──────────────────── */
+
+const AR = (() => { const a = posicionesDe('entera', 'norte').aro; return { x: a[0], y: a[1] }; })();
+const M = (a, b) => metrosEntre('entera', a, b);
+const cerca = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
+/* Una escena con papeles ya calculados, lista para colocar. */
+function situada(fichas, { dar = [], defensa = null, papelesExtra = null } = {}) {
+  const e = escena(fichas);
+  let l = e.l;
+  for (const [b, j] of dar) l = e.dar(b, j);
+  const p = papelesDeJugada({ pista: 'entera', elementos: l, fases: [{}], defensa }).inicio;
+  const donde = (n) => { const x = l.find((z) => z.id === e.ids[n]); return { x: x.x, y: x.y }; };
+  const col = (extra = {}) => colocar({ pista: 'entera', canasta: 'norte', elementos: l, papeles: { ...p, ...(papelesExtra || {}) }, defensa, ...extra });
+  return { ...e, l, p, donde, col, sitio: (n, extra) => col(extra)[e.ids[n]] };
+}
+/* ¿Está `q` sobre la recta a→b, entre los dos? En metros. */
+const enLaLinea = (a, b, q) => cerca(M(a, q) + M(q, b), M(a, b), 1e-6);
+
+test('ENTRE SU PAR Y EL ARO: 2,0 m sin balón y 1,2 m con balón, sobre la línea al aro', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.3, 0.5], ['A2', 'jugador', 'A', 0.7, 0.5], ['B1', 'jugador', 'B', 0.3, 0.6], ['B2', 'jugador', 'B', 0.7, 0.6], ['bal', 'balon', null, 0.3, 0.5]], { dar: [['bal', 'A1']] });
+  const b1 = s.sitio('B1'), b2 = s.sitio('B2');
+  ok(cerca(M(b1, s.donde('A1')), 1.2) && enLaLinea(s.donde('A1'), AR, b1), `B1 a ${M(b1, s.donde('A1'))} m del que tiene el balón`);
+  ok(cerca(M(b2, s.donde('A2')), 2.0) && enLaLinea(s.donde('A2'), AR, b2), `B2 a ${M(b2, s.donde('A2'))} m de su par sin balón`);
+  eq([b1.aplica, b2.aplica], ['entre_par_y_aro', 'entre_par_y_aro']);
+});
+
+test('PRESIÓN AL BALÓN: a 1,0 m del que lo lleva y CORTÁNDOLE EL CAMINO al aro', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.3, 0.5], ['A2', 'jugador', 'A', 0.7, 0.5], ['B1', 'jugador', 'B', 0.3, 0.6], ['B2', 'jugador', 'B', 0.7, 0.6], ['bal', 'balon', null, 0.3, 0.5]], { dar: [['bal', 'A1']], defensa: { preajuste: 'presion' } });
+  const b1 = s.sitio('B1'), b2 = s.sitio('B2');
+  ok(cerca(M(b1, s.donde('A1')), 1.0), `B1 a ${M(b1, s.donde('A1'))} m`);
+  ok(enLaLinea(s.donde('A1'), AR, b1), 'sobre la línea al aro, no a un lado');
+  eq([b1.regla, b1.aplica, b2.regla, b2.aplica], ['presion', 'presion', 'presion', 'entre_par_y_aro']);
+});
+
+test('NEGAR LA LÍNEA: un paso de 0,8 m hacia el balón, solo si su par está a menos de 7 m', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.3, 0.5], ['A2', 'jugador', 'A', 0.55, 0.5], ['A3', 'jugador', 'A', 0.9, 0.9], ['B1', 'jugador', 'B', 0.3, 0.6], ['B2', 'jugador', 'B', 0.55, 0.6], ['B3', 'jugador', 'B', 0.9, 0.8], ['bal', 'balon', null, 0.3, 0.5]], { dar: [['bal', 'A1']], defensa: { preajuste: 'niega_linea' } });
+  ok(M(s.donde('A2'), s.donde('A1')) < 7 && M(s.donde('A3'), s.donde('A1')) > 7, 'la escena es la que dice la prueba');
+  const b2 = s.sitio('B2'), b3 = s.sitio('B3');
+  ok(cerca(M(b2, s.donde('A2')), 0.8) && enLaLinea(s.donde('A2'), s.donde('A1'), b2), `B2 niega: ${JSON.stringify(b2)}`);
+  eq([b2.aplica, b3.aplica, s.sitio('B1').aplica], ['niega_linea', 'entre_par_y_aro', 'entre_par_y_aro'], 'lejos del balón no niega, y al del balón no se le niega nada:');
+});
+
+test('AYUDA Y FLOTA: se hunde hacia la línea balón→aro sin pasar de 3,5 m de su par', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.5, 0.45], ['A2', 'jugador', 'A', 0.1, 0.35], ['B1', 'jugador', 'B', 0.5, 0.40], ['B2', 'jugador', 'B', 0.12, 0.3], ['bal', 'balon', null, 0.5, 0.45]], { dar: [['bal', 'A1']], defensa: { preajuste: 'ayuda_y_flota' } });
+  const b2 = s.sitio('B2');
+  const normal = s.sitio('B2', { defensa: null });
+  ok(M(b2, s.donde('A2')) <= 3.5 + 1e-6, `no pasa de 3,5 m: ${M(b2, s.donde('A2'))}`);
+  ok(cerca(M(b2, s.donde('A2')), 3.5, 1e-3), 'y, como la línea queda lejos, se queda justo en el límite');
+  ok(M(b2, s.donde('A1')) < M(normal, s.donde('A1')), 'y está más cerca del balón que sin flotar');
+  /* Y se hunde HACIA LA LÍNEA balón→aro: más cerca de ella que su sitio de
+     siempre, no en cualquier dirección que acerque al balón. */
+  const aLaLinea = (q) => {
+    const B = s.donde('A1');
+    const e = escalaDe('entera');
+    const ax = B.x * e.x, ay = B.y * e.y, dx = (AR.x - B.x) * e.x, dy = (AR.y - B.y) * e.y;
+    const l2 = dx * dx + dy * dy;
+    const t = Math.max(0, Math.min(1, ((q.x * e.x - ax) * dx + (q.y * e.y - ay) * dy) / l2));
+    return Math.hypot(q.x * e.x - (ax + dx * t), q.y * e.y - (ay + dy * t));
+  };
+  ok(aLaLinea(b2) < aLaLinea(normal) - 0.5, `se hunde hacia la línea: ${aLaLinea(b2).toFixed(2)} m frente a ${aLaLinea(normal).toFixed(2)}`);
+  eq([b2.aplica, s.sitio('B1').aplica], ['ayuda_y_flota', 'entre_par_y_aro'], 'y al del balón se le defiende como siempre:');
+});
+
+test('AYUDA Y FLOTA CON UN LÍMITE MÁS CORTO que los 2 m de siempre no se pasa', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.5, 0.45], ['A2', 'jugador', 'A', 0.1, 0.35], ['B1', 'jugador', 'B', 0.5, 0.40], ['B2', 'jugador', 'B', 0.12, 0.3], ['bal', 'balon', null, 0.5, 0.45]], { dar: [['bal', 'A1']], defensa: { preajuste: 'ayuda_y_flota', parametros: { flota_hasta: 1.5 } } });
+  ok(M(s.sitio('B2'), s.donde('A2')) <= 1.5 + 1e-6, `a ${M(s.sitio('B2'), s.donde('A2'))} m de su par`);
+});
+
+test('LA REGLA PROPIA DE UN DEFENSOR MANDA sobre la del ejercicio', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.3, 0.5], ['B1', 'jugador', 'B', 0.3, 0.6, { regla_defensa: 'presion' }], ['bal', 'balon', null, 0.3, 0.5]], { dar: [['bal', 'A1']] });
+  eq([s.sitio('B1').regla, s.sitio('B1').aplica], ['presion', 'presion']);
+});
+
+test('INFERIORIDAD: NO RETRASA EL QUE MARCA AL BALÓN, aunque sea el más cercano al aro', () => {
+  /* El defensor del portador está pegado al aro y el otro, lejos: aun así
+     retrasa el otro, que es lo que decidió el entrenador. */
+  const s = situada([
+    ['A1', 'jugador', 'A', 0.5, 0.25], ['A2', 'jugador', 'A', 0.2, 0.7], ['A3', 'jugador', 'A', 0.8, 0.7],
+    ['B1', 'jugador', 'B', 0.5, 0.18], ['B2', 'jugador', 'B', 0.2, 0.75], ['bal', 'balon', null, 0.5, 0.25],
+  ], { dar: [['bal', 'A1']] });
+  eq(s.p.situacion, 'inferioridad');
+  ok(M(s.donde('B1'), AR) < M(s.donde('B2'), AR), 'el del balón es el más cercano al aro (si no, la prueba no prueba nada)');
+  eq(s.p.retrasa, s.ids.B2, 'retrasa el que NO marca al balón:');
+  const c = s.col();
+  eq([c[s.ids.B1].aplica, c[s.ids.B2].aplica], ['entre_par_y_aro', 'retrasa']);
+});
+
+test('Y QUIEN RETRASA NO CAMBIA al volver a preguntar con la defensa ya colocada', () => {
+  /* El papel se decide con la escena del principio: si se decidiera con
+     donde está cada uno, colocar los movería y en la vuelta siguiente
+     retrasaría el otro, en contra del §8.2. */
+  const s = situada([
+    ['A1', 'jugador', 'A', 0.5, 0.6], ['A2', 'jugador', 'A', 0.2, 0.45], ['A3', 'jugador', 'A', 0.8, 0.45],
+    ['B1', 'jugador', 'B', 0.5, 0.55], ['B2', 'jugador', 'B', 0.25, 0.3], ['bal', 'balon', null, 0.5, 0.6],
+  ], { dar: [['bal', 'A1']] });
+  const primera = s.col();
+  const movidos = s.l.map((e) => (primera[e.id] ? { ...e, x: primera[e.id].x, y: primera[e.id].y } : e));
+  const segunda = colocar({ pista: 'entera', canasta: 'norte', elementos: movidos, papeles: s.p, defensa: null });
+  eq(Object.fromEntries(Object.entries(segunda).map(([k, v]) => [k, v.aplica])),
+    Object.fromEntries(Object.entries(primera).map(([k, v]) => [k, v.aplica])), 'los mismos papeles:');
+});
+
+test('EL QUE RETRASA NO SE PONE ENCIMA DEL DEFENSOR DEL BALÓN: si ya está marcado, protege el aro', () => {
+  const s = situada([
+    ['A1', 'jugador', 'A', 0.5, 0.28], ['A2', 'jugador', 'A', 0.2, 0.5], ['A3', 'jugador', 'A', 0.8, 0.5],
+    ['B1', 'jugador', 'B', 0.5, 0.35], ['B2', 'jugador', 'B', 0.3, 0.55], ['bal', 'balon', null, 0.5, 0.28],
+  ], { dar: [['bal', 'A1']] });
+  const c = s.col();
+  ok(M(s.donde('A1'), AR) < 6.75, 'el que lleva el balón está en zona de tiro (si no, la prueba no prueba nada)');
+  ok(M(c[s.ids.B1], c[s.ids.B2]) > 1, `no se tapan: ${M(c[s.ids.B1], c[s.ids.B2]).toFixed(2)} m`);
+  ok(enLaLinea(s.donde('A1'), AR, c[s.ids.B2]), 'el que retrasa se queda protegiendo, en la línea balón→aro');
+});
+
+test('INFERIORIDAD: RETRASA EL MÁS CERCANO AL ARO QUE NO MARCA AL BALÓN, y los demás siguen', () => {
+  /* 3 contra 2: B1 marca a A1 (balón), B2 marca a A2 y está más cerca del aro. */
+  const s = situada([['A1', 'jugador', 'A', 0.5, 0.6], ['A2', 'jugador', 'A', 0.2, 0.45], ['A3', 'jugador', 'A', 0.8, 0.45], ['B1', 'jugador', 'B', 0.5, 0.55], ['B2', 'jugador', 'B', 0.25, 0.3], ['bal', 'balon', null, 0.5, 0.6]], { dar: [['bal', 'A1']] });
+  eq(s.p.situacion, 'inferioridad');
+  const c = s.col();
+  eq([c[s.ids.B1].aplica, c[s.ids.B2].aplica], ['entre_par_y_aro', 'retrasa']);
+  const b2 = c[s.ids.B2];
+  ok(enLaLinea(s.donde('A1'), AR, b2), 'sobre la línea balón→aro');
+  ok(cerca(M(b2, AR), 6.75), `lejos del aro, en el borde de la zona de tiro: ${M(b2, AR)}`);
+});
+
+test('RETRASA SALE AL QUE TIENE EL BALÓN EN CUANTO ENTRA EN ZONA DE TIRO, sin saltos', () => {
+  const retrasaA = (y) => {
+    const s = situada([['A1', 'jugador', 'A', AR.x, y], ['A2', 'jugador', 'A', 0.2, 0.2], ['B1', 'jugador', 'B', 0.5, 0.15], ['bal', 'balon', null, AR.x, y]], { dar: [['bal', 'A1']] });
+    return { b: s.sitio('B1'), a1: s.donde('A1') };
+  };
+  const dentro = retrasaA(AR.y + 5 / escalaDe('entera').y);
+  ok(dentro.b.aplica === 'retrasa' && cerca(M(dentro.b, dentro.a1), 1.2), `a 5 m del aro sale a por él: ${M(dentro.b, dentro.a1)}`);
+  const antes = retrasaA(AR.y + (6.75 + 1e-4) / escalaDe('entera').y);
+  const despues = retrasaA(AR.y + (6.75 - 1e-4) / escalaDe('entera').y);
+  ok(M(antes.b, despues.b) < 0.01, `en el borde no da saltos: ${M(antes.b, despues.b)} m`);
+});
+
+test('CON UN SOLO DEFENSOR EN INFERIORIDAD, RETRASA ÉL', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.3, 0.6], ['A2', 'jugador', 'A', 0.7, 0.6], ['B1', 'jugador', 'B', 0.3, 0.55], ['bal', 'balon', null, 0.3, 0.6]], { dar: [['bal', 'A1']] });
+  eq(s.sitio('B1').aplica, 'retrasa');
+});
+
+test('SUPERIORIDAD: LA V SOBRE EL BALÓN, a 1,0 m del portador y 1,5 m entre los dos', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.3, 0.45], ['B1', 'jugador', 'B', 0.3, 0.4], ['B2', 'jugador', 'B', 0.5, 0.5], ['B3', 'jugador', 'B', 0.8, 0.7], ['bal', 'balon', null, 0.3, 0.45]], { dar: [['bal', 'A1']] });
+  eq(s.p.situacion, 'superioridad');
+  const c = s.col();
+  const [b1, b2, b3] = [c[s.ids.B1], c[s.ids.B2], c[s.ids.B3]];
+  eq([b1.aplica, b2.aplica, b3.aplica], ['trampa', 'trampa', 'protege'], 'el suyo y el primero que sobra, a la V; el otro, atrás:');
+  const C = s.donde('A1');
+  ok(cerca(M(b1, C), 1.0) && enLaLinea(C, AR, b1), 'el suyo corta el camino al aro');
+  ok(cerca(M(b2, C), 1.0) && cerca(M(b1, b2), 1.5), `el segundo cierra la V: ${M(b2, C)} y ${M(b1, b2)}`);
+  ok(cerca(M(b3, C), 2.0) && M(b3, AR) < M(C, AR), `el que sobra protege a 2 m del balón, entre el balón y el aro: ${M(b3, C)}`);
+  eq(b1.trampa, [s.ids.B1, s.ids.B2]);
+});
+
+test('LA SEPARACIÓN DE LA TRAMPA ES LA QUE SE PIDE, aunque no quepa en el círculo de presión', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.5, 0.45], ['B1', 'jugador', 'B', 0.5, 0.4], ['B2', 'jugador', 'B', 0.5, 0.6], ['bal', 'balon', null, 0.5, 0.45]], { dar: [['bal', 'A1']], defensa: { parametros: { trampa: 3 } } });
+  const c = s.col();
+  ok(cerca(M(c[s.ids.B1], c[s.ids.B2]), 3, 1e-6), `separados lo pedido: ${M(c[s.ids.B1], c[s.ids.B2])}`);
+  const x = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: s.l, papeles: s.p, defensa: { parametros: { trampa: 3 } }, defensor: s.ids.B2 });
+  ok(/3 m/.test(x.texto), `y el texto dice la de verdad: ${x.texto}`);
+});
+
+test('CON UN SOLO DEFENSOR NO HAY TRAMPA, aunque se fuerce la superioridad', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.5, 0.45], ['B1', 'jugador', 'B', 0.5, 0.4], ['bal', 'balon', null, 0.5, 0.45]], { dar: [['bal', 'A1']], defensa: { situacion: 'superioridad' } });
+  eq(s.p.situacion, 'superioridad');
+  eq(s.sitio('B1').aplica, 'entre_par_y_aro', 'se queda con su regla:');
+});
+
+test('LOS QUE SOBRAN PROTEGEN A 2 M DEL BALÓN, repartidos para no taparse', () => {
+  const s = situada([
+    ['A1', 'jugador', 'A', 0.5, 0.45], ['B1', 'jugador', 'B', 0.5, 0.4],
+    ['B2', 'jugador', 'B', 0.45, 0.6], ['B3', 'jugador', 'B', 0.7, 0.7], ['B4', 'jugador', 'B', 0.3, 0.7],
+    ['bal', 'balon', null, 0.5, 0.45],
+  ], { dar: [['bal', 'A1']] });
+  const c = s.col();
+  const protegen = ['B3', 'B4'].map((n) => c[s.ids[n]]);
+  for (const q of protegen) {
+    eq(q.aplica, 'protege');
+    ok(cerca(M(q, s.donde('A1')), 2.0, 1e-6), `a 2 m del balón: ${M(q, s.donde('A1'))}`);
+    ok(M(q, AR) < M(s.donde('A1'), AR), 'entre el balón y el aro');
+  }
+  ok(M(protegen[0], protegen[1]) > 1, `y separados entre ellos: ${M(protegen[0], protegen[1]).toFixed(2)} m`);
+});
+
+test('LA V SE ABRE HACIA EL MEDIO de la pista, venga del lado que venga', () => {
+  const lim = limitesCancha('entera');
+  const medioX = (lim.x[0] + lim.x[1]) / 2;
+  for (const x of [0.15, 0.85]) {
+    const s = situada([['A1', 'jugador', 'A', x, 0.4], ['B1', 'jugador', 'B', x, 0.35], ['B2', 'jugador', 'B', 0.5, 0.6], ['bal', 'balon', null, x, 0.4]], { dar: [['bal', 'A1']] });
+    const b2 = s.sitio('B2');
+    ok(Math.abs(b2.x - medioX) < Math.abs(x - medioX), `desde x=${x} el segundo de la V queda hacia dentro: ${b2.x}`);
+  }
+});
+
+test('TODO SITIO CAE DENTRO DE LA CANCHA, y sin atacante o sin defensa no se coloca a nadie', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.02, 0.98], ['B1', 'jugador', 'B', 0.02, 0.9], ['bal', 'balon', null, 0.02, 0.98]], { dar: [['bal', 'A1']] });
+  const b1 = s.sitio('B1');
+  const lim = limitesCancha('entera');
+  ok(b1.x >= lim.x[0] && b1.x <= lim.x[1] && b1.y >= lim.y[0] && b1.y <= lim.y[1], JSON.stringify(b1));
+  const sin = situada([['A1', 'jugador', 'A', 0.3, 0.5], ['B1', 'jugador', 'B', 0.3, 0.6]]);
+  eq(sin.col(), {});
+  eq(colocar({}), {});
+  const e2 = enCancha('entera', { x: -1, y: 2 });
+  ok(e2.x > lim.x[0] && e2.y < lim.y[1], 'enCancha recorta');
+});
+
+test('«SOLO» COLOCA A LOS QUE SE PIDEN, y con los demás en cuenta: el sitio es el mismo', () => {
+  /* En superioridad el sitio de uno depende de los otros: pidiendo uno
+     solo tiene que salir lo mismo que pidiéndolos todos. */
+  const s = situada([['A1', 'jugador', 'A', 0.3, 0.45], ['B1', 'jugador', 'B', 0.3, 0.4], ['B2', 'jugador', 'B', 0.5, 0.5], ['B3', 'jugador', 'B', 0.8, 0.7], ['bal', 'balon', null, 0.3, 0.45]], { dar: [['bal', 'A1']] });
+  const todos = s.col();
+  for (const quien of ['B1', 'B2', 'B3']) {
+    const uno = s.col({ solo: [s.ids[quien]] });
+    eq(Object.keys(uno), [s.ids[quien]], `${quien}: solo él`);
+    eq(uno[s.ids[quien]], todos[s.ids[quien]], `${quien}: el mismo sitio y el mismo papel`);
+  }
+});
+
+test('EL BALÓN QUE LLEVA UN DEFENSOR NO MUEVE A LA DEFENSA', () => {
+  /* Dos balones: el del ataque y uno que lleva un defensor (con quién
+     ataca elegido en Ajustes, que si no no atacaría nadie). B2 tiene más
+     cerca el del defensor, y aun así niega hacia el del ataque. */
+  const s = situada([
+    ['A1', 'jugador', 'A', 0.25, 0.5], ['A2', 'jugador', 'A', 0.55, 0.5],
+    ['B2', 'jugador', 'B', 0.55, 0.62, { dorsal: 2 }], ['B3', 'jugador', 'B', 0.60, 0.52, { dorsal: 3 }],
+    ['bal', 'balon', null, 0.25, 0.5], ['otro', 'balon', null, 0.60, 0.52],
+  ], { dar: [['bal', 'A1'], ['otro', 'B3']], defensa: { preajuste: 'niega_linea', ataca: 'A' } });
+  eq(s.p.ataca, 'A');
+  const b2 = s.sitio('B2');
+  ok(M(s.donde('B3'), s.donde('A2')) < M(s.donde('A1'), s.donde('A2')), 'el balón del defensor está MÁS CERCA de su par (si no, la prueba no prueba nada)');
+  eq(b2.aplica, 'niega_linea');
+  ok(enLaLinea(s.donde('A2'), s.donde('A1'), b2), 'niega hacia el balón del ataque');
+});
+
+test('CON VARIOS BALONES, CADA DEFENSOR MIRA EL DE SU PAR', () => {
+  const s = situada([
+    ['A1', 'jugador', 'A', 0.2, 0.5], ['A2', 'jugador', 'A', 0.8, 0.5], ['A3', 'jugador', 'A', 0.75, 0.55],
+    ['B1', 'jugador', 'B', 0.2, 0.6], ['B2', 'jugador', 'B', 0.8, 0.6], ['B3', 'jugador', 'B', 0.75, 0.65],
+    ['b1', 'balon', null, 0.2, 0.5], ['b2', 'balon', null, 0.8, 0.5],
+  ], { dar: [['b1', 'A1'], ['b2', 'A2']], defensa: { preajuste: 'niega_linea' } });
+  const b3 = s.sitio('B3');
+  eq(b3.aplica, 'niega_linea');
+  ok(enLaLinea(s.donde('A3'), s.donde('A2'), b3), 'A3 niega hacia A2, que lleva el balón más cercano, no hacia A1');
+});
+
+/* ── 7. Ver por qué está ahí (§8.7) ──────────────────────── */
+
+test('LA REGLA SE EXPLICA CON LO QUE SE DIBUJA Y UNA FRASE, y lo dibujado va de verdad de un sitio a otro', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.3, 0.5], ['A2', 'jugador', 'A', 0.7, 0.5], ['B1', 'jugador', 'B', 0.3, 0.6], ['B2', 'jugador', 'B', 0.7, 0.6], ['bal', 'balon', null, 0.3, 0.5]], { dar: [['bal', 'A1']] });
+  const x = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: s.l, papeles: s.p, defensa: null, defensor: s.ids.B2 });
+  eq(x.aplica, 'entre_par_y_aro');
+  ok(/2 m/.test(x.texto), x.texto);
+  eq(x.primitivas.map((q) => q.tipo), ['linea', 'punto']);
+  /* La línea va de su par al aro, y el punto es donde le toca estar. */
+  eq(x.primitivas[0].a, s.donde('A2'));
+  eq([x.primitivas[0].b.x, x.primitivas[0].b.y], [AR.x, AR.y]);
+  const sitio = s.sitio('B2');
+  eq(x.primitivas[1].p, { x: sitio.x, y: sitio.y });
+  const pre = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: s.l, papeles: s.p, defensa: { preajuste: 'presion' }, defensor: s.ids.B1 });
+  ok(/Presión/.test(pre.texto) && pre.primitivas[0].a.x === s.donde('A1').x, `presión: ${pre.texto}`);
+  const cerquita = situada([['A1', 'jugador', 'A', 0.3, 0.5], ['A2', 'jugador', 'A', 0.5, 0.5], ['B1', 'jugador', 'B', 0.3, 0.6], ['B2', 'jugador', 'B', 0.5, 0.6], ['bal', 'balon', null, 0.3, 0.5]], { dar: [['bal', 'A1']], defensa: { preajuste: 'niega_linea' } });
+  const nie = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: cerquita.l, papeles: cerquita.p, defensa: { preajuste: 'niega_linea' }, defensor: cerquita.ids.B2 });
+  eq(nie.aplica, 'niega_linea');
+  eq([nie.primitivas[0].a, nie.primitivas[0].b], [cerquita.donde('A1'), cerquita.donde('A2')], 'negar: del balón a su par');
+  eq(explicarRegla({ pista: 'entera', canasta: 'norte', elementos: s.l, papeles: s.p, defensor: s.ids.A1 }), null, 'un atacante no tiene regla:');
+  const flota = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: s.l, papeles: s.p, defensa: { preajuste: 'ayuda_y_flota' }, defensor: s.ids.B2 });
+  const circulo = flota.primitivas.find((q) => q.tipo === 'circulo');
+  ok(circulo && circulo.metros === 3.5 && /3,5 m/.test(flota.texto), flota.texto);
+  eq(circulo.centro, s.donde('A2'), 'el círculo va alrededor de su par:');
+});
+
+test('Y LO QUE SOBRA EN SUPERIORIDAD TAMBIÉN SE EXPLICA', () => {
+  const s = situada([['A1', 'jugador', 'A', 0.5, 0.45], ['B1', 'jugador', 'B', 0.5, 0.4], ['B2', 'jugador', 'B', 0.45, 0.6], ['B3', 'jugador', 'B', 0.7, 0.7], ['bal', 'balon', null, 0.5, 0.45]], { dar: [['bal', 'A1']] });
+  const x = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: s.l, papeles: s.p, defensor: s.ids.B3 });
+  eq(x.aplica, 'protege');
+  ok(/2 m del balón/.test(x.texto), x.texto);
+  eq([x.primitivas[0].a, x.primitivas[0].b], [s.donde('A1'), { x: AR.x, y: AR.y }], 'la línea del balón al aro:');
+});
+
+test('Y LA SITUACIÓN TAMBIÉN SE EXPLICA: retrasa con su zona de tiro, la trampa con su V', () => {
+  const inf = situada([['A1', 'jugador', 'A', 0.3, 0.6], ['A2', 'jugador', 'A', 0.7, 0.6], ['B1', 'jugador', 'B', 0.3, 0.55], ['bal', 'balon', null, 0.3, 0.6]], { dar: [['bal', 'A1']] });
+  const r = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: inf.l, papeles: inf.p, defensor: inf.ids.B1 });
+  ok(r.aplica === 'retrasa' && r.primitivas.some((q) => q.tipo === 'circulo' && q.metros === 6.75) && /6,75 m/.test(r.texto), r.texto);
+  const sup = situada([['A1', 'jugador', 'A', 0.3, 0.45], ['B1', 'jugador', 'B', 0.3, 0.4], ['B2', 'jugador', 'B', 0.5, 0.5], ['bal', 'balon', null, 0.3, 0.45]], { dar: [['bal', 'A1']] });
+  const t = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: sup.l, papeles: sup.p, defensor: sup.ids.B2 });
+  ok(t.aplica === 'trampa' && t.primitivas.filter((q) => q.tipo === 'linea').length === 2 && /1,5 m/.test(t.texto), t.texto);
+  /* Las dos líneas de la V salen del que lleva el balón y llegan a cada
+     uno de los dos que le atrapan. */
+  const c = sup.col();
+  for (const q of t.primitivas.filter((z) => z.tipo === 'linea')) eq(q.a, sup.donde('A1'), 'sale del portador:');
+  const puntas = t.primitivas.filter((z) => z.tipo === 'linea').map((z) => `${z.b.x},${z.b.y}`).sort();
+  eq(puntas, [c[sup.ids.B1], c[sup.ids.B2]].map((z) => `${z.x},${z.y}`).sort(), 'y llega a los dos:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

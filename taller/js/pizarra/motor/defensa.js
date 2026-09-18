@@ -25,9 +25,22 @@
        se mueve cada uno.
      · La situación se cuenta al empezar cada fase con los que están en
        juego, y se puede forzar (§8.2).
+     · Dónde se coloca cada defensor (§8.3): la regla del ejercicio o la
+       suya propia; en INFERIORIDAD retrasa el más cercano al aro que no
+       marca al que tiene el balón (con uno solo, él); en SUPERIORIDAD el
+       primero que sobra forma la V con el defensor del portador y los
+       demás se quedan entre el balón y el aro, a 2 m del balón.
+
+   ── TODO EN METROS ──────────────────────────────────────────
+   Las distancias de las reglas son metros de pista, y la pista no mide
+   lo mismo a lo ancho que a lo largo: todas las cuentas pasan a metros y
+   vuelven. Un «1,2 m» calculado en [0,1] saldría más largo por un eje
+   que por el otro.
    ============================================================ */
 
-import { metrosEntre } from '../../canvas/escala.js';
+import { metrosEntre, escalaDe } from '../../canvas/escala.js';
+import { limitesCancha } from '../../canvas/medidas.js';
+import { posicionesDe } from '../../canvas/anclas.js';
 import { numeroDe, EQUIPOS } from '../elementos.js';
 
 /* ── Las reglas y sus números (§8.3) ───────────────────────── */
@@ -117,6 +130,52 @@ export function normalizarDefensa(bruta) {
     else avisos.push('El equipo que ataca no se conoce: se decide por quién tiene el balón.');
   }
   return { defensa, avisos };
+}
+
+/* ── Geometría, en metros ──────────────────────────────────── */
+
+/** Un punto dentro de la CANCHA —no solo del marco—, con un margen en
+ *  metros: lo que cae en la línea o fuera no se puede jugar. */
+export function enCancha(pista, p, margen = 0.3) {
+  const e = escalaDe(pista);
+  const lim = limitesCancha(pista);
+  const dentro = (v, [a, b], escala) => Math.min(b - margen / escala, Math.max(a + margen / escala, v));
+  return { x: dentro(p.x, lim.x, e.x), y: dentro(p.y, lim.y, e.y) };
+}
+
+/* A `metros` de `a` hacia `b`, sin pasarse de `b`. */
+function hacia(pista, a, b, metros) {
+  const e = escalaDe(pista);
+  const dx = (b.x - a.x) * e.x, dy = (b.y - a.y) * e.y;
+  const largo = Math.hypot(dx, dy);
+  if (largo < 1e-9 || !(metros > 0)) return { x: a.x, y: a.y };
+  const k = Math.min(metros, largo) / largo;
+  return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+}
+
+/* El punto del segmento a–b más cercano a p. */
+function alSegmento(pista, p, a, b) {
+  const e = escalaDe(pista);
+  const ax = a.x * e.x, ay = a.y * e.y, dx = (b.x - a.x) * e.x, dy = (b.y - a.y) * e.y;
+  const l2 = dx * dx + dy * dy;
+  const t = l2 > 0 ? Math.max(0, Math.min(1, ((p.x * e.x - ax) * dx + (p.y * e.y - ay) * dy) / l2)) : 0;
+  return { x: (ax + dx * t) / e.x, y: (ay + dy * t) / e.y };
+}
+
+/* `p` girado `angulo` radianes alrededor de `centro`. */
+function girar(pista, centro, p, angulo) {
+  const e = escalaDe(pista);
+  const vx = (p.x - centro.x) * e.x, vy = (p.y - centro.y) * e.y;
+  const c = Math.cos(angulo), s = Math.sin(angulo);
+  return { x: centro.x + (vx * c - vy * s) / e.x, y: centro.y + (vx * s + vy * c) / e.y };
+}
+
+/* `p` desplazado `metros` en perpendicular a la línea a→b. */
+function alLado(pista, p, a, b, metros) {
+  const e = escalaDe(pista);
+  const dx = (b.x - a.x) * e.x, dy = (b.y - a.y) * e.y;
+  const largo = Math.hypot(dx, dy) || 1;
+  return { x: p.x + (-dy / largo) * metros / e.x, y: p.y + (dx / largo) * metros / e.y };
 }
 
 /* ── Quién ataca ───────────────────────────────────────────── */
@@ -222,6 +281,30 @@ export function situacionDe({ atacantes = [], defensores = [], defensa = null } 
 /* ── Todo junto, fase a fase ───────────────────────────────── */
 
 /**
+ * Quién RETRASA en inferioridad (§8.2, §8.3): el defensor más cercano al
+ * aro que no marca al que tiene el balón; con uno solo, él.
+ *
+ * Se decide aquí, con la escena AL EMPEZAR, y no al colocar: el sitio de
+ * cada uno es justo lo que `colocar` cambia, así que decidirlo allí haría
+ * que los papeles se intercambiaran en cada consulta, y el §8.2 dice que
+ * dentro de una fase nadie cambia de comportamiento.
+ */
+function quienRetrasa({ elementos = [], papeles = null, pista = 'entera', canasta = 'norte' } = {}) {
+  if (!papeles || papeles.situacion !== 'inferioridad') return null;
+  const pos = posicionesDe(pista, canasta);
+  if (!pos || !pos.aro) return null;
+  const aro = { x: pos.aro[0], y: pos.aro[1] };
+  const porId = new Map((elementos || []).filter(Boolean).map((e) => [e.id, e]));
+  const en = (id) => { const e = porId.get(id); return e && Number.isFinite(e.x) && Number.isFinite(e.y) ? { x: e.x, y: e.y } : null; };
+  const lleva = (id) => (elementos || []).some((b) => b && b.kind === 'balon' && b.portador_id === id);
+  const conSitio = (papeles.defensores || []).filter((d) => en(d));
+  const libres = conSitio.filter((d) => !(papeles.pares[d] && lleva(papeles.pares[d])));
+  const elegido = (libres.length ? libres : conSitio)
+    .reduce((m, d) => { const x = metrosEntre(pista, en(d), aro); return !m || x < m.x - 1e-6 ? { d, x } : m; }, null);
+  return elegido ? elegido.d : null;
+}
+
+/**
  * Los papeles de una jugada (§11.1): al empezar y en cada fase.
  *
  * Hoy son los mismos en todas las fases: lo que los cambia —robar,
@@ -230,13 +313,248 @@ export function situacionDe({ atacantes = [], defensores = [], defensa = null } 
  *
  * @param jugada { pista, elementos (la escena al empezar), fases, defensa }
  * @returns { inicio, fases: [papeles] } con
- *          papeles = { ataca, atacantes, defensores, pares, situacion }
+ *          papeles = { ataca, atacantes, defensores, pares, situacion, retrasa }
  */
 export function papelesDeJugada(jugada) {
   const j = jugada || {};
   const base = emparejar({ elementos: j.elementos || [], defensa: j.defensa, pista: j.pista || 'entera' });
-  const papeles = { ...base, situacion: situacionDe({ ...base, defensa: j.defensa }) };
+  const conSituacion = { ...base, situacion: situacionDe({ ...base, defensa: j.defensa }) };
+  const papeles = {
+    ...conSituacion,
+    retrasa: quienRetrasa({
+      elementos: j.elementos || [], papeles: conSituacion, pista: j.pista || 'entera', canasta: j.canasta || 'norte',
+    }),
+  };
   return { inicio: papeles, fases: (j.fases || []).map(() => papeles) };
+}
+
+/* ── Dónde se coloca cada defensor (§8.3) ──────────────────── */
+
+/**
+ * El sitio de cada defensor en UN INSTANTE: con los atacantes y los
+ * balones donde están, y quién lleva cada balón.
+ *
+ * Se usa al soltar un defensor en la pista (§8.1) y para explicar la
+ * regla (§8.7); la defensa que se mueve sola (§8.4) lo pregunta en cada
+ * instante con los mismos números.
+ *
+ * @param elementos  con sus posiciones y el `portador_id` de cada balón
+ * @param papeles    los de esa fase (`papelesDeJugada`)
+ * @param solo       si se pasa, solo esos defensores
+ * @returns { [defensor]: { x, y, regla, aplica, balon, portador, trampa } }
+ *   regla    la que tiene (la suya o la del ejercicio)
+ *   aplica   la que cumple de verdad: si niega pero su par está lejos del
+ *            balón, aplica «entre su par y el aro»; y la situación puede
+ *            mandar retrasar, hacer la trampa o proteger el aro
+ *   balon    el sitio del balón que mira, si mira alguno
+ */
+export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, solo = null } = {}) {
+  const r = {};
+  const pos = posicionesDe(pista, canasta);
+  if (!pos || !pos.aro || !papeles || !papeles.ataca || !(papeles.defensores || []).length) return r;
+  const aro = { x: pos.aro[0], y: pos.aro[1] };
+  const p = parametrosDe(defensa);
+  const porId = new Map((elementos || []).filter(Boolean).map((e) => [e.id, e]));
+  const en = (id) => { const e = porId.get(id); return e && Number.isFinite(e.x) && Number.isFinite(e.y) ? { x: e.x, y: e.y } : null; };
+  /* Un balón que lleva alguien está donde está quien lo lleva. Y solo
+     cuentan los que se pueden jugar: los que lleva un ATACANTE en juego y
+     los que están sueltos. El balón de quien espera en una fila, o el que
+     tiene un defensor, no mueve a la defensa. */
+  const atacan = new Set(papeles.atacantes || []);
+  const balones = (elementos || [])
+    .filter((b) => b && b.kind === 'balon')
+    .map((b) => { const dueno = b.portador_id && en(b.portador_id) ? b.portador_id : null; return { dueno, sitio: dueno ? en(dueno) : en(b.id) }; })
+    .filter((b) => b.sitio && (!b.dueno || atacan.has(b.dueno)));
+  const lleva = (id) => balones.some((b) => b.dueno === id);
+  const masCerca = (lista, a) => lista.reduce((m, b) => { const d = metrosEntre(pista, a, b.sitio); return !m || d < m.d - 1e-9 ? { b, d } : m; }, null);
+  /* Con varios balones, cada defensor mira el de su par: el que lleva, o
+     el que tiene más cerca. */
+  const balonDe = (par) => balones.find((b) => b.dueno === par) || (masCerca(balones, en(par)) || {}).b || null;
+  const reglaDe = (id) => {
+    const x = porId.get(id);
+    if (x && REGLAS.includes(x.regla_defensa)) return x.regla_defensa;
+    return defensa && REGLAS.includes(defensa.preajuste) ? defensa.preajuste : REGLA_POR_DEFECTO;
+  };
+  const pon = (id, sitio, aplica, extra = {}) => {
+    if (!sitio || (solo && !solo.includes(id))) return;
+    r[id] = { ...enCancha(pista, sitio), regla: reglaDe(id), aplica, balon: null, portador: null, trampa: null, ...extra };
+  };
+  const { defensores, pares, situacion } = papeles;
+  const hechos = new Set();
+
+  /* INFERIORIDAD: retrasa el más cercano al aro que no marca al que tiene
+     el balón (con uno solo, él). Mira el balón más cercano al aro: se
+     queda sobre la línea balón→aro, en el borde de la zona de tiro, y
+     sale al que lo tiene en cuanto entra en ella. */
+  if (situacion === 'inferioridad') {
+    /* Quién retrasa viene decidido con la escena del principio (papeles);
+       si no viene, se decide aquí con lo que hay. */
+    const elegido = papeles.retrasa && defensores.includes(papeles.retrasa) && en(papeles.retrasa)
+      ? papeles.retrasa
+      : quienRetrasa({ elementos, papeles, pista, canasta });
+    const enJuego = balones.filter((b) => b.dueno);
+    const mira = (enJuego.length ? enJuego : balones)
+      .reduce((m, b) => { const x = metrosEntre(pista, b.sitio, aro); return !m || x < m.x - 1e-9 ? { b, x } : m; }, null);
+    if (elegido && mira) {
+      /* Sale al que tiene el balón cuando entra en zona de tiro, pero SOLO
+         si no le marca nadie: si ya tiene defensor, los dos acabarían en el
+         mismo punto, y lo que hace falta es proteger el aro. */
+      const suyo = mira.b.dueno ? defensores.find((d) => d !== elegido && pares[d] === mira.b.dueno) : null;
+      const sale = mira.x <= p.retrasa_zona_tiro && !suyo;
+      /* Lejos del aro se queda en el borde de la zona de tiro; y si al que
+         lleva el balón ya le marca otro, un paso POR DETRÁS de él, que si no
+         los dos acaban en el mismo punto. */
+      let cuanto = Math.min(Math.max(mira.x - p.par_con_balon, 0), p.retrasa_zona_tiro);
+      if (suyo) cuanto = Math.min(cuanto, Math.max(mira.x - 2 * p.par_con_balon, 0.5));
+      const sitio = sale ? hacia(pista, mira.b.sitio, aro, p.par_con_balon) : hacia(pista, aro, mira.b.sitio, cuanto);
+      pon(elegido, sitio, 'retrasa', { balon: mira.b.sitio });
+      hechos.add(elegido);
+    }
+  }
+
+  /* SUPERIORIDAD: el defensor del portador corta la línea al aro, el
+     primero que sobra tapa la salida hacia el medio formando la V, y los
+     demás que sobran protegen entre el balón y el aro. */
+  if (situacion === 'superioridad') {
+    const portador = balones
+      .filter((b) => b.dueno && (papeles.atacantes || []).includes(b.dueno))
+      .reduce((m, b) => { const x = metrosEntre(pista, b.sitio, aro); return !m || x < m.x - 1e-9 ? { b, x } : m; }, null);
+    if (portador) {
+      const C = portador.b.sitio;
+      const suDefensor = defensores.find((d) => pares[d] === portador.b.dueno && en(d));
+      const sobran = defensores.filter((d) => !pares[d] && en(d))
+        .map((d, i) => ({ d, i, x: metrosEntre(pista, en(d), C) }))
+        .sort((a, z) => (a.x - z.x) || (a.i - z.i))
+        .map((o) => o.d);
+      const trampa = [...(suDefensor ? [suDefensor] : []), ...sobran];
+      const ids = trampa.slice(0, 2);
+      const linea = hacia(pista, C, aro, p.presion);
+      const lim = limitesCancha(pista);
+      const medio = { x: (lim.x[0] + lim.x[1]) / 2, y: (lim.y[0] + lim.y[1]) / 2 };
+      /* La V es de DOS: uno corta el camino al aro y el otro tapa la salida
+         hacia el medio. Con uno solo no hay trampa que hacer, y se queda
+         con su regla. */
+      if (trampa.length >= 2) {
+        pon(trampa[0], linea, 'trampa', { balon: C, portador: C, trampa: ids });
+        hechos.add(trampa[0]);
+        /* Los dos a `presion` del portador, separados `trampa`. Si esa
+           separación no cabe en ese círculo, el segundo se aleja lo justo
+           para que la separación sea la pedida. */
+        const cabe = p.trampa < 2 * p.presion;
+        const angulo = cabe ? 2 * Math.asin(p.trampa / (2 * p.presion)) : Math.PI;
+        const radio = cabe ? p.presion : p.trampa - p.presion;
+        const desde = hacia(pista, C, aro, radio);
+        const a = girar(pista, C, desde, angulo);
+        const b = girar(pista, C, desde, -angulo);
+        const lado = metrosEntre(pista, a, medio) <= metrosEntre(pista, b, medio) ? a : b;
+        pon(trampa[1], lado, 'trampa', { balon: C, portador: C, trampa: ids });
+        hechos.add(trampa[1]);
+      }
+      /* Los que sobran después: entre el balón y el aro, a `par_sin_balon`
+         del balón —eso es lo decidido, y por eso van sobre ESE arco— y
+         repartidos a los lados para no taparse. */
+      trampa.slice(2).forEach((d, k) => {
+        const abre = (k % 2 === 0 ? 1 : -1) * Math.ceil((k + 1) / 2) * 0.5;
+        pon(d, girar(pista, C, hacia(pista, C, aro, p.par_sin_balon), abre), 'protege', { balon: C });
+        hechos.add(d);
+      });
+    }
+  }
+
+  /* Los demás, con su regla. */
+  for (const d of defensores) {
+    const par = pares[d];
+    if (hechos.has(d) || !par || !en(par)) continue;
+    const regla = reglaDe(d);
+    const P = en(par);
+    const conBalon = lleva(par);
+    const entre = hacia(pista, P, aro, conBalon ? p.par_con_balon : p.par_sin_balon);
+    if (regla === 'presion' && conBalon) { pon(d, hacia(pista, P, aro, p.presion), 'presion', { balon: P }); continue; }
+    if (regla === 'niega_linea' && !conBalon) {
+      const b = balonDe(par);
+      if (b && metrosEntre(pista, P, b.sitio) < p.niega_hasta) {
+        pon(d, hacia(pista, P, b.sitio, p.niega_paso), 'niega_linea', { balon: b.sitio });
+        continue;
+      }
+    }
+    if (regla === 'ayuda_y_flota' && !conBalon) {
+      const b = balonDe(par);
+      if (b) {
+        /* Se hunde desde su sitio de siempre hacia la línea balón→aro, y
+           se para donde se alejaría demasiado de su par. */
+        /* Se sale del sitio de siempre, pero sin pasarse ya de su límite:
+           con un «hasta» menor que los 2 m de «entre su par y el aro», el
+           punto de partida estaría fuera del círculo. */
+        const salida = hacia(pista, P, aro, Math.min(conBalon ? p.par_con_balon : p.par_sin_balon, p.flota_hasta));
+        const T = alSegmento(pista, salida, b.sitio, aro);
+        const lejos = (q) => metrosEntre(pista, q, P);
+        const en_ = (k) => ({ x: salida.x + (T.x - salida.x) * k, y: salida.y + (T.y - salida.y) * k });
+        let k = 1;
+        if (lejos(T) > p.flota_hasta) {
+          let a = 0, z = 1;
+          for (let i = 0; i < 40; i++) { const m = (a + z) / 2; if (lejos(en_(m)) <= p.flota_hasta) a = m; else z = m; }
+          k = a;
+        }
+        pon(d, en_(k), 'ayuda_y_flota', { balon: b.sitio });
+        continue;
+      }
+    }
+    pon(d, entre, 'entre_par_y_aro', { balon: conBalon ? P : null });
+  }
+  return r;
+}
+
+const metros = (v) => `${String(Math.round(v * 100) / 100).replace('.', ',')} m`;
+
+/**
+ * Por qué está ahí (§8.7): lo que dibuja la pizarra al seleccionar a un
+ * defensor, y la frase que lo explica.
+ *
+ * @returns { aplica, texto, primitivas } o null si no tiene sitio
+ *   primitivas: { tipo: 'linea', a, b } · { tipo: 'circulo', centro, metros }
+ *               · { tipo: 'punto', p }
+ */
+export function explicarRegla({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, defensor = null } = {}) {
+  const sitios = colocar({ pista, canasta, elementos, papeles, defensa });
+  const s = sitios[defensor];
+  if (!s) return null;
+  const p = parametrosDe(defensa);
+  const aro = (() => { const a = posicionesDe(pista, canasta).aro; return { x: a[0], y: a[1] }; })();
+  const porId = new Map((elementos || []).filter(Boolean).map((e) => [e.id, e]));
+  const par = papeles.pares[defensor] ? porId.get(papeles.pares[defensor]) : null;
+  const P = par ? { x: par.x, y: par.y } : null;
+  const aqui = { tipo: 'punto', p: { x: s.x, y: s.y } };
+  const linea = (a, b) => ({ tipo: 'linea', a, b });
+  switch (s.aplica) {
+    case 'presion':
+      return { aplica: s.aplica, texto: `Presión al balón: pegado a su par, a ${metros(p.presion)}, cortando el camino al aro.`, primitivas: [linea(P, aro), aqui] };
+    case 'niega_linea':
+      return { aplica: s.aplica, texto: `Niega la línea de pase: un paso (${metros(p.niega_paso)}) desde su par hacia el balón.`, primitivas: [linea(s.balon, P), aqui] };
+    case 'ayuda_y_flota':
+      return { aplica: s.aplica, texto: `Ayuda y flota: se hunde hacia la línea del balón al aro sin alejarse más de ${metros(p.flota_hasta)} de su par.`, primitivas: [{ tipo: 'circulo', centro: P, metros: p.flota_hasta }, linea(s.balon, aro), aqui] };
+    case 'retrasa':
+      return { aplica: s.aplica, texto: `Retrasa y protege el aro (inferioridad): sale al que tiene el balón cuando entra a ${metros(p.retrasa_zona_tiro)} del aro.`, primitivas: [{ tipo: 'circulo', centro: aro, metros: p.retrasa_zona_tiro }, linea(s.balon, aro), aqui] };
+    case 'trampa': {
+      const dos = (s.trampa || []).filter((id) => sitios[id]);
+      const separacion = dos.length === 2
+        ? metrosEntre(pista, sitios[dos[0]], sitios[dos[1]])
+        : p.trampa;
+      return {
+        aplica: s.aplica,
+        texto: `Trampa sobre el balón (superioridad): uno corta el camino al aro y el otro la salida hacia el medio, a ${metros(separacion)} entre ellos.`,
+        primitivas: [...dos.map((id) => linea(s.portador, { x: sitios[id].x, y: sitios[id].y })), aqui],
+      };
+    }
+    case 'protege':
+      return { aplica: s.aplica, texto: `Sobra en superioridad: protege entre el balón y el aro, a ${metros(p.par_sin_balon)} del balón.`, primitivas: [linea(s.balon, aro), aqui] };
+    default: {
+      const conBalon = !!s.balon;
+      const texto = s.regla === 'entre_par_y_aro'
+        ? `Entre su par y el aro, a ${metros(conBalon ? p.par_con_balon : p.par_sin_balon)} de su par${conBalon ? ', que lleva el balón' : ''}.`
+        : `Entre su par y el aro, a ${metros(conBalon ? p.par_con_balon : p.par_sin_balon)}: su regla (${NOMBRE_REGLA[s.regla]}) no se aplica ahora mismo.`;
+      return { aplica: s.aplica, texto, primitivas: [linea(P, aro), aqui] };
+    }
+  }
 }
 
 /**

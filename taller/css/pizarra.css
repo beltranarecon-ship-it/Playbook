@@ -350,6 +350,58 @@
 .pz-recuento dt { color: var(--color-text-muted); }
 .pz-recuento dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 
+/* ---- El panel derecho: la pestaña «Ajustes» (§2.4) ----------
+   Como el izquierdo: parte del mueble, sin tarjetas ni sombras (§2.7).
+   Plegado queda en una tira con el botón para abrirlo. */
+.pz-der {
+  flex: 0 0 250px; display: flex; flex-direction: column; min-height: 0;
+  background: var(--color-surface); border-left: 1px solid var(--color-border);
+  font-size: var(--fs-300);
+}
+.pz-der.is-plegado { flex-basis: 36px; }
+.pz-der.is-plegado .pz-der__cuerpo, .pz-der.is-plegado .pz-der__pestana { display: none; }
+.pz-der__cabecera {
+  flex: 0 0 32px; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+.pz-der.is-plegado .pz-der__cabecera { padding: 0 3px; justify-content: center; }
+.pz-der__pestana {
+  flex: 1 1 auto; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--color-text);
+}
+.pz-der__plegar {
+  flex: 0 0 auto; width: 28px; height: 28px; border: 1px solid transparent; border-radius: var(--r-sm);
+  background: none; color: var(--color-text-muted); font: inherit; font-size: 16px; cursor: pointer;
+}
+.pz-der__plegar:hover { background: var(--surface-2); color: var(--color-text); }
+.pz-der__plegar:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.pz-der__cuerpo { flex: 1 1 auto; overflow: auto; padding: 8px 10px; }
+.pz-der__titulo { margin: 4px 0 6px; font-size: var(--fs-300); font-weight: 700; color: var(--color-text); }
+.pz-der__nota { margin: 6px 0; color: var(--color-text-muted); line-height: 1.35; }
+.pz-der__porque {
+  margin: 8px 0; padding: 6px 8px; border-left: 3px solid var(--color-accent);
+  background: rgba(0,111,148,.08); line-height: 1.35;
+}
+.pz-der__campo { display: flex; flex-direction: column; gap: 3px; margin: 8px 0; }
+.pz-der__campo > span { color: var(--color-text-muted); font-weight: 600; }
+.pz-der__campo select, .pz-der__numero input {
+  width: 100%; min-height: 32px; padding: 3px 6px; border: 1px solid var(--color-border);
+  border-radius: var(--r-sm); background: var(--color-bg); color: var(--color-text); font: inherit;
+}
+.pz-der__mas { margin: 10px 0 4px; }
+.pz-der__mas > summary { cursor: pointer; font-weight: 600; color: var(--color-text); padding: 4px 0; }
+.pz-der__numeros { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.pz-der__numero { display: grid; grid-template-columns: 1fr 84px; align-items: center; gap: 6px; }
+.pz-der__numero > span:first-child { color: var(--color-text-muted); line-height: 1.25; }
+.pz-der__unidad { display: flex; align-items: center; gap: 3px; color: var(--color-text-muted); }
+.pz-der__numero input { min-height: 28px; text-align: right; }
+.pz-der__numero input.is-cambiado { border-color: var(--color-accent); font-weight: 600; }
+.pz-der__serie {
+  margin-top: 8px; min-height: 30px; padding: 3px 10px; border: 1px solid var(--color-border);
+  border-radius: var(--r-sm); background: none; color: var(--color-text); font: inherit; cursor: pointer;
+}
+.pz-der__serie:hover { background: var(--surface-2); }
+
 /* La ficha que se arrastra desde el panel. Flota de verdad, así que
    aquí sí hay sombra (§2.7). */
 .pz-fantasma {

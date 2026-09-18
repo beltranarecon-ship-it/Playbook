@@ -39,7 +39,7 @@ import { puntoADistanciaDe, metrosEntre, escalaDe } from '../canvas/escala.js';
 import { limitesCancha } from '../canvas/medidas.js';
 import { FAMILIAS } from '../ia/acciones.js';
 import { flattenPath } from '../canvas/geometry.js';
-import { PARAMETROS } from './motor/defensa.js';
+import { PARAMETROS, enCancha } from './motor/defensa.js';
 
 /** A cuánto del aro se para quien acaba «pegado», en metros. Del
  *  catálogo: una acción puede traer la suya, y esta es la de reserva. */
@@ -63,15 +63,6 @@ export const METROS_BLOQUEO = PARAMETROS.bloqueo;
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const punto = (p) => ({ x: clamp01(p.x), y: clamp01(p.y) });
-
-/* Un punto dentro de la CANCHA —no solo del marco—, con un margen en
-   metros: lo que cae en la línea o fuera no se puede jugar. */
-function enCancha(pista, p, margen = 0.3) {
-  const e = escalaDe(pista);
-  const lim = limitesCancha(pista);
-  const dentro = (v, [a, b], escala) => Math.min(b - margen / escala, Math.max(a + margen / escala, v));
-  return { x: dentro(p.x, lim.x, e.x), y: dentro(p.y, lim.y, e.y) };
-}
 
 /**
  * ¿Esta acción sabe sola a dónde va?

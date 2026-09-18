@@ -48,10 +48,12 @@ import {
 } from './repertorio.js';
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
-import { acierto } from './seleccion.js';
+import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
-import { defensaPorDefecto, papelesDeJugada, tramosQueNoEncajan } from './motor/defensa.js';
+import {
+  defensaPorDefecto, papelesDeJugada, tramosQueNoEncajan, normalizarDefensa, colocar, explicarRegla, REGLAS,
+} from './motor/defensa.js';
 import { COLORS } from '../canvas/colors.js';
 import {
   nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular, posesionAlFinal,
@@ -68,9 +70,10 @@ export class Tablero {
    * @param onNoPuede     (accion, motivo) — se ha elegido algo imposible
    * @param onFases       (fases, enCurso) — ha cambiado el número de fases
    * @param onEscena      (elementos) — se ha puesto, quitado o movido algo
+   * @param onSeleccion   (ids) — ha cambiado lo que está seleccionado
    */
   constructor(lienzo, {
-    canasta = 'norte', posiciones = {}, onTramos, onAyuda, onSinSoporte, onNoPuede, onFases, onEscena,
+    canasta = 'norte', posiciones = {}, onTramos, onAyuda, onSinSoporte, onNoPuede, onFases, onEscena, onSeleccion,
   } = {}) {
     this.lienzo = lienzo;
     this.canasta = canasta;
@@ -80,6 +83,9 @@ export class Tablero {
     this.onNoPuede = onNoPuede;
     this.onFases = onFases;
     this.onEscena = onEscena;
+    this.onSeleccion = onSeleccion;
+    this._ultimaSeleccion = '';
+    this._arrastrePareja = null;  // { defensor, punto } mientras se arrastra la línea de un par
 
     /* TODAS las fases en una sola lista, y un índice diciendo cuál se
        está editando. La de en curso vivió un tiempo aparte, y en cuanto
@@ -104,6 +110,10 @@ export class Tablero {
        que se pregunta (ver `papeles`). */
     this.defensa = defensaPorDefecto();
     this._papeles = null;   // { clave, valor }: la última respuesta de `papeles`
+    /* Los defensores que ha colocado el entrenador a mano: a esos no se
+       les vuelve a mover (§8.1). Lo que se abre guardado cuenta como
+       puesto a mano: se guardó donde se veía. */
+    this._aMano = new Set();
 
     const comun = { canasta, posiciones, elementos: () => this.fichas.elementos };
 
@@ -143,6 +153,10 @@ export class Tablero {
       this._seguirALasFichas(elementos);
       this._recordarDonde(elementos);
       this.onEscena?.(elementos);
+      /* Lo seleccionado decide qué enseña la pestaña «Ajustes» y qué regla
+         se dibuja (§8.7): se avisa solo cuando cambia. */
+      const sel = [...this.fichas.seleccion].join(',');
+      if (sel !== this._ultimaSeleccion) { this._ultimaSeleccion = sel; this.onSeleccion?.([...this.fichas.seleccion]); }
     };
     this._donde = new Map();
 
@@ -185,6 +199,14 @@ export class Tablero {
     /* La línea fina discontinua de cada par (§8.1), debajo de las fichas:
        se lee quién defiende a quién sin tapar a nadie. */
     this._quitarCapaParejas = lienzo.capa('parejas', (c) => this._dibujarParejas(c), { tipo: 'mundo', orden: 9 });
+    /* La regla del defensor seleccionado (§8.7), por debajo de las líneas
+       de los pares: explica, no manda. */
+    this._quitarCapaRegla = lienzo.capa('regla', (c) => this._dibujarRegla(c), { tipo: 'mundo', orden: 7 });
+    /* Arrastrar la línea de un par a otro atacante cambia el par (§8.1).
+       Por encima de las fichas —que cogen el suelo para el marco de
+       selección— y por debajo de nodos y trazos. Nunca coge si hay una
+       ficha debajo, y un toque sin arrastre es tocar el suelo. */
+    this._quitarGestoPareja = lienzo.gesto('pareja', (i) => this._atenderPareja(i), { orden: 10 });
     /* El anillo vive en píxeles y la pista se mueve debajo de él: la
        rueda atraviesa el velo, que solo intercepta `pointerdown`. Se
        recoloca con cada pintada, que es justo cuando la vista ha podido
@@ -241,6 +263,7 @@ export class Tablero {
     }];
     this.iFase = 0;
     this.fichas.poner(elementos);
+    this._aMano = new Set(elementos.filter((e) => e.kind === 'jugador').map((e) => e.id));
     this._recordarDonde(elementos);
     this._avisarDeFases();
     this.onTramos?.(this.tramos);
@@ -285,6 +308,7 @@ export class Tablero {
       toco = true;
     }
     if (!toco) return;
+    for (const id of ids) if (this.fichas.elementos.some((e) => e.id === id && e.kind === 'jugador')) this._aMano.add(id);
     this.fases = this.fases.map((f, i) => (i === 0 ? { ...f, entrada, posesion } : f));
     this._recalcularSiguientes();
     /* Y se avisa DESPUÉS: el cambio de la pista ya se avisó, pero con la
@@ -326,10 +350,46 @@ export class Tablero {
     const puesta = this.fichas.elementos.find((e) => e.id === nueva.id);
     this.fases = conFichaNueva(this.fases, puesta);
     this._recalcularSiguientes();
+    /* Un defensor puesto desde el panel se coloca solo donde le toca
+       (§8.1), y con él se recolocan los demás defensores que nadie haya
+       movido a mano: al entrar uno nuevo, los papeles cambian —quién
+       retrasa, quién hace la V— y, si no, dos acababan en el mismo punto.
+       Arrastrado después, se queda donde se deje. */
+    const colocada = puesta.kind === 'jugador' ? this._recolocarDefensa(puesta.id) : null;
     // lo mismo que al recolocar: avisar con la escena ya apuntada
     this.onEscena?.(this.fichas.elementos);
     this._pintarAyuda();
-    return puesta;
+    return colocada || puesta;
+  }
+
+  /**
+   * Coloca a los defensores donde dice su regla (§8.1, §8.3), con la
+   * escena que se está viendo. Se recolocan todos MENOS los que el
+   * entrenador haya arrastrado a mano: esos se quedan donde los dejó.
+   *
+   * @param nuevo  la ficha recién puesta, que siempre se coloca
+   * @returns la ficha nueva, ya colocada, o null
+   */
+  _recolocarDefensa(nuevo = null) {
+    const papeles = this.papelesDeFase();
+    if (!papeles.defensores.length) return null;
+    const quienes = papeles.defensores.filter((d) => d === nuevo || !this._aMano.has(d));
+    if (!quienes.length) return null;
+    const sitios = colocar({
+      pista: this.lienzo.vista.pistaKey, canasta: this.canasta,
+      elementos: this.fichas.elementos, papeles, defensa: this.defensa, solo: quienes,
+    });
+    const movidos = {};
+    for (const [id, s] of Object.entries(sitios)) movidos[id] = { x: s.x, y: s.y };
+    if (!Object.keys(movidos).length) return null;
+    /* En la fase 1 el sitio es además su arranque. En otra fase la defensa
+       llega desde la anterior, así que ahí solo se mueve lo que se ve. */
+    if (this.iFase === 0) {
+      this.fases = this.fases.map((f, i) => (i === 0 ? { ...f, entrada: { ...(f.entrada || {}), ...movidos } } : f));
+    }
+    this.fichas._cambio(mover(this.fichas.elementos, movidos));
+    this._recalcularSiguientes();
+    return nuevo ? (this.fichas.elementos.find((e) => e.id === nuevo) || null) : null;
   }
 
   /**
@@ -462,6 +522,116 @@ export class Tablero {
   papelesDeFase() {
     const p = this.papeles();
     return p.fases[this.iFase] || p.inicio;
+  }
+
+  /* ---- los ajustes de la defensa (§2.4, §8) ---------------- */
+
+  /**
+   * Cambia los ajustes de la defensa del ejercicio: la regla, quién
+   * ataca, la situación forzada o los números. Lo que no valga se queda
+   * como estaba (pasa por `normalizarDefensa`).
+   */
+  setDefensa(parcial = {}) {
+    const nueva = normalizarDefensa({ ...this.defensa, ...parcial }).defensa;
+    for (const k of ['preajuste', 'situacion', 'ataca']) {
+      if (k in parcial && nueva[k] !== parcial[k]) nueva[k] = this.defensa[k];
+    }
+    /* Y un número que no valga no se lleva por delante los que ya estaban
+       cambiados: se queda el de antes. */
+    if (parcial.parametros) {
+      for (const [k, v] of Object.entries(this.defensa.parametros || {})) {
+        if (!(k in nueva.parametros) && (!(k in parcial.parametros) || parcial.parametros[k] === v)) nueva.parametros[k] = v;
+      }
+    }
+    this.defensa = nueva;
+    this.onEscena?.(this.fichas.elementos);
+    this.lienzo.pintar();
+    return this.defensa;
+  }
+
+  /**
+   * «Defiende a…» (§8.1): cambia el par de un defensor DESDE EL PRINCIPIO.
+   * Si ese atacante ya tenía defensor, se intercambian: el otro pasa a
+   * defender al que tenía este. `null` vuelve a emparejarlo solo.
+   * @returns true si se ha cambiado
+   */
+  setParDe(defensor, atacante = null) {
+    const { pares, defensores, atacantes } = this.papeles().inicio;
+    if (!defensores.includes(defensor)) return false;
+    if (atacante != null && !atacantes.includes(atacante)) return false;
+    const antes = pares[defensor] ?? null;
+    const otro = atacante == null ? null : defensores.find((d) => d !== defensor && pares[d] === atacante);
+    this.fichas._cambio(this.fichas.elementos.map((e) => {
+      if (e.id === defensor) return { ...e, defiende_a: atacante };
+      if (otro && e.id === otro) return { ...e, defiende_a: antes };
+      return e;
+    }));
+    this.lienzo.pintar();
+    return true;
+  }
+
+  /** La regla propia de un defensor (§8.3), o `null` para la del ejercicio. */
+  setReglaDe(defensor, regla = null) {
+    if (regla != null && !REGLAS.includes(regla)) return false;
+    if (!this.papeles().inicio.defensores.includes(defensor)) return false;
+    this.fichas._cambio(this.fichas.elementos.map((e) => (e.id === defensor ? { ...e, regla_defensa: regla } : e)));
+    this.lienzo.pintar();
+    return true;
+  }
+
+  /** Por qué está ahí el defensor seleccionado (§8.7), o null si lo
+   *  seleccionado no es un solo defensor. */
+  explicarSeleccion() {
+    const ids = [...this.fichas.seleccion];
+    if (ids.length !== 1) return null;
+    const papeles = this.papelesDeFase();
+    if (!papeles.defensores.includes(ids[0])) return null;
+    return explicarRegla({
+      pista: this.lienzo.vista.pistaKey, canasta: this.canasta,
+      elementos: this.fichas.elementos, papeles, defensa: this.defensa, defensor: ids[0],
+    });
+  }
+
+  /* Arrastrar la línea de un par a otro atacante (§8.1). */
+  _atenderPareja(intento) {
+    const pista = this.lienzo.vista.pistaKey;
+    const m = this.lienzo.metros(intento.agarrePx);
+    const minimoM = Number.isFinite(m) ? m : 0;
+    if (acierto(this.fichas.elementos, intento, { pista, minimoM })) return null;
+    const { pares, atacantes } = this.papelesDeFase();
+    const px = this.lienzo.metros(this.lienzo.agarre(8, intento.tipoPuntero));
+    const tolerancia = Number.isFinite(px) && px > 0 ? px : RADIO_NODO;
+    const donde = (id) => this.fichas.elementos.find((e) => e.id === id);
+    /* La MÁS CERCANA al dedo, no la primera que caiga dentro: con dos
+       líneas juntas se arrastraba la que no era. */
+    let pareja = null;
+    for (const [d, a] of Object.entries(pares)) {
+      const pd = a && donde(d);
+      const pa = a && donde(a);
+      if (!pd || !pa) continue;
+      const c = segmentoEn(nuevoTrazo(pd, pa), intento, { pista, tolerancia });
+      if (c && (!pareja || c.metros < pareja.metros - 1e-9)) pareja = { d, metros: c.metros };
+    }
+    if (!pareja) return null;
+    const defensor = pareja.d;
+    return {
+      mover: (p) => { this._arrastrePareja = { defensor, punto: { x: p.x, y: p.y } }; this.lienzo.pintar(); },
+      soltar: (p) => {
+        this._arrastrePareja = null;
+        const quien = acierto(this.fichas.elementos.filter((e) => atacantes.includes(e.id)), p, { pista, minimoM });
+        if (quien) this.setParDe(defensor, quien.id);
+        else this.onNoPuede?.({ nombre: 'Cambiar el par' }, 'suelta la línea encima de un atacante');
+        this.lienzo.pintar();
+      },
+      tocar: (p) => {
+        /* Un toque en la línea es un toque en el suelo: deselecciona —con
+           Mayús no, igual que el marco de las fichas— y puede pinchar un
+           trazo. */
+        this.fichas.seleccionar(alPinchar(this.fichas.seleccion, null, { shift: intento.shift }));
+        this._tocarSuelo({ x: p.x, y: p.y, tipoPuntero: p.tipoPuntero });
+      },
+      abortar: () => { this._arrastrePareja = null; this.lienzo.pintar(); },
+    };
   }
 
   /** Los trazos de quien defiende que no son cosa de la defensa (ver
@@ -622,6 +792,7 @@ export class Tablero {
        es exactamente lo que se ve al dibujar. */
     this.iFase = 0;
     this.fichas.poner(j.elementos.map((e) => ({ ...e })));
+    this._aMano = new Set(j.elementos.filter((e) => e.kind === 'jugador').map((e) => e.id));
     this.irAFase(0);
     return { ok: true, avisos };
   }
@@ -1355,12 +1526,55 @@ export class Tablero {
     ctx.lineWidth = hairline(1.5);
     ctx.setLineDash([5, 5]);
     for (const [d, a] of Object.entries(pares)) {
+      if (this._arrastrePareja && this._arrastrePareja.defensor === d) continue;
       const pd = a && donde(d);
       const pa = a && donde(a);
       if (!pd || !pa) continue;
       const [x1, y1] = toPx(pd.x, pd.y);
       const [x2, y2] = toPx(pa.x, pa.y);
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+    ctx.restore();
+    /* La que se está arrastrando, del defensor al dedo. */
+    const arr = this._arrastrePareja;
+    const pd = arr && donde(arr.defensor);
+    if (pd) {
+      const [x1, y1] = toPx(pd.x, pd.y);
+      const [x2, y2] = toPx(arr.punto.x, arr.punto.y);
+      ctx.save();
+      ctx.strokeStyle = COLORS.accent;
+      ctx.lineWidth = hairline(2.5);
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /* La regla del defensor seleccionado: sus líneas, su círculo y su sitio. */
+  _dibujarRegla({ ctx, toPx, hairline, metro }) {
+    const x = this.explicarSeleccion();
+    if (!x) return;
+    ctx.save();
+    ctx.strokeStyle = COLORS.accent;
+    ctx.fillStyle = COLORS.accent;
+    ctx.lineWidth = hairline(2);
+    for (const q of x.primitivas) {
+      if (q.tipo === 'linea' && q.a && q.b) {
+        const [x1, y1] = toPx(q.a.x, q.a.y);
+        const [x2, y2] = toPx(q.b.x, q.b.y);
+        ctx.setLineDash([7, 5]);
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      } else if (q.tipo === 'circulo' && q.centro && Number.isFinite(metro)) {
+        const [cx, cy] = toPx(q.centro.x, q.centro.y);
+        ctx.setLineDash([3, 5]);
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath(); ctx.arc(cx, cy, q.metros * metro, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+      } else if (q.tipo === 'punto' && q.p) {
+        const [px, py] = toPx(q.p.x, q.p.y);
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+      }
     }
     ctx.restore();
   }
@@ -1386,6 +1600,8 @@ export class Tablero {
     this._quitarCapa?.();
     this._quitarCapaFantasma?.();
     this._quitarCapaParejas?.();
+    this._quitarCapaRegla?.();
+    this._quitarGestoPareja?.();
     this._quitarCapaAnillo?.();
     this._quitarCapaDesenlace?.();
     this._cerrarDesenlace();

@@ -11,10 +11,11 @@
    el panel no conoce la pista. Aquí se cablean.
 
    ── LO QUE TODAVÍA NO ESTÁ, Y DÓNDE LLEGA ───────────────────
-   El panel derecho con sus tres pestañas (§2.4), los paneles plegables
-   y redimensionables, las zonas y «Traer», deshacer y rehacer: capas 6,
-   7 y 10. La canasta, que en el §2.4 vive en «Ajustes del ejercicio»,
-   va de momento en la barra de arriba.
+   El panel derecho tiene de momento la pestaña «Ajustes», y solo con lo
+   de la defensa (capa 5). Sus otras pestañas, los paneles
+   redimensionables, las zonas y «Traer», deshacer y rehacer: capas 6, 7
+   y 10. La canasta, que en el §2.4 vive en «Ajustes del ejercicio», va de
+   momento en la barra de arriba.
 
    Toca el DOM, así que no tiene banco propio. Se prueba en
    dev/pizarra.html y dentro del asistente.
@@ -25,6 +26,8 @@ import { Lienzo } from './lienzo.js';
 import { Tablero } from './tablero.js';
 import { LineaTiempo } from './linea-tiempo.js';
 import { PanelIzquierdo } from './paneles/izquierda.js';
+import { PanelDerecho } from './paneles/derecha.js';
+import { modeloAjustes } from './paneles/ajustes-modelo.js';
 import { recuento } from './elementos.js';
 
 /* Los aros se llaman por su número, que es como los ve el entrenador
@@ -57,6 +60,14 @@ export class Pizarra {
       onSoltar: (f, ev) => this._soltarDelPanel(f, ev),
     });
 
+    /* Antes que el Tablero: al montarse ya avisa de cambios, y el panel
+       tiene que estar para enterarse. */
+    this.derecha = new PanelDerecho({
+      onDefensa: (parcial) => this.tablero.setDefensa(parcial),
+      onParDe: (defensor, atacante) => this.tablero.setParDe(defensor, atacante),
+      onReglaDe: (defensor, regla) => this.tablero.setReglaDe(defensor, regla),
+    });
+
     const aros = Object.keys(this.lienzo.vista.pista?.baskets || {});
     this.tablero = new Tablero(this.lienzo, {
       canasta: aros.includes(canasta) ? canasta : (aros[0] || 'norte'),
@@ -73,6 +84,7 @@ export class Pizarra {
       onSinSoporte: (a) => this.avisar(`<b>«${a.nombre}»</b> todavía no se puede dibujar en la Pizarra: llega en una capa posterior.`),
       onNoPuede: (a, motivo) => this.avisar(`<b>«${a.nombre}»</b> no se puede: ${motivo}.`),
       onEscena: (elementos) => { this.panel.recuento(recuento(elementos)); this._cambio(); },
+      onSeleccion: () => this._refrescarAjustes(),
     });
 
     /* ---- la barra de arriba (§2.2) ---- */
@@ -101,7 +113,8 @@ export class Pizarra {
       h('div', { class: 'pz-arriba' }, herramientas, this.elAyuda),
       h('div', { class: 'pz-cuerpo' },
         this.panel.el,
-        h('div', { class: 'pz-centro' }, this.lienzo.el, this.elAviso, tiempo)));
+        h('div', { class: 'pz-centro' }, this.lienzo.el, this.elAviso, tiempo),
+        this.derecha.el));
     this.linea = new LineaTiempo(tiempo, this.tablero);
 
     /* Con una ficha pulsada en el panel, pinchar la pista la pone. Va por
@@ -145,6 +158,7 @@ export class Pizarra {
     if (sel) sel.value = this.tablero.canasta;
     this.panel.recuento(recuento(this.tablero.fichas.elementos));
     this.linea.refrescar();
+    this._refrescarAjustes();
     /* Los avisos de la carga y el de la defensa, JUNTOS: al abrir ya se ha
        dicho lo de la defensa, y el aviso de la carga lo tapaba para
        siempre, porque no se repite mientras no cambie. */
@@ -178,7 +192,24 @@ export class Pizarra {
     this._relojAviso = setTimeout(() => { this.elAviso.hidden = true; }, AVISO_MS);
   }
 
-  _cambio() { this._vigilarPapeles(); this.onCambio?.(); }
+  _cambio() { this._vigilarPapeles(); this._refrescarAjustes(); this.onCambio?.(); }
+
+  /* La pestaña «Ajustes», con lo seleccionado ahora. El panel solo se
+     rehace si lo que enseña ha cambiado. */
+  _refrescarAjustes() {
+    if (!this.tablero || !this.derecha) return;
+    const t = this.tablero;
+    const seleccion = [...t.fichas.seleccion];
+    const explicada = seleccion.length === 1 ? t.explicarSeleccion() : null;
+    this.derecha.pintar(modeloAjustes({
+      seleccion,
+      elementos: t.fichas.elementos,
+      papeles: t.papelesDeFase(),
+      defensa: t.defensa,
+      nombreDe: (e) => t.nombreDe(e),
+      explicacion: explicada ? explicada.texto : null,
+    }));
+  }
 
   /* Si quien defiende tiene trazos de ataque dibujados —pasa al dar el
      balón a otro equipo cuando ya había cortes—, se dice UNA vez por cada

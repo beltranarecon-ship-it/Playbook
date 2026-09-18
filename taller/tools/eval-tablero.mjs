@@ -47,6 +47,8 @@ const { Tablero } = await import('../js/pizarra/tablero.js');
 const { Pizarra } = await import('../js/pizarra/pizarra.js');
 const { anadir, asignarBalon, reiniciarIds } = await import('../js/pizarra/elementos.js');
 const { nuevoTrazo } = await import('../js/pizarra/trazo.js');
+const defensaMod = await import('../js/pizarra/motor/defensa.js');
+const { metrosEntre } = await import('../js/canvas/escala.js');
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -75,9 +77,13 @@ function lienzoFalso(pista = 'entera') {
 /* Un Tablero con la Pizarra de verdad por encima SOLO para lo que decide
    qué se avisa y cuándo (sus métodos, sin su DOM). */
 function montar(pista = 'entera') {
-  const t = new Tablero(lienzoFalso(pista), { canasta: 'norte' });
-  const p = Object.create(Pizarra.prototype);
   const avisos = [];
+  const t = new Tablero(lienzoFalso(pista), {
+    canasta: 'norte',
+    onNoPuede: (a, motivo) => avisos.push(['noPuede', a && a.nombre, motivo]),
+    onSinSoporte: (a) => avisos.push(['sinSoporte', a && a.nombre, null]),
+  });
+  const p = Object.create(Pizarra.prototype);
   Object.assign(p, {
     tablero: t, onCambio: null,
     elAviso: { hidden: true, innerHTML: '' },
@@ -177,6 +183,174 @@ test('QUIÉN DEFIENDE CAMBIA EN CUANTO CAMBIA QUIÉN TIENE EL BALÓN, y el anill
   t.anadirFicha({ kind: 'balon' }, { x: ficha(t, b1.id).x, y: ficha(t, b1.id).y });
   eq([t.estadoDe(ficha(t, a2.id)).esDefensor, t.estadoDe(ficha(t, b1.id)).esDefensor], [true, false]);
   eq(t.jugada().defensa.preajuste, 'entre_par_y_aro', 'y la jugada guarda sus ajustes:');
+});
+
+console.log('\n· los ajustes de la defensa (§8.1, §8.3)');
+
+/* A1 con balón y A2 del equipo A; nada más. */
+function conAtaque() {
+  reiniciarIds();
+  const m = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.30, 0.50);
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.70, 0.50);
+  l = anadir(l, { kind: 'balon' }, 0.34, 0.50);
+  const [a1, a2, bal] = l;
+  m.t.poner(asignarBalon(l, bal.id, a1.id, 'entera'));
+  return { ...m, a1, a2, bal };
+}
+
+test('AL PONER UN DEFENSOR SE RECOLOCAN TAMBIÉN LOS QUE NO SE HAN MOVIDO A MANO', () => {
+  /* 3 contra 2: el primero retrasa; al poner el segundo, el papel pasa a
+     uno de los dos y los dos tienen que quedar en su sitio, no encima. */
+  const { t } = conAtaque();
+  t.anadirFicha({ kind: 'jugador', equipo: 'A' }, { x: 0.5, y: 0.75 });
+  const b1 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.9, y: 0.9 });
+  const b2 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.1, y: 0.9 });
+  const d = Math.hypot(ficha(t, b1.id).x - ficha(t, b2.id).x, ficha(t, b1.id).y - ficha(t, b2.id).y);
+  ok(d > 0.02, `no quedan uno encima de otro: ${d.toFixed(4)}`);
+  const papeles = t.papelesDeFase();
+  const sitios = defensaMod.colocar({ pista: 'entera', canasta: 'norte', elementos: t.fichas.elementos, papeles, defensa: t.defensa });
+  for (const id of [b1.id, b2.id]) {
+    ok(Math.abs(ficha(t, id).x - sitios[id].x) < 1e-9 && Math.abs(ficha(t, id).y - sitios[id].y) < 1e-9, `${id} en su sitio`);
+  }
+});
+
+test('PERO AL QUE SE HA ARRASTRADO A MANO NO SE LE VUELVE A MOVER', () => {
+  const { t } = conAtaque();
+  t.anadirFicha({ kind: 'jugador', equipo: 'A' }, { x: 0.5, y: 0.75 });
+  const b1 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.9, y: 0.9 });
+  // el entrenador lo arrastra a donde quiere
+  t.fichas.seleccion = new Set([b1.id]);
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === b1.id ? { ...e, x: 0.62, y: 0.62 } : e)));
+  t._recolocadas([b1.id]);
+  t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.1, y: 0.9 });
+  eq([ficha(t, b1.id).x, ficha(t, b1.id).y], [0.62, 0.62], 'sigue donde lo dejó:');
+});
+
+test('SE COLOCA SEGÚN LA REGLA VIGENTE: con presión, pegado al que lleva el balón', () => {
+  const { t, a1 } = conAtaque();
+  t.setDefensa({ preajuste: 'presion' });
+  const b1 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.9, y: 0.9 });
+  t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.1, y: 0.9 });   // dos contra dos: sin inferioridad
+  const d = metrosEntre('entera', ficha(t, b1.id), ficha(t, a1.id));
+  ok(Math.abs(d - 1.0) < 1e-6, `a 1 m del que lleva el balón: ${d}`);
+});
+
+test('UN DEFENSOR PUESTO DESDE EL PANEL SE COLOCA SOLO donde le toca, y ahí empieza', () => {
+  const { t } = conAtaque();
+  const b = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.9, y: 0.9 });
+  const { colocar } = defensaMod;
+  const j = t.jugada();
+  const esperado = colocar({ pista: 'entera', canasta: 'norte', elementos: j.elementos, papeles: t.papeles().inicio, defensa: t.defensa })[b.id];
+  ok(esperado && Math.abs(b.x - esperado.x) < 1e-9 && Math.abs(b.y - esperado.y) < 1e-9, `en su sitio: ${JSON.stringify(b)} y ${JSON.stringify(esperado)}`);
+  eq(t.fases[0].entrada[b.id], { x: b.x, y: b.y }, 'y es su arranque:');
+  ok(b.x !== 0.9, 'no se queda donde se soltó');
+  /* Y con una fase más, ese arranque llega a la siguiente: si no, en la
+     fase 2 aparecería donde se soltó. */
+  t._cerrarFase();
+  t.irAFase(0);
+  const otro = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.05, y: 0.95 });
+  eq(t.fases[1].entrada[otro.id], { x: ficha(t, otro.id).x, y: ficha(t, otro.id).y }, 'la fase 2 arranca donde se le ha colocado:');
+});
+
+test('UN ATACANTE PUESTO DESDE EL PANEL SE QUEDA DONDE SE SUELTA', () => {
+  const { t } = conAtaque();
+  const a3 = t.anadirFicha({ kind: 'jugador', equipo: 'A' }, { x: 0.5, y: 0.8 });
+  eq([a3.x, a3.y], [0.5, 0.8]);
+});
+
+test('«DEFIENDE A…» CAMBIA EL PAR, y si el atacante ya tenía defensor, se intercambian', () => {
+  const { t, a1, a2 } = conAtaque();
+  const b1 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.3, y: 0.6 });
+  const b2 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.7, y: 0.6 });
+  eq(t.papeles().inicio.pares, { [b1.id]: a1.id, [b2.id]: a2.id }, 'por dorsal:');
+  ok(t.setParDe(b1.id, a2.id), 'se cambia');
+  eq(t.papeles().inicio.pares, { [b1.id]: a2.id, [b2.id]: a1.id }, 'intercambiados:');
+  eq(ficha(t, b2.id).defiende_a, a1.id, 'y al otro se le apunta a quién defiende, no se deja al azar:');
+  ok(!t.setParDe(b1.id, b2.id), 'a un defensor no se le puede defender');
+  ok(!t.setParDe(a1.id, a2.id), 'y un atacante no defiende');
+  ok(t.setParDe(b1.id, null) && t.fichas.elementos.find((e) => e.id === b1.id).defiende_a === null, 'null lo deja emparejarse solo');
+});
+
+test('LA REGLA PROPIA Y LOS AJUSTES DEL EJERCICIO se guardan y cambian lo que se explica', () => {
+  const { t } = conAtaque();
+  const b1 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.3, y: 0.6 });
+  // dos contra dos: con uno solo habría inferioridad, y retrasaría
+  t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.7, y: 0.6 });
+  ok(t.setReglaDe(b1.id, 'presion'));
+  ok(!t.setReglaDe(b1.id, 'zona'), 'una regla que no existe no se pone');
+  t.fichas.seleccionar([b1.id]);
+  eq(t.explicarSeleccion().aplica, 'presion');
+  t.setDefensa({ ataca: 'nadie' });
+  eq(t.defensa.ataca, 'nadie');
+  eq(t.explicarSeleccion(), null, 'con «nadie defiende» no hay regla que explicar:');
+  t.setDefensa({ ataca: 'Z', preajuste: 'niega_linea' });
+  eq([t.defensa.ataca, t.defensa.preajuste], ['nadie', 'niega_linea'], 'lo que no vale se queda como estaba:');
+  eq(t.jugada().defensa.preajuste, 'niega_linea', 'y la jugada lo guarda:');
+  t.setDefensa({ parametros: { presion: 0.6 } });
+  t.setDefensa({ parametros: { trampa: -1 } });
+  eq(t.defensa.parametros, { presion: 0.6 }, 'un número que no vale no se lleva por delante los que ya estaban:');
+  t.setDefensa({ parametros: { trampa: 2.5 } });
+  eq([t.defensa.parametros.presion, t.defensa.parametros.trampa], [0.6, 2.5], 'y uno nuevo se suma a los de antes:');
+});
+
+test('CAMBIAR LOS AJUSTES AVISA, para que se guarde el borrador', () => {
+  const { t, p, avisos } = montar();
+  let cambios = 0;
+  const antes = p._cambio.bind(p);
+  p._cambio = () => { cambios++; antes(); };
+  reiniciarIds();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.30, 0.50);
+  l = anadir(l, { kind: 'jugador', equipo: 'B' }, 0.30, 0.60);
+  l = anadir(l, { kind: 'balon' }, 0.34, 0.50);
+  const [a1, b1, bal] = l;
+  t.poner(asignarBalon(l, bal.id, a1.id, 'entera'));
+  cambios = 0;
+  t.setDefensa({ preajuste: 'presion' });
+  ok(cambios > 0, 'setDefensa avisa');
+  cambios = 0;
+  t.setParDe(b1.id, a1.id);
+  ok(cambios > 0, 'setParDe avisa');
+  cambios = 0;
+  t.setReglaDe(b1.id, 'niega_linea');
+  ok(cambios > 0, 'setReglaDe avisa');
+  void avisos;
+});
+
+test('ARRASTRAR LA LÍNEA DE UN PAR A OTRO ATACANTE CAMBIA EL PAR; un toque es tocar el suelo', () => {
+  const { t, a1, a2, avisos } = conAtaque();
+  const b1 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.3, y: 0.6 });
+  const b2 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.7, y: 0.6 });
+  t.fichas.seleccionar([]);
+  /* La línea de B2 con A2, sin balón: 2 m, así que su mitad queda lejos
+     de las dos fichas (la de B1 con A1, con balón, mide 1,2 m). */
+  const donde = (id) => t.fichas.elementos.find((e) => e.id === id);
+  const mitad = (a, b) => ({ x: (donde(a).x + donde(b).x) / 2, y: (donde(a).y + donde(b).y) / 2 });
+  ok(t._atenderPareja({ x: 0.5, y: 0.95, agarrePx: 0, tipoPuntero: 'mouse' }) === null, 'lejos de una línea no coge nada');
+  ok(t._atenderPareja({ ...donde(a2.id), agarrePx: 0, tipoPuntero: 'mouse' }) === null, 'encima de una ficha, tampoco: es de las fichas');
+  const g = t._atenderPareja({ ...mitad(b2.id, a2.id), agarrePx: 0, tipoPuntero: 'mouse' });
+  ok(g, 'sobre la línea sí');
+  g.mover({ x: 0.5, y: 0.5 });
+  ok(t._arrastrePareja && t._arrastrePareja.defensor === b2.id, 'se ve la línea arrastrándose');
+  g.soltar({ ...donde(a1.id) });
+  ok(!t._arrastrePareja, 'y al soltar deja de verse');
+  eq(t.papeles().inicio.pares[b2.id], a1.id, 'soltada encima de A1:');
+  eq(t.papeles().inicio.pares[b1.id], a2.id, 'y el otro se queda con el que había:');
+  let tocado = null;
+  t._tocarSuelo = (p) => { tocado = p; };
+  const g2 = t._atenderPareja({ ...mitad(b1.id, a2.id), agarrePx: 0, tipoPuntero: 'mouse' });
+  ok(g2, 'la línea nueva también se coge');
+  g2.tocar({ x: 0.5, y: 0.55, tipoPuntero: 'mouse' });
+  ok(tocado, 'un toque sin arrastrar va al suelo');
+  /* Y soltarla en el suelo vacío no cambia nada, pero lo dice. */
+  const pares = JSON.stringify(t.papeles().inicio.pares);
+  const g3 = t._atenderPareja({ ...mitad(b2.id, a1.id), agarrePx: 0, tipoPuntero: 'mouse' });
+  g3.mover({ x: 0.5, y: 0.9 });
+  g3.soltar({ x: 0.5, y: 0.9 });
+  eq(JSON.stringify(t.papeles().inicio.pares), pares, 'los pares no cambian:');
+  ok(avisos.some(([tipo, , motivo]) => tipo === 'noPuede' && /atacante/.test(motivo || '')), `y se avisa: ${JSON.stringify(avisos)}`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
