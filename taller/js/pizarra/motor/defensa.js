@@ -39,6 +39,7 @@
    ============================================================ */
 
 import { metrosEntre, escalaDe } from '../../canvas/escala.js';
+import { fotograma } from '../../canvas/fotograma.js';
 import { limitesCancha } from '../../canvas/medidas.js';
 import { posicionesDe } from '../../canvas/anclas.js';
 import { numeroDe, EQUIPOS } from '../elementos.js';
@@ -77,8 +78,24 @@ export const PARAMETROS = Object.freeze({
   retrasa_zona_tiro: 6.75,  // retrasa: sale al receptor dentro de esto del aro
   trampa: 1.5,              // separación de la V de la trampa
   sobrepasado: 1.2,         // el «metro largo» de es sobrepasado
-  cierra_rebote: 0.8,       // a esto de su par, hasta el final de la fase
+  /* A esto de su par, hasta el final de la fase. Es el mínimo que cabe:
+     el §8.4 no deja que un defensor se acerque a menos de 1,0 m de su par
+     y el §3.6 avisaría de choque, así que cerrar el rebote es ponerse
+     todo lo cerca que se puede, no más. */
+  cierra_rebote: 1.0,
   bloqueo: 0.7,             // a esto del defensor se planta quien bloquea
+});
+
+/**
+ * Cómo sigue la defensa a su par (§8.4). Son los números de la
+ * especificación, y no se tocan por ejercicio: describen a un jugador,
+ * no una idea de defensa.
+ */
+export const SEGUIMIENTO = Object.freeze({
+  muestras: 21,        // 20 tramos por fase, como pide el §8.4
+  retardo_ms: 250,     // apunta a donde estaba su referencia hace 0,25 s
+  velocidad: 2.5,      // m/s: su velocidad lateral, que es su tope
+  apartarse: 1.0,      // nunca atraviesa a su par: se aparta a 1 m (§3.6)
 });
 
 /** Una defensa nueva: nada decidido a mano. */
@@ -150,6 +167,18 @@ function hacia(pista, a, b, metros) {
   const largo = Math.hypot(dx, dy);
   if (largo < 1e-9 || !(metros > 0)) return { x: a.x, y: a.y };
   const k = Math.min(metros, largo) / largo;
+  return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+}
+
+/* A `metros` EXACTOS de `a` en la dirección de `b`, pasándose de `b` si
+   hace falta: es lo que necesita apartarse de alguien que ya se tiene
+   encima, donde `hacia` se quedaría corto. */
+function aDistancia(pista, a, b, metros) {
+  const e = escalaDe(pista);
+  const dx = (b.x - a.x) * e.x, dy = (b.y - a.y) * e.y;
+  const largo = Math.hypot(dx, dy);
+  if (largo < 1e-9) return { x: a.x, y: a.y };
+  const k = metros / largo;
   return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
 }
 
@@ -328,6 +357,120 @@ export function papelesDeJugada(jugada) {
   return { inicio: papeles, fases: (j.fases || []).map(() => papeles) };
 }
 
+/* ── La defensa se mueve sola (§8.4) ───────────────────────── */
+
+/**
+ * Por dónde pasa cada defensor durante una fase: veinte tramos, con el
+ * retardo natural y su tope de velocidad.
+ *
+ * Sigue a donde estaba su referencia HACE 0,25 s —no a donde está—, y no
+ * se mueve más rápido que su velocidad lateral: así no teletransporta ni
+ * corta por dentro en las curvas (§8.4). Y nunca atraviesa a su par: si
+ * fueran a coincidir, se aparta a un metro (§3.6).
+ *
+ * Se calcula al compilar, con el MISMO fotograma que reproduce el motor
+ * (canvas/fotograma.js): la defensa sigue al atacante por donde se le ve.
+ *
+ * @param meta        lo que pasa en la fase, de `metaDeFase`
+ * @param inicio      la escena al EMPEZAR la fase
+ * @param jugadores   los de la animación (con su equipo)
+ * @param balones     los de la animación
+ * @param reglas      { [jugador]: regla propia } para colocar
+ * @param tiros       los de la fase: tras uno fallado, se cierra el rebote
+ * @returns { [defensor]: { muestras: [{ t, x, y }], fin: { x, y } } }
+ */
+export function seguirDefensa({
+  pista = 'entera', canasta = 'norte', defensa = null, papeles = null,
+  jugadores = [], balones = [], reglas = {}, meta = null, inicio = null,
+  duracion_ms = 0, tiros = [], cuantas = SEGUIMIENTO.muestras,
+} = {}) {
+  const salida = {};
+  const defensores = (papeles && papeles.defensores) || [];
+  if (!inicio || !defensores.length || !(duracion_ms > 0)) return salida;
+  const p = parametrosDe(defensa);
+  const n = Math.max(2, cuantas | 0);
+  const dt = duracion_ms / (n - 1);
+  const paso = SEGUIMIENTO.velocidad * (dt / 1000);   // lo que puede avanzar entre muestra y muestra
+
+  /* Cuándo queda el balón suelto tras un tiro que falla: desde ahí, todos
+     cierran el rebote. */
+  const falla = (tiros || [])
+    .filter((t) => t && t.desenlace === 'falla')
+    .reduce((m, t) => {
+      const fin = (Number.isFinite(t.inicio_ms) ? t.inicio_ms : 0) + (Number.isFinite(t.duracion_ms) ? t.duracion_ms : 0);
+      return m == null || fin < m ? fin : m;
+    }, null);
+
+  const donde = {};
+  for (const d of defensores) donde[d] = inicio.P[d] ? { ...inicio.P[d] } : null;
+  const muestras = {};
+  for (const d of defensores) if (donde[d]) muestras[d] = [{ t: 0, x: donde[d].x, y: donde[d].y }];
+
+  const escenaEn = (t) => {
+    const f = fotograma({ meta, inicio, jugadores, balones, t });
+    return {
+      f,
+      elementos: [
+        ...jugadores.map((j) => ({
+          id: j.id, kind: 'jugador', equipo: j.equipo || 'A', en_juego: true,
+          x: (f.players[j.id] || {}).x, y: (f.players[j.id] || {}).y,
+          defiende_a: null, regla_defensa: reglas[j.id] || null,
+        })),
+        ...balones.map((b) => ({
+          id: b.id, kind: 'balon',
+          x: (f.balls[b.id] || {}).x, y: (f.balls[b.id] || {}).y,
+          portador_id: f.duenos[b.id] || null,
+        })),
+      ],
+    };
+  };
+
+  let previo = escenaEn(0);
+  for (let k = 1; k < n; k++) {
+    const t = k * dt;
+    /* Apunta a donde estaba su referencia hace 0,25 s. */
+    const visto = escenaEn(Math.max(0, t - SEGUIMIENTO.retardo_ms));
+    const ahora = escenaEn(t);
+    const objetivos = colocar({
+      pista, canasta, elementos: visto.elementos, papeles, defensa,
+      cerrandoRebote: falla != null && t >= falla,
+    });
+    for (const d of defensores) {
+      if (!donde[d]) continue;
+      const meta_ = objetivos[d];
+      let siguiente = donde[d];
+      if (meta_) {
+        const falta = metrosEntre(pista, donde[d], meta_);
+        siguiente = falta <= paso ? { x: meta_.x, y: meta_.y } : hacia(pista, donde[d], meta_, paso);
+      }
+      /* NUNCA ATRAVIESA A SU PAR: si se le echa encima, se aparta a un
+         metro, por el lado por el que venía.
+
+         Apartarse no es correr: cuando su par le pasa por encima a más
+         velocidad de la suya, se lo lleva por delante. Por eso aquí el
+         tope no es solo su paso, sino su paso MÁS lo que se ha movido su
+         par: así nunca hay un salto que no venga de un empujón. */
+      const par = papeles.pares[d];
+      const suPar = par ? ahora.f.players[par] : null;
+      if (suPar && metrosEntre(pista, siguiente, suPar) < SEGUIMIENTO.apartarse) {
+        const desde = metrosEntre(pista, donde[d], suPar) > 1e-6 ? donde[d] : { x: suPar.x, y: suPar.y - 0.01 };
+        const fuera = aDistancia(pista, suPar, desde, SEGUIMIENTO.apartarse);
+        const antes = par ? previo.f.players[par] : null;
+        const tope = paso + (antes ? metrosEntre(pista, suPar, antes) : 0);
+        siguiente = metrosEntre(pista, donde[d], fuera) <= tope ? fuera : hacia(pista, donde[d], fuera, tope);
+      }
+      donde[d] = enCancha(pista, siguiente);
+      muestras[d].push({ t, x: donde[d].x, y: donde[d].y });
+    }
+    previo = ahora;
+  }
+  for (const d of defensores) {
+    if (!muestras[d]) continue;
+    salida[d] = { muestras: muestras[d], fin: { ...donde[d] } };
+  }
+  return salida;
+}
+
 /* ── Dónde se coloca cada defensor (§8.3) ──────────────────── */
 
 /**
@@ -341,6 +484,7 @@ export function papelesDeJugada(jugada) {
  * @param elementos  con sus posiciones y el `portador_id` de cada balón
  * @param papeles    los de esa fase (`papelesDeJugada`)
  * @param solo       si se pasa, solo esos defensores
+ * @param cerrandoRebote  tras un tiro fallado: todos cierran el rebote
  * @returns { [defensor]: { x, y, regla, aplica, balon, portador, trampa } }
  *   regla    la que tiene (la suya o la del ejercicio)
  *   aplica   la que cumple de verdad: si niega pero su par está lejos del
@@ -348,7 +492,7 @@ export function papelesDeJugada(jugada) {
  *            mandar retrasar, hacer la trampa o proteger el aro
  *   balon    el sitio del balón que mira, si mira alguno
  */
-export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, solo = null } = {}) {
+export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, solo = null, cerrandoRebote = false } = {}) {
   const r = {};
   const pos = posicionesDe(pista, canasta);
   if (!pos || !pos.aro || !papeles || !papeles.ataca || !(papeles.defensores || []).length) return r;
@@ -381,6 +525,19 @@ export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], p
   };
   const { defensores, pares, situacion } = papeles;
   const hechos = new Set();
+
+  /* TRAS UN TIRO QUE FALLA, TODOS CIERRAN EL REBOTE (§8.3): entre su par
+     y el aro, pegados, hasta el final de la fase. Manda sobre la regla y
+     sobre la situación: lo que hay que hacer es que nadie coja el rebote
+     por delante. */
+  if (cerrandoRebote) {
+    for (const d of defensores) {
+      const par = pares[d];
+      if (!par || !en(par)) continue;
+      pon(d, hacia(pista, en(par), aro, p.cierra_rebote), 'cierra_rebote', { balon: null });
+      hechos.add(d);
+    }
+  }
 
   /* INFERIORIDAD: retrasa el más cercano al aro que no marca al que tiene
      el balón (con uno solo, él). Mira el balón más cercano al aro: se
@@ -547,6 +704,8 @@ export function explicarRegla({ pista = 'entera', canasta = 'norte', elementos =
     }
     case 'protege':
       return { aplica: s.aplica, texto: `Sobra en superioridad: protege entre el balón y el aro, a ${metros(p.par_sin_balon)} del balón.`, primitivas: [linea(s.balon, aro), aqui] };
+    case 'cierra_rebote':
+      return { aplica: s.aplica, texto: `El tiro ha fallado: cierra el rebote entre su par y el aro, a ${metros(p.cierra_rebote)}, hasta el final de la fase.`, primitivas: [linea(P, aro), aqui] };
     default: {
       const conBalon = !!s.balon;
       const texto = s.regla === 'entre_par_y_aro'

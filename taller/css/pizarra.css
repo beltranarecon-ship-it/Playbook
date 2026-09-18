@@ -256,6 +256,18 @@
    verlo: si no, no habría manera de saber cuáles siguen la corriente. */
 .pz-barra.is-manual { background: var(--color-ball); box-shadow: inset 0 0 0 2px var(--color-ink, #0b2330); }
 
+/* Lo que se mueve solo —la defensa del §8.4— va en gris y no se puede
+   arrastrar: está para saber que ocupa la fase, no para tocarlo. */
+.pz-carril--auto .pz-carril__quien,
+.pz-carril--auto .pz-carril__dur { opacity: 0.7; }
+.pz-barra--auto {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  cursor: default;
+}
+.pz-barra--auto:active { cursor: default; }
+
 /* ---- La pantalla (§2.1) -------------------------------------
    Barra arriba, panel de fichas a la izquierda, y la pista con la línea
    de tiempo debajo ocupando lo que sobra. Los `min-*: 0` son los mismos

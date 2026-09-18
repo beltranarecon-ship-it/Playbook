@@ -8,7 +8,10 @@
        cualquiera a corregirla (§6.5);
      · LOS CARRILES de la fase activa, una barra por ficha, que es donde
        se ve de un golpe quién se mueve, cuándo arranca cada uno y
-       cuánto dura la fase.
+       cuánto dura la fase. Debajo, en gris y sin poder tocarse, los
+       AUTOMÁTICOS: la defensa que se mueve sola (§8.4). Están porque
+       ocupan tiempo en la fase y se ven en el proyector; no se arrastran
+       porque no los ha dibujado nadie.
 
    Toca el DOM, así que no tiene banco propio: lo que se puede probar en
    Node —los carriles, las duraciones, los arranques— vive en fases.js,
@@ -126,6 +129,7 @@ export class LineaTiempo {
       return caja;
     }
     const total = Math.max(1, tiempos.duracion_ms);
+    const automaticos = t._defensaDeLasFases()[t.iFase] || {};
     for (const c of fase.carriles) {
       const ficha = t.fichas.elementos.find((e) => e.id === c.elemento);
       const fila = h('div', { class: 'pz-carril' },
@@ -145,6 +149,20 @@ export class LineaTiempo {
       }
       fila.append(pista, h('span', { class: 'pz-carril__dur' }, segundos(duracionDeCarril(c, tiempos))));
       caja.append(fila);
+    }
+    /* Y los que se mueven solos: toda la fase, en gris y quietos. */
+    for (const id of Object.keys(automaticos)) {
+      const ficha = t.fichas.elementos.find((e) => e.id === id);
+      const barra = h('div', {
+        class: 'pz-barra pz-barra--auto',
+        title: 'la defensa sigue a su par (§8.4): no se dibuja ni se arrastra',
+      }, 'defiende');
+      barra.style.left = '0%';
+      barra.style.width = '100%';
+      caja.append(h('div', { class: 'pz-carril pz-carril--auto' },
+        h('span', { class: 'pz-carril__quien' }, ficha ? t.nombreDe(ficha) : '—'),
+        h('div', { class: 'pz-carril__pista' }, barra),
+        h('span', { class: 'pz-carril__dur' }, segundos(total))));
     }
     return caja;
   }

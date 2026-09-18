@@ -14,8 +14,9 @@
 import {
   REGLAS, PARAMETROS, SITUACIONES, defensaPorDefecto, parametrosDe, normalizarDefensa,
   quienAtaca, emparejar, situacionDe, papelesDeJugada, tramosQueNoEncajan,
-  colocar, explicarRegla, enCancha,
+  colocar, explicarRegla, enCancha, seguirDefensa, SEGUIMIENTO,
 } from '../js/pizarra/motor/defensa.js';
+import { metaDeFase, fotograma } from '../js/canvas/fotograma.js';
 import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
 import { limitesCancha } from '../js/canvas/medidas.js';
 import { anadir, asignarBalon, reiniciarIds } from '../js/pizarra/elementos.js';
@@ -236,7 +237,7 @@ test('UNA DEFENSA SIN TOCAR ES LA DE SERIE, y los números de serie son los acor
   eq([PARAMETROS.par_con_balon, PARAMETROS.par_sin_balon, PARAMETROS.niega_hasta, PARAMETROS.flota_hasta, PARAMETROS.presion, PARAMETROS.trampa],
     [1.2, 2.0, 7.0, 3.5, 1.0, 1.5], 'los del §8.3:');
   eq([PARAMETROS.niega_paso, PARAMETROS.retrasa_zona_tiro, PARAMETROS.sobrepasado, PARAMETROS.cierra_rebote],
-    [0.8, 6.75, 1.2, 0.8], 'y los que aceptó el entrenador:');
+    [0.8, 6.75, 1.2, 1.0], 'y los que aceptó el entrenador:');
   ok(Object.isFrozen(PARAMETROS), 'nadie los cambia por accidente');
   eq(parametrosDe({ parametros: { presion: 0.5 } }).presion, 0.5, 'los del ejercicio mandan:');
   eq(parametrosDe(null).presion, 1.0);
@@ -261,6 +262,7 @@ test('LO QUE LLEGA MAL SE QUITA Y SE DICE; lo que falta, no se dice', () => {
 /* ── 6. Dónde se coloca cada uno (§8.3) ──────────────────── */
 
 const AR = (() => { const a = posicionesDe('entera', 'norte').aro; return { x: a[0], y: a[1] }; })();
+const fotogramaEn = (meta, inicio, jugadores, balones, t) => fotograma({ meta, inicio, jugadores, balones, t: Math.max(0, t) });
 const M = (a, b) => metrosEntre('entera', a, b);
 const cerca = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
 /* Una escena con papeles ya calculados, lista para colocar. */
@@ -550,6 +552,120 @@ test('Y LA SITUACIÓN TAMBIÉN SE EXPLICA: retrasa con su zona de tiro, la tramp
   for (const q of t.primitivas.filter((z) => z.tipo === 'linea')) eq(q.a, sup.donde('A1'), 'sale del portador:');
   const puntas = t.primitivas.filter((z) => z.tipo === 'linea').map((z) => `${z.b.x},${z.b.y}`).sort();
   eq(puntas, [c[sup.ids.B1], c[sup.ids.B2]].map((z) => `${z.x},${z.y}`).sort(), 'y llega a los dos:');
+});
+
+/* ── 8. La defensa se mueve sola (§8.4) ──────────────────── */
+
+/* Una fase con A1 corriendo y B1 defendiéndole, lista para seguir. */
+function paraSeguir({ camino, dur = 2000, tiros = [], defensa = null, empieza = null } = {}) {
+  const jugadores = [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }];
+  const balones = [{ id: 'b1' }];
+  const papeles = { ataca: 'A', atacantes: ['A1'], defensores: ['B1'], pares: { B1: 'A1' }, situacion: 'igualdad', retrasa: null };
+  const inicio = {
+    P: { A1: { x: camino[0].x, y: camino[0].y }, B1: empieza || { x: camino[0].x, y: camino[0].y - 1.2 / escalaDe('entera').y } },
+    B: { b1: { x: camino[0].x, y: camino[0].y } },
+    owner: { b1: 'A1' },
+  };
+  const fase = {
+    duracion_ms: dur,
+    movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: camino.map((p) => ({ ...p, tipo_nodo: 'lineal' })), inicio_ms: 0, duracion_ms: dur }],
+    pases: [], tiros, recogidas: [], bloqueos: [],
+  };
+  const r = metaDeFase(fase, { jugadores, balones, escena: inicio, aro: () => AR });
+  const seguida = seguirDefensa({
+    pista: 'entera', canasta: 'norte', defensa, papeles, jugadores, balones,
+    meta: r.meta, inicio, duracion_ms: dur, tiros,
+  });
+  return { seguida, papeles, inicio, meta: r.meta, jugadores, balones, dur, fase };
+}
+
+test('VEINTE TRAMOS POR FASE, del principio al final (§8.4)', () => {
+  const { seguida, dur } = paraSeguir({ camino: [{ x: 0.5, y: 0.7 }, { x: 0.5, y: 0.3 }] });
+  const m = seguida.B1.muestras;
+  eq(m.length, SEGUIMIENTO.muestras, 'veintiuna muestras son veinte tramos:');
+  eq([m[0].t, m[m.length - 1].t], [0, dur]);
+  eq(seguida.B1.fin, { x: m[m.length - 1].x, y: m[m.length - 1].y }, 'y acaba donde dice su última muestra:');
+});
+
+test('SIGUE A SU PAR CON RETARDO: apunta a donde estaba hace 0,25 s', () => {
+  /* Su par se aleja despacio, así que al defensor le da tiempo a estar
+     exactamente donde manda la regla: a 1,2 m de su par con balón, entre
+     él y el aro. La pregunta es DE QUÉ par: del de hace 0,25 s. */
+  const { seguida, meta, inicio, jugadores, balones } = paraSeguir({ camino: [{ x: 0.5, y: 0.40 }, { x: 0.5, y: 0.50 }] });
+  const m = seguida.B1.muestras;
+  /* A mitad de la fase, que es cuando su par va más deprisa: al final la
+     curva de siempre le deja casi parado y el retardo no se notaría. */
+  const fin = m[Math.floor(m.length / 2)];
+  const par = (t) => fotogramaEn(meta, inicio, jugadores, balones, t).players.A1;
+  const antes = M(fin, par(fin.t - SEGUIMIENTO.retardo_ms));
+  const ahora = M(fin, par(fin.t));
+  ok(cerca(antes, PARAMETROS.par_con_balon, 0.03), `a ${antes.toFixed(2)} m de donde estaba su par hace 0,25 s`);
+  ok(Math.abs(ahora - PARAMETROS.par_con_balon) > 0.15, `y no de donde está ahora, que le queda a ${ahora.toFixed(2)} m`);
+});
+
+test('NO CORRE MÁS DE SU VELOCIDAD LATERAL, 2,5 m/s (§8.4)', () => {
+  /* Su par se le va: 13,5 m en dos segundos. Por mucho que el objetivo
+     vuele, él anda lo suyo y no más. */
+  const { seguida } = paraSeguir({ camino: [{ x: 0.5, y: 0.25 }, { x: 0.5, y: 0.75 }] });
+  const m = seguida.B1.muestras;
+  let tope = 0;
+  for (let i = 1; i < m.length; i++) {
+    const cabe = SEGUIMIENTO.velocidad * ((m[i].t - m[i - 1].t) / 1000);
+    const anda = M(m[i], m[i - 1]);
+    ok(anda <= cabe + 1e-9, `en t=${m[i].t} anda ${anda.toFixed(3)} m, y solo puede ${cabe.toFixed(3)}`);
+    tope = Math.max(tope, anda / cabe);
+  }
+  ok(tope > 0.99, `y corre todo lo que puede: como mucho, el ${(tope * 100).toFixed(0)} % de su paso`);
+});
+
+test('Y SI SU PAR LE PASA POR ENCIMA MÁS RÁPIDO, se lo lleva por delante pero sin saltos', () => {
+  /* 13,5 m en dos segundos: el atacante corre más que nadie, así que se
+     lleva al defensor por delante. Aun así, nunca se mueve más de lo que
+     se ha movido su par. */
+  const { seguida, meta, inicio, jugadores, balones } = paraSeguir({ camino: [{ x: 0.5, y: 0.75 }, { x: 0.5, y: 0.25 }] });
+  const m = seguida.B1.muestras;
+  for (let i = 1; i < m.length; i++) {
+    const dt = (m[i].t - m[i - 1].t) / 1000;
+    const par = fotogramaEn(meta, inicio, jugadores, balones, m[i].t).players.A1;
+    const parAntes = fotogramaEn(meta, inicio, jugadores, balones, m[i - 1].t).players.A1;
+    const tope = SEGUIMIENTO.velocidad * dt + M(par, parAntes);
+    ok(M(m[i], m[i - 1]) <= tope + 1e-9, `en t=${m[i].t} anda ${M(m[i], m[i - 1]).toFixed(3)} m, y solo puede ${tope.toFixed(3)}`);
+  }
+});
+
+test('NUNCA ATRAVIESA A SU PAR: si fueran a coincidir, se aparta a un metro', () => {
+  /* El par corre justo hacia donde está el defensor. */
+  const { seguida, meta, inicio, jugadores, balones } = paraSeguir({
+    camino: [{ x: 0.5, y: 0.7 }, { x: 0.5, y: 0.3 }],
+    empieza: { x: 0.5, y: 0.32 },
+  });
+  for (const q of seguida.B1.muestras) {
+    const par = fotogramaEn(meta, inicio, jugadores, balones, q.t).players.A1;
+    ok(M(q, par) >= SEGUIMIENTO.apartarse - 1e-6, `a ${M(q, par).toFixed(2)} m de su par en t=${q.t}`);
+  }
+});
+
+test('DOS VECES LO MISMO DA LO MISMO: el seguimiento es determinista', () => {
+  const a = paraSeguir({ camino: [{ x: 0.3, y: 0.8 }, { x: 0.7, y: 0.4 }] }).seguida;
+  const b = paraSeguir({ camino: [{ x: 0.3, y: 0.8 }, { x: 0.7, y: 0.4 }] }).seguida;
+  eq(a, b);
+});
+
+test('TRAS UN TIRO QUE FALLA, CIERRA EL REBOTE: pegado a su par hasta el final', () => {
+  const tiro = { jugador_id: 'A1', balon_id: 'b1', canasta: 'norte', desenlace: 'falla', path: [{ x: 0.5, y: 0.6 }, { x: AR.x, y: AR.y }], inicio_ms: 0, duracion_ms: 900 };
+  const { seguida, meta, inicio, jugadores, balones } = paraSeguir({
+    camino: [{ x: 0.5, y: 0.6 }, { x: 0.5, y: 0.6 }], dur: 3000, tiros: [tiro],
+  });
+  const ultima = seguida.B1.muestras[seguida.B1.muestras.length - 1];
+  const par = fotogramaEn(meta, inicio, jugadores, balones, ultima.t).players.A1;
+  ok(cerca(M(ultima, par), PARAMETROS.cierra_rebote, 0.05), `a ${M(ultima, par).toFixed(2)} m de su par`);
+  ok(enLaLinea(par, AR, ultima), 'y entre su par y el aro');
+});
+
+test('sin defensores, sin escena o sin fase no se sigue a nadie', () => {
+  eq(seguirDefensa({}), {});
+  eq(seguirDefensa({ papeles: { defensores: ['B1'], pares: {} }, inicio: null, duracion_ms: 1000 }), {});
+  eq(seguirDefensa({ papeles: { defensores: [], pares: {} }, inicio: { P: {} }, duracion_ms: 1000 }), {});
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

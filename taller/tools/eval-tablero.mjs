@@ -48,6 +48,7 @@ const { Pizarra } = await import('../js/pizarra/pizarra.js');
 const { anadir, asignarBalon, reiniciarIds } = await import('../js/pizarra/elementos.js');
 const { nuevoTrazo } = await import('../js/pizarra/trazo.js');
 const defensaMod = await import('../js/pizarra/motor/defensa.js');
+const compilarMod = await import('../js/pizarra/motor/compilar.js');
 const { metrosEntre } = await import('../js/canvas/escala.js');
 
 let pasan = 0, fallan = 0;
@@ -351,6 +352,82 @@ test('ARRASTRAR LA LÍNEA DE UN PAR A OTRO ATACANTE CAMBIA EL PAR; un toque es t
   g3.soltar({ x: 0.5, y: 0.9 });
   eq(JSON.stringify(t.papeles().inicio.pares), pares, 'los pares no cambian:');
   ok(avisos.some(([tipo, , motivo]) => tipo === 'noPuede' && /atacante/.test(motivo || '')), `y se avisa: ${JSON.stringify(avisos)}`);
+});
+
+test('UN BLOQUEO SE LE PONE AL DEFENSOR DE VERDAD, y se guarda a quién', () => {
+  const { t, a2 } = conAtaque();
+  const b1 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.9, y: 0.9 });
+  /* B1 defiende a A1 (el del balón); el bloqueo se le pone a él. */
+  const par = t.papelesDeFase().pares[b1.id];
+  t._companeroElegido(ficha(t, par), { elemento: ficha(t, a2.id), accion: t._accionDe('bloquea'), variante: null });
+  const tr = t.tramos[t.tramos.length - 1];
+  eq([tr.companero_id, tr.defensor_id], [par, b1.id], 'el tramo dice a quién y contra quién:');
+  const fin = tr.trazo[tr.trazo.length - 1];
+  const d = ficha(t, b1.id);
+  const m = metrosEntre('entera', fin, { x: d.x, y: d.y });
+  ok(Math.abs(m - defensaMod.PARAMETROS.bloqueo) < 1e-6, `se planta a ${m.toFixed(2)} m del defensor de verdad`);
+});
+
+console.log('\n· la defensa se mueve sola (§8.4)');
+
+/* A1 con balón, B1 defendiéndole, y A1 bota hacia el aro. */
+function conSeguimiento() {
+  const m = conAtaque();
+  const b1 = m.t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.9, y: 0.9 });
+  m.t._trazoHecho({
+    elemento: ficha(m.t, m.a1.id), accion: m.t._accionDe('bota'), variante: null,
+    trazo: nuevoTrazo(ficha(m.t, m.a1.id), { x: 0.40, y: 0.25 }), tipo: 'run',
+  });
+  return { ...m, b1 };
+}
+
+test('LA PIZARRA ENSEÑA LA MISMA DEFENSA QUE EL PROYECTOR: las muestras del compilador', () => {
+  const { t, b1 } = conSeguimiento();
+  const suya = t._defensaDeLasFases()[0][b1.id];
+  ok(suya, 'la fase 1 trae el seguimiento de B1');
+  eq(suya.muestras.length, defensaMod.SEGUIMIENTO.muestras, 'las mismas muestras que el §8.4:');
+  eq(suya.fin, { x: suya.muestras[20].x, y: suya.muestras[20].y }, 'y acaba en la última:');
+  /* Y son LAS DEL COMPILADOR, no unas parecidas calculadas aquí. */
+  const anim = compilarMod.compilar(t.jugada());
+  const delMotor = anim.fases[0].movimientos.find((m) => m.automatico && m.elemento_id === 'B1');
+  eq(suya.muestras, delMotor.muestras);
+});
+
+test('Y EL REPASO LA REPRODUCE: un carril sin trazo, con sus muestras', () => {
+  const { t, b1 } = conSeguimiento();
+  const { tiempos } = t.faseEnCurso();
+  const lista = t._paraRepaso(t.tramos, tiempos, 0, t._defensaDeLasFases()[0]);
+  const suyo = lista.find((x) => x.corre_id === b1.id);
+  ok(suyo && !suyo.trazo && suyo.muestras.length === 21, `el carril de B1: ${JSON.stringify(suyo && suyo.corre_id)}`);
+  eq([suyo.inicio_ms, suyo.duracion_ms], [0, tiempos.duracion_ms], 'y dura toda la fase:');
+  ok(lista.some((x) => x.trazo), 'sin quitar lo dibujado');
+});
+
+test('AL PASAR DE FASE, EL DEFENSOR SE QUEDA DONDE LE DEJÓ SU SEGUIMIENTO', () => {
+  const { t, b1 } = conSeguimiento();
+  const fin = t._defensaDeLasFases()[0][b1.id].fin;
+  const antes = { x: ficha(t, b1.id).x, y: ficha(t, b1.id).y };
+  t._cerrarFase();
+  const ahora = ficha(t, b1.id);
+  ok(Math.abs(ahora.x - fin.x) < 1e-9 && Math.abs(ahora.y - fin.y) < 1e-9, `en la fase 2 arranca donde acabó: ${JSON.stringify(ahora)} y ${JSON.stringify(fin)}`);
+  ok(Math.hypot(ahora.x - antes.x, ahora.y - antes.y) > 1e-6, 'y se ha movido de verdad');
+  eq(t.fases[1].entrada[b1.id], { x: fin.x, y: fin.y }, 'y la fase 2 lo guarda como su arranque:');
+  /* Volver a la fase 1 le devuelve a donde acaba la fase 1, que es lo
+     mismo: es la única posición coherente con lo que se reproduce. */
+  t.irAFase(0);
+  const vuelta = ficha(t, b1.id);
+  ok(Math.abs(vuelta.x - fin.x) < 1e-9 && Math.abs(vuelta.y - fin.y) < 1e-9, `y al volver, igual: ${JSON.stringify(vuelta)}`);
+});
+
+test('sin defensa, el repaso es exactamente lo de siempre', () => {
+  const { t } = conAtaque();
+  t._trazoHecho({
+    elemento: ficha(t, t.fichas.elementos[0].id), accion: t._accionDe('bota'), variante: null,
+    trazo: nuevoTrazo(ficha(t, t.fichas.elementos[0].id), { x: 0.40, y: 0.25 }), tipo: 'run',
+  });
+  eq(t._defensaDeLasFases(), {}, 'no hay defensa que calcular:');
+  const { tiempos } = t.faseEnCurso();
+  eq(t._paraRepaso(t.tramos, tiempos).length, 1, 'y el repaso solo lleva lo dibujado:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

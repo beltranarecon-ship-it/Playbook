@@ -329,6 +329,38 @@ test('EL BLOQUEADOR NO SE CUENTA DOS VECES: su camino es su bloqueo', () => {
   eq(g.fases[0].lineas, ['El 5 bloquea para el 1', 'El 1 bota hacia el codo derecho']);
 });
 
+test('LA DEFENSA QUE SE MUEVE SOLA SE CUENTA EN UNA FRASE, no jugador a jugador', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }, { id: 'B2', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1', 'B2'],
+      movimientos: [
+        { elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: camino(P.base, P.codo_der) },
+        { elemento_id: 'B1', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.5, y: 0.3 }, { t: 900, x: 0.55, y: 0.28 }] },
+        { elemento_id: 'B2', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.3, y: 0.3 }, { t: 900, x: 0.32, y: 0.28 }] },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 1 bota hacia el codo derecho', 'La defensa ajusta el marcaje (el 1 del equipo 2, el 2)']);
+});
+
+test('con un solo defensor automático, la frase es suya', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1'],
+      movimientos: [{ elemento_id: 'B1', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.5, y: 0.3 }, { t: 900, x: 0.55, y: 0.28 }] }],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 ajusta el marcaje']);
+});
+
 test('la duración suma movimiento + pausa de cada fase', () => {
   const g = guionDeAnimacion({
     pista: 'entera', jugadores: [], balones: [],

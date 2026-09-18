@@ -51,6 +51,7 @@ import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, s
 import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
+import { compilar } from './motor/compilar.js';
 import {
   defensaPorDefecto, papelesDeJugada, tramosQueNoEncajan, normalizarDefensa, colocar, explicarRegla, REGLAS,
 } from './motor/defensa.js';
@@ -831,7 +832,8 @@ export class Tablero {
     if (!this.tramos.length) { this.onNoPuede?.({ nombre: 'Siguiente fase' }, 'no has dibujado nada en esta fase'); return false; }
     this.cerrar();
     const { tiempos } = this.faseEnCurso();
-    this.repaso.reproducirFase({ tramos: this._paraRepaso(this.tramos, tiempos) });
+    const defensa = this._defensaDeLasFases();
+    this.repaso.reproducirFase({ tramos: this._paraRepaso(this.tramos, tiempos, 0, defensa[this.iFase]) });
     this._cerrarFaseAlAcabar = true;
     return true;
   }
@@ -842,7 +844,8 @@ export class Tablero {
     if (!this.tramos.length) return false;
     this.cerrar();
     const { tiempos } = this.faseEnCurso();
-    this.repaso.reproducirFase({ tramos: this._paraRepaso(this.tramos, tiempos) });
+    const defensa = this._defensaDeLasFases();
+    this.repaso.reproducirFase({ tramos: this._paraRepaso(this.tramos, tiempos, 0, defensa[this.iFase]) });
     return true;
   }
 
@@ -858,11 +861,13 @@ export class Tablero {
     this.cerrar();
     const pista = this.lienzo.vista.pistaKey;
     const todos = [];
+    const defensa = this._defensaDeLasFases();
     let desfase = 0;
-    for (const f of this.fases) {
+    for (let i = 0; i < this.fases.length; i++) {
+      const f = this.fases[i];
       const fase = { ...f, carriles: carrilesDesde(f.tramos) };
       const tiempos = tiemposDe(fase, { pista });
-      todos.push(...this._paraRepaso(f.tramos, tiempos, desfase));
+      todos.push(...this._paraRepaso(f.tramos, tiempos, desfase, defensa[i]));
       desfase += tiempos.duracion_ms;
     }
     if (!todos.length) return false;
@@ -871,13 +876,71 @@ export class Tablero {
   }
 
   /**
+   * LA DEFENSA QUE SE MUEVE SOLA (§8.4), fase a fase.
+   *
+   * No se calcula aquí: se le pregunta al compilador, que es quien la
+   * calcula para el proyector. Con dos cuentas, la Pizarra enseñaría una
+   * defensa y la animación otra, que es justo lo que el principio 4 no
+   * permite. Es una cuenta cara, así que se pide cuando hace falta —al
+   * reproducir y al cambiar de fase—, no en cada pintada.
+   *
+   * @returns { [fase]: { [ficha]: { muestras: [{ t, x, y }], fin } } }
+   */
+  _defensaDeLasFases() {
+    if (!this.papeles().inicio.defensores.length) return {};
+    /* Compilar no es gratis y esto se pregunta en cada refresco de la
+       línea de tiempo: se recuerda la última respuesta mientras la
+       jugada sea la misma, igual que los papeles. */
+    const clave = JSON.stringify(this.jugada());
+    if (this._defensaCache && this._defensaCache.clave === clave) return this._defensaCache.valor;
+    let anim = null;
+    try { anim = compilar(this.jugada()); } catch { return {}; }
+    /* El compilador habla por nombres (A1, B2) y aquí se habla por
+       fichas: se deshace el cambio con su misma cuenta. */
+    const ficha = new Map();
+    for (const e of this.fichas.elementos) {
+      if (e.kind === 'jugador') ficha.set(`${e.equipo || 'A'}${e.label || '0'}`, e.id);
+    }
+    const porFase = {};
+    for (const f of (anim.fases || [])) {
+      const r = {};
+      for (const m of (f.movimientos || [])) {
+        if (!m.automatico || !Array.isArray(m.muestras) || m.muestras.length < 2) continue;
+        const id = ficha.get(m.elemento_id);
+        if (!id) continue;
+        const u = m.muestras[m.muestras.length - 1];
+        r[id] = { muestras: m.muestras, fin: { x: u.x, y: u.y } };
+      }
+      /* Por el índice de la jugada, no por el sitio en la lista: las
+         fases vacías no se compilan. */
+      if (Object.keys(r).length) porFase[f.indice] = r;
+    }
+    this._defensaCache = { clave, valor: porFase };
+    return porFase;
+  }
+
+  /** Donde deja a cada defensor el seguimiento de esta fase. */
+  _finDeLaDefensa(iFase, defensa = null) {
+    const d = (defensa || this._defensaDeLasFases())[iFase] || {};
+    const fin = {};
+    for (const [id, s] of Object.entries(d)) fin[id] = { x: s.fin.x, y: s.fin.y };
+    return fin;
+  }
+
+  /**
    * Lo que el repaso tiene que recorrer de unos tramos: cada uno con su
    * arranque, y después de cada tiro, el balón hasta donde cae. Sin ese
    * último trozo el balón saltaba del aro al rebote de golpe, y en el
    * proyector se le ve caer (principio 4).
+   *
+   * Y con ellos, la defensa de esa fase: no tiene trazo —nadie lo ha
+   * dibujado— sino las muestras del seguimiento (§8.4).
    */
-  _paraRepaso(tramos, tiempos, desfase = 0) {
+  _paraRepaso(tramos, tiempos, desfase = 0, defensa = null) {
     const lista = [];
+    for (const [id, s] of Object.entries(defensa || {})) {
+      lista.push({ corre_id: id, muestras: s.muestras, inicio_ms: desfase, duracion_ms: tiempos.duracion_ms });
+    }
     for (const t of tramos) {
       const m = tiempos.tramos[t.id];
       if (!m) continue;
@@ -936,7 +999,7 @@ export class Tablero {
       this.fases = [...this.fases, {
         ...nuevaFase(`f${this.fases.length + 1}`),
         tramos: [],
-        entrada: posicionesFinales(fase, this.entrada, this._opcionesFase()),
+        entrada: { ...posicionesFinales(fase, this.entrada, this._opcionesFase()), ...this._finDeLaDefensa(this.iFase) },
       }];
     }
     this.irAFase(this.iFase + 1);
@@ -955,7 +1018,10 @@ export class Tablero {
     this.repaso.parar();
     this.iFase = n;
     const { fase } = this.faseEnCurso();
-    const finales = posicionesFinales(fase, this.entrada, this._opcionesFase());
+    /* Los defensores no tienen trazo, pero se han movido: acaban donde
+       les deja su seguimiento (§8.4), que es donde los va a dejar el
+       proyector. */
+    const finales = { ...posicionesFinales(fase, this.entrada, this._opcionesFase()), ...this._finDeLaDefensa(n) };
     /* Y de quién es cada balón AL ACABAR ESA FASE, repasando lo dibujado
        desde el principio: el modelo solo sabe de quién es ahora, que es
        lo último que se dibujó, y al volver a una fase anterior eso ya no
@@ -1179,12 +1245,18 @@ export class Tablero {
     this._enCurso = null;
     const lista = this.fichas.elementos;
     const desde = lista.find((e) => e.id === elemento.id) || elemento;
+    /* A quién se bloquea de verdad: al defensor de su compañero, si lo
+       hay. Sin defensa en la pista se sigue usando el supuesto. */
+    const { pares } = this.papelesDeFase();
+    const defensorId = Object.keys(pares).find((d) => pares[d] === ficha.id) || null;
+    const defensor = defensorId ? (lista.find((e) => e.id === defensorId) || null) : null;
     const sitio = sitioDelBloqueo({
       pista: this.lienzo.vista.pistaKey,
       canasta: this.canasta,
       desde,
       companero: ficha,
       conBalon: llevaBalon(lista, ficha.id),
+      defensor,
     });
     if (!sitio) { this.onNoPuede?.(accion, 'en esta pista no hay un aro desde el que saber dónde ponerlo'); this._pintarAyuda(); return; }
     this._trazoHecho({
@@ -1195,6 +1267,7 @@ export class Tablero {
          una acción del club. */
       tipo: 'bloqueo',
       companero: ficha.id,
+      defensor: defensor ? defensor.id : null,
     });
   }
 
@@ -1226,7 +1299,7 @@ export class Tablero {
    * «conBalón» la próxima vez que se la toque. Si termina en el suelo,
    * es un pase a un sitio y el balón se queda ahí.
    */
-  _trazoHecho({ elemento, accion, variante, trazo, tipo, balon = null, desenlace = null, companero = null }) {
+  _trazoHecho({ elemento, accion, variante, trazo, tipo, balon = null, desenlace = null, companero = null, defensor = null }) {
     const fin = trazo[trazo.length - 1];
     const ritmo = ritmoDe(accion);
     const pista = this.lienzo.vista.pistaKey;
@@ -1292,6 +1365,8 @@ export class Tablero {
       ...(tirando ? { desenlace: desenlace === 'falla' ? 'falla' : 'entra' } : {}),
       // para quién es: solo los bloqueos, y es de quien sale cuando llega
       ...(companero ? { companero_id: companero } : {}),
+      // y a quién se le pone: el defensor de verdad, si lo había
+      ...(defensor ? { defensor_id: defensor } : {}),
     };
     this.tramos = [...this.tramos, nuevo];
     this._enCurso = null;
@@ -1500,13 +1575,16 @@ export class Tablero {
   }
 
   /* Un tramo con su flecha; y si es un bloqueo, con su barra al final,
-     mirando hacia donde llega. Es lo mismo que pinta el motor al
-     reproducirlo (engine.js, bloqueosEn). */
+     mirando al defensor al que se le pone —y si no se sabe cuál es,
+     hacia donde llega—. Es lo mismo que pinta el motor al reproducirlo
+     (engine.js, bloqueosEn). */
   _pintarTramo(ctx, R, toPx, t) {
     const flat = flattenPath(t.trazo).map((p) => { const [x, y] = toPx(p.x, p.y); return { x, y }; });
     drawArrow(ctx, flat, t.tipo, R.scale);
     if (!esBloqueo(t) || !flat.length) return;
-    const frente = frenteDelBloqueo(t.trazo) || this.fichas.elementos.find((e) => e.id === t.companero_id);
+    const suyo = t.defensor_id ? this.fichas.elementos.find((e) => e.id === t.defensor_id) : null;
+    const frente = (suyo && (this.fichas.donde?.(suyo) || suyo))
+      || frenteDelBloqueo(t.trazo) || this.fichas.elementos.find((e) => e.id === t.companero_id);
     if (!frente) return;
     const [x, y] = toPx(frente.x, frente.y);
     drawBloqueo(ctx, flat[flat.length - 1], { x, y }, R.scale, R.jugador);

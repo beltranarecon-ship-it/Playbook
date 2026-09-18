@@ -69,6 +69,10 @@ const tramo = (elemento, desde, hasta, extra = {}) => ({
   inicio_ms: null, duracion_ms: null, manual: false,
 });
 const jugadaCon = (l, fases) => ({ version: 3, pista: 'entera', canasta: 'norte', elementos: l, fases });
+/* Lo DIBUJADO por el entrenador. Desde el paso 5.5 la defensa se mueve
+   sola y añade sus movimientos, marcados como automáticos: aquí se
+   apartan, porque estas pruebas hablan de lo que se dibuja. */
+const dibujados = (fase) => (fase.movimientos || []).filter((m) => !m.automatico);
 const P = (x, y) => ({ x, y });
 
 /* ── 1. La escena ────────────────────────────────────────── */
@@ -151,8 +155,8 @@ test('UN CORTE ES UN MOVIMIENTO, con el símbolo del catálogo', () => {
   const { l, a2 } = escena();
   const t = tramo(a2.id, P(0.7, 0.8), P(0.7, 0.3));
   const f = compilar(jugadaCon(l, [{ id: 'f1', tramos: [t] }])).fases[0];
-  eq(f.movimientos.length, 1);
-  const m = f.movimientos[0];
+  eq(dibujados(f).length, 1);
+  const m = dibujados(f)[0];
   eq(m.elemento_id, 'A2');
   eq(m.tipo_elemento, 'jugador');
   eq(m.tipo_movimiento, simbolo('corta'), 'el mismo símbolo que dibuja la flecha:');
@@ -163,7 +167,7 @@ test('UN PASE ES UN PASE: viaja el balón, el que pasa no se mueve', () => {
   const { l, a1, a2, bal } = escena();
   const t = tramo(a1.id, P(0.3, 0.8), P(0.7, 0.8), { accion: 'pasa', corre_id: bal.id, receptor_id: a2.id, ritmo: 'pase', tipo: 'pass' });
   const f = compilar(jugadaCon(l, [{ id: 'f1', tramos: [t] }])).fases[0];
-  eq(f.movimientos, [], 'el pasador no tiene movimiento:');
+  eq(dibujados(f), [], 'el pasador no tiene movimiento:');
   eq(f.pases.length, 1);
   eq([f.pases[0].de_id, f.pases[0].a_id, f.pases[0].balon_id], ['A1', 'A2', bal.id]);
 });
@@ -218,7 +222,7 @@ test('CADA MOVIMIENTO LLEVA SU ARRANQUE Y SU DURACIÓN: los del §6.3', () => {
   const corre = tramo(a2.id, P(0.7, 0.8), P(0.7, 0.3), { accion: 'bota' });
   const f = compilar(jugadaCon(l, [{ id: 'f1', tramos: [pase, corre] }])).fases[0];
   eq(f.pases[0].inicio_ms, 0, 'el pase sale ya:');
-  eq(f.movimientos[0].inicio_ms, f.pases[0].inicio_ms + f.pases[0].duracion_ms, 'y el receptor cuando llega:');
+  eq(dibujados(f)[0].inicio_ms, f.pases[0].inicio_ms + f.pases[0].duracion_ms, 'y el receptor cuando llega:');
 });
 
 test('la fase dura lo que dicen los carriles, y la pausa es la de siempre', () => {
@@ -248,14 +252,14 @@ test('acciones y variantes de cada fase, sin repetir y en orden', () => {
 test('UN TRAMO SIN PROTAGONISTA NO SE COMPILA, pero se avisa', () => {
   const { l } = escena();
   const a = compilar(jugadaCon(l, [{ id: 'f1', tramos: [tramo('jugador_99', P(0.1, 0.1), P(0.2, 0.2))] }]));
-  eq(a.fases[0].movimientos, []);
+  eq(dibujados(a.fases[0]), []);
   ok(a.warnings.some((w) => /protagonista/.test(w)), 'tiene que decirlo');
 });
 
 test('una acción que no está en el catálogo no se inventa', () => {
   const { l, a2 } = escena();
   const a = compilar(jugadaCon(l, [{ id: 'f1', tramos: [tramo(a2.id, P(0.7, 0.8), P(0.7, 0.3), { accion: 'vuela' })] }]));
-  eq(a.fases[0].movimientos, []);
+  eq(dibujados(a.fases[0]), []);
   ok(a.warnings.some((w) => /catálogo/.test(w)));
 });
 
@@ -380,7 +384,7 @@ test('UNA FASE SIN NADA DIBUJADO NO SE COMPILA, y las demás conservan su nombre
   j.fases = [{ id: 'f1', tramos: [] }, { id: 'f2', tramos: [corte] }, { id: 'f3', tramos: [] }];
   const a = compilar(j);
   eq(a.fases.map((f) => f.id), ['f2']);
-  eq(a.fases[0].movimientos.length, 1, 'y la que tiene algo, entera:');
+  eq(dibujados(a.fases[0]).length, 1, 'y la que tiene algo, entera:');
   eq(j.fases.length, 3, 'la jugada no se toca:');
 });
 
@@ -544,6 +548,50 @@ test('EN EL MOTOR REAL, LA BARRA NO SE VE MIENTRAS EL BLOQUEADOR VA DE CAMINO', 
   const v = motor.bloqueosEn(0, t, f.players);
   eq(v.length, 1, 'plantado, con barra:');
   ok(cerca(v[0].a.x, 0.4, 1e-6) && cerca(v[0].a.y, 0.7, 1e-6), `en su sitio: ${JSON.stringify(v[0].a)}`);
+});
+
+test('Y EL BLOQUEO LLEVA A QUIÉN SE LE PONE: el motor mira al defensor donde esté', () => {
+  const { l, a1, a2, b1 } = escena();
+  const b = { ...bloqueoDe(a2, a1, P(0.7, 0.8), P(0.45, 0.45)), defensor_id: b1.id };
+  const anim = compilar(jugadaCon(l, [{ id: 'f1', tramos: [b] }]));
+  const bl = anim.fases[0].bloqueos[0];
+  eq(bl.defensor_id, 'B1', 'compilado por su nombre:');
+  const motor = new AnimationEngine({ w: 0, basket: () => [0.5, 0.1] }, anim, { autoplay: false, loop: false, paused: true });
+  const f = enElInstante(motor, 0, anim.fases[0].duracion_ms);
+  const [barra] = motor.bloqueosEn(0, anim.fases[0].duracion_ms, f.players);
+  eq(barra.b, f.players.B1, 'y la barra mira al defensor donde está ahora, no a un punto fijo:');
+});
+
+/* ── 8. La defensa se mueve sola (§8.4) ──────────────────── */
+
+test('LA DEFENSA SALE EN LA ANIMACIÓN: muestreada, automática y sin flecha', () => {
+  const { l, a1 } = escena();
+  const t = tramo(a1.id, P(0.3, 0.8), P(0.3, 0.4), { accion: 'bota', tipo: 'run' });
+  const anim = compilar(jugadaCon(l, [{ id: 'f1', tramos: [t] }]));
+  const f = anim.fases[0];
+  const suya = f.movimientos.find((m) => m.elemento_id === 'B1');
+  ok(suya && suya.automatico === true, 'la defensa va marcada como automática');
+  eq(suya.muestras.length, 21, 'con sus veinte tramos:');
+  eq([suya.inicio_ms, suya.duracion_ms], [0, f.duracion_ms], 'y dura toda la fase:');
+  const motor = new AnimationEngine({ w: 0, basket: () => [0.5, 0.1] }, anim, { autoplay: false, loop: false, paused: true });
+  eq(motor.meta[0].arrows.length, 1, 'en el motor, solo la flecha del que bota:');
+  const medio = enElInstante(motor, 0, f.duracion_ms / 2);
+  const fin = enElInstante(motor, 0, f.duracion_ms);
+  ok(medio.players.B1.y > fin.players.B1.y, 'y B1 se mueve siguiendo a A1');
+});
+
+test('Y CADA FASE EMPIEZA DONDE ACABÓ LA DEFENSA EN LA ANTERIOR', () => {
+  const { l, a1 } = escena();
+  const t1 = tramo(a1.id, P(0.3, 0.8), P(0.3, 0.5), { accion: 'bota', tipo: 'run' });
+  const t2 = tramo(a1.id, P(0.3, 0.5), P(0.5, 0.3), { accion: 'bota', tipo: 'run' });
+  const anim = compilar(jugadaCon(l, [{ id: 'f1', tramos: [t1] }, { id: 'f2', tramos: [t2] }]));
+  const uno = anim.fases[0].movimientos.find((m) => m.elemento_id === 'B1');
+  const dos = anim.fases[1].movimientos.find((m) => m.elemento_id === 'B1');
+  const ultima = uno.muestras[uno.muestras.length - 1];
+  eq([dos.muestras[0].x, dos.muestras[0].y], [ultima.x, ultima.y], 'la segunda fase arranca donde acabó la primera:');
+  const motor = new AnimationEngine({ w: 0, basket: () => [0.5, 0.1] }, anim, { autoplay: false, loop: false, paused: true });
+  const alEmpezar = enElInstante(motor, 1, 0);
+  ok(cerca(alEmpezar.players.B1.x, ultima.x) && cerca(alEmpezar.players.B1.y, ultima.y), 'y el motor la pinta ahí');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

@@ -39,6 +39,39 @@ export function muestreador(path) {
 }
 
 /**
+ * Un camino que ya viene MUESTREADO EN EL TIEMPO: [{ t, x, y }].
+ *
+ * Lo produce el seguimiento de la defensa (§8.4), que calcula dónde está
+ * en cada instante. Se recorre en el tiempo y sin curva: cada muestra
+ * dice dónde estaba en ese milisegundo, y una curva encima deformaría el
+ * retardo que se acaba de calcular. Por eso se marca `lineal`, y quien
+ * muestrea (posicionEn) no le aplica el easeInOut.
+ *
+ * @returns f(u ∈ [0,1]) -> { x, y }, con u la fracción del tramo
+ */
+export function muestreadorPorTiempo(muestras) {
+  const ms = (muestras || []).filter((m) => m && Number.isFinite(m.t) && Number.isFinite(m.x) && Number.isFinite(m.y))
+    .slice().sort((a, b) => a.t - b.t);
+  if (!ms.length) { const f = () => ({ x: 0.5, y: 0.5 }); f.flat = []; f.lineal = true; return f; }
+  const total = ms[ms.length - 1].t - ms[0].t;
+  const f = (u) => {
+    const k = u <= 0 ? 0 : u >= 1 ? 1 : u;
+    if (total <= 0) return { x: ms[0].x, y: ms[0].y };
+    const t = ms[0].t + k * total;
+    let i = 1;
+    while (i < ms.length && ms[i].t < t) i++;
+    const a = ms[i - 1], b = ms[i] || ms[ms.length - 1];
+    const d = (b.t - a.t) || 1;
+    const q = Math.max(0, Math.min(1, (t - a.t) / d));
+    return { x: a.x + (b.x - a.x) * q, y: a.y + (b.y - a.y) * q };
+  };
+  f.flat = ms.map((m) => ({ x: m.x, y: m.y }));
+  f.totalLen = 0;
+  f.lineal = true;
+  return f;
+}
+
+/**
  * Dónde está alguien en el instante t, con sus tramos ordenados por
  * arranque. Tres casos, y los tres importan: mientras uno está activo,
  * sobre su camino; ANTES del primero, en su salida —si no, esperaría de
@@ -52,7 +85,9 @@ export function posicionEn(movs, t) {
   let ultimo = null;
   for (const x of movs) {
     if (t < x.inicio) break;
-    if (t <= x.fin) return x.sampler(easeInOut((t - x.inicio) / x.dur));
+    /* Lo dibujado se recorre con la curva de siempre; lo muestreado en el
+       tiempo —la defensa— tal cual, que para eso ya trae sus instantes. */
+    if (t <= x.fin) return x.sampler(x.sampler.lineal ? (t - x.inicio) / x.dur : easeInOut((t - x.inicio) / x.dur));
     ultimo = x;
   }
   return ultimo ? ultimo.sampler(1) : movs[0].sampler(0);

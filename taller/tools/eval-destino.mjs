@@ -250,6 +250,26 @@ test('NO SE QUEDA ENCIMA DEL COMPAÑERO aunque llegue desde su misma altura', ()
   ok(metrosEntre('entera', s, companero) > 1.3, `a ${metrosEntre('entera', s, companero).toFixed(2)} m del compañero`);
 });
 
+test('CON DEFENSA EN LA PISTA SE BLOQUEA AL DEFENSOR DE VERDAD, no al supuesto', () => {
+  const companero = { x: 0.5, y: 0.5 };
+  const desde = { x: 0.85, y: 0.5 };
+  /* Uno que no está donde lo pondría la regla: más arriba y a un lado. */
+  const defensor = { x: 0.58, y: 0.56 };
+  const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero, conBalon: false, defensor });
+  aprox(metrosEntre('entera', s, defensor), METROS_BLOQUEO, 1e-6, 'pegado a él:');
+  aprox(escalar('entera', companero, defensor, defensor, s), 0, 1e-6, 'y al lado de la línea compañero→defensor:');
+  const supuesto = defensorSupuesto({ pista: 'entera', canasta: 'norte', par: companero, conBalon: false });
+  ok(metrosEntre('entera', s, supuesto) > 1, 'y no donde estaría el supuesto');
+});
+
+test('un defensor sin sitio no cuela: se vuelve al supuesto', () => {
+  const companero = { x: 0.5, y: 0.5 }, desde = { x: 0.85, y: 0.5 };
+  const bueno = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero, conBalon: false });
+  for (const malo of [null, {}, { x: 0.5, y: NaN }]) {
+    eq(sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero, conBalon: false, defensor: malo }), bueno);
+  }
+});
+
 test('con el compañero en el aro se acerca por su camino; sin compañero o sin aro, no se inventa', () => {
   const aro = aroDe('entera', 'norte');
   const desde = { x: 0.5, y: 0.5 };

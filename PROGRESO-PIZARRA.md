@@ -33,7 +33,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 2 · Dibujar: anillo, trazo, nodos, encadenado, repaso | ✅ cerrada | `2db2b91` |
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
-| 5 · Defensa | ⏳ en curso: plan CONFIRMADO, empezando por el paso 5.0 (ver «Capa 5, paso a paso») | — |
+| 5 · Defensa | ⏳ en curso: pasos 5.0 a 5.5 hechos; quedan 5.6 y 5.7 (ver «Capa 5, paso a paso») | — |
 | 6 · Conos y elementos | pendiente | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
@@ -41,7 +41,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **64 en verde, 1474
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **65 en verde, 1507
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -61,7 +61,7 @@ de punta a punta, con sus bancos en verde y commit en la rama.
 | 5.2 | «Pincha a quién» y bloqueo: se pincha al COMPAÑERO, el bloqueador va a su sitio, el compañero sale cuando llega. Formato: `bloqueado_id` = compañero + `defensor_id` opcional | ✅ (61 bancos, 1395 pruebas; probado en la Pizarra y en el motor: elegir, avisos, Esc y suelo, Supr, arranque, compilar y reabrir) |
 | 5.3 | Papeles y pares: `motor/defensa.js` + `eval-defensa.mjs`. Quién ataca, pares por dorsal y libre más cercano, situación por fase, arco del defensor y línea discontinua | ✅ (63 bancos, 1432 pruebas; revisión adversarial con 11 hallazgos confirmados, todos arreglados; banco nuevo del Tablero; probado en la Pizarra) |
 | 5.4 | Colocar por regla (las 6 del §8.3), pestaña «Ajustes» del panel derecho (solo defensa) y ver la regla (§8.7) | ✅ (64 bancos, 1474 pruebas; revisión adversarial de 28 hallazgos, arreglados los ciertos; bancos nuevos eval-ajustes y más pruebas de defensa) |
-| 5.5 | Seguimiento continuo (§8.4): la defensa se mueve sola igual en Pizarra y proyector; movimiento «por tiempo» en el motor (aditivo); cierra el rebote automático; carril gris «automático» | pendiente |
+| 5.5 | Seguimiento continuo (§8.4): la defensa se mueve sola igual en Pizarra y proyector; movimiento «por tiempo» en el motor (aditivo); cierra el rebote automático; carril gris «automático» | ✅ (65 bancos, 1507 pruebas; 16 mutantes, los 16 muertos; probado en la Pizarra y en el motor sobre la misma jugada) |
 | 5.6 | Acciones declaradas del defensor: ayuda y recupera, es sobrepasado, cambia con…, cierra el rebote, va al dos contra uno | pendiente |
 | 5.7 | Robo, rebote defensivo y canasta: cambio de papeles y de aro desde la fase siguiente. Cierre de la capa | pendiente |
 
@@ -144,6 +144,50 @@ dibujado; el equipo forzado que desaparecía del desplegable al quedarse
 sin fichas; el gesto de la línea, que cogía la primera y no la más
 cercana, y que borraba la selección con Mayús; y `setDefensa`, que perdía
 los números ya cambiados. Y ocho pruebas que pasaban por casualidad.
+
+**Decidido en el paso 5.5 (dicho al entrenador):**
+
+- **La cuenta de la fase vive en un solo sitio** (`canvas/fotograma.js`):
+  qué pasa en una fase y dónde está cada uno en el instante *t*. La usan
+  el motor de reproducción y el seguimiento de la defensa. Con dos
+  copias, la defensa seguiría a un atacante que en el proyector va por
+  otro sitio.
+- **La Pizarra no calcula su propia defensa: se la pide al compilador**,
+  que es quien la calcula para el proyector. Es una cuenta cara, así que
+  se recuerda mientras la jugada no cambie.
+- Un movimiento automático viene **muestreado en el tiempo** (21 muestras
+  = 20 tramos por fase, §8.4) y se recorre SIN la curva de aceleración:
+  meterle la curva deformaría el retardo recién calculado. No lleva
+  flecha, y el guion de Equipos lo cuenta en **una sola frase**.
+- **Apartarse no es correr**: si su par le pasa por encima más rápido que
+  él, se lo lleva por delante, pero nunca más de lo que se ha movido su
+  par. Así el metro de separación se cumple sin saltos. Con un atacante
+  dibujado a 6 m/s se ve al defensor ser rebasado, que es lo que pasaría
+  en la pista.
+- **Cerrar el rebote es ponerse a 1,0 m de su par**, no a 0,8: menos no
+  cabe, porque el §8.4 no deja acercarse más y el §3.6 avisaría de
+  choque.
+- **Al cambiar de fase, cada defensor se queda donde le deja su
+  seguimiento** (y ese es el arranque que guarda la fase siguiente).
+  Mientras se dibuja una fase, la defensa se ve en su SALIDA: es la
+  posición que se ajusta; el movimiento se ve al reproducir.
+- **El bloqueo se le pone al defensor de verdad** cuando lo hay
+  (`defensor_id` en el tramo y en la animación), y la barra le mira a él
+  esté donde esté. Sin defensa en la pista se sigue usando el supuesto.
+- **Arrastrar un defensor en una fase que no es la primera no se guarda**:
+  la defensa de esa fase la manda el seguimiento, así que al cambiar de
+  fase vuelve a donde le toca. Mover a un defensor «a mano» a mitad de
+  jugada es de las acciones declaradas (5.6).
+
+**Lo que no cuadra, dicho y NO tocado (paso 5.5):**
+
+- **Un bloqueo solo en su fase no llega a enseñar la barra**: el
+  bloqueador llega justo al acabar la fase, así que la barra dura 0 ms.
+  Viene del paso 5.2 (la barra aguanta «hasta que el compañero le pasa»)
+  y solo pasa cuando en esa fase no hay nada más dibujado. Se arregla
+  decidiendo qué se prefiere: que la barra llegue hasta el final de la
+  fase, o que la fase se alargue un poco. Pendiente de que lo diga el
+  entrenador.
 
 **No tocar:** la marca `motor: 3` (lo guardado con la capa 4 dejaría de
 reproducirse); todo lo nuevo del formato de animación, aditivo.

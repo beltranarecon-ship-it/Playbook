@@ -179,7 +179,8 @@ export function defensorSupuesto({ pista = 'entera', canasta = 'norte', par = nu
  * la altura del compañero se quedaba encima de él.
  *
  * Mientras no haya defensa, el defensor es el supuesto
- * (`defensorSupuesto`); en el paso 5.5 será el de verdad.
+ * (`defensorSupuesto`) cuando no hay defensa en la pista; si la hay, se
+ * pone al lado del defensor de verdad, que es a quien se bloquea.
  *
  * Es automático y ajustable, como «entra»: si no gusta, se pincha el trazo
  * y se mueve su final. Todo en METROS, y dentro de la cancha.
@@ -189,9 +190,15 @@ export function defensorSupuesto({ pista = 'entera', canasta = 'norte', par = nu
  * @param conBalon   si el compañero lleva balón
  * @returns { x, y } o null si no se puede saber
  */
-export function sitioDelBloqueo({ pista = 'entera', canasta = 'norte', desde = null, companero = null, conBalon = false } = {}) {
+export function sitioDelBloqueo({ pista = 'entera', canasta = 'norte', desde = null, companero = null, conBalon = false, defensor: suDefensor = null } = {}) {
   if (!desde || !Number.isFinite(desde.x) || !Number.isFinite(desde.y)) return null;
-  const defensor = defensorSupuesto({ pista, canasta, par: companero, conBalon });
+  if (!companero || !Number.isFinite(companero.x) || !Number.isFinite(companero.y)) return null;
+  /* Con defensa en la pista se bloquea al DEFENSOR DE VERDAD, donde
+     está. El supuesto es para cuando no hay ninguno: entonces se pone
+     donde lo pondría la regla de serie. */
+  const defensor = (suDefensor && Number.isFinite(suDefensor.x) && Number.isFinite(suDefensor.y))
+    ? { x: suDefensor.x, y: suDefensor.y }
+    : defensorSupuesto({ pista, canasta, par: companero, conBalon });
   if (!defensor) return null;
   const e = escalaDe(pista);
   // la línea compañero→defensor (que va hacia el aro), en metros

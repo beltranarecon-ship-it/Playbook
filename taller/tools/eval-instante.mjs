@@ -10,7 +10,7 @@
    busca: que se equivoque en un solo sitio y aquí se vea.
    ============================================================ */
 
-import { muestreador, posicionEn, duenoEn, tiempoDeRecorrido } from '../js/canvas/instante.js';
+import { muestreador, posicionEn, duenoEn, tiempoDeRecorrido, muestreadorPorTiempo } from '../js/canvas/instante.js';
 import { easeInOut } from '../js/canvas/geometry.js';
 
 let pasan = 0, fallan = 0;
@@ -79,6 +79,31 @@ test('LA INVERSA DE LA CURVA: se llega a la fracción s del camino en tiempoDeRe
   }
   ok(tiempoDeRecorrido(0.25) > 0.25, 'el primer cuarto tarda más de un cuarto: se sale despacio');
   ok(tiempoDeRecorrido(0) === 0 && tiempoDeRecorrido(1) === 1 && tiempoDeRecorrido(-3) === 0 && tiempoDeRecorrido(7) === 1, 'y en los extremos, los extremos');
+});
+
+console.log('\n· lo muestreado en el tiempo');
+
+test('UN CAMINO MUESTREADO SE RECORRE EN EL TIEMPO Y SIN CURVA', () => {
+  const f = muestreadorPorTiempo([{ t: 0, x: 0, y: 0 }, { t: 500, x: 0.5, y: 0 }, { t: 1000, x: 1, y: 0 }]);
+  ok(f.lineal, 'se marca como lineal, para que nadie le meta la curva encima');
+  ok(cerca(f(0), { x: 0, y: 0 }) && cerca(f(1), { x: 1, y: 0 }), 'de la primera a la última');
+  ok(Math.abs(f(0.25).x - 0.25) < 1e-9, `a un cuarto del tiempo, un cuarto del camino: ${txt(f(0.25))}`);
+});
+
+test('CON MUESTRAS DESORDENADAS, ROTAS O DE UNA SOLA, no rompe', () => {
+  const f = muestreadorPorTiempo([{ t: 1000, x: 1, y: 1 }, { t: 0, x: 0, y: 0 }, { t: 500, x: 9 }]);
+  ok(cerca(f(0), { x: 0, y: 0 }) && cerca(f(1), { x: 1, y: 1 }), 'se ordenan y lo roto se cae');
+  const una = muestreadorPorTiempo([{ t: 0, x: 0.3, y: 0.3 }]);
+  ok(cerca(una(0.7), { x: 0.3, y: 0.3 }), 'con una sola muestra se queda quieto');
+  ok(muestreadorPorTiempo([])(0.5), 'y sin muestras devuelve algo');
+});
+
+test('Y EN posicionEn NO SE LE APLICA LA CURVA, al revés que a lo dibujado', () => {
+  const muestras = [{ t: 0, x: 0, y: 0 }, { t: 1000, x: 1, y: 0 }];
+  const porTiempo = { sampler: muestreadorPorTiempo(muestras), inicio: 0, fin: 1000, dur: 1000 };
+  const dibujado = paso([0, 0], [1, 0], 0, 1000);
+  ok(Math.abs(posicionEn([porTiempo], 250).x - 0.25) < 1e-9, 'muestreado: un cuarto');
+  ok(Math.abs(posicionEn([dibujado], 250).x - easeInOut(0.25)) < 1e-6, 'dibujado: con su curva');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

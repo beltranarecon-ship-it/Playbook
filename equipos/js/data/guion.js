@@ -289,6 +289,10 @@ export function guionDeAnimacion(anim) {
       // el camino del bloqueador ya lo cuenta su bloqueo (punto 1):
       // «bloquea para el 1» y «corta hacia el codo» serían el mismo camino
       if (m.tipo_movimiento === 'bloqueo') continue;
+      /* La defensa que se mueve sola (§8.4) no se narra jugador a jugador:
+         serían tantas líneas como defensores en cada fase, y todas
+         diciendo lo mismo. Va en UNA frase al final. */
+      if (m.automatico) continue;
       const r = ref.get(m.elemento_id);
       const conBalon = m.tipo_movimiento === 'carrera_con_balon' || lleva.has(m.elemento_id);
       if (vuelveAFila(m.path, conos, defensores.has(m.elemento_id))) {
@@ -301,6 +305,15 @@ export function guionDeAnimacion(anim) {
       const sorteo = nConos > 1 ? ' sorteando los conos' : nConos === 1 ? ' rodeando el cono' : '';
       const verbo = defensores.has(m.elemento_id) ? 'ajusta el marcaje' : conBalon ? 'bota' : 'corta';
       lineas.push(`${txt(r)} ${verbo}${hacia}${sorteo}`);
+    }
+
+    // 2b) la defensa automática, en una sola frase
+    const automaticos = (f.movimientos || []).filter((m) => m && m.automatico && m.tipo_elemento !== 'balon');
+    if (automaticos.length) {
+      const quienes = automaticos.map((m) => txt(ref.get(m.elemento_id))).filter(Boolean);
+      lineas.push(quienes.length === 1
+        ? `${quienes[0]} ajusta el marcaje`
+        : `la defensa ajusta el marcaje (${quienes.join(', ')})`);
     }
 
     // 3) pases

@@ -43,7 +43,9 @@ import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
 import { MOTOR_PIZARRA } from './marca.js';
 import { carrilesDesde, tiemposDe, esTiro, esBloqueo, TRAS_EL_TIRO_MS } from '../fases.js';
 import { trasElTiro, frenteDelBloqueo } from '../destino.js';
-import { papelesDeJugada } from './defensa.js';
+import { papelesDeJugada, seguirDefensa } from './defensa.js';
+import { metaDeFase } from '../../canvas/fotograma.js';
+import { posicionesDe } from '../../canvas/anclas.js';
 
 export const VERSION_JUGADA = 3;
 
@@ -137,6 +139,55 @@ export function compilar(jugada) {
       ? compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles: papeles.fases[i] })
       : null))
     .filter(Boolean);
+
+  /* ── la defensa que se mueve sola (§8.4) ──
+     Se calcula DESPUÉS del ataque y con el mismo fotograma que reproduce
+     el motor, fase a fase: cada defensor sale de donde le dejó la fase
+     anterior y sigue a su par por donde se le ve. */
+  const aro = (cual) => {
+    const pos = posicionesDe(pista, cual === 'sur' ? 'sur' : 'norte');
+    return pos && pos.aro ? { x: pos.aro[0], y: pos.aro[1] } : { x: 0.5, y: 0.1 };
+  };
+  const reglas = Object.fromEntries(elementos
+    .filter((e) => e.kind === 'jugador')
+    .map((e) => [de(e.id), e.regla_defensa || null]));
+  const comoFuera = (p) => ({
+    ataca: p.ataca,
+    atacantes: (p.atacantes || []).map(de).filter(Boolean),
+    defensores: (p.defensores || []).map(de).filter(Boolean),
+    pares: Object.fromEntries(Object.entries(p.pares || {}).map(([d, a]) => [de(d), a ? de(a) : null]).filter(([d]) => d)),
+    situacion: p.situacion,
+    retrasa: p.retrasa ? de(p.retrasa) : null,
+  });
+  let escena = {
+    P: Object.fromEntries(jugadores.map((x) => [x.id, { x: x.posicion_inicial[0], y: x.posicion_inicial[1] }])),
+    B: Object.fromEntries(balones.map((x) => [x.id, { x: x.posicion_inicial[0], y: x.posicion_inicial[1] }])),
+    owner: Object.fromEntries(balones.map((x) => [x.id, x.portador_id || null])),
+  };
+  for (const fase of fases) {
+    const r = metaDeFase(fase, { jugadores, balones, escena, aro });
+    const papelesFase = papeles.fases[fase.indice] || papeles.inicio;
+    const seguida = seguirDefensa({
+      pista, canasta, defensa: j.defensa, papeles: comoFuera(papelesFase),
+      jugadores, balones, reglas, meta: r.meta, inicio: escena,
+      duracion_ms: fase.duracion_ms, tiros: fase.tiros,
+    });
+    for (const [id, s] of Object.entries(seguida)) {
+      fase.movimientos.push({
+        elemento_id: id,
+        tipo_elemento: 'jugador',
+        tipo_movimiento: 'defensa',
+        /* Automático: el motor no le dibuja flecha (§8.4), y la frase de
+           Equipos lo cuenta aparte. */
+        automatico: true,
+        muestras: s.muestras,
+        inicio_ms: 0,
+        duracion_ms: fase.duracion_ms,
+      });
+    }
+    escena = r.escena;
+    for (const [id, s] of Object.entries(seguida)) escena.P[id] = { ...s.fin };
+  }
 
   return { motor: MOTOR_PIZARRA, pista, canasta, jugadores, balones, conos, materiales, fases, warnings };
 }
@@ -278,10 +329,14 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
       const despues = suyos[suyos.findIndex((x) => x.id === t.id) + 1];
       const hasta = despues && tiempos.tramos[despues.id] ? tiempos.tramos[despues.id].inicio_ms : tiempos.duracion_ms;
       const frente = frenteDelBloqueo(t.trazo);
+      /* A quién se le pone, si se sabe: el motor le mira A ÉL, esté
+         donde esté en ese instante, en vez de a un punto fijo. */
+      const defensor = de(t.defensor_id);
       bloqueos.push({
         id: t.id,
         bloqueador_id: de(t.elemento_id),
         bloqueado_id: companero,
+        ...(defensor ? { defensor_id: defensor } : {}),
         ...(frente ? { hacia: [frente.x, frente.y] } : {}),
         inicio_ms: llega,
         duracion_ms: Math.max(0, hasta - llega),
@@ -304,6 +359,9 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
 
   return {
     id: (f && f.id) || `fase_${i + 1}`,
+    /* Qué fase de la jugada es: las vacías no se compilan, así que el
+       índice de la animación no vale para volver. */
+    indice: i,
     duracion_ms: Math.max(1, tiempos.duracion_ms || 0),
     pausa_post_ms: Number.isFinite(f && f.pausa_post_ms) ? f.pausa_post_ms : PAUSA_POR_DEFECTO_MS,
     movimientos,

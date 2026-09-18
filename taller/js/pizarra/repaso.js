@@ -35,7 +35,7 @@
 
 /* La misma cuenta del instante que usa el motor de reproducción: lo que
    se ve al dibujar tiene que ser lo que se ve al proyectar. */
-import { muestreador, posicionEn } from '../canvas/instante.js';
+import { muestreador, muestreadorPorTiempo, posicionEn } from '../canvas/instante.js';
 import { longitudMetros, duracionDe } from './trazo.js';
 import { sitioDelBalon } from './elementos.js';
 
@@ -103,15 +103,22 @@ export class Repaso {
    * segundo reloj significaría un segundo sitio donde equivocarse con
    * las cancelaciones, y ya costó caro una vez.
    *
-   * @param tramos  [{ corre_id, trazo, inicio_ms, duracion_ms }]
+   * Un carril puede venir DIBUJADO (un `trazo`) o MUESTREADO en el
+   * tiempo (`muestras`, cada una con su `t`): así entra la defensa que
+   * se mueve sola (§8.4), que no tiene trazo porque nadie lo ha
+   * dibujado. Lo muestreado se recorre en el tiempo, sin la curva de
+   * aceleración, igual que en el proyector.
+   *
+   * @param tramos  [{ corre_id, trazo | muestras, inicio_ms, duracion_ms }]
    * @param velocidad  1 = a su ritmo (una fase); 1,5 lo trae ya hecho
    *                   el repaso de un tramo en su duración
    */
   reproducirFase({ tramos, velocidad = 1 }) {
     this.parar();
     const pista = this.lienzo.vista.pistaKey;
-    const buenos = (tramos || []).filter((t) => t && t.trazo && t.trazo.length > 1
-      && t.corre_id && longitudMetros(t.trazo, pista) >= 1e-6);
+    const muestreado = (t) => Array.isArray(t.muestras) && t.muestras.length > 1;
+    const buenos = (tramos || []).filter((t) => t && t.corre_id && (muestreado(t)
+      || (t.trazo && t.trazo.length > 1 && longitudMetros(t.trazo, pista) >= 1e-6)));
     if (!buenos.length) { this.onFin?.(); return; }
 
     /* Agrupados por QUIEN VIAJA, y en orden: para saber dónde pintar a
@@ -120,10 +127,15 @@ export class Repaso {
        primero, y antes del primero, en su arranque. */
     const porElemento = new Map();
     for (const t of buenos) {
+      /* Lo muestreado trae el tiempo dentro: si no se dice otra cosa,
+         empieza y dura lo que dicen sus propias muestras. */
+      const m = muestreado(t) ? t.muestras : null;
+      const inicio_ms = Number.isFinite(t.inicio_ms) ? t.inicio_ms : (m ? m[0].t : 0);
+      const duracion_ms = Number.isFinite(t.duracion_ms) ? t.duracion_ms : (m ? m[m.length - 1].t - m[0].t : 0);
       const paso = {
-        sampler: muestreador(t.trazo),
-        inicio: Math.max(0, t.inicio_ms || 0) / velocidad,
-        dur: Math.max(1, t.duracion_ms || 0) / velocidad,
+        sampler: m ? muestreadorPorTiempo(m) : muestreador(t.trazo),
+        inicio: Math.max(0, inicio_ms) / velocidad,
+        dur: Math.max(1, duracion_ms) / velocidad,
       };
       paso.fin = paso.inicio + paso.dur;
       if (!porElemento.has(t.corre_id)) porElemento.set(t.corre_id, []);
@@ -133,7 +145,7 @@ export class Repaso {
 
     this.activo = {
       porElemento,
-      dur: Math.max(...buenos.map((t) => (Math.max(0, t.inicio_ms || 0) + Math.max(1, t.duracion_ms || 0)) / velocidad)),
+      dur: Math.max(...[...porElemento.values()].flat().map((p) => p.fin)),
       t0: this._ahora(),
     };
     this._latir();
