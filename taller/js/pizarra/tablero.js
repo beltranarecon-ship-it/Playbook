@@ -59,7 +59,7 @@ import {
 import { COLORS } from '../canvas/colors.js';
 import {
   nuevaFase, carrilesDesde, tiemposDe, posicionesFinales, recalcular, posesionAlFinal,
-  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS, esBloqueo,
+  tramosConFicha, declaradasConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS, esBloqueo,
 } from './fases.js';
 
 let siguiente = 1;
@@ -417,6 +417,17 @@ export class Tablero {
         /* «Aparece» y no «tiene trazos»: también cuenta quien recibe un pase
            o a quien se le pone un bloqueo, que no han dibujado nada. */
         `${conTrazos.join(', ')} ${conTrazos.length > 1 ? 'aparecen' : 'aparece'} en lo dibujado; borra antes esos trazos (pincha el trazo y pulsa Supr)`);
+      return false;
+    }
+    /* Y quien sale en lo que hace la defensa (§8.5) tampoco se va sin
+       más: un defensor no dibuja nada, así que esto no lo pilla lo de
+       arriba. */
+    const enLaDefensa = ids
+      .filter((id) => declaradasConFicha(this.fases, id).length)
+      .map((id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id)));
+    if (enLaDefensa.length) {
+      this.onNoPuede?.({ nombre: 'Quitar' },
+        `${enLaDefensa.join(', ')} ${enLaDefensa.length > 1 ? 'salen' : 'sale'} en lo que hace la defensa en alguna fase; quítalo antes (selecciona al defensor y ponle «Defender a su par»)`);
       return false;
     }
     this.cerrar();

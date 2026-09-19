@@ -33,7 +33,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 2 · Dibujar: anillo, trazo, nodos, encadenado, repaso | ✅ cerrada | `2db2b91` |
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
-| 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `pendiente de commit` |
+| 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
 | 6 · Conos y elementos | pendiente | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
@@ -41,7 +41,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **65 en verde, 1552
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **65 en verde, 1559
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -216,6 +216,30 @@ los números ya cambiados. Y ocho pruebas que pasaban por casualidad.
 - En la línea de tiempo, **lo dicho por el entrenador se ve en celeste** y
   lo que sale solo, en gris.
 
+**Revisión de la capa 5 (2026-09-19).** Se lanzó una revisión adversarial
+de los pasos 5.5 y 5.6 con seis revisores; el límite de uso tumbó a cinco
+y a todos los escépticos, así que solo llegó entera la del FORMATO, con 7
+hallazgos, y los he comprobado yo uno a uno. Arreglado (con su prueba y
+su mutante):
+
+- unas `fases` que no son una lista abrían la jugada en blanco **sin un
+  solo aviso**; ahora se dice;
+- una fase rota se caía del filtro **en silencio** y además renumeraba
+  los avisos de las demás («Fase 3» salía como «Fase 2»); ahora se dice
+  cuál era y los números son los que ve el entrenador;
+- dos fases con el mismo nombre podían acabar **las dos con el mismo id**
+  si el nombre inventado ya estaba cogido;
+- una acción de la defensa podía apuntar **a un cono o a sí mismo**, y la
+  Pizarra la dibujaba: ahora tiene que ser un jugador, y se dice;
+- **borrar una ficha que sale en lo que hace la defensa** (la que ayuda o
+  a la que se ayuda) no avisaba y dejaba la fase apuntando a alguien que
+  ya no está: ahora no se puede sin quitarlo antes, y `sinFichas` limpia
+  lo declarado.
+
+Refutado a mano: nada. Queda por comprobar lo que no llegó a revisarse
+—geometría, Pizarra, motor, vocabulario y bancos—: **la revisión de esas
+cinco dimensiones sigue pendiente.**
+
 **Decidido en el paso 5.7 (dicho al entrenador):**
 
 - **Los papeles se cuentan fase a fase** y cambian desde la SIGUIENTE, no
@@ -242,6 +266,22 @@ los números ya cambiados. Y ocho pruebas que pasaban por casualidad.
 - **`posesionAlFinal` vive en su propio fichero** (`pizarra/posesion.js`):
   la necesitan las fases y la defensa, y dejarla en `fases.js` cerraba un
   círculo de imports que reventaba al abrir la Pizarra.
+
+**Lo que no cuadra, dicho y NO tocado (revisión de la capa 5):**
+
+- **`recalcular` no sabe dónde deja la defensa a cada uno**: encadena las
+  fases con `posicionesFinales`, que solo mueve a quien tiene trazos, y
+  un defensor no dibuja nada. Las entradas que guarda para las fases
+  siguientes se quedan con el sitio de la primera. NO SE VE —al ir a una
+  fase, el Tablero coloca a los defensores donde los deja el seguimiento
+  (`_finDeLaDefensa`), y el fantasma pinta trazos, no entradas—, pero el
+  dato guardado y lo que se ve dicen cosas distintas. Arreglarlo de
+  verdad pide que `fases.js` sepa de la defensa, que hoy vive en el
+  compilador; conviene decidirlo con calma.
+- **Un tramo con una acción que no está en el catálogo se abre y se
+  dibuja, pero no se compila**, y el aviso del compilador no lo lee
+  ninguna pantalla. Es de antes de la capa 5 y toca decidir dónde se
+  enseñan los avisos de compilación.
 
 **Lo que no cuadra, dicho y NO tocado (paso 5.6):**
 

@@ -274,7 +274,7 @@ function alLado(pista, p, a, b, metros) {
  * @param ids    los ids que existen en la jugada
  * @returns { declaradas, avisos }
  */
-export function normalizarDeclaradas(bruta, { ids = null, fase = 0 } = {}) {
+export function normalizarDeclaradas(bruta, { ids = null, jugadores = null, fase = 0 } = {}) {
   const declaradas = {};
   const avisos = [];
   if (bruta == null) return { declaradas, avisos };
@@ -283,18 +283,24 @@ export function normalizarDeclaradas(bruta, { ids = null, fase = 0 } = {}) {
     return { declaradas, avisos };
   }
   const existe = (id) => !ids || ids.has(id);
+  /* Y que sea un JUGADOR: esto se le hace a alguien, no a un cono. */
+  const esJugador = (id) => (jugadores ? jugadores.has(id) : existe(id));
   for (const [d, v] of Object.entries(bruta)) {
     if (!v || typeof v !== 'object' || !ACCIONES_DEFENSOR.includes(v.accion)) {
       avisos.push(`Fase ${fase + 1}: una acción de la defensa no se conoce y se ha dejado fuera.`);
       continue;
     }
-    if (!existe(d)) {
+    if (!existe(d) || !esJugador(d)) {
       avisos.push(`Fase ${fase + 1}: una acción de la defensa era de alguien que ya no está.`);
       continue;
     }
     const pide = SENALA[v.accion];
-    if (pide && !(v.objetivo_id && existe(v.objetivo_id))) {
+    if (pide && !(v.objetivo_id && existe(v.objetivo_id) && esJugador(v.objetivo_id))) {
       avisos.push(`Fase ${fase + 1}: «${v.accion}» se ha quedado sin a quién, y se ha dejado fuera.`);
+      continue;
+    }
+    if (pide && v.objetivo_id === d) {
+      avisos.push(`Fase ${fase + 1}: «${v.accion}» se señalaba a sí mismo, y se ha dejado fuera.`);
       continue;
     }
     declaradas[d] = { accion: v.accion, objetivo_id: pide ? v.objetivo_id : null };

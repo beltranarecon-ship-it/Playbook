@@ -26,7 +26,7 @@ import {
   MINIMO_TRAMO_MS, esBloqueo,
   nuevaFase, carrilesDesde, tramosDe,
   duracionDeTramo, tiemposDe, duracionDeCarril, posicionesFinales,
-  reanclarFase, recalcular, posesionAlFinal,
+  reanclarFase, recalcular, posesionAlFinal, declaradasConFicha,
   tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS,
 } from '../js/pizarra/fases.js';
 import { trasElTiro } from '../js/pizarra/destino.js';
@@ -707,6 +707,21 @@ test('RECALCULAR RESPETA EL ARO DE CADA FASE (§8.6)', () => {
   const conDos = recalcular([...fases, { id: 'f2', carriles: [] }], entrada, 'entera', { canasta: 'norte', canastaDe: (i) => (i === 0 ? 'sur' : 'norte') });
   ok(Math.abs(conUno.entradas[1].b1.y - conDos.entradas[1].b1.y) > 0.05,
     `la fase 2 arranca con el balón donde diga el aro de la 1: ${conUno.entradas[1].b1.y} y ${conDos.entradas[1].b1.y}`);
+});
+
+test('QUITAR UNA FICHA LIMPIA LO QUE LA DEFENSA HACÍA CON ELLA (§8.5)', () => {
+  const fases = [{
+    id: 'f1', tramos: [], entrada: { B1: { x: 0.3, y: 0.5 }, A3: { x: 0.7, y: 0.6 } },
+    defensa: { B1: { accion: 'ayuda', objetivo_id: 'A3' }, B2: { accion: 'cierra_rebote', objetivo_id: null } },
+  }];
+  eq(declaradasConFicha(fases, 'A3').length, 1, 'A3 sale en lo que hace B1:');
+  eq(declaradasConFicha(fases, 'B1').length, 1, 'y B1, porque lo hace él:');
+  eq(declaradasConFicha(fases, 'A9').length, 0);
+  const limpias = sinFichas(fases, ['A3']);
+  eq(limpias[0].defensa, { B2: { accion: 'cierra_rebote', objetivo_id: null } }, 'al irse A3 se va la ayuda:');
+  eq(sinFichas(fases, ['B2'])[0].defensa, { B1: { accion: 'ayuda', objetivo_id: 'A3' } }, 'y al irse el que lo hacía, lo suyo:');
+  eq(sinFichas([{ id: 'f1', tramos: [], entrada: {} }], ['A3'])[0].defensa, undefined,
+    'una fase sin nada declarado no se llena de huecos:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

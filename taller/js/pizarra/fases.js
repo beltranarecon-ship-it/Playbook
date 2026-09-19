@@ -459,6 +459,25 @@ export { posesionAlFinal } from './posesion.js';
  *
  * @returns [{ fase, tramo }] — `fase` es el índice
  */
+/**
+ * Dónde sale esta ficha en lo que hace la defensa (§8.5): o lo hace ella,
+ * o se lo hacen a ella.
+ *
+ * Lo mira quien va a quitarla de la pista: un defensor no dibuja nada, y
+ * sin esto se podía borrar al que ayuda —o a quien se ayuda— dejando la
+ * fase apuntando a alguien que ya no está.
+ */
+export function declaradasConFicha(fases, id) {
+  if (id == null) return [];
+  const r = [];
+  (fases || []).forEach((f, i) => {
+    for (const [d, a] of Object.entries((f && f.defensa) || {})) {
+      if (d === id || (a && a.objetivo_id === id)) r.push({ fase: i, defensor: d, accion: a && a.accion });
+    }
+  });
+  return r;
+}
+
 export function tramosConFicha(fases, id) {
   if (id == null) return [];
   const r = [];
@@ -508,12 +527,19 @@ export function sinFichas(fases, ids) {
   if (!fuera.size) return fases;
   return (fases || []).map((f) => {
     const entrada = Object.fromEntries(Object.entries(f.entrada || {}).filter(([id]) => !fuera.has(id)));
-    if (!f.posesion) return { ...f, entrada };
+    /* Y lo que hiciera la defensa con quien se va (§8.5): sin esto, la
+       fase se quedaba con una ayuda a alguien que ya no está. */
+    const defensa = {};
+    for (const [d, a] of Object.entries(f.defensa || {})) {
+      if (fuera.has(d) || (a && a.objetivo_id && fuera.has(a.objetivo_id))) continue;
+      defensa[d] = a;
+    }
+    if (!f.posesion) return { ...f, entrada, ...(f.defensa ? { defensa } : {}) };
     const posesion = {};
     for (const [balon, dueno] of Object.entries(f.posesion)) {
       if (fuera.has(balon)) continue;
       posesion[balon] = fuera.has(dueno) ? null : dueno;
     }
-    return { ...f, entrada, posesion };
+    return { ...f, entrada, posesion, ...(f.defensa ? { defensa } : {}) };
   });
 }

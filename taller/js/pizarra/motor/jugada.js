@@ -91,12 +91,25 @@ export function normalizarJugada(bruta) {
   avisos.push(...deDefensa);
 
   /* ── las fases y sus tramos ── */
+  /* Quién es JUGADOR: lo que un defensor hace distinto (§8.5) se le hace
+     a un jugador, no a un cono ni a un balón. */
+  const idsJugadores = new Set(elementos.filter((e) => e.kind === 'jugador').map((e) => e.id));
   const deTramo = new Set();
   const deFase = new Set();
   let mayor = 0;
+  /* LAS FASES QUE SE CAEN SE DICEN, Y CON SU NÚMERO. Antes se filtraban
+     en silencio y el `.map` numeraba sobre la lista ya filtrada: un
+     aviso de la fase 3 salía como «Fase 2» y una jugada con las fases
+     rotas se abría en blanco sin que nadie dijera nada. */
+  if (bruta.fases != null && !Array.isArray(bruta.fases)) {
+    avisos.push('Las fases de la jugada estaban rotas: se abre con una fase vacía.');
+  }
   let fases = (Array.isArray(bruta.fases) ? bruta.fases : [])
-    .filter((f) => f && typeof f === 'object')
     .map((f, i) => {
+      if (!f || typeof f !== 'object') {
+        avisos.push(`Fase ${i + 1}: estaba rota y se ha dejado fuera.`);
+        return null;
+      }
       const tramos = [];
       for (const t of Array.isArray(f.tramos) ? f.tramos : []) {
         if (!t || typeof t !== 'object' || !t.id || !t.accion || !t.elemento_id) {
@@ -130,12 +143,14 @@ export function normalizarJugada(bruta) {
         tramos.push({ ...t, ...extra, trazo: t.trazo.map((x) => ({ ...x })) });
       }
       let id = f.id || `f${i + 1}`;
-      if (deFase.has(id)) id = `f${i + 1}_${deFase.size}`;
+      /* Y si el nombre inventado también estaba cogido, se sigue
+         buscando: renombrando una sola vez salían dos fases iguales. */
+      for (let n = 1; deFase.has(id); n++) id = `f${i + 1}_${n}`;
       deFase.add(id);
       /* Lo que un defensor hace distinto en esta fase (§8.5). No son
          tramos —no dibujan un camino—, así que se guardan aparte, y lo
          que no se entienda se queda fuera y se dice. */
-      const declaradas = normalizarDeclaradas(f.defensa, { ids, fase: i });
+      const declaradas = normalizarDeclaradas(f.defensa, { ids, jugadores: idsJugadores, fase: i });
       avisos.push(...declaradas.avisos);
       return {
         id,
@@ -145,7 +160,8 @@ export function normalizarJugada(bruta) {
         tramos,
         defensa: declaradas.declaradas,
       };
-    });
+    })
+    .filter(Boolean);
   /* Una jugada sin fases no se puede editar: siempre hay por lo menos
      la primera, aunque esté vacía. */
   if (!fases.length) fases = [faseVacia()];

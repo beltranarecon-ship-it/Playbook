@@ -954,5 +954,21 @@ test('Y LA DEFENSA DE LA FASE SIGUIENTE SE COLOCA MIRANDO AL ARO NUEVO', () => {
   ok(enLaLinea(suPar, aroSur, a1), `entre su par y el aro sur: ${JSON.stringify(a1)}`);
 });
 
+test('LO DECLARADO PIDE UN JUGADOR, Y NO A SÍ MISMO', () => {
+  const ids = new Set(['B1', 'A1', 'cono_1']);
+  const jugadores = new Set(['B1', 'A1']);
+  const r = normalizarDeclaradas({
+    B1: { accion: 'ayuda', objetivo_id: 'cono_1' },
+  }, { ids, jugadores });
+  eq(r.declaradas, {}, 'ayudar a un cono no vale:');
+  eq(r.avisos.length, 1);
+  eq(normalizarDeclaradas({ cono_1: { accion: 'cierra_rebote' } }, { ids, jugadores }).declaradas, {},
+    'ni un cono que cierra el rebote:');
+  eq(normalizarDeclaradas({ B1: { accion: 'ayuda', objetivo_id: 'B1' } }, { ids, jugadores }).declaradas, {},
+    'ni señalarse a sí mismo:');
+  eq(normalizarDeclaradas({ B1: { accion: 'ayuda', objetivo_id: 'A1' } }, { ids, jugadores }).declaradas,
+    { B1: { accion: 'ayuda', objetivo_id: 'A1' } }, 'y lo bueno sigue entrando:');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

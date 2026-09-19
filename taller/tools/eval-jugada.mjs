@@ -268,5 +268,56 @@ test('LO QUE UN DEFENSOR HACE DISTINTO SE GUARDA EN SU FASE, y lo roto se dice',
   eq(vacia.jugada.fases[0].defensa, {}, 'una fase sin nada declarado trae el hueco vacío:');
 });
 
+test('UNAS FASES ROTAS SE DICEN, no se abren en blanco y callando', () => {
+  for (const rotas of ['roto', 42, { f1: {} }]) {
+    const r = normalizarJugada({ version: 3, elementos: [], fases: rotas });
+    eq(r.jugada.fases.length, 1, 'se abre con una fase vacía:');
+    ok(r.avisos.some((a) => /fases/i.test(a)), `y se dice (${JSON.stringify(rotas)}): ${JSON.stringify(r.avisos)}`);
+  }
+  eq(normalizarJugada({ version: 3, elementos: [], fases: null }).avisos.length, 0,
+    'y una jugada sin fases no es un error: se abre con la primera vacía');
+});
+
+test('UNA FASE ROTA SE DICE, Y LOS AVISOS LLEVAN EL NÚMERO QUE VE EL ENTRENADOR', () => {
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal' });
+  const r = normalizarJugada({
+    version: 3,
+    elementos: [{ id: 'A1', kind: 'jugador', equipo: 'A', x: 0.3, y: 0.7 }],
+    fases: [
+      { id: 'f1', tramos: [{ id: 'tr1', elemento_id: 'A1', corre_id: 'A1', accion: 'corta', trazo: [N(0.3, 0.7), N(0.3, 0.4)] }] },
+      'ROTA',
+      { id: 'f3', tramos: [{ id: 'tr3', elemento_id: 'A1', corre_id: 'A1', accion: 'corta', trazo: [N(0.3, 0.4)] }] },
+    ],
+  });
+  eq(r.jugada.fases.map((f) => f.id), ['f1', 'f3'], 'la rota se queda fuera:');
+  ok(r.avisos.some((a) => /Fase 2/.test(a) && /rota/.test(a)), `y se dice cuál era: ${JSON.stringify(r.avisos)}`);
+  ok(r.avisos.some((a) => /Fase 3/.test(a) && /trazo/.test(a)), `y la tercera sigue siendo la tercera: ${JSON.stringify(r.avisos)}`);
+});
+
+test('dos fases con el mismo nombre acaban con nombres distintos, aunque el inventado ya exista', () => {
+  const j = normalizarJugada({
+    version: 3, elementos: [],
+    fases: [{ id: 'f2_1', tramos: [] }, { id: 'f2_1', tramos: [] }, { id: 'f2_1', tramos: [] }],
+  }).jugada;
+  eq(new Set(j.fases.map((f) => f.id)).size, j.fases.length, `ninguno repetido: ${j.fases.map((f) => f.id)}`);
+});
+
+test('UNA ACCIÓN DE LA DEFENSA CONTRA UN CONO NO ENTRA, y se dice', () => {
+  const r = normalizarJugada({
+    version: 3,
+    elementos: [
+      { id: 'A1', kind: 'jugador', equipo: 'A', x: 0.3, y: 0.7 },
+      { id: 'B1', kind: 'jugador', equipo: 'B', x: 0.3, y: 0.5 },
+      { id: 'cono_1', kind: 'cono', x: 0.5, y: 0.5 },
+    ],
+    fases: [{ id: 'f1', tramos: [], defensa: {
+      B1: { accion: 'ayuda', objetivo_id: 'cono_1' },
+      cono_1: { accion: 'cierra_rebote' },
+    } }],
+  });
+  eq(r.jugada.fases[0].defensa, {}, 'ni la ayuda a un cono ni la del cono:');
+  eq(r.avisos.length, 2, `y las dos se dicen: ${JSON.stringify(r.avisos)}`);
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

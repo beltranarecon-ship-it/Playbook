@@ -489,6 +489,24 @@ test('TRAS UN ROBO, LO QUE EL ROBADO TENÍA DIBUJADO YA NO ENCAJA', () => {
     `el trazo de A1 en la fase 2 no encaja: ${JSON.stringify(sueltos.map((x) => [x.fase, x.tramo.accion]))}`);
 });
 
+test('NO SE PUEDE QUITAR A QUIEN SALE EN LO QUE HACE LA DEFENSA, y se dice', () => {
+  const { t, a2, b1, avisos } = conDefensa();
+  elegir(t, b1.id, 'ayuda');
+  t._companeroElegido(ficha(t, a2.id), t.companero.activo);
+  avisos.length = 0;
+  t.fichas.seleccion = new Set([a2.id]);
+  eq(t.quitarSeleccion(), false, 'al que se ayuda no se le quita:');
+  ok(avisos.some(([tipo, , motivo]) => tipo === 'noPuede' && /defensa/.test(motivo || '')), JSON.stringify(avisos));
+  ok(ficha(t, a2.id), 'y sigue en la pista');
+  t.fichas.seleccion = new Set([b1.id]);
+  eq(t.quitarSeleccion(), false, 'ni al que ayuda:');
+  /* Quitada la acción, ya se puede. */
+  elegir(t, b1.id, 'defiende');
+  t._companeroElegido(ficha(t, a2.id), t.companero.activo);
+  t.fichas.seleccion = new Set([b1.id]);
+  eq(t.quitarSeleccion(), true, 'sin nada declarado, se va:');
+});
+
 console.log('\n· la defensa se mueve sola (§8.4)');
 
 /* A1 con balón, B1 defendiéndole, y A1 bota hacia el aro. */
