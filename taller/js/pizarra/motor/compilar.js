@@ -43,7 +43,9 @@ import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
 import { MOTOR_PIZARRA } from './marca.js';
 import { carrilesDesde, tiemposDe, esTiro, esBloqueo, TRAS_EL_TIRO_MS } from '../fases.js';
 import { trasElTiro, frenteDelBloqueo } from '../destino.js';
-import { papelesDeJugada, seguirDefensa } from './defensa.js';
+import { papelesDeJugada, seguirDefensa, SEGUIMIENTO } from './defensa.js';
+import { metrosEntre } from '../../canvas/escala.js';
+import { fraccionMasCercana, cortarTrazo } from '../trazo.js';
 import { metaDeFase } from '../../canvas/fotograma.js';
 import { posicionesDe } from '../../canvas/anclas.js';
 
@@ -136,7 +138,9 @@ export function compilar(jugada) {
      fase que ve el entrenador. */
   const fases = (j.fases || [])
     .map((f, i) => (f && Array.isArray(f.tramos) && f.tramos.length
-      ? compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles: papeles.fases[i] })
+      /* La canasta es LA DE ESA FASE: si en la anterior robaron o
+         anotaron, se ataca al otro aro (§8.6). */
+      ? compilarFase(f, i, { pista, canasta: (papeles.fases[i] || {}).canasta || canasta, de, nombre, warnings, papeles: papeles.fases[i] })
       : null))
     .filter(Boolean);
 
@@ -171,15 +175,54 @@ export function compilar(jugada) {
     owner: Object.fromEntries(balones.map((x) => [x.id, x.portador_id || null])),
   };
   for (const fase of fases) {
-    const r = metaDeFase(fase, { jugadores, balones, escena, aro });
     const papelesFase = papeles.fases[fase.indice] || papeles.inicio;
     /* Lo que algún defensor hace distinto en esta fase (§8.5), con los
        nombres de la animación: lo lee el guion de Equipos, que si no
        contaría «ajusta el marcaje» de una ayuda. */
     const declaradas = comoFuera(papelesFase).acciones;
     if (Object.keys(declaradas).length) fase.defensa = declaradas;
+
+    /* UN ROBO (§8.6) cambia el balón de manos A MITAD DE FASE, y de las
+       dos maneras que dijo el entrenador —de las dos sale lo mismo: que
+       el balón acaba en manos del que roba—:
+
+         · si al señalado le llega un PASE en esta fase, es una
+           INTERCEPCIÓN: el pase se corta donde se cruza el que roba y el
+           balón es suyo al llegar ahí;
+         · si lo lleva ÉL, es un robo en el bote: el que roba tarda en
+           llegar lo que tarde en recorrer la distancia a su velocidad
+           (§8.4), y desde ese instante el balón va con él.
+
+       Va ANTES de montar la fase porque lo que cambia es de quién es el
+       balón y por dónde viaja, que es justo lo que monta `metaDeFase`. */
+    for (const [quien, a] of Object.entries(declaradas)) {
+      if (!a || a.accion !== 'roba' || !a.objetivo_id) continue;
+      const desde = escena.P[quien];
+      const pase = (fase.pases || []).find((p) => p && p.a_id === a.objetivo_id);
+      if (pase) {
+        const u = Math.max(0.2, Math.min(0.9, fraccionMasCercana(pase.path, desde || pase.path[0], pista)));
+        pase.path = cortarTrazo(pase.path, u, pista);
+        pase.duracion_ms = Math.max(1, Math.round((pase.duracion_ms || 0) * u));
+        pase.a_id = quien;
+        pase.interceptado = true;
+        continue;
+      }
+      const suyos = balones.filter((b) => escena.owner[b.id] === a.objetivo_id);
+      if (!suyos.length) {
+        warnings.push(`Fase ${fase.indice + 1}: ${quien} roba a ${a.objetivo_id}, que en esa fase no tiene balón.`);
+        continue;
+      }
+      for (const b of suyos) {
+        const donde = escena.B[b.id] || desde;
+        const metros = desde && donde ? metrosEntre(pista, desde, donde) : 0;
+        const t = Math.max(0, Math.min(fase.duracion_ms, (metros / SEGUIMIENTO.velocidad) * 1000));
+        (fase.recogidas || (fase.recogidas = [])).push({ jugador_id: quien, balon_id: b.id, t_ms: Math.round(t), robo: true });
+      }
+    }
+
+    const r = metaDeFase(fase, { jugadores, balones, escena, aro });
     const seguida = seguirDefensa({
-      pista, canasta, defensa: j.defensa, papeles: comoFuera(papelesFase),
+      pista, canasta: papelesFase.canasta || canasta, defensa: j.defensa, papeles: comoFuera(papelesFase),
       jugadores, balones, reglas, meta: r.meta, inicio: escena,
       duracion_ms: fase.duracion_ms, tiros: fase.tiros,
     });

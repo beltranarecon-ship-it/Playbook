@@ -378,7 +378,7 @@ export class Tablero {
     const quienes = papeles.defensores.filter((d) => d === nuevo || !this._aMano.has(d));
     if (!quienes.length) return null;
     const sitios = colocar({
-      pista: this.lienzo.vista.pistaKey, canasta: this.canasta,
+      pista: this.lienzo.vista.pistaKey, canasta: this.canastaEnCurso,
       elementos: this.fichas.elementos, papeles, defensa: this.defensa, solo: quienes,
     });
     const movidos = {};
@@ -458,9 +458,7 @@ export class Tablero {
   setCanasta(canasta) {
     if (!canasta || canasta === this.canasta) return;
     this.canasta = canasta;
-    this.fichas.canasta = canasta;
-    this.dibujo.canasta = canasta;
-    this.nodos.canasta = canasta;
+    this._ponerCanastaDeTrabajo();
     this.lienzo.pintar();
   }
 
@@ -512,8 +510,10 @@ export class Tablero {
     const clave = JSON.stringify([
       this.lienzo.vista.pistaKey, this.defensa, this.fases.length, this.fases[0].posesion || {},
       /* Lo declarado cambia los pares (§8.5), así que la respuesta de
-         antes ya no vale. */
+         antes ya no vale. Y lo que mueve el balón cambia quién ataca en
+         la fase siguiente (§8.6): pases, tiros y recogidas. */
       this.fases.map((f) => f.defensa || null),
+      this.fases.map((f) => (f.tramos || []).map((t) => [t.id, t.elemento_id, t.corre_id, t.receptor_id ?? null, t.balon_id ?? null, t.desenlace ?? null])),
       this.fichas.elementos.filter((e) => e.kind === 'jugador').map((e) => [
         e.id, e.equipo, e.label, e.dorsal, e.en_juego, e.defiende_a ?? null,
         entrada[e.id] ? entrada[e.id].x : e.x, entrada[e.id] ? entrada[e.id].y : e.y,
@@ -594,7 +594,7 @@ export class Tablero {
     const papeles = this.papelesDeFase();
     if (!papeles.defensores.includes(ids[0])) return null;
     return explicarRegla({
-      pista: this.lienzo.vista.pistaKey, canasta: this.canasta,
+      pista: this.lienzo.vista.pistaKey, canasta: this.canastaEnCurso,
       elementos: this.fichas.elementos, papeles, defensa: this.defensa, defensor: ids[0],
     });
   }
@@ -785,7 +785,11 @@ export class Tablero {
 
     const entrada = Object.fromEntries(j.elementos.map((e) => [e.id, { x: e.x, y: e.y }]));
     const posesion = Object.fromEntries(j.elementos.filter((e) => e.kind === 'balon').map((e) => [e.id, e.portador_id ?? null]));
-    const rc = recalcular(j.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) })), entrada, pista, { canasta: this.canasta });
+    const papelesCargados = papelesDeJugada(j);
+    const rc = recalcular(j.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) })), entrada, pista, {
+      canasta: this.canasta,
+      canastaDe: (i) => (papelesCargados.fases[i] || {}).canasta,
+    });
     this.fases = j.fases.map((f, i) => ({
       ...nuevaFase(f.id),
       ...f,
@@ -812,6 +816,27 @@ export class Tablero {
     if (e.kind === 'balon') return 'el balón';
     if (e.kind === 'jugador') return `${e.equipo || ''}${numeroDe(e) || ''}`.trim() || 'ese jugador';
     return e.nombre || 'eso';
+  }
+
+  /**
+   * LA CANASTA A LA QUE SE ATACA EN LA FASE QUE SE EDITA (§8.6).
+   *
+   * `this.canasta` es la de la jugada —la que se guarda y la que elige el
+   * entrenador arriba—; esta es la de AHORA: si en una fase anterior
+   * robaron, cogieron un rebote defensivo o anotaron, se ataca al otro
+   * aro desde la siguiente.
+   */
+  get canastaEnCurso() {
+    return (this.papeles().fases[this.iFase] || {}).canasta || this.canasta;
+  }
+
+  /* La canasta con la que trabajan los gestos: dónde va «entra», dónde
+     cae un tiro, hacia dónde se coloca la defensa. */
+  _ponerCanastaDeTrabajo() {
+    const k = this.canastaEnCurso;
+    this.fichas.canasta = k;
+    this.dibujo.canasta = k;
+    this.nodos.canasta = k;
   }
 
   /** La fase en curso, con sus carriles y sus tiempos ya calculados. */
@@ -962,12 +987,12 @@ export class Tablero {
   /** El viaje del balón después de un tiro: del aro a donde cae. */
   _trasElTiro(t) {
     const fin = t.trazo[t.trazo.length - 1];
-    const cae = trasElTiro({ pista: this.lienzo.vista.pistaKey, canasta: this.canasta, desde: t.trazo[0], desenlace: t.desenlace });
+    const cae = trasElTiro({ pista: this.lienzo.vista.pistaKey, canasta: this.canastaEnCurso, desde: t.trazo[0], desenlace: t.desenlace });
     return cae ? [{ x: fin.x, y: fin.y, tipo_nodo: 'lineal' }, { x: cae.x, y: cae.y, tipo_nodo: 'lineal' }] : null;
   }
 
   /** La pista y la canasta con las que se calcula dónde acaba cada cosa. */
-  _opcionesFase() { return { pista: this.lienzo.vista.pistaKey, canasta: this.canasta }; }
+  _opcionesFase() { return { pista: this.lienzo.vista.pistaKey, canasta: this.canastaEnCurso }; }
 
   /**
    * Adelanta o retrasa un tramo dentro de su fase (§2.5), y lo marca
@@ -1023,6 +1048,7 @@ export class Tablero {
     this.cerrar();
     this.repaso.parar();
     this.iFase = n;
+    this._ponerCanastaDeTrabajo();
     const { fase } = this.faseEnCurso();
     /* Los defensores no tienen trazo, pero se han movido: acaban donde
        les deja su seguimiento (§8.4), que es donde los va a dejar el
@@ -1056,7 +1082,11 @@ export class Tablero {
     if (this.iFase >= this.fases.length - 1) return;
     const pista = this.lienzo.vista.pistaKey;
     const conCarriles = this.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) }));
-    const r = recalcular(conCarriles, this.fases[0].entrada, pista, { canasta: this.canasta });
+    const papeles = this.papeles();
+    const r = recalcular(conCarriles, this.fases[0].entrada, pista, {
+      canasta: this.canasta,
+      canastaDe: (i) => (papeles.fases[i] || {}).canasta,
+    });
     this.fases = this.fases.map((f, i) => (i <= this.iFase ? f : {
       ...f,
       entrada: r.entradas[i] || f.entrada,
@@ -1183,7 +1213,7 @@ export class Tablero {
        junto al aro: es lo que decide dónde acaba el balón. Va después del
        «cómo» y antes de dibujar nada. */
     if (pide.desenlace && !desenlace) {
-      const aro = posicionesDe(this.lienzo.vista.pistaKey, this.canasta)?.aro;
+      const aro = posicionesDe(this.lienzo.vista.pistaKey, this.canastaEnCurso)?.aro;
       this._abrirAnillo(elemento, aro ? { x: aro[0], y: aro[1] } : en, {
         opciones: [
           { slug: 'entra', nombre: 'Entra', icono: '✓', descripcion: 'Entra: el balón cae bajo el aro' },
@@ -1237,7 +1267,7 @@ export class Tablero {
     if (tieneDestinoPropio(accion)) {
       const d = destinoDe(accion, elemento, {
         pista: this.lienzo.vista.pistaKey,
-        canasta: this.canasta,
+        canasta: this.canastaEnCurso,
         elementos: this.fichas.elementos,
       });
       if (!d.punto) { this.onNoPuede?.(accion, d.motivo); this._pintarAyuda(); return; }
@@ -1279,7 +1309,7 @@ export class Tablero {
     const defensor = defensorId ? (lista.find((e) => e.id === defensorId) || null) : null;
     const sitio = sitioDelBloqueo({
       pista: this.lienzo.vista.pistaKey,
-      canasta: this.canasta,
+      canasta: this.canastaEnCurso,
       desde,
       companero: ficha,
       conBalon: llevaBalon(lista, ficha.id),
@@ -1408,7 +1438,7 @@ export class Tablero {
           /* UN TIRO NO TIENE RECEPTOR: va al aro. Buscándolo en la punta,
              un jugador debajo del aro convertía el tiro en un pase. El
              balón acaba donde lo deja el desenlace, suelto (§4.4). */
-          const cae = trasElTiro({ pista, canasta: this.canasta, desde: trazo[0], desenlace });
+          const cae = trasElTiro({ pista, canasta: this.canastaEnCurso, desde: trazo[0], desenlace });
           lista = mover(soltarBalon(lista, balon.id), { [balon.id]: cae || { x: fin.x, y: fin.y } });
         } else {
           receptor = acierto(lista, fin, { pista, excluir: [elemento.id, balon.id] });

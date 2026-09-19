@@ -582,6 +582,94 @@ test('LO QUE EL ENTRENADOR HA DICHO QUE HACE UN DEFENSOR LLEGA A LA ANIMACIÓN (
   ok(d(media, A2) < d(sinDecir.muestras[10], A2) - 1, 'y más cerca de A2 que si no se hubiera dicho nada');
 });
 
+/* ── Robar (§8.6) ────────────────────────────────────────── */
+
+test('ROBO EN EL BOTE: el balón pasa a ser del que roba A MITAD DE FASE', () => {
+  const { l, a1, b1, bal } = escena();
+  /* El que roba, a un paso: llega enseguida y se ve el cambio dentro de
+     la fase. Desde el otro lado de la pista no le daría tiempo. */
+  const puestos = l.map((e) => (e.id === b1.id ? { ...e, x: 0.32, y: 0.78 } : e));
+  const t = tramo(a1.id, P(0.3, 0.8), P(0.3, 0.5), { accion: 'bota', tipo: 'run' });
+  const anim = compilar(jugadaCon(puestos, [
+    { id: 'f1', tramos: [t], defensa: { [b1.id]: { accion: 'roba', objetivo_id: a1.id } } },
+    { id: 'f2', tramos: [] },
+  ]));
+  const f = anim.fases[0];
+  const rec = (f.recogidas || []).find((x) => x.jugador_id === 'B1');
+  ok(rec, 'se anota como una recogida del que roba');
+  /* A MITAD DE FASE, no al final: el que roba tarda lo que tarde en
+     llegar, y desde ahí el balón es suyo. */
+  ok(rec.t_ms > 0 && rec.t_ms < f.duracion_ms - 1, `antes de acabar la fase: ${rec.t_ms} de ${f.duracion_ms}`);
+  const motor = new AnimationEngine({ w: 0, basket: () => [0.5, 0.1] }, anim, { autoplay: false, loop: false, paused: true });
+  const antes = enElInstante(motor, 0, Math.max(0, rec.t_ms - 50));
+  const despues = enElInstante(motor, 0, Math.min(f.duracion_ms, rec.t_ms + 50));
+  eq(antes.duenos[bal.id], 'A1', 'antes es del que botaba:');
+  eq(despues.duenos[bal.id], 'B1', 'y después, del que roba:');
+});
+
+test('Y CUANTO MÁS LEJOS ESTÁ EL QUE ROBA, MÁS TARDA EN LLEGAR', () => {
+  const con = (donde) => {
+    const { l, a1, b1 } = escena();
+    const puestos = l.map((e) => (e.id === b1.id ? { ...e, ...donde } : e));
+    const t = tramo(a1.id, P(0.3, 0.8), P(0.3, 0.5), { accion: 'bota', tipo: 'run' });
+    const anim = compilar(jugadaCon(puestos, [{ id: 'f1', tramos: [t], defensa: { [b1.id]: { accion: 'roba', objetivo_id: a1.id } } }]));
+    return (anim.fases[0].recogidas || []).find((x) => x.jugador_id === 'B1');
+  };
+  const cerca = con({ x: 0.32, y: 0.78 });
+  const lejos = con({ x: 0.75, y: 0.35 });
+  ok(cerca.t_ms < lejos.t_ms - 100, `de cerca ${cerca.t_ms} ms, de lejos ${lejos.t_ms} ms`);
+});
+
+test('TRAS UNA CANASTA, EL TIRO DE LA FASE SIGUIENTE VA AL OTRO ARO (§8.6)', () => {
+  const { l, a1, b1, bal } = escena();
+  const anota = { ...tramo(a1.id, P(0.3, 0.8), P(0.5, 0.1), { accion: 'tira', tipo: 'pass', corre_id: bal.id }), desenlace: 'entra' };
+  const recogen = tramo(b1.id, P(0.5, 0.4), P(0.5, 0.15), { accion: 'recoge', tipo: 'cut', balon_id: bal.id });
+  const devuelve = { ...tramo(b1.id, P(0.5, 0.15), P(0.5, 0.9), { accion: 'tira', tipo: 'pass', corre_id: bal.id }), desenlace: 'entra' };
+  const anim = compilar(jugadaCon(l, [
+    { id: 'f1', tramos: [anota, recogen] },
+    { id: 'f2', tramos: [devuelve] },
+  ]));
+  eq(anim.fases[0].tiros[0].canasta, 'norte', 'el primero, al aro de siempre:');
+  eq(anim.fases[1].tiros[0].canasta, 'sur', 'y el de la fase siguiente, al contrario:');
+});
+
+test('Y AL ROBAR SE LE PASA EL BALÓN AL OTRO EQUIPO: cambian los papeles en la fase siguiente', () => {
+  const { l, a1, b1 } = escena();
+  const t = tramo(a1.id, P(0.3, 0.8), P(0.3, 0.5), { accion: 'bota', tipo: 'run' });
+  const sigue = tramo(b1.id, P(0.5, 0.4), P(0.5, 0.7), { accion: 'bota', tipo: 'run' });
+  const anim = compilar(jugadaCon(l, [
+    { id: 'f1', tramos: [t], defensa: { [b1.id]: { accion: 'roba', objetivo_id: a1.id } } },
+    { id: 'f2', tramos: [sigue] },
+  ]));
+  eq(anim.fases[0].defensa, { B1: { accion: 'roba', objetivo_id: 'A1' } }, 'la animación lo cuenta:');
+  eq(anim.fases[1].defensores.sort(), ['A1', 'A2'], 'en la fase 2 defienden los que atacaban:');
+  ok(!anim.warnings.length, `y sin avisos: ${anim.warnings}`);
+});
+
+test('INTERCEPTAR UN PASE: el balón se queda a medio camino y es del que lo corta', () => {
+  const { l, a1, a2, b1, bal } = escena();
+  const pase = tramo(a1.id, P(0.3, 0.8), P(0.7, 0.8), { accion: 'pasa', tipo: 'pass', corre_id: bal.id, receptor_id: a2.id });
+  const anim = compilar(jugadaCon(l, [
+    { id: 'f1', tramos: [pase], defensa: { [b1.id]: { accion: 'roba', objetivo_id: a2.id } } },
+    { id: 'f2', tramos: [tramo(b1.id, P(0.5, 0.4), P(0.5, 0.8), { accion: 'bota', tipo: 'run' })] },
+  ]));
+  const p = anim.fases[0].pases[0];
+  eq([p.a_id, p.interceptado], ['B1', true], 'el pase acaba en el que roba:');
+  const fin = p.path[p.path.length - 1];
+  ok(fin.x < 0.7 - 1e-6, `y se corta antes de llegar: ${JSON.stringify(fin)}`);
+  const motor = new AnimationEngine({ w: 0, basket: () => [0.5, 0.1] }, anim, { autoplay: false, loop: false, paused: true });
+  eq(enElInstante(motor, 0, anim.fases[0].duracion_ms).duenos[bal.id], 'B1');
+  eq(anim.fases[1].defensores.sort(), ['A1', 'A2'], 'y en la fase siguiente atacan los otros:');
+});
+
+test('robar a quien no tiene balón se dice y no rompe la animación', () => {
+  const { l, a2, b1 } = escena();
+  const t = tramo(a2.id, P(0.7, 0.8), P(0.7, 0.4));
+  const anim = compilar(jugadaCon(l, [{ id: 'f1', tramos: [t], defensa: { [b1.id]: { accion: 'roba', objetivo_id: a2.id } } }]));
+  ok(anim.warnings.some((w) => /no tiene balón/.test(w)), `se avisa: ${anim.warnings}`);
+  ok(anim.fases[0].movimientos.length, 'y la fase se compila igual');
+});
+
 /* ── 8. La defensa se mueve sola (§8.4) ──────────────────── */
 
 test('LA DEFENSA SALE EN LA ANIMACIÓN: muestreada, automática y sin flecha', () => {

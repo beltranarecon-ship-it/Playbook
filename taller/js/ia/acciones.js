@@ -295,6 +295,14 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'carrera_sin_balon',
   }),
   A({
+    slug: 'roba', nombre: 'Roba', familia: 'entre_dos', tag: 'línea de pase',
+    sinonimos: ['robo', 'roba el balón', 'intercepta', 'interceptación', 'le quita el balón'],
+    descripcion: 'Va a por el balón y se lo queda. A partir de la fase siguiente cambian los papeles.',
+    parametros: { companero: null, colocacion: 'delante', avance: 0.25, simbolo_relacion: 'marca', rol: 'defensor', senala: 'rival' },
+    pide: ['companero'],
+    simbolo: 'carrera_sin_balon',
+  }),
+  A({
     slug: 'sobrepasado', nombre: 'Es sobrepasado', familia: 'entre_dos', tag: 'defensa del bote',
     sinonimos: ['le superan', 'le pasan', 'es superado', 'le desbordan', 'persigue por detrás'],
     descripcion: 'Deja pasar a su par y le persigue por detrás, a un metro largo, hasta el final de la fase.',

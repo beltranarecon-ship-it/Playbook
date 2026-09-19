@@ -3,7 +3,7 @@
 // Cache-first servía módulos del Taller obsoletos; network-first lo evita.
 // Las llamadas a Supabase y esm.sh NUNCA se cachean aquí.
 
-const CACHE_NAME = 'cbp-v2-shell-v14'; // v14: la biblioteca distingue lo de la Pizarra (§11.4) · v13: push y notificationclick (Tramo 4.7)
+const CACHE_NAME = 'cbp-v2-shell-v15'; // v15: la defensa de la Pizarra (capa 5: se mueve sola, acciones declaradas y cambio de papeles) · v14: la biblioteca distingue lo de la Pizarra (§11.4)
 
 const PRECACHE_ASSETS = [
   '/index.html',

@@ -15,7 +15,7 @@ import {
   REGLAS, PARAMETROS, SITUACIONES, defensaPorDefecto, parametrosDe, normalizarDefensa,
   quienAtaca, emparejar, situacionDe, papelesDeJugada, tramosQueNoEncajan,
   colocar, explicarRegla, enCancha, seguirDefensa, SEGUIMIENTO,
-  ACCIONES_DEFENSOR, SENALA, AYUDA_VUELVE, normalizarDeclaradas, declaradasDe,
+  ACCIONES_DEFENSOR, SENALA, AYUDA_VUELVE, normalizarDeclaradas, declaradasDe, laContraria,
 } from '../js/pizarra/motor/defensa.js';
 import { metaDeFase, fotograma } from '../js/canvas/fotograma.js';
 import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
@@ -672,8 +672,8 @@ test('sin defensores, sin escena o sin fase no se sigue a nadie', () => {
 /* ── 9. Lo que un defensor hace DISTINTO (§8.5) ──────────── */
 
 test('LO QUE SE PUEDE DECLARAR, Y A QUIÉN HAY QUE SEÑALAR', () => {
-  eq(ACCIONES_DEFENSOR, ['ayuda', 'sobrepasado', 'cambia_marca', 'cierra_rebote', 'dos_contra_uno']);
-  eq(SENALA, { ayuda: 'atacante', cambia_marca: 'defensor' }, 'las dos que piden a quién:');
+  eq(ACCIONES_DEFENSOR, ['ayuda', 'sobrepasado', 'cambia_marca', 'cierra_rebote', 'dos_contra_uno', 'roba']);
+  eq(SENALA, { ayuda: 'atacante', cambia_marca: 'defensor', roba: 'atacante' }, 'las tres que piden a quién:');
   ok(AYUDA_VUELVE > 0.5 && AYUDA_VUELVE < 1, 'y el que ayuda vuelve antes de acabar la fase');
 });
 
@@ -843,6 +843,115 @@ test('EL SEGUIMIENTO HACE LO DICHO: el que ayuda va, tapa y vuelve', () => {
   ok(aA2(yendo) < aA2(m[0]), `se acerca al que va a tapar: ${aA2(yendo).toFixed(2)} m frente a ${aA2(m[0]).toFixed(2)}`);
   const fin = m[m.length - 1];
   ok(aA1(fin) < aA1(yendo), `y al final vuelve con su par: ${aA1(fin).toFixed(2)} m frente a ${aA1(yendo).toFixed(2)}`);
+});
+
+/* ── 10. Cambian los papeles (§8.6) ──────────────────────── */
+
+/* Dos contra dos, con A1 llevando el balón. */
+function dosContraDos() {
+  const e = escena([['A1', 'jugador', 'A', 0.3, 0.7], ['A2', 'jugador', 'A', 0.7, 0.7],
+    ['B1', 'jugador', 'B', 0.3, 0.5], ['B2', 'jugador', 'B', 0.7, 0.5], ['bal', 'balon', null, 0.3, 0.7]]);
+  const l = e.dar('bal', 'A1');
+  return { e, l };
+}
+const N = (x, y) => ({ x, y, tipo_nodo: 'lineal' });
+const tiro = (quien, balon, desenlace) => ({
+  id: `t_${quien}_${desenlace}`, elemento_id: quien, corre_id: balon, receptor_id: null,
+  accion: 'tira', trazo: [N(0.3, 0.7), N(0.5, 0.1)], tipo: 'pass', desenlace,
+});
+const recoge = (quien, balon) => ({
+  id: `r_${quien}`, elemento_id: quien, corre_id: quien, balon_id: balon,
+  accion: 'recoge', trazo: [N(0.5, 0.3), N(0.5, 0.15)], tipo: 'cut',
+});
+
+test('UNA CANASTA PASA EL ATAQUE AL OTRO EQUIPO DESDE LA FASE SIGUIENTE (§8.6)', () => {
+  const { e, l } = dosContraDos();
+  const p = papelesDeJugada({
+    pista: 'entera', canasta: 'norte', elementos: l,
+    fases: [{ tramos: [tiro(e.ids.A1, e.ids.bal, 'entra')] }, { tramos: [] }],
+  });
+  eq(p.fases[0].ataca, 'A', 'en la fase del tiro todavía ataca quien tiraba:');
+  eq(p.fases[0].canasta, 'norte');
+  eq(p.fases[1].ataca, 'B', 'y en la siguiente, el otro:');
+  eq(p.fases[1].canasta, 'sur', 'atacando al otro aro:');
+  eq(paresEn(e.ids, p.fases[1].pares), { A1: 'B1', A2: 'B2' }, 'con el emparejamiento invertido:');
+  eq(nombres(e.ids, p.fases[1].defensores).sort(), ['A1', 'A2'], 'y los que atacaban, defendiendo:');
+});
+
+test('Y EN MEDIA PISTA SE SIGUE ATACANDO AL MISMO ARO, que no hay otro', () => {
+  const { e, l } = dosContraDos();
+  const p = papelesDeJugada({
+    pista: 'media', canasta: 'norte', elementos: l,
+    fases: [{ tramos: [tiro(e.ids.A1, e.ids.bal, 'entra')] }, { tramos: [] }],
+  });
+  eq([p.fases[1].ataca, p.fases[1].canasta], ['B', 'norte']);
+  eq(laContraria('media', 'norte'), 'norte', 'y la contraria de una sola es ella misma:');
+  eq(laContraria('entera', 'sur'), 'norte');
+});
+
+test('EL REBOTE DEFENSIVO TAMBIÉN: quien recoge un tiro fallado pasa a atacar', () => {
+  const { e, l } = dosContraDos();
+  const p = papelesDeJugada({
+    pista: 'entera', canasta: 'norte', elementos: l,
+    fases: [{ tramos: [tiro(e.ids.A1, e.ids.bal, 'falla'), recoge(e.ids.B2, e.ids.bal)] }, { tramos: [] }],
+  });
+  eq(p.fases[0].ataca, 'A', 'la fase del rebote no cambia a mitad (§8.2):');
+  eq([p.fases[1].ataca, p.fases[1].canasta], ['B', 'sur']);
+});
+
+test('y un rebote OFENSIVO no cambia nada: sigue atacando el mismo', () => {
+  const { e, l } = dosContraDos();
+  const p = papelesDeJugada({
+    pista: 'entera', canasta: 'norte', elementos: l,
+    fases: [{ tramos: [tiro(e.ids.A1, e.ids.bal, 'falla'), recoge(e.ids.A2, e.ids.bal)] }, { tramos: [] }],
+  });
+  eq([p.fases[1].ataca, p.fases[1].canasta], ['A', 'norte']);
+  eq(paresEn(e.ids, p.fases[1].pares), { B1: 'A1', B2: 'A2' }, 'y los pares siguen como estaban:');
+});
+
+test('UN TIRO FALLADO QUE NADIE COGE DEJA LAS COSAS COMO ESTABAN', () => {
+  const { e, l } = dosContraDos();
+  const p = papelesDeJugada({
+    pista: 'entera', canasta: 'norte', elementos: l,
+    fases: [{ tramos: [tiro(e.ids.A1, e.ids.bal, 'falla')] }, { tramos: [] }],
+  });
+  eq([p.fases[1].ataca, p.fases[1].canasta], ['A', 'norte']);
+});
+
+test('SI EL ENTRENADOR HA DICHO QUIÉN ATACA, NO CAMBIA NADIE', () => {
+  const { e, l } = dosContraDos();
+  const p = papelesDeJugada({
+    pista: 'entera', canasta: 'norte', elementos: l, defensa: { ataca: 'A' },
+    fases: [{ tramos: [tiro(e.ids.A1, e.ids.bal, 'entra')] }, { tramos: [] }],
+  });
+  eq([p.fases[1].ataca, p.fases[1].canasta], ['A', 'norte'], 'manda lo que se ha dicho:');
+});
+
+test('con un solo equipo en la pista, una canasta no le quita el ataque a nadie', () => {
+  const e = escena([['A1', 'jugador', 'A', 0.3, 0.7], ['A2', 'jugador', 'A', 0.7, 0.7], ['bal', 'balon', null, 0.3, 0.7]]);
+  const l = e.dar('bal', 'A1');
+  const p = papelesDeJugada({
+    pista: 'entera', canasta: 'norte', elementos: l,
+    fases: [{ tramos: [tiro(e.ids.A1, e.ids.bal, 'entra')] }, { tramos: [] }],
+  });
+  eq([p.fases[1].ataca, p.fases[1].canasta], ['A', 'norte']);
+});
+
+test('Y LA DEFENSA DE LA FASE SIGUIENTE SE COLOCA MIRANDO AL ARO NUEVO', () => {
+  const { e, l } = dosContraDos();
+  const p = papelesDeJugada({
+    pista: 'entera', canasta: 'norte', elementos: l,
+    fases: [{ tramos: [tiro(e.ids.A1, e.ids.bal, 'entra')] }, { tramos: [] }],
+  });
+  const papeles = p.fases[1];
+  /* Los que atacaban ahora defienden; se colocan entre su par y el aro
+     SUR, que es al que se ataca ahora. */
+  const sitios = colocar({ pista: 'entera', canasta: papeles.canasta, elementos: l, papeles });
+  const aroSur = (() => { const a = posicionesDe('entera', 'sur').aro; return { x: a[0], y: a[1] }; })();
+  const a1 = sitios[e.ids.A1];
+  const suPar = { x: 0.3, y: 0.5 };   // B1
+  ok(a1, 'el que atacaba tiene sitio de defensor');
+  ok(enLaLinea(suPar, aroSur, a1), `entre su par y el aro sur: ${JSON.stringify(a1)}`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

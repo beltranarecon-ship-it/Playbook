@@ -686,5 +686,28 @@ test('AL ACABAR LA FASE EL BALÓN ESTÁ DONDE CAE, sabiendo la pista y la canast
   eq(rc.entradas[1].b1, esperado, 'y la fase siguiente empieza con el balón ahí:');
 });
 
+test('RECALCULAR RESPETA EL ARO DE CADA FASE (§8.6)', () => {
+  /* Un tiro fallado deja el balón rebotado: por el aro norte cae arriba,
+     y por el sur, abajo. Si `recalcular` no mirara el aro de la fase, las
+     dos saldrían iguales. */
+  const tiro = {
+    id: 'tr1', elemento_id: 'A1', corre_id: 'b1', accion: 'tira', tipo: 'pass', desenlace: 'falla',
+    trazo: [{ x: 0.5, y: 0.5, tipo_nodo: 'lineal' }, { x: 0.5, y: 0.1, tipo_nodo: 'lineal' }],
+  };
+  const fases = [{ id: 'f1', carriles: carrilesDesde([tiro]) }];
+  const entrada = { A1: { x: 0.5, y: 0.5 }, b1: { x: 0.5, y: 0.5 } };
+  const norte = recalcular(fases, entrada, 'entera', { canasta: 'norte' });
+  const sur = recalcular(fases, entrada, 'entera', { canasta: 'norte', canastaDe: () => 'sur' });
+  ok(Math.abs(norte.entradas.length - sur.entradas.length) === 0, 'las dos recorren lo mismo');
+  const finNorte = posicionesFinales(fases[0], entrada, { pista: 'entera', canasta: 'norte' });
+  const finSur = posicionesFinales(fases[0], entrada, { pista: 'entera', canasta: 'sur' });
+  ok(Math.abs(finNorte.b1.y - finSur.b1.y) > 0.05, `el rebote cae en sitios distintos: ${finNorte.b1.y} y ${finSur.b1.y}`);
+  /* Y lo que decide cuál usa `recalcular` es `canastaDe`. */
+  const conUno = recalcular([...fases, { id: 'f2', carriles: [] }], entrada, 'entera', { canasta: 'norte' });
+  const conDos = recalcular([...fases, { id: 'f2', carriles: [] }], entrada, 'entera', { canasta: 'norte', canastaDe: (i) => (i === 0 ? 'sur' : 'norte') });
+  ok(Math.abs(conUno.entradas[1].b1.y - conDos.entradas[1].b1.y) > 0.05,
+    `la fase 2 arranca con el balón donde diga el aro de la 1: ${conUno.entradas[1].b1.y} y ${conDos.entradas[1].b1.y}`);
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

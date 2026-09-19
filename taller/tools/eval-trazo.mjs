@@ -25,7 +25,7 @@ import {
   nuevoTrazo, desdePuntos, nodosFijos, moverNodo, insertarEn,
   curvar, enderezar, alternarCurva, esCurvo, borrarNodo,
   longitudMetros, rotulo, duracionDe, suavizar,
-  RADIO_NODO, nodoEn, segmentoEn, reanclar, fraccionMasCercana,
+  RADIO_NODO, nodoEn, segmentoEn, reanclar, fraccionMasCercana, cortarTrazo,
 } from '../js/pizarra/trazo.js';
 import { flattenPath, manejadoresTangentes } from '../js/canvas/geometry.js';
 import { tipoFlecha } from '../js/pizarra/dibujo.js';
@@ -473,6 +473,31 @@ test('POR DÓNDE PASA MÁS CERCA: la fracción del recorrido, medida en metros',
   const f = fraccionMasCercana(quebrado, { x: 0.25, y: 0.8 }, 'entera');
   ok(f > 0.5 && f < 1, `en el segundo tramo: ${f}`);
   eq(fraccionMasCercana(null, { x: 0.5, y: 0.5 }), 0, 'sin trazo no rompe');
+});
+
+test('CORTAR UN TRAZO POR LA MITAD DEJA LA MITAD DEL CAMINO (§8.6)', () => {
+  const t = nuevoTrazo({ x: 0.2, y: 0.5 }, { x: 0.8, y: 0.5 });
+  const mitad = cortarTrazo(t, 0.5, 'entera');
+  aprox(longitudMetros(mitad, 'entera'), longitudMetros(t, 'entera') / 2, 1e-6, 'la mitad de largo:');
+  aprox(mitad[0].x, 0.2, 1e-9, 'empieza donde empezaba:');
+  aprox(mitad[mitad.length - 1].x, 0.5, 1e-6, 'y acaba a mitad de camino:');
+});
+
+test('y cortar por cero o por uno no rompe nada', () => {
+  const t = nuevoTrazo({ x: 0.2, y: 0.5 }, { x: 0.8, y: 0.5 });
+  eq(cortarTrazo(t, 1, 'entera').length >= 2, true);
+  aprox(longitudMetros(cortarTrazo(t, 1, 'entera'), 'entera'), longitudMetros(t, 'entera'), 1e-6, 'entero:');
+  aprox(longitudMetros(cortarTrazo(t, 0, 'entera'), 'entera'), 0, 1e-9, 'y en el arranque, sin longitud:');
+  eq(cortarTrazo(null, 0.5).length, 0, 'sin trazo no se inventa nada:');
+  eq(cortarTrazo([{ x: 0.5, y: 0.5 }], 0.5).length, 2, 'con un nodo suelto, un trazo de longitud cero:');
+});
+
+test('UN TRAZO CURVO SE CORTA POR EL CAMINO DE VERDAD, no por la cuerda', () => {
+  /* Un trazo con curva: el corte a la mitad tiene que medir la mitad de
+     lo que mide el camino aplanado, no de la línea recta. */
+  const t = curvar(nuevoTrazo({ x: 0.2, y: 0.4 }, { x: 0.8, y: 0.4 }), 1, 0.15);
+  const largo = longitudMetros(t, 'entera');
+  aprox(longitudMetros(cortarTrazo(t, 0.5, 'entera'), 'entera'), largo / 2, 1e-3);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

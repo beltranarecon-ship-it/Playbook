@@ -40,9 +40,10 @@
 
 import { metrosEntre, escalaDe } from '../../canvas/escala.js';
 import { fotograma } from '../../canvas/fotograma.js';
-import { limitesCancha } from '../../canvas/medidas.js';
+import { limitesCancha, marcoDe } from '../../canvas/medidas.js';
 import { posicionesDe } from '../../canvas/anclas.js';
 import { numeroDe, EQUIPOS } from '../elementos.js';
+import { posesionAlFinal } from '../posesion.js';
 
 /* ── Las reglas y sus números (§8.3) ───────────────────────── */
 
@@ -107,10 +108,10 @@ export const SEGUIMIENTO = Object.freeze({
  *
  * «roba» llega en el paso siguiente: cambia la posesión y los papeles.
  */
-export const ACCIONES_DEFENSOR = Object.freeze(['ayuda', 'sobrepasado', 'cambia_marca', 'cierra_rebote', 'dos_contra_uno']);
+export const ACCIONES_DEFENSOR = Object.freeze(['ayuda', 'sobrepasado', 'cambia_marca', 'cierra_rebote', 'dos_contra_uno', 'roba']);
 
 /** Las que hay que señalar a alguien, y a quién. */
-export const SENALA = Object.freeze({ ayuda: 'atacante', cambia_marca: 'defensor' });
+export const SENALA = Object.freeze({ ayuda: 'atacante', cambia_marca: 'defensor', roba: 'atacante' });
 
 /** Cuándo vuelve con su par el que ayuda: en el último cuarto de la
  *  fase, para que se vea ir, tapar y volver (§8.5). */
@@ -446,21 +447,80 @@ function quienRetrasa({ elementos = [], papeles = null, pista = 'entera', canast
 export function papelesDeJugada(jugada) {
   const j = jugada || {};
   const pista = j.pista || 'entera';
-  const canasta = j.canasta || 'norte';
-  const base = emparejar({ elementos: j.elementos || [], defensa: j.defensa, pista });
+  const elementos = j.elementos || [];
+  const base = emparejar({ elementos, defensa: j.defensa, pista });
   const conSituacion = { ...base, situacion: situacionDe({ ...base, defensa: j.defensa }) };
-  const conRetrasa = (papeles) => ({
+  const conRetrasa = (papeles, canasta) => ({
     ...papeles,
-    retrasa: quienRetrasa({ elementos: j.elementos || [], papeles, pista, canasta }),
+    retrasa: quienRetrasa({ elementos, papeles, pista, canasta }),
   });
-  const inicio = { ...conRetrasa(conSituacion), acciones: {} };
+  const canastaInicial = j.canasta || 'norte';
+  const inicio = { ...conRetrasa(conSituacion, canastaInicial), acciones: {}, canasta: canastaInicial };
+
+  /* De quién es cada balón al empezar, para ir contando de fase en fase
+     quién lo tiene al acabar cada una. */
+  const equipoDe = new Map(jugadores(elementos).map((x) => [x.id, x.equipo || 'A']));
+  const enPista = jugadores(elementos).filter(enJuego);
+  const posesionInicial = Object.fromEntries((elementos || [])
+    .filter((e) => e && e.kind === 'balon')
+    .map((e) => [e.id, e.portador_id || null]));
+  /* Los papeles forzados NO cambian: si el entrenador ha dicho quién
+     ataca, manda él y no lo que pase con el balón (§8.1). */
+  const forzado = !!(j.defensa && j.defensa.ataca);
+
+  let ataca = inicio.ataca;
+  let canasta = canastaInicial;
   let pares = inicio.pares;
-  const fases = (j.fases || []).map((f) => {
+  const fases = (j.fases || []).map((f, i) => {
     const acciones = declaradasDe(f);
-    pares = conCambiosDeMarca(pares, acciones, inicio.defensores);
-    return { ...conRetrasa({ ...conSituacion, pares }), acciones };
+    pares = conCambiosDeMarca(pares, acciones, papelesDe(ataca).defensores);
+    const papeles = {
+      ...conRetrasa({ ...conSituacion, ...papelesDe(ataca), pares }, canasta),
+      acciones,
+      canasta,
+    };
+    if (!forzado) {
+      const siguiente = quienAtacaDespues(j, i, { ataca, posesionInicial, equipoDe, enPista });
+      if (siguiente && siguiente !== ataca) {
+        /* CAMBIAN LOS PAPELES (§8.6): el emparejamiento se invierte —el
+           que era su par pasa a defenderle— y se ataca al otro aro. */
+        pares = Object.fromEntries(Object.entries(pares).filter(([, a]) => a).map(([d, a]) => [a, d]));
+        ataca = siguiente;
+        canasta = laContraria(pista, canasta);
+      }
+    }
+    return papeles;
   });
   return { inicio, fases };
+
+  /* Quiénes atacan y quiénes defienden con este equipo atacando. */
+  function papelesDe(equipo) {
+    if (!equipo) return { ataca: null, atacantes: [], defensores: [], situacion: null };
+    const atacantes = enPista.filter((x) => (x.equipo || 'A') === equipo).map((x) => x.id);
+    const defensores = enPista.filter((x) => (x.equipo || 'A') !== equipo).map((x) => x.id);
+    return { ataca: equipo, atacantes, defensores, situacion: situacionDe({ atacantes, defensores, defensa: j.defensa }) };
+  }
+}
+
+/**
+ * Quién ataca en la fase SIGUIENTE a la `i` (§8.6 y lo decidido con el
+ * entrenador): cambian los papeles el robo, el rebote defensivo y la
+ * canasta anotada. Todo desde la fase siguiente, que es lo que casa con
+ * el §8.2: dentro de una fase nadie cambia de comportamiento.
+ */
+function quienAtacaDespues(j, i, { ataca, posesionInicial, equipoDe, enPista }) {
+  const fases = j.fases || [];
+  const duenos = posesionAlFinal(fases, i, posesionInicial);
+  /* El equipo que acaba la fase con balón. Con balones de dos equipos a
+     la vez no se decide nada: se queda como estaba. */
+  const equipos = new Set(Object.values(duenos).filter(Boolean).map((id) => equipoDe.get(id)).filter(Boolean));
+  if (equipos.size === 1) return [...equipos][0];
+  /* Sin nadie con balón, una CANASTA ANOTADA pasa el ataque al otro
+     equipo: el balón se saca de fondo. */
+  const anotada = ((fases[i] && fases[i].tramos) || []).some((t) => t && t.desenlace === 'entra');
+  if (!anotada || !ataca) return ataca;
+  const otros = enPista.map((x) => x.equipo || 'A').filter((e) => e !== ataca);
+  return otros.length ? otros[0] : ataca;
 }
 
 /* «Cambia con…»: los dos se intercambian el par. Un cambio con alguien
@@ -475,6 +535,13 @@ function conCambiosDeMarca(pares, acciones, defensores) {
     pares = r;
   }
   return r;
+}
+
+/** La canasta contraria, o la misma si la pista solo tiene una (§8.6). */
+export function laContraria(pista, canasta) {
+  const canastas = (marcoDe(pista) || {}).canastas || [];
+  if (canastas.length < 2) return canasta;
+  return canastas.find((c) => c !== canasta) || canasta;
 }
 
 /* ── La defensa se mueve sola (§8.4) ───────────────────────── */
@@ -575,7 +642,9 @@ export function seguirDefensa({
          par: así nunca hay un salto que no venga de un empujón. */
       const par = papeles.pares[d];
       const suPar = par ? ahora.f.players[par] : null;
-      if (suPar && metrosEntre(pista, siguiente, suPar) < SEGUIMIENTO.apartarse) {
+      /* El que va a robar no se aparta de nadie: va a por el balón. */
+      const roba = ((papeles.acciones || {})[d] || {}).accion === 'roba';
+      if (!roba && suPar && metrosEntre(pista, siguiente, suPar) < SEGUIMIENTO.apartarse) {
         const desde = metrosEntre(pista, donde[d], suPar) > 1e-6 ? donde[d] : { x: suPar.x, y: suPar.y - 0.01 };
         const fuera = aDistancia(pista, suPar, desde, SEGUIMIENTO.apartarse);
         const antes = par ? previo.f.players[par] : null;
@@ -692,6 +761,15 @@ export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], p
       if (!O || u >= AYUDA_VUELVE) continue;
       const suyo = lleva(dec.objetivo_id);
       pon(d, hacia(pista, O, aro, suyo ? p.par_con_balon : p.par_sin_balon), 'ayuda', { balon: suyo ? O : null, objetivo: dec.objetivo_id });
+      hechos.add(d);
+    } else if (dec.accion === 'roba') {
+      /* Va A POR EL BALÓN del que se le ha señalado: no a colocarse cerca,
+         a quitárselo. Por eso el sitio es el balón, y por eso el metro de
+         separación no cuenta para él (§8.4): el robo es un contacto. */
+      const suyo = balones.find((b) => b.dueno === dec.objetivo_id);
+      const O = suyo ? suyo.sitio : (dec.objetivo_id ? en(dec.objetivo_id) : null);
+      if (!O) continue;
+      pon(d, O, 'roba', { balon: O, objetivo: dec.objetivo_id });
       hechos.add(d);
     } else if (dec.accion === 'dos_contra_uno') {
       /* Se suma a la trampa JUNTO AL QUE YA ESTÁ: sin nadie sobre el
@@ -888,6 +966,11 @@ export function explicarRegla({ pista = 'entera', canasta = 'norte', elementos =
       const dicho = ((papeles.acciones || {})[defensor] || {}).accion === 'cierra_rebote';
       const porQue = dicho ? 'Cierra el rebote' : 'El tiro ha fallado: cierra el rebote';
       return { aplica: s.aplica, texto: `${porQue} entre su par y el aro, a ${metros(p.cierra_rebote)}, hasta el final de la fase.`, primitivas: [linea(P, aro), aqui] };
+    }
+    case 'roba': {
+      const o = porId.get(s.objetivo);
+      const quien = o ? `al ${numeroDe(o) || 'otro'}` : 'al que lo lleva';
+      return { aplica: s.aplica, texto: `Va a robarle el balón ${quien}. Desde la fase siguiente cambian los papeles: su equipo pasa a atacar.`, primitivas: [linea({ x: s.balon.x, y: s.balon.y }, { x: s.x, y: s.y }), aqui] };
     }
     case 'sobrepasado':
       return { aplica: s.aplica, texto: `Le han superado: persigue a su par por detrás, a ${metros(p.sobrepasado)}, hasta el final de la fase.`, primitivas: [linea(P, aro), aqui] };

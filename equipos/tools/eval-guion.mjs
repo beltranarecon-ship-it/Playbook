@@ -397,6 +397,38 @@ test('y el que no hace nada distinto sigue contándose con los demás', () => {
   eq(g.fases[0].lineas, ['El 1 del equipo 2 es superado y persigue por detrás', 'El 2 ajusta el marcaje']);
 });
 
+test('UN ROBO SE CUENTA CON LO QUE CAMBIA (§8.6)', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1'],
+      defensa: { B1: { accion: 'roba', objetivo_id: 'A1' } },
+      recogidas: [{ jugador_id: 'B1', balon_id: 'b1', t_ms: 400, robo: true }],
+      movimientos: [],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 le roba el balón al 1 del equipo 1 y su equipo pasa a atacar']);
+});
+
+test('y una intercepción se cuenta como tal, sin contar el pase dos veces', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A2', equipo: 'A' }, { id: 'B1', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1'],
+      defensa: { B1: { accion: 'roba', objetivo_id: 'A2' } },
+      pases: [{ de_id: 'A1', a_id: 'B1', balon_id: 'b1', interceptado: true, path: camino(P.base, P.codo_der) }],
+      movimientos: [],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 intercepta el pase para el 2 y su equipo pasa a atacar']);
+});
+
 test('la duración suma movimiento + pausa de cada fase', () => {
   const g = guionDeAnimacion({
     pista: 'entera', jugadores: [], balones: [],

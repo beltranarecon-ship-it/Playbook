@@ -75,14 +75,17 @@ test('cada casilla lista trae su acción del catálogo compartido', () => {
   }
 });
 
-test('lo que aún no existe sale DECLARADO como pendiente y con su motivo', () => {
-  const pend = anilloDe('defensor').filter((c) => c.pendiente);
-  ok(pend.length > 0, 'robar todavía no está: tiene que salir pendiente');
-  for (const c of pend) {
-    ok(c.motivo && c.motivo.length > 10, `${c.slug}: un pendiente sin motivo es un olvido`);
-    eq(c.accion, null);
+test('YA NO QUEDA NADA PENDIENTE EN EL ANILLO, y lo que lo estuviera diría por qué', () => {
+  for (const e of ESTADOS) {
+    for (const c of anilloDe(e).filter((x) => x.pendiente)) {
+      /* La regla, para cuando vuelva a haber alguna: apagada, con motivo
+         y sin acción que ejecutar. */
+      ok(c.motivo && c.motivo.length > 10, `${c.slug}: un pendiente sin motivo es un olvido`);
+      eq(c.accion, null);
+    }
   }
-  eq(pend.map((c) => c.slug), ['roba'], 'y ya solo queda esa:');
+  eq(anilloDe('defensor').filter((c) => c.pendiente).map((c) => c.slug), [],
+    'la defensa está entera desde el paso 5.7:');
 });
 
 test('EL ANILLO DEL DEFENSOR OFRECE LO QUE HACE DISTINTO (§8.5), y se puede usar', () => {

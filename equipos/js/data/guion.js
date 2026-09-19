@@ -325,6 +325,16 @@ export function guionDeAnimacion(anim) {
       const quien = txt(ref.get(d));
       if (!quien) continue;
       const otro = a.objetivo_id ? txt(ref.get(a.objetivo_id)) : null;
+      /* UN ROBO se cuenta con lo que cambia (§8.6), y cómo ha sido lo
+         dice el pase: si le llegaba uno, se lo han interceptado. */
+      if (a.accion === 'roba') {
+        const intercepta = (f.pases || []).some((p) => p && p.interceptado && p.a_id === d);
+        const suyo = a.objetivo_id ? ref.get(a.objetivo_id) : null;
+        lineas.push(intercepta
+          ? `${quien} intercepta el pase${suyo ? ` para ${txt(suyo)}` : ''} y su equipo pasa a atacar`
+          : `${quien} le roba el balón${suyo ? ` ${aRef(suyo)}` : ''} y su equipo pasa a atacar`);
+        continue;
+      }
       lineas.push(FRASE_DEFENSA[a.accion] ? FRASE_DEFENSA[a.accion](quien, otro) : `${quien} ajusta el marcaje`);
     }
 
@@ -340,6 +350,9 @@ export function guionDeAnimacion(anim) {
 
     // 3) pases
     for (const p of f.pases || []) {
+      /* Un pase interceptado ya lo ha contado el robo: contarlo otra vez
+         diría que el balón iba para quien se lo quedó. */
+      if (p && p.interceptado) continue;
       const de = ref.get(p.de_id);
       const para = ref.get(p.a_id);
       const donde = zonaDe(pista, canastaGlobal, nodoFin(p.path));
@@ -370,6 +383,9 @@ export function guionDeAnimacion(anim) {
     // 5) recogidas: el rebote. Va al final porque cierra la acción — y
     //    porque de dónde sale el balón ya lo ha contado el tiro.
     for (const rec of f.recogidas || []) {
+      /* La de un robo no se cuenta aquí: ya lo ha contado el robo, y
+         «recoge el balón» se quedaría corto para lo que ha pasado. */
+      if (rec.robo) continue;
       const r = ref.get(rec.jugador_id);
       if (!r) continue;
       // si el balón venía de un tiro (de esta fase o de la anterior) es un

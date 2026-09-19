@@ -379,20 +379,22 @@ export function reanclarFase(fase, entrada = {}, pista = 'entera') {
  * @param entrada  dónde está cada ficha al empezar la PRIMERA
  * @returns { fases, entradas, huerfanos }
  */
-export function recalcular(fases, entrada = {}, pista = 'entera', { canasta = 'norte' } = {}) {
+export function recalcular(fases, entrada = {}, pista = 'entera', { canasta = 'norte', canastaDe = null } = {}) {
   const salida = [];
   const entradas = [];
   const huerfanos = [];
   let actual = { ...entrada };
-  for (const f of fases || []) {
+  (fases || []).forEach((f, i) => {
     entradas.push(actual);
     const reanclada = reanclarFase(f, actual, pista);
     for (const c of reanclada.carriles) {
       for (const t of c.tramos) if (t.huerfano) huerfanos.push({ fase: reanclada.id, tramo: t.id, elemento: c.elemento });
     }
     salida.push(reanclada);
-    actual = posicionesFinales(reanclada, actual, { pista, canasta });
-  }
+    /* CADA FASE ATACA A SU ARO (§8.6): tras un robo o una canasta se
+       ataca al contrario, y de eso depende dónde cae un tiro. */
+    actual = posicionesFinales(reanclada, actual, { pista, canasta: (canastaDe && canastaDe(i)) || canasta });
+  });
   return { fases: salida, entradas, huerfanos };
 }
 
@@ -436,34 +438,10 @@ export function posicionesFinales(fase, entrada = {}, { pista = null, canasta = 
   return salida;
 }
 
-/**
- * De quién es cada balón AL ACABAR la fase `hasta` (índice), repasando
- * lo dibujado desde el principio (§6.4, §6.5).
- *
- * El modelo solo sabe de quién es el balón AHORA, que es lo último que
- * se dibujó. Al volver a una fase anterior eso ya no vale: si A1 pasa a
- * A2 en la fase 1 y A2 se lo devuelve en la 2, al volver a la 1 el
- * balón tiene que estar en manos de A2, no de A1.
- *
- * Se lee de los datos del tramo y no del nombre de la acción: si lo que
- * viaja es un balón (`corre_id` distinto de quien actúa), al llegar es
- * del receptor, o de nadie si fue al suelo; y quien recoge (`balon_id`)
- * se lo queda.
- *
- * @param inicial  { balonId: portadorId } al empezar la jugada
- */
-export function posesionAlFinal(fases, hasta, inicial = {}) {
-  const duenos = { ...inicial };
-  const lista = fases || [];
-  for (let i = 0; i <= hasta && i < lista.length; i++) {
-    for (const t of (lista[i] && lista[i].tramos) || []) {
-      if (!t) continue;
-      if (t.corre_id && t.corre_id !== t.elemento_id && t.corre_id in duenos) duenos[t.corre_id] = t.receptor_id || null;
-      if (t.balon_id) duenos[t.balon_id] = t.elemento_id;
-    }
-  }
-  return duenos;
-}
+/* De quién es cada balón al acabar una fase: vive en posesion.js, para
+   que la defensa pueda contarlo sin cerrar un círculo de imports. Se
+   reexporta desde aquí porque es donde lo busca todo el mundo. */
+export { posesionAlFinal } from './posesion.js';
 
 /* ---- La escena: poner y quitar (§2.2, §2.3) --------------------
    Añadir o quitar una ficha no es solo cambiar la lista de lo que hay

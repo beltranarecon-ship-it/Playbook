@@ -444,6 +444,51 @@ test('Y LO DECLARADO MUEVE A LA DEFENSA DE VERDAD: al que superan se queda por d
   ok(alAro(detras) > alAro(normal) + 1, `más lejos del aro: ${alAro(detras).toFixed(2)} m frente a ${alAro(normal).toFixed(2)}`);
 });
 
+test('«ROBA» SE DECLARA SEÑALANDO AL QUE TIENE EL BALÓN, y cambia quién ataca', () => {
+  const { t, a1, a2, b1 } = conDefensa();
+  corta(t, a1.id, { x: 0.4, y: 0.35 });
+  elegir(t, b1.id, 'roba');
+  ok(t.companero.eligiendo, 'pregunta a quién');
+  eq(t.companero.activo.vale(ficha(t, a1.id)), null, 'un atacante vale:');
+  t._companeroElegido(ficha(t, a1.id), t.companero.activo);
+  eq(t.declaradas()[b1.id], { accion: 'roba', objetivo_id: a1.id });
+  t._cerrarFase();
+  eq(t.papelesDeFase().ataca, 'B', 'en la fase siguiente ataca el equipo del que robó:');
+  eq(t.canastaEnCurso, 'sur', 'y se ataca al otro aro:');
+  eq(t.papelesDeFase().pares[a1.id], b1.id, 'con el emparejamiento invertido:');
+  ok(a2, 'y el otro atacante sigue en la pista');
+});
+
+test('CAMBIAR SI EL TIRO ENTRA O FALLA CAMBIA QUIÉN ATACA EN LA FASE SIGUIENTE', () => {
+  const { t, a1 } = conDefensa();
+  /* A1 tira y falla: nadie coge el rebote, así que sigue atacando A. */
+  t._trazoHecho({
+    elemento: ficha(t, a1.id), accion: t._accionDe('tira'), variante: null,
+    trazo: nuevoTrazo(ficha(t, a1.id), { x: 0.5, y: 0.1007 }), tipo: 'pass', desenlace: 'falla',
+  });
+  t._cerrarFase();
+  eq(t.papelesDeFase().ataca, 'A', 'con el tiro fallado, sigue atacando el mismo:');
+  t.irAFase(0);
+  const tiro = t.tramos.find((x) => x.desenlace);
+  t.cambiarDesenlace(tiro.id, 'entra');
+  t.irAFase(1);
+  eq(t.papelesDeFase().ataca, 'B', 'y en cuanto entra, ataca el otro:');
+  eq(t.canastaEnCurso, 'sur');
+});
+
+test('TRAS UN ROBO, LO QUE EL ROBADO TENÍA DIBUJADO YA NO ENCAJA', () => {
+  const { t, a1, b1 } = conDefensa();
+  corta(t, a1.id, { x: 0.4, y: 0.35 });
+  elegir(t, b1.id, 'roba');
+  t._companeroElegido(ficha(t, a1.id), t.companero.activo);
+  t._cerrarFase();
+  /* En la fase 2, A1 ya defiende: un corte suyo es de ataque. */
+  corta(t, a1.id, { x: 0.4, y: 0.7 });
+  const sueltos = t.tramosQueNoEncajan();
+  ok(sueltos.some((x) => x.tramo.elemento_id === a1.id && x.fase === 1),
+    `el trazo de A1 en la fase 2 no encaja: ${JSON.stringify(sueltos.map((x) => [x.fase, x.tramo.accion]))}`);
+});
+
 console.log('\n· la defensa se mueve sola (§8.4)');
 
 /* A1 con balón, B1 defendiéndole, y A1 bota hacia el aro. */

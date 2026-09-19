@@ -92,18 +92,19 @@ export const ICONOS = {
   corta: '⤳', bloquea: '▮', recoge: '↺', vuelve_a_fila: '⟲', pivota: '↻',
   defiende: '⌒', rodea: '∿', cambia_de_mano: '⇄', protege: '⊙',
   ayuda: '↔', sobrepasado: '⇢', cambia_marca: '⇆', cierra_rebote: '⊔', dos_contra_uno: '⋀',
+  roba: '✚',
 };
 
 /*
-   Lo que un defensor hace distinto (§8.5) ya está en el catálogo desde
-   el paso 5.6: no dibuja un trazo, dice a qué apunta mientras dura la
-   fase. Queda «robar», que cambia la posesión y los papeles: sale en el
-   anillo desactivada y diciendo por qué. Verla apagada es mejor que no
-   verla: enseña el plan y no se olvida.
+   Lo que un defensor hace distinto (§8.5) está en el catálogo desde el
+   paso 5.6, y robar desde el 5.7: ninguna dibuja un trazo, dicen a qué
+   apunta el defensor mientras dura la fase.
+
+   Aquí no queda nada pendiente. Se deja el hueco —y esta nota— porque
+   es donde se declara lo que todavía no se puede hacer, con su motivo:
+   verlo apagado en el anillo es mejor que no verlo.
 */
-const PENDIENTES = {
-  roba: { nombre: 'Roba', icono: '✚', motivo: 'llega en el paso siguiente de la defensa: cambia la posesión y los papeles' },
-};
+const PENDIENTES = {};
 
 export const ANILLO = {
   conBalon: ['bota', 'pasa', 'tira', 'entra', 'finta', 'para'],

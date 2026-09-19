@@ -334,6 +334,39 @@ export function fraccionMasCercana(trazo, punto, pista = 'entera') {
   return mejor.en / total;
 }
 
+/**
+ * El trazo CORTADO en la fracción `u` de su longitud: solo el trozo que
+ * se recorre hasta ahí.
+ *
+ * Lo usa la intercepción de un pase (§8.6): el balón no llega a su
+ * destino, se queda donde se lo quitan. Sale en nodos lineales porque lo
+ * que se corta es el camino ya aplanado, curvas incluidas.
+ */
+export function cortarTrazo(trazo, u, pista = 'entera') {
+  const flat = flattenPath(trazo || []);
+  const nodo = (p) => ({ x: p.x, y: p.y, tipo_nodo: 'lineal' });
+  if (flat.length < 2) return flat.length ? [nodo(flat[0]), nodo(flat[0])] : [];
+  const k = Math.max(0, Math.min(1, Number.isFinite(u) ? u : 1));
+  const largos = [];
+  let total = 0;
+  for (let i = 1; i < flat.length; i++) { const l = metrosEntre(pista, flat[i - 1], flat[i]); largos.push(l); total += l; }
+  if (!(total > 0)) return [nodo(flat[0]), nodo(flat[0])];
+  const hasta = total * k;
+  const salida = [nodo(flat[0])];
+  let recorrido = 0;
+  for (let i = 1; i < flat.length; i++) {
+    const l = largos[i - 1];
+    if (recorrido + l < hasta - 1e-9) { salida.push(nodo(flat[i])); recorrido += l; continue; }
+    const t = l > 0 ? (hasta - recorrido) / l : 0;
+    salida.push(nodo({
+      x: flat[i - 1].x + (flat[i].x - flat[i - 1].x) * t,
+      y: flat[i - 1].y + (flat[i].y - flat[i - 1].y) * t,
+    }));
+    break;
+  }
+  return salida.length > 1 ? salida : [salida[0], salida[0]];
+}
+
 /** Lo que se enseña mientras se dibuja: «8,4 m · 2,1 s». */
 export function rotulo(trazo, pista = 'entera', ritmo = 'normal') {
   const m = longitudMetros(trazo, pista);

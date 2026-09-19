@@ -33,7 +33,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 2 · Dibujar: anillo, trazo, nodos, encadenado, repaso | ✅ cerrada | `2db2b91` |
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
-| 5 · Defensa | ⏳ en curso: pasos 5.0 a 5.5 hechos; quedan 5.6 y 5.7 (ver «Capa 5, paso a paso») | — |
+| 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `pendiente de commit` |
 | 6 · Conos y elementos | pendiente | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
@@ -41,7 +41,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **65 en verde, 1531
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **65 en verde, 1552
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -63,7 +63,7 @@ de punta a punta, con sus bancos en verde y commit en la rama.
 | 5.4 | Colocar por regla (las 6 del §8.3), pestaña «Ajustes» del panel derecho (solo defensa) y ver la regla (§8.7) | ✅ (64 bancos, 1474 pruebas; revisión adversarial de 28 hallazgos, arreglados los ciertos; bancos nuevos eval-ajustes y más pruebas de defensa) |
 | 5.5 | Seguimiento continuo (§8.4): la defensa se mueve sola igual en Pizarra y proyector; movimiento «por tiempo» en el motor (aditivo); cierra el rebote automático; carril gris «automático» | ✅ (65 bancos, 1507 pruebas; 16 mutantes, los 16 muertos; probado en la Pizarra y en el motor sobre la misma jugada) |
 | 5.6 | Acciones declaradas del defensor: ayuda y recupera, es sobrepasado, cambia con…, cierra el rebote, va al dos contra uno | ✅ (65 bancos, 1531 pruebas; 23 mutantes, los 23 muertos; probado en la Pizarra: anillo, «pincha a quién», panel y carriles) |
-| 5.7 | Robo, rebote defensivo y canasta: cambio de papeles y de aro desde la fase siguiente. Cierre de la capa | pendiente |
+| 5.7 | Robo, rebote defensivo y canasta: cambio de papeles y de aro desde la fase siguiente. Cierre de la capa | ✅ (65 bancos, 1552 pruebas; 20 mutantes, los 20 muertos; probado en la Pizarra: robar, cambiar de papeles y de aro) |
 
 **Respuestas del entrenador (2026-09-13):**
 
@@ -215,6 +215,33 @@ los números ya cambiados. Y ocho pruebas que pasaban por casualidad.
   señalar a nadie; ayudar y cambiar el par se eligen en el anillo.
 - En la línea de tiempo, **lo dicho por el entrenador se ve en celeste** y
   lo que sale solo, en gris.
+
+**Decidido en el paso 5.7 (dicho al entrenador):**
+
+- **Los papeles se cuentan fase a fase** y cambian desde la SIGUIENTE, no
+  a mitad (§8.2 + §8.6): quien acaba una fase con el balón ataca en la
+  siguiente, y una canasta anotada le pasa el ataque al otro equipo. Al
+  cambiar, el emparejamiento **se invierte** (el que era su par pasa a
+  defenderle) y **se ataca al otro aro** si la pista tiene dos.
+- **Lo que haya dicho el entrenador manda**: con «quién ataca» forzado en
+  Ajustes, no cambia nada aunque roben o anoten.
+- **Robar es una acción declarada más** (§8.5), y se señala a quién:
+  · si al señalado le llega un PASE en esa fase, es una **intercepción**:
+    el pase se corta donde se cruza el que roba y el balón es suyo ahí;
+  · si lo lleva él, es un robo **en el bote**: el que roba tarda en
+    llegar lo que tarde a su velocidad (§8.4), y desde ese instante el
+    balón va con él.
+  El entrenador pidió señalar «el trazo del pase» para interceptar;
+  señalar al RECEPTOR hace lo mismo con el gesto que ya existe («pincha a
+  quién»), y es lo que se ha hecho. **Queda por confirmar.**
+- **El que va a robar no se aparta de nadie**: el metro de separación del
+  §8.4 no cuenta para él, porque el robo es justo un contacto.
+- **Lo que el robado tuviera dibujado después ya no encaja**, y lo dice
+  el aviso de siempre: al cambiar los papeles, sus trazos de ataque son
+  de alguien que ahora defiende.
+- **`posesionAlFinal` vive en su propio fichero** (`pizarra/posesion.js`):
+  la necesitan las fases y la defensa, y dejarla en `fases.js` cerraba un
+  círculo de imports que reventaba al abrir la Pizarra.
 
 **Lo que no cuadra, dicho y NO tocado (paso 5.6):**
 
