@@ -34,14 +34,14 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
 | 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
-| 6 · Conos y elementos | pendiente | — |
+| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar) y paso 6.0 hecho | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **65 en verde, 1559
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **66 en verde, 1577
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -377,6 +377,38 @@ tocarlos): `eval-repertorio` (anillo del defensor con pendientes;
 «defender no se pierde»), `eval-fases` (`PENDIENTES.bloqueo`),
 `eval-compilar` (B1 pasa a defender y a moverse), `eval-dibujo` (texto
 del bloqueo) y `eval-acciones` si cambian las mecánicas.
+
+## Capa 6, paso a paso
+
+Plan propuesto el 2026-09-19, **sin confirmar todavía por el entrenador**
+(sigue el mismo criterio que la capa 5: cada paso deja algo que se prueba
+de punta a punta, con sus bancos en verde y su commit en la rama).
+
+| Paso | Qué queda funcionando | Estado |
+|---|---|---|
+| 6.0 | El módulo PURO de «qué hace este cono con este trazo» (§7.4): rodeo, slalom y puerta, con sus números y su banco. Y los arreglos que la capa destape | ✅ (66 bancos, 1577 pruebas; banco nuevo `eval-conos.mjs`, 18 pruebas; 11 mutantes, 10 muertos y 1 equivalente) |
+| 6.1 | Rodear un cono al dibujar: el trazo se curva por el lado de entrada, con su iconito encima; un clic cambia el lado y otro lo anula. Se guarda la intención, así que mover el cono rehace la curva. Compila como `funcion: 'rodear'` y el guion lo cuenta | pendiente |
+| 6.2 | Slalom: tres o más conos alineados cerca del trazo, alternando lados desde el de entrada | pendiente |
+| 6.3 | Puertas (§7.4.1): emparejamiento automático por distancia, la banda, el trazo imantado a pasar por dentro y en rojo si se fuerza por fuera; deshacer el par en el panel | pendiente |
+| 6.4 | El defensor confinado al carril de la puerta: su regla se proyecta sobre el carril | pendiente |
+| 6.5 | Filas (§7.4.2): un cono es cola —jugadores, equipo, papel, un balón por cabeza—, con su tirador de orientación y su destino de vuelta. Se enciende «Vuelve a la fila», que hoy no puede | pendiente |
+| 6.6 | Rondas: salen todos uno tras otro, con cadencia, y variación por ronda | pendiente |
+| 6.7 | Balones múltiples y equipos del club. Cierre de la capa | pendiente |
+
+**Preguntas para el entrenador antes de llegar a 6.6 y 6.7:**
+
+1. **Rondas**: ¿qué tiene que verse en el proyector? ¿La jugada entera
+   repetida una vez por ronda, o una sola animación en la que los de la
+   fila van saliendo escalonados?
+2. **Variación por ronda** («el tercero tira en vez de entrar»): ¿se
+   dibuja encima la ronda que cambia, o se elige de una lista lo que hace
+   distinto?
+3. **Equipos del club**: ¿es elegir el color/equipo de la fila (1 a 4), o
+   traerse de verdad la plantilla del club —nombres y dorsales— para que
+   salgan en las fichas?
+
+Mientras no haya respuesta se va por los pasos 6.0 a 6.5, que la
+especificación deja cerrados.
 
 ## Capa 4, paso a paso
 
