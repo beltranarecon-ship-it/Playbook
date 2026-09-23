@@ -617,6 +617,24 @@ test('CAMBIAR SI EL TIRO ENTRA O FALLA CAMBIA QUIÉN ATACA EN LA FASE SIGUIENTE'
   eq(t.canastaEnCurso, 'sur');
 });
 
+test('TRAS CAMBIAR LOS PAPELES, CAMBIAR SI UN TIRO ENTRA DEJA EL BALÓN BAJO EL ARO NUEVO', () => {
+  const { t, a1, b1 } = conDefensa();
+  corta(t, a1.id, { x: 0.4, y: 0.35 });
+  elegir(t, b1.id, 'roba');
+  t._companeroElegido(ficha(t, a1.id), t.companero.activo);
+  t._cerrarFase();
+  eq(t.canastaEnCurso, 'sur', 'en la fase 2 se ataca al sur:');
+  const aroSur = { x: 0.5, y: 1 - 0.1007 };
+  t._trazoHecho({
+    elemento: ficha(t, b1.id), accion: t._accionDe('tira'), variante: null,
+    trazo: nuevoTrazo(ficha(t, b1.id), aroSur), tipo: 'pass', desenlace: 'falla',
+  });
+  const tiro = t.tramos.find((x) => x.desenlace);
+  t.cambiarDesenlace(tiro.id, 'entra');
+  const balon = t.fichas.elementos.find((e) => e.kind === 'balon');
+  ok(balon.y > 0.8, `el balón cae bajo el aro sur, no bajo el norte: y=${balon.y.toFixed(3)}`);
+});
+
 test('TRAS UN ROBO, LO QUE EL ROBADO TENÍA DIBUJADO YA NO ENCAJA', () => {
   const { t, a1, b1 } = conDefensa();
   corta(t, a1.id, { x: 0.4, y: 0.35 });

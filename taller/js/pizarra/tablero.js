@@ -1806,7 +1806,7 @@ export class Tablero {
          ofrecía tirar a quien ya no lo tenía. */
       if (esTiro(mio)) {
         /* Un tiro corregido deja el balón donde cae, no en su punta. */
-        const cae = trasElTiro({ pista, canasta: this.canasta, desde: trazo[0], desenlace: mio.desenlace });
+        const cae = trasElTiro({ pista, canasta: this.canastaEnCurso, desde: trazo[0], desenlace: mio.desenlace });
         lista = mover(soltarBalon(this.fichas.elementos, mio.corre_id), { [mio.corre_id]: cae || { x: fin.x, y: fin.y } });
       } else if (mio.corre_id !== mio.elemento_id) {
         const balon = lista.find((e) => e.id === mio.corre_id);
@@ -1840,7 +1840,7 @@ export class Tablero {
     if (this._editando && this._editando.id === id) this._editando = actual;
     const ultimo = [...this.tramos].reverse().find((x) => x.corre_id === t.corre_id);
     if (ultimo && ultimo.id === id) {
-      const cae = trasElTiro({ pista: this.lienzo.vista.pistaKey, canasta: this.canasta, desde: t.trazo[0], desenlace });
+      const cae = trasElTiro({ pista: this.lienzo.vista.pistaKey, canasta: this.canastaEnCurso, desde: t.trazo[0], desenlace });
       if (cae) this.fichas._cambio(mover(this.fichas.elementos, { [t.corre_id]: cae }));
     }
     this._recalcularSiguientes();
@@ -1879,7 +1879,7 @@ export class Tablero {
 
   _colocarDesenlace(vista) {
     if (!this._desenlace || !vista || !vista.vw) return;
-    const aro = posicionesDe(vista.pistaKey, this.canasta)?.aro;
+    const aro = posicionesDe(vista.pistaKey, this.canastaEnCurso)?.aro;
     if (!aro) return;
     const [px, py] = vista.toPx(aro[0], aro[1]);
     const caja = this._desenlace.capa.firstChild;
