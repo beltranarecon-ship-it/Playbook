@@ -522,6 +522,12 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
+**Hoy (2026-09-23): el paso 6.6, las rondas**, esperando dos respuestas
+del entrenador (ver «Capa 6, paso a paso»): cómo se ve en el proyector
+una fila que sale por rondas y cómo se dice lo que cambia en una ronda.
+Lo que viene después de esta línea es el siguiente paso de la capa 4,
+que ya está hecho; se deja como historia.
+
 **4.4b**, con dos decisiones ya tomadas (2026-09-11): el creador v2.1 se
 borra ya, como dice el §12, y lo guardado se trata como dice el §11.4.
 
