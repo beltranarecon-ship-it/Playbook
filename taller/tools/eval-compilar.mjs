@@ -596,6 +596,14 @@ test('UN CONO QUE SE SORTEA SE COMPILA COMO «RODEAR»; uno anulado, como decora
   eq(otra.conos.find((c) => c.id === 'cono_x').funcion, 'decorativo', 'anulado no se rodea:');
 });
 
+test('LOS PALOS DE UNA PUERTA SE COMPILAN COMO «PUERTA»', () => {
+  const { l, a1 } = escena();
+  const conos = [{ id: 'pa', kind: 'cono', x: 0.25, y: 0.6 }, { id: 'pb', kind: 'cono', x: 0.35, y: 0.6 }];
+  const t = { ...tramo(a1.id, P(0.3, 0.8), P(0.3, 0.4)), sorteando: [{ cono: 'pa', puerta: ['pa', 'pb'], tipo: 'puerta' }] };
+  const anim = compilar(jugadaCon([...l, ...conos], [{ id: 'f1', tramos: [t] }]));
+  eq(anim.conos.map((c) => c.funcion), ['puerta', 'puerta']);
+});
+
 /* ── Robar (§8.6) ────────────────────────────────────────── */
 
 test('ROBO EN EL BOTE: el balón pasa a ser del que roba A MITAD DE FASE', () => {

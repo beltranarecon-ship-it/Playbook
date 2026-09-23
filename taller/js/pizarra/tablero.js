@@ -48,7 +48,9 @@ import {
   estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS, porQueNoCompanero, saleEn,
 } from './repertorio.js';
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
-import { interpretarConos, sorteandoDe, volverASortear, intencionDe, otroLado, respectoAlTrazo } from './conos.js';
+import {
+  interpretarConos, sorteandoDe, volverASortear, intencionDe, otroLado, respectoAlTrazo, cruceConPuerta,
+} from './conos.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
@@ -833,7 +835,43 @@ export class Tablero {
     if (!e) return 'esa ficha';
     if (e.kind === 'balon') return 'el balón';
     if (e.kind === 'jugador') return `${e.equipo || ''}${numeroDe(e) || ''}`.trim() || 'ese jugador';
+    /* Todo cono es un sitio con nombre (§7.4.3): «Cono 2» mientras nadie
+       le ponga otro. */
+    if (e.kind === 'cono' && !e.nombre) {
+      const n = /(\d+)$/.exec(String(e.id));
+      return n ? `el cono ${n[1]}` : 'el cono';
+    }
     return e.nombre || 'eso';
+  }
+
+  /** Las puertas que hay en la fase que se edita (§7.4.1): los pares de
+   *  palos que algún trazo cruza, sin contar las anuladas. */
+  puertasDeLaFase() {
+    const vistas = new Map();
+    for (const t of this.tramos) {
+      for (const x of t.sorteando || []) {
+        if (!x || x.tipo !== 'puerta' || x.anulado || !x.puerta) continue;
+        const [a, b] = x.puerta;
+        vistas.set([a, b].sort().join('|'), [a, b]);
+      }
+    }
+    return [...vistas.values()];
+  }
+
+  /**
+   * DESHACER UNA PUERTA desde el panel (§7.4.1): se anula en todos los
+   * trazos de la fase que la cruzan, que es lo mismo que hace el clic en
+   * su iconito, pero para todos a la vez.
+   */
+  deshacerPuerta(conoId) {
+    let toco = false;
+    for (const t of this.tramos) {
+      const suya = (t.sorteando || []).find((x) => x && x.tipo === 'puerta' && !x.anulado && (x.puerta || []).includes(conoId));
+      if (!suya) continue;
+      this.cambiarSorteo(t.id, suya.cono);
+      toco = true;
+    }
+    return toco;
   }
 
   /**
@@ -864,8 +902,46 @@ export class Tablero {
      donde estén AHORA. `lados` fuerza el de alguno, que es lo que hace
      un clic sobre su iconito. */
   _sorteando(trazo, intencion = null) {
-    const { lados, anulados } = intencionDe(intencion || []);
-    return volverASortear(trazo, this.conos(), { pista: this.lienzo.vista.pistaKey, lados, anulados });
+    const { lados, anulados, forzadas } = intencionDe(intencion || []);
+    return volverASortear(trazo, this.conos(), { pista: this.lienzo.vista.pistaKey, lados, anulados, forzadas });
+  }
+
+  /**
+   * ¿Está este tramo FORZADO por fuera de alguna puerta? (§7.4.1). Es lo
+   * que se pinta en rojo: lo que el ejercicio quiere corregir.
+   */
+  fueraDePuerta(tramo) {
+    const conos = new Map(this.conos().map((c) => [c.id, c]));
+    for (const x of (tramo && tramo.sorteando) || []) {
+      if (!x || x.tipo !== 'puerta' || x.anulado) continue;
+      const [a, b] = (x.puerta || []).map((id) => conos.get(id));
+      if (!a || !b) continue;
+      const cruce = cruceConPuerta(tramo.trazo, a, b, this.lienzo.vista.pistaKey);
+      if (!cruce || !cruce.dentro) return true;
+    }
+    return false;
+  }
+
+  /* Después de corregir un trazo a mano: la puerta que ya no se cruza
+     queda FORZADA —el entrenador lo ha llevado por fuera a propósito, y
+     el imán no debe devolverlo—; la que se vuelve a cruzar, deja de
+     estarlo. */
+  _revisarPuertas(tramo) {
+    const conos = new Map(this.conos().map((c) => [c.id, c]));
+    let toco = false;
+    const sorteando = (tramo.sorteando || []).map((x) => {
+      if (!x || x.tipo !== 'puerta' || x.anulado) return x;
+      const [a, b] = (x.puerta || []).map((id) => conos.get(id));
+      if (!a || !b) return x;
+      const cruce = cruceConPuerta(tramo.trazo, a, b, this.lienzo.vista.pistaKey);
+      const fuera = !cruce || !cruce.dentro;
+      if (fuera === !!x.forzada) return x;
+      toco = true;
+      if (fuera) return { ...x, forzada: true };
+      const { forzada: _fuera, ...resto } = x;
+      return resto;
+    });
+    return toco ? { ...tramo, sorteando } : tramo;
   }
 
   /* La intención que queda tras volver a leer: lo leído, y lo anulado,
@@ -932,6 +1008,8 @@ export class Tablero {
     if (suya.tipo === 'zigzag') {
       grupo = [];
       for (let k = i; k < intencion.length && intencion[k].tipo === 'zigzag'; k++) grupo.push(intencion[k].cono);
+    } else if (suya.tipo === 'puerta') {
+      grupo = (suya.puerta || [conoId]).slice(0, 2);
     } else if (suya.anulado && suya.grupo) {
       grupo = intencion.filter((x) => x.anulado && x.grupo === suya.grupo).map((x) => x.cono);
     }
@@ -939,6 +1017,14 @@ export class Tablero {
     let nueva;
     if (suya.anulado) {
       nueva = intencion.filter((x) => !enGrupo.has(x.cono));        // vuelve a leerse solo
+    } else if (suya.tipo === 'puerta') {
+      /* UNA PUERTA NO TIENE LADO: se pasa por dentro. El clic la anula
+         —el trazo queda libre— y el siguiente la devuelve. */
+      const palos = (suya.puerta || [conoId]).slice(0, 2);
+      nueva = [
+        ...intencion.filter((x) => x.cono !== conoId),
+        ...palos.map((id) => ({ cono: id, anulado: true, grupo: conoId })),
+      ];
     } else if (!suya.cambiado) {
       /* Cambiar el lado del primero basta: el resto de un slalom alterna. */
       nueva = intencion.map((x) => (x.cono === conoId ? { ...x, lado: otroLado(x.lado), cambiado: true } : x));
@@ -989,6 +1075,11 @@ export class Tablero {
         if (x.anulado && x.grupo && x.grupo !== x.cono) continue;
         const nodo = t.trazo.find((n) => n.por_cono === x.cono);
         let punto = nodo ? { x: nodo.x, y: nodo.y } : null;
+        /* La puerta, entre sus dos palos: es por donde hay que pasar. */
+        if (x.tipo === 'puerta' && !x.anulado) {
+          const [a, b] = (x.puerta || []).map((id) => conos.get(id));
+          if (a && b) punto = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        }
         if (!punto && x.anulado && conos.has(x.cono)) {
           const c = conos.get(x.cono);
           const en = respectoAlTrazo(t.trazo, c, pista);
@@ -1040,11 +1131,27 @@ export class Tablero {
     };
   }
 
-  /* Los iconitos, en pantalla: ↻ rodeo · ⇄ slalom · ∅ anulado. */
+  /* Los iconitos, en pantalla: ↻ rodeo · ⇄ slalom · ⌷ puerta · ∅ anulado.
+     Y debajo, la banda fina de cada puerta, de palo a palo. */
   _dibujarIconosConos({ ctx, toPx, R }) {
     const iconos = this.iconosDeConos();
     if (!iconos.length) return;
-    const GLIFO = { rodeo: '↻', zigzag: '⇄', anulado: '∅' };
+    const conos = new Map(this.conos().map((c) => [c.id, c]));
+    ctx.save();
+    ctx.strokeStyle = COLORS.cono;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = Math.max(2, (R && R.scale ? R.scale : 1) * 3);
+    for (const t of this.tramos) {
+      for (const x of t.sorteando || []) {
+        if (!x || x.tipo !== 'puerta' || x.anulado) continue;
+        const [a, b] = (x.puerta || []).map((id) => conos.get(id));
+        if (!a || !b) continue;
+        const [ax, ay] = toPx(a.x, a.y), [bx, by] = toPx(b.x, b.y);
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      }
+    }
+    ctx.restore();
+    const GLIFO = { rodeo: '↻', zigzag: '⇄', puerta: '⌷', anulado: '∅' };
     const radio = Math.max(7, (R && R.jugador ? R.jugador * 0.42 : 8));
     ctx.save();
     ctx.font = `600 ${Math.round(radio * 1.3)}px system-ui, sans-serif`;
@@ -1787,7 +1894,9 @@ export class Tablero {
   _trazoCorregido(trazo) {
     if (!this._editando) return;
     const id = this._editando.id;
-    this.tramos = this.tramos.map((t) => (t.id === id ? { ...t, trazo } : t));
+    /* Corregido a mano: las puertas que el trazo ya no cruza quedan
+       forzadas (§7.4.1) y se pintan en rojo. */
+    this.tramos = this.tramos.map((t) => (t.id === id ? this._revisarPuertas({ ...t, trazo }) : t));
     this._editando = this.tramos.find((t) => t.id === id);
     /* Corregir el ÚLTIMO tramo deja a quien lo recorre en otro sitio,
        así que va detrás. Quien lo recorre y no quien actúa: corriendo
@@ -1930,7 +2039,9 @@ export class Tablero {
      (engine.js, bloqueosEn). */
   _pintarTramo(ctx, R, toPx, t) {
     const flat = flattenPath(t.trazo).map((p) => { const [x, y] = toPx(p.x, p.y); return { x, y }; });
-    drawArrow(ctx, flat, t.tipo, R.scale);
+    /* Forzado por fuera de una puerta: en rojo, que es justo lo que el
+       ejercicio quiere corregir (§7.4.1). */
+    drawArrow(ctx, flat, t.tipo, R.scale, this.fueraDePuerta(t) ? { color: COLORS.mal } : {});
     if (!esBloqueo(t) || !flat.length) return;
     const suyo = t.defensor_id ? this.fichas.elementos.find((e) => e.id === t.defensor_id) : null;
     const frente = (suyo && (this.fichas.donde?.(suyo) || suyo))

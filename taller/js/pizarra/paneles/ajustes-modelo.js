@@ -58,9 +58,11 @@ const opcion = (valor, nombre) => ({ valor, nombre });
  * @param defensa     los ajustes del ejercicio
  * @param nombreDe    (elemento) => cómo se le llama («A1»)
  * @param explicacion la frase de por qué está ahí el defensor, si lo es
+ * @param puertas     [[a, b]] las puertas de la fase que se edita (§7.4.1)
  */
 export function modeloAjustes({
   seleccion = [], elementos = [], papeles = null, defensa = null, nombreDe = (e) => e.id, explicacion = null,
+  puertas = [],
 } = {}) {
   const d = defensa || defensaPorDefecto();
   const p = papeles || { ataca: null, atacantes: [], defensores: [], pares: {}, situacion: null };
@@ -157,6 +159,24 @@ export function modeloAjustes({
       texto: p.ataca
         ? `${nombreDe(j)} no está en juego: ni ataca ni defiende.`
         : 'Nadie ataca todavía: dale el balón a alguien, o elige quién ataca en los ajustes del ejercicio (sin nada seleccionado).',
+    };
+  }
+
+  /* UN CONO (§7.4): qué papel le da lo dibujado. De momento, si forma
+     una puerta, con quién —y cómo deshacerla, que es lo que pide el
+     §7.4.1—. */
+  if (elegidos.length === 1 && elegidos[0].kind === 'cono') {
+    const c = elegidos[0];
+    const par = (puertas || []).find((p) => p.includes(c.id));
+    const otro = par ? par.find((id) => id !== c.id) : null;
+    return {
+      tipo: 'cono',
+      id: c.id,
+      nombre: nombreDe(c),
+      puerta: otro ? { con: otro, nombre: nombre(otro) } : null,
+      texto: otro
+        ? `Forma una puerta con ${nombre(otro)}: el que la cruza pasa por dentro.`
+        : 'Un cono se rodea, hace de slalom o de puerta según por dónde pase el trazo.',
     };
   }
 

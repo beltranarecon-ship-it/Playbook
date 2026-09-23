@@ -13,7 +13,7 @@
 
 import {
   interpretarConos, respectoAlTrazo, sorteandoDe, otroLado, trazoSorteando, sitioAlPasar,
-  sinSorteos, volverASortear, intencionDe, CONOS,
+  sinSorteos, volverASortear, intencionDe, cruceConPuerta, CONOS,
 } from '../js/pizarra/conos.js';
 import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
 
@@ -166,7 +166,8 @@ test('SE GUARDA LA INTENCIÓN, no la curva: qué cono y por qué lado', () => {
   eq(sorteandoDe([zig]), [
     { cono: 'c1', lado: 'der', tipo: 'zigzag' }, { cono: 'c2', lado: 'izq', tipo: 'zigzag' }, { cono: 'c3', lado: 'der', tipo: 'zigzag' },
   ], 'el slalom alterna desde el lado de entrada:');
-  eq(sorteandoDe([{ tipo: 'puerta', conos: ['c1', 'c2'], lado: null, en: 0.4 }]), [{ puerta: ['c1', 'c2'] }]);
+  eq(sorteandoDe([{ tipo: 'puerta', conos: ['c1', 'c2'], lado: null, en: 0.4 }]),
+    [{ cono: 'c1', puerta: ['c1', 'c2'], tipo: 'puerta' }], 'una puerta, por su primer palo:');
   eq(sorteandoDe([]), []);
   eq(sorteandoDe(null), []);
 });
@@ -291,7 +292,57 @@ test('DE LA INTENCIÓN SALE LO QUE HAY QUE RESPETAR: el lado de cada lectura y l
   ]);
   eq(i.lados, { c1: 'izq', z1: 'der' }, 'del slalom solo manda el primero:');
   eq([...i.anulados], ['c9']);
-  eq(intencionDe(null), { lados: {}, anulados: new Set() });
+  const vacia = intencionDe(null);
+  eq([vacia.lados, [...vacia.anulados], [...vacia.forzadas]], [{}, [], []]);
+});
+
+/* ── 8. Puertas (§7.4.1) ─────────────────────────────────── */
+
+test('LOS CONOS DE UN SLALOM APRETADO NO SON PUERTAS: el trazo los recorre, no los cruza', () => {
+  /* Cuatro conos en hilera a 2 m: cada par está a menos de 3 m, pero el
+     trazo va A LO LARGO de la recta que los une. */
+  const conos = [0, 1, 2, 3].map((k) => cono(`c${k}`, k % 2 ? 0.2 : -0.2, 0.65 - k * (2 / E.y)));
+  const r = interpretarConos(RECTO, conos, { pista: 'entera' });
+  ok(!r.some((x) => x.tipo === 'puerta'), `sin puertas: ${JSON.stringify(r.map((x) => x.tipo))}`);
+  eq(r.map((x) => x.tipo), ['zigzag']);
+});
+
+test('UN TRAZO QUE ROZA UN PALO POR FUERA SE IMANTA A PASAR POR DENTRO', () => {
+  /* Puerta de 2 m, de x=+0,3 a x=+2,3: el trazo recto pasa 0,3 m por
+     fuera del primer palo. */
+  const a = cono('a', 0.3, 0.5), b = cono('b', 2.3, 0.5);
+  const r = interpretarConos(RECTO, [a, b], { pista: 'entera' });
+  eq(r.map((x) => [x.tipo, !!x.imantada]), [['puerta', true]], 'es la puerta, imantada:');
+  const t = trazoSorteando(RECTO, r, [a, b], { pista: 'entera' });
+  ok(t.some((n) => n.puerta && n.por_cono === 'a'), 'mete un nodo marcado por la puerta');
+  const cruce = cruceConPuerta(t, a, b, 'entera');
+  ok(cruce && cruce.dentro, 'y ahora pasa por DENTRO');
+});
+
+test('y lejos de la puerta, no la hay: más allá de la banda es cosa de otro', () => {
+  /* El trazo pasa 1,0 m por fuera del primer palo: fuera de la banda. */
+  const a = cono('a', 1.0, 0.5), b = cono('b', 3.0, 0.5);
+  const r = interpretarConos(RECTO, [a, b], { pista: 'entera' });
+  ok(!r.some((x) => x.tipo === 'puerta'), `no hay puerta: ${JSON.stringify(r.map((x) => x.tipo))}`);
+});
+
+test('UNA PUERTA QUE YA SE CRUZA POR DENTRO NO SE TOCA', () => {
+  const a = cono('a', -1.0, 0.5), b = cono('b', 1.0, 0.5);
+  const r = interpretarConos(RECTO, [a, b], { pista: 'entera' });
+  eq(r.map((x) => [x.tipo, !!x.imantada]), [['puerta', false]]);
+  eq(trazoSorteando(RECTO, r, [a, b], { pista: 'entera' }), RECTO, 'el trazo queda como estaba:');
+});
+
+test('UNA PUERTA FORZADA POR FUERA SE SIGUE LEYENDO, sin imán, para marcarla en rojo', () => {
+  const a = cono('a', 0.3, 0.5), b = cono('b', 2.3, 0.5);
+  const r = interpretarConos(RECTO, [a, b], { pista: 'entera', forzadas: new Set(['a', 'b']) });
+  eq(r.map((x) => [x.tipo, !!x.forzada, !!x.dentro]), [['puerta', true, false]], 'forzada y por fuera:');
+  eq(trazoSorteando(RECTO, r, [a, b], { pista: 'entera' }), RECTO, 'y no se imanta:');
+  eq([...intencionDe(sorteandoDe(r)).forzadas].sort(), ['a', 'b'], 'lo forzado queda en la intención:');
+  /* Y lo forzado MANDA sobre el imán, diga la lectura lo que diga: el
+     entrenador lo ha llevado por fuera a propósito. */
+  const lectura = [{ tipo: 'puerta', conos: ['a', 'b'], lado: null, en: 0.5, imantada: true, forzada: true }];
+  eq(trazoSorteando(RECTO, lectura, [a, b], { pista: 'entera' }), RECTO, 'forzada e imantada a la vez, no se toca:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

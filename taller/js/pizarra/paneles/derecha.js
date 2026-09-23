@@ -24,8 +24,10 @@ export class PanelDerecho {
    * @param onReglaDe  (defensor, regla|null)
    * @param onHaceDe   (defensor, accion|null) — lo que hace distinto en
    *                   esta fase (§8.5); `null` es defender a su par
+   * @param onDeshacerPuerta (cono) — deshacer la puerta de ese cono (§7.4.1)
    */
-  constructor({ onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null } = {}) {
+  constructor({ onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null, onDeshacerPuerta = null } = {}) {
+    this.onDeshacerPuerta = onDeshacerPuerta;
     this.onDefensa = onDefensa;
     this.onParDe = onParDe;
     this.onReglaDe = onReglaDe;
@@ -82,6 +84,18 @@ export class PanelDerecho {
     switch (m && m.tipo) {
       case 'ejercicio': return this._ejercicio(m);
       case 'defensor': return this._defensor(m);
+      case 'cono': {
+        /* «el cono 2» va bien dentro de una frase; como título, «Cono 2». */
+        const titulo = String(m.nombre || '').replace(/^el /, '');
+        return [
+          h('h4', { class: 'pz-der__titulo' }, titulo.charAt(0).toUpperCase() + titulo.slice(1)),
+          h('p', { class: 'pz-der__nota' }, m.texto),
+          m.puerta ? h('button', {
+            class: 'pz-der__serie', type: 'button',
+            onClick: () => this.onDeshacerPuerta?.(m.id),
+          }, 'Deshacer la puerta') : null,
+        ];
+      }
       case 'atacante':
         return [h('h4', { class: 'pz-der__titulo' }, m.nombre),
           h('p', { class: 'pz-der__nota' }, m.defensor ? `Le defiende ${m.defensor}. Para cambiarlo, selecciona al defensor o arrastra su línea discontinua.` : 'Nadie le defiende.')];

@@ -56,9 +56,11 @@ const STYLE = {
   bloqueo: { w: 3.5, dash: [8, 5], color: COLORS.arrowRun, alpha: 0.65, head: null },
 };
 
-export function drawArrow(ctx, pts, type, scale = 1) {
+export function drawArrow(ctx, pts, type, scale = 1, { color = null } = {}) {
   if (!pts || pts.length < 2) return;
-  const s = STYLE[type] || STYLE.run;
+  /* `color` pinta la flecha de otro color sin tocar su estilo: es como
+     se marca en rojo un trazo forzado por fuera de una puerta. */
+  const s = color ? { ...(STYLE[type] || STYLE.run), color } : (STYLE[type] || STYLE.run);
   const last = pts[pts.length - 1], prev = pts[pts.length - 2];
   ctx.save();
   ctx.lineJoin = 'round';

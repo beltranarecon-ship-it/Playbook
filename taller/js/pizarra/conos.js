@@ -44,6 +44,15 @@ export const CONOS = Object.freeze({
   /* A cuánto se pasa del cono al rodearlo. Ni pisándolo ni dando un
      rodeo que no ha pedido nadie. */
   paso: 0.9,
+  /* LA BANDA DE LA PUERTA (§7.4.1): lo que se pasa por fuera de uno de
+     sus palos y todavía cuenta como «ir por la puerta». Un trazo que
+     cruza por ahí se imanta a pasar por dentro; más lejos ya no es cosa
+     de la puerta. */
+  banda: 0.6,
+  /* Cuánto tiene que cruzar de través: un trazo que va A LO LARGO de la
+     línea de dos conos —los de un slalom— no pasa por una puerta, la
+     recorre. 45° como mínimo. */
+  traves: Math.SQRT1_2,
 });
 
 const punto = (e) => ({ x: e.x, y: e.y });
@@ -138,22 +147,47 @@ export function respectoAlTrazo(trazo, cono, pista = 'entera') {
 /** El contrario de un lado. */
 export const otroLado = (lado) => (lado === 'izq' ? 'der' : 'izq');
 
-/* ¿Cruza el trazo el segmento que une dos conos? En metros, y con los
-   dos conos a lados distintos del trazo, que es lo que hace una puerta:
-   se pasa ENTRE ellos. */
-function cruzaEntre(trazo, a, b, pista) {
-  const ra = respectoAlTrazo(trazo, a, pista);
-  const rb = respectoAlTrazo(trazo, b, pista);
-  if (!ra || !rb) return null;
-  if (ra.lado === rb.lado) return null;          // los dos al mismo lado: no se pasa entre ellos
-  const medio = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-  const rm = respectoAlTrazo(trazo, medio, pista);
-  if (!rm) return null;
-  /* Y el trazo tiene que pasar POR ENTRE los dos, no por fuera y lejos:
-     el punto medio de la puerta le queda cerca. */
-  const separacion = metrosEntre(pista, a, b);
-  if (rm.metros > separacion / 2 + CONOS.rodeo) return null;
-  return { en: rm.en, metros: rm.metros };
+/**
+ * ¿CRUZA EL TRAZO LA PUERTA a–b? En metros, y DE TRAVÉS.
+ *
+ * Se busca dónde corta el trazo la recta de los dos conos. Si la corta
+ * entre ellos, pasa por dentro; si la corta un poco por fuera de un palo
+ * —dentro de la banda—, cuenta como la puerta pero hay que imantarlo.
+ * Si la recorre a lo largo —los conos de un slalom—, no es una puerta.
+ *
+ * @returns { en, dentro } o null
+ */
+export function cruceConPuerta(trazo, a, b, pista = 'entera') {
+  const flat = flattenPath(trazo || []);
+  if (flat.length < 2 || !a || !b) return null;
+  const e = escalaDe(pista);
+  const A = { x: a.x * e.x, y: a.y * e.y };
+  const gx = (b.x - a.x) * e.x, gy = (b.y - a.y) * e.y;
+  const glen = Math.hypot(gx, gy);
+  if (!(glen > 0)) return null;
+  const ext = CONOS.banda / glen;
+  const largos = [];
+  let total = 0;
+  for (let i = 1; i < flat.length; i++) { const l = metrosEntre(pista, flat[i - 1], flat[i]); largos.push(l); total += l; }
+  if (!(total > 0)) return null;
+  let recorrido = 0;
+  for (let i = 1; i < flat.length; i++) {
+    const P = { x: flat[i - 1].x * e.x, y: flat[i - 1].y * e.y };
+    const dx = (flat[i].x - flat[i - 1].x) * e.x, dy = (flat[i].y - flat[i - 1].y) * e.y;
+    const den = dx * gy - dy * gx;
+    const largo = largos[i - 1];
+    if (Math.abs(den) > 1e-12 && largo > 0) {
+      const wx = A.x - P.x, wy = A.y - P.y;
+      const t = (wx * gy - wy * gx) / den;        // por dónde del tramo del trazo
+      const sG = (wx * dy - wy * dx) / den;       // por dónde de la recta de la puerta
+      const deTraves = Math.abs(dx * gx + dy * gy) / (largo * glen) <= CONOS.traves;
+      if (t >= 0 && t <= 1 && sG >= -ext && sG <= 1 + ext && deTraves) {
+        return { en: (recorrido + t * largo) / total, dentro: sG >= 0 && sG <= 1 };
+      }
+    }
+    recorrido += largo;
+  }
+  return null;
 }
 
 /* ¿Están estos conos en hilera? Se mide lo que se aparta cada uno de la
@@ -184,7 +218,7 @@ function enHilera(conos, pista) {
  *          pasa el jugador respecto del cono (del primero, en un
  *          slalom); en una puerta no hay lado: se pasa por dentro.
  */
-export function interpretarConos(trazo, conos = [], { pista = 'entera' } = {}) {
+export function interpretarConos(trazo, conos = [], { pista = 'entera', forzadas = null } = {}) {
   const flat = flattenPath(trazo || []);
   if (flat.length < 2) return [];
   const inicio = flat[0], fin = flat[flat.length - 1];
@@ -201,19 +235,32 @@ export function interpretarConos(trazo, conos = [], { pista = 'entera' } = {}) {
   const salida = [];
   const usados = new Set();
 
-  /* 1 · PUERTAS: dos conos a menos de 3 m, uno a cada lado del trazo. Se
-     miran también los que están lejos del trazo: una puerta ancha tiene
-     los dos palos a más de 1,5 m del camino y sigue siendo una puerta. */
+  /* 1 · PUERTAS: dos conos a menos de 3 m con el trazo cruzando DE
+     TRAVÉS la recta que los une, entre ellos o rozando uno por fuera.
+     Se miran también los que están lejos del trazo: una puerta ancha
+     tiene los dos palos a más de 1,5 m del camino y sigue siendo una
+     puerta.
+
+     Una puerta FORZADA —el entrenador ha llevado el trazo por fuera a
+     propósito— se sigue leyendo aunque no se cruce: es la que hay que
+     marcar en rojo (§7.4.1), y no se imanta. */
   const todos = (conos || []).filter((c) => c && !c.fila && Number.isFinite(c.x) && Number.isFinite(c.y));
   for (let i = 0; i < todos.length; i++) {
     for (let k = i + 1; k < todos.length; k++) {
       const a = todos[i], b = todos[k];
       if (usados.has(a.id) || usados.has(b.id)) continue;
       if (metrosEntre(pista, a, b) > CONOS.puerta) continue;
-      const cruce = cruzaEntre(trazo, a, b, pista);
-      if (!cruce) continue;
+      const forzada = forzadas && (forzadas.has(a.id) || forzadas.has(b.id));
+      const cruce = cruceConPuerta(trazo, a, b, pista);
+      if (!cruce && !forzada) continue;
       usados.add(a.id); usados.add(b.id);
-      salida.push({ tipo: 'puerta', conos: [a.id, b.id], lado: null, en: cruce.en });
+      if (forzada) {
+        const medio = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const r = respectoAlTrazo(trazo, medio, pista);
+        salida.push({ tipo: 'puerta', conos: [a.id, b.id], lado: null, en: r ? r.en : 0, forzada: true, dentro: !!(cruce && cruce.dentro) });
+        continue;
+      }
+      salida.push({ tipo: 'puerta', conos: [a.id, b.id], lado: null, en: cruce.en, ...(cruce.dentro ? {} : { imantada: true }) });
     }
   }
 
@@ -259,6 +306,14 @@ export function trazoSorteando(trazo, lecturas = [], conos = [], { pista = 'ente
   const porId = new Map((conos || []).filter((c) => c && c.id).map((c) => [c.id, c]));
   /* Cada cono con su lado, ya alternado si era un slalom. */
   const pasos = [];
+  /* Las puertas IMANTADAS: el trazo se lleva por el medio de los dos
+     palos. Las que ya se cruzan por dentro no se tocan. */
+  const imanes = [];
+  for (const l of lecturas || []) {
+    if (!l || l.tipo !== 'puerta' || !l.imantada || l.forzada) continue;
+    const a = porId.get(l.conos[0]), b = porId.get(l.conos[1]);
+    if (a && b) imanes.push({ a, b, en: l.en, medio: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } });
+  }
   for (const l of lecturas || []) {
     if (!l || l.tipo === 'puerta') continue;
     l.conos.forEach((id, i) => {
@@ -268,20 +323,29 @@ export function trazoSorteando(trazo, lecturas = [], conos = [], { pista = 'ente
       pasos.push({ cono: c, lado, en: l.en });
     });
   }
-  if (!pasos.length) return trazo;
+  if (!pasos.length && !imanes.length) return trazo;
   let salida = trazo;
+  /* Los nodos de las puertas imantadas se meten como los de los conos, y
+     por el mismo orden: de atrás adelante. */
+  const deLasPuertas = imanes
+    .map((p) => ({ ...p, seg: segmentoEn(trazo, p.medio, { pista, tolerancia: 99 }) }))
+    .filter((p) => p.seg);
   const conSitio = pasos
     .map((p) => ({ ...p, sitio: sitioAlPasar(trazo, p.cono, p.lado, { pista }) }))
     .filter((p) => p.sitio)
     .map((p) => ({ ...p, seg: segmentoEn(trazo, p.cono, { pista, tolerancia: 99 }) }))
     .filter((p) => p.seg)
     .sort((a, b) => b.seg.seg - a.seg.seg || b.en - a.en);
-  for (const p of conSitio) {
-    salida = insertarEn(salida, p.seg.seg, p.sitio);
-    /* El nodo queda MARCADO con el cono que lo puso y por qué lado: es
-       lo que permite deshacerlo y volver a hacerlo cuando el cono se
-       mueve o cuando un clic cambia el lado (§7.4). */
-    salida = salida.map((n, i) => (i === p.seg.seg + 1 ? { ...n, por_cono: p.cono.id, lado: p.lado } : n));
+  const todos = [
+    ...conSitio.map((p) => ({ seg: p.seg.seg, en: p.en, sitio: p.sitio, marca: { por_cono: p.cono.id, lado: p.lado } })),
+    ...deLasPuertas.map((p) => ({ seg: p.seg.seg, en: p.en, sitio: p.medio, marca: { por_cono: p.a.id, puerta: true } })),
+  ].sort((a, b) => b.seg - a.seg || b.en - a.en);
+  for (const p of todos) {
+    salida = insertarEn(salida, p.seg, p.sitio);
+    /* El nodo queda MARCADO con el cono que lo puso (y por qué lado, o
+       que es de una puerta): es lo que permite deshacerlo y volver a
+       hacerlo cuando el cono se mueve o cuando un clic lo cambia. */
+    salida = salida.map((n, i) => (i === p.seg + 1 ? { ...n, ...p.marca } : n));
   }
   return salida;
 }
@@ -309,12 +373,12 @@ export function sinSorteos(trazo, conos = null) {
  * @param lados  { [cono]: 'izq'|'der' } para forzar el lado de alguno
  *               (lo que cambia un clic sobre el iconito)
  */
-export function volverASortear(trazo, conos = [], { pista = 'entera', lados = null, anulados = null } = {}) {
+export function volverASortear(trazo, conos = [], { pista = 'entera', lados = null, anulados = null, forzadas = null } = {}) {
   const base = sinSorteos(trazo);
   /* Lo que el entrenador ANULÓ no se vuelve a leer: si no, el siguiente
      cono que se moviera lo devolvería. */
   const quedan = anulados && anulados.size ? (conos || []).filter((c) => c && !anulados.has(c.id)) : conos;
-  const lecturas = interpretarConos(base, quedan, { pista }).map((l) => {
+  const lecturas = interpretarConos(base, quedan, { pista, forzadas }).map((l) => {
     const forzado = lados && l.conos.length && lados[l.conos[0]];
     return forzado && l.tipo !== 'puerta' ? { ...l, lado: forzado } : l;
   });
@@ -329,10 +393,16 @@ export function volverASortear(trazo, conos = [], { pista = 'entera', lados = nu
 export function intencionDe(sorteando = []) {
   const lados = {};
   const anulados = new Set();
+  const forzadas = new Set();
   let enSlalom = false;
   for (const x of sorteando || []) {
     if (!x || !x.cono) continue;
     if (x.anulado) { anulados.add(x.cono); continue; }
+    if (x.tipo === 'puerta') {
+      if (x.forzada) for (const id of x.puerta || [x.cono]) forzadas.add(id);
+      enSlalom = false;
+      continue;
+    }
     /* En un slalom solo manda el lado del PRIMERO: los demás alternan. */
     if (x.tipo === 'zigzag') {
       if (!enSlalom) lados[x.cono] = x.lado;
@@ -342,7 +412,7 @@ export function intencionDe(sorteando = []) {
     enSlalom = false;
     if (x.lado) lados[x.cono] = x.lado;
   }
-  return { lados, anulados };
+  return { lados, anulados, forzadas };
 }
 
 /**
@@ -354,7 +424,10 @@ export function sorteandoDe(lecturas = []) {
   const r = [];
   for (const l of lecturas || []) {
     if (!l) continue;
-    if (l.tipo === 'puerta') { r.push({ puerta: l.conos.slice(0, 2) }); continue; }
+    if (l.tipo === 'puerta') {
+      r.push({ cono: l.conos[0], puerta: l.conos.slice(0, 2), tipo: 'puerta', ...(l.forzada ? { forzada: true } : {}) });
+      continue;
+    }
     const lados = l.tipo === 'zigzag'
       ? l.conos.map((id, i) => ({ cono: id, lado: i % 2 === 0 ? l.lado : otroLado(l.lado), tipo: 'zigzag' }))
       : l.conos.map((id) => ({ cono: id, lado: l.lado, tipo: 'rodeo' }));

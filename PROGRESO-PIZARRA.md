@@ -34,14 +34,14 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
 | 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
-| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar); pasos 6.0 a 6.2 hechos | — |
+| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar); pasos 6.0 a 6.3 hechos | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **66 en verde, 1594
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **66 en verde, 1607
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -389,7 +389,7 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
 | 6.0 | El módulo PURO de «qué hace este cono con este trazo» (§7.4): rodeo, slalom y puerta, con sus números y su banco. Y los arreglos que la capa destape | ✅ (66 bancos, 1577 pruebas; banco nuevo `eval-conos.mjs`, 18 pruebas; 11 mutantes, 10 muertos y 1 equivalente) |
 | 6.1 | Rodear un cono al dibujar: el trazo se curva por el lado de entrada, con su iconito encima; un clic cambia el lado y otro lo anula. Se guarda la intención, así que mover el cono rehace la curva. Compila como `funcion: 'rodear'` y el guion lo cuenta | ✅ (66 bancos, 1594 pruebas; 13 mutantes, los 13 muertos; probado en la Pizarra: dibujar, los tres clics y compilar). El slalom (6.2) ha salido con él: el módulo ya lo leía |
 | 6.2 | Slalom: tres o más conos alineados cerca del trazo, alternando lados desde el de entrada | ✅ con el 6.1 |
-| 6.3 | Puertas (§7.4.1): emparejamiento automático por distancia, la banda, el trazo imantado a pasar por dentro y en rojo si se fuerza por fuera; deshacer el par en el panel | pendiente |
+| 6.3 | Puertas (§7.4.1): emparejamiento automático por distancia, la banda, el trazo imantado a pasar por dentro y en rojo si se fuerza por fuera; deshacer el par en el panel | ✅ (66 bancos, 1607 pruebas; 14 mutantes, los 14 muertos; probado en la Pizarra: cruzar, imantar, forzar en rojo, el iconito y deshacerla desde el panel) |
 | 6.4 | El defensor confinado al carril de la puerta: su regla se proyecta sobre el carril | pendiente |
 | 6.5 | Filas (§7.4.2): un cono es cola —jugadores, equipo, papel, un balón por cabeza—, con su tirador de orientación y su destino de vuelta. Se enciende «Vuelve a la fila», que hoy no puede | pendiente |
 | 6.6 | Rondas: salen todos uno tras otro, con cadencia, y variación por ronda | pendiente |
@@ -416,6 +416,27 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
   no se ven.
 - Los conos de una PUERTA quedan como decoración al compilar hasta el
   paso 6.3, que les da su papel.
+
+**Decidido en el paso 6.3 (dicho al entrenador):**
+
+- **Una puerta existe cuando un trazo la cruza**: dos conos a menos de
+  3 m y el trazo pasando entre ellos DE TRAVÉS (45° como mínimo). Así los
+  conos de un slalom apretado —también a menos de 3 m— no salen como
+  puertas: el trazo los recorre a lo largo, no los cruza. El «emparejamiento
+  automático por distancia» del §7.4.1 se ha leído así; si el entrenador
+  quiere puertas que existan aunque nadie las cruce (para la defensa del
+  6.4, por ejemplo), hay que decidirlo.
+- **La banda**: rozar un palo por fuera, a menos de 0,6 m, cuenta como ir
+  por la puerta y el trazo **se imanta** a pasar por el medio. Más lejos
+  ya no es cosa de la puerta.
+- **Forzarlo por fuera a mano** (moviendo sus nodos) deja la puerta
+  FORZADA: el trazo se pinta en rojo y el imán no lo devuelve aunque se
+  muevan conos. Llevándolo otra vez por dentro, deja de estarlo.
+- **Una puerta no tiene lado**: el clic en su iconito (⌷) la anula —los
+  dos palos— y el siguiente la devuelve. Desde el panel, «Deshacer la
+  puerta» la anula en todos los trazos de la fase.
+- Los palos se compilan como `funcion: 'puerta'` y el guion dice «…pasando
+  por la puerta».
 
 **Preguntas para el entrenador antes de llegar a 6.6 y 6.7:**
 

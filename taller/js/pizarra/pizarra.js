@@ -67,6 +67,7 @@ export class Pizarra {
       onParDe: (defensor, atacante) => this.tablero.setParDe(defensor, atacante),
       onReglaDe: (defensor, regla) => this.tablero.setReglaDe(defensor, regla),
       onHaceDe: (defensor, accion) => this.tablero.declararDefensa(defensor, accion ? { accion } : null),
+      onDeshacerPuerta: (cono) => this.tablero.deshacerPuerta(cono),
     });
 
     const aros = Object.keys(this.lienzo.vista.pista?.baskets || {});
@@ -209,6 +210,7 @@ export class Pizarra {
       defensa: t.defensa,
       nombreDe: (e) => t.nombreDe(e),
       explicacion: explicada ? explicada.texto : null,
+      puertas: t.puertasDeLaFase(),
     }));
   }
 

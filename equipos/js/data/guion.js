@@ -18,6 +18,7 @@
 import { posicionesDe, aroExacto } from '../../../taller/js/canvas/anclas.js';
 import { metrosEntre } from '../../../taller/js/canvas/escala.js';
 import { soloPrimeraRonda } from '../../../taller/js/pizarra/motor/rondas.js';
+import { cruceConPuerta } from '../../../taller/js/pizarra/conos.js';
 
 /* ── Nombres de zona ──────────────────────────────────────────
    Se escriben ENTEROS (con artículo y género ya resueltos) en vez de
@@ -206,6 +207,22 @@ function esFinalizacion(pista, canasta, punto) {
   return metrosEntre(pista, punto, aro) <= METROS_ENTRADA;
 }
 
+/* ¿Cruza este camino por dentro de alguna puerta? Dos conos de puerta a
+   menos de 3 m, con el camino pasando entre ellos. */
+function pasaPorPuerta(path, conos, pista) {
+  const palos = (conos || []).filter((c) => c.funcion === 'puerta' && c.posicion);
+  for (let i = 0; i < palos.length; i++) {
+    for (let k = i + 1; k < palos.length; k++) {
+      const a = { x: palos[i].posicion[0], y: palos[i].posicion[1] };
+      const b = { x: palos[k].posicion[0], y: palos[k].posicion[1] };
+      if (metrosEntre(pista, a, b) > 3.0) continue;
+      const cruce = cruceConPuerta(path, a, b, pista);
+      if (cruce && cruce.dentro) return true;
+    }
+  }
+  return false;
+}
+
 function conosSorteados(path, conos) {
   if (!path || path.length < 3) return 0;
   const rodear = (conos || []).filter((c) => c.funcion === 'rodear' && c.posicion);
@@ -313,7 +330,11 @@ export function guionDeAnimacion(anim) {
       const destino = zonaDe(pista, canastaGlobal, nodoFin(m.path));
       const hacia = destino ? ` hacia ${destino}` : '';
       const nConos = conosSorteados(m.path, conos);
-      const sorteo = nConos > 1 ? ' sorteando los conos' : nConos === 1 ? ' rodeando el cono' : '';
+      /* Por una puerta se PASA (§7.4.1): se cuenta si el camino cruza por
+         dentro de dos palos de puerta. */
+      const porPuerta = pasaPorPuerta(m.path, conos, pista);
+      const sorteo = porPuerta ? ' pasando por la puerta'
+        : nConos > 1 ? ' sorteando los conos' : nConos === 1 ? ' rodeando el cono' : '';
       const verbo = defensores.has(m.elemento_id) ? 'ajusta el marcaje' : conBalon ? 'bota' : 'corta';
       lineas.push(`${txt(r)} ${verbo}${hacia}${sorteo}`);
     }

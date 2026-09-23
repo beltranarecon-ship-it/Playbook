@@ -158,5 +158,20 @@ test('y si ya hace algo que se señala, se ve con a quién (y se puede quitar)',
   ok(m.hace.opciones.some((o) => o.valor === null), 'y se puede volver a defender a su par');
 });
 
+test('UN CONO DICE SI FORMA UNA PUERTA, y con quién (§7.4.1)', () => {
+  const elementos = [
+    { id: 'cono_1', kind: 'cono', x: 0.45, y: 0.5 },
+    { id: 'cono_2', kind: 'cono', x: 0.55, y: 0.5 },
+    { id: 'cono_3', kind: 'cono', x: 0.2, y: 0.2 },
+  ];
+  const nombreDe = (e) => `el cono ${e.id.split('_')[1]}`;
+  const m = modeloAjustes({ seleccion: ['cono_1'], elementos, nombreDe, puertas: [['cono_1', 'cono_2']] });
+  eq([m.tipo, m.puerta && m.puerta.con], ['cono', 'cono_2']);
+  ok(/puerta con el cono 2/.test(m.texto), m.texto);
+  const suelto = modeloAjustes({ seleccion: ['cono_3'], elementos, nombreDe, puertas: [['cono_1', 'cono_2']] });
+  eq([suelto.tipo, suelto.puerta], ['cono', null], 'uno que no es puerta:');
+  ok(/rodea|slalom|puerta/.test(suelto.texto), 'y dice qué puede llegar a ser');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

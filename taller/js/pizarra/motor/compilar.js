@@ -117,12 +117,15 @@ export function compilar(jugada) {
      `sorteando`. Los demás son decoración: están en la pista, ocupan
      sitio y salen en el material, pero nadie los rodea. */
   const sorteados = new Set();
+  const puertas = new Set();
   for (const f of j.fases || []) {
     for (const t of (f && f.tramos) || []) {
       for (const x of (t && t.sorteando) || []) {
-        /* Lo anulado no se sortea, y las puertas no se rodean: se pasa
-           por dentro (su papel propio llega en el paso 6.3). */
-        if (x && x.cono && !x.anulado) sorteados.add(x.cono);
+        /* Lo anulado no se sortea. Las puertas no se rodean: se pasa por
+           dentro, y sus palos salen como tales (§7.4.1). */
+        if (!x || !x.cono || x.anulado) continue;
+        if (x.tipo === 'puerta') for (const id of x.puerta || []) puertas.add(id);
+        else sorteados.add(x.cono);
       }
     }
   }
@@ -130,7 +133,7 @@ export function compilar(jugada) {
     id: e.id,
     posicion: punto(e),
     /* Las filas llegan en el paso 6.5. */
-    funcion: sorteados.has(e.id) ? 'rodear' : 'decorativo',
+    funcion: puertas.has(e.id) ? 'puerta' : sorteados.has(e.id) ? 'rodear' : 'decorativo',
     fila_config: null,
   }));
   const materiales = elementos

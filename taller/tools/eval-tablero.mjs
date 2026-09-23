@@ -493,6 +493,90 @@ test('y el clic se atiende con el gesto, por encima de las fichas', () => {
   ok(cono, 'y el cono sigue en la pista');
 });
 
+/* A1 abajo y una puerta de 2 m cruzada por el centro de la pista. */
+function conPuerta(dxA = -1.0, dxB = 1.0) {
+  reiniciarIds();
+  const m = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.50, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.50 + dxA / 18, 0.50);
+  l = anadir(l, { kind: 'cono' }, 0.50 + dxB / 18, 0.50);
+  const [a1, p1, p2] = l;
+  m.t.poner(l);
+  return { ...m, a1, p1, p2 };
+}
+
+test('UN TRAZO QUE CRUZA UNA PUERTA LA RECUERDA, con su iconito entre los palos (§7.4.1)', () => {
+  const { t, a1, p1, p2 } = conPuerta();
+  corta(t, a1.id, { x: 0.5, y: 0.2 });
+  const tr = t.tramos[0];
+  eq(tr.sorteando, [{ cono: p1.id, puerta: [p1.id, p2.id], tipo: 'puerta' }]);
+  eq(tr.trazo.length, 2, 'por dentro ya pasaba: no se toca:');
+  const [icono] = t.iconosDeConos();
+  eq(icono.tipo, 'puerta');
+  ok(Math.abs(icono.punto.x - 0.5) < 1e-9 && Math.abs(icono.punto.y - 0.5) < 1e-9, 'entre los dos palos');
+  eq(t.fueraDePuerta(tr), false, 'y no está en rojo:');
+});
+
+test('UN TRAZO QUE ROZA UN PALO POR FUERA SE IMANTA A PASAR POR DENTRO', () => {
+  const { t, a1, p1, p2 } = conPuerta(0.3, 2.3);
+  corta(t, a1.id, { x: 0.5, y: 0.2 });
+  const tr = t.tramos[0];
+  ok(tr.trazo.some((n) => n.puerta), 'con un nodo puesto por la puerta');
+  const cruce = conosMod.cruceConPuerta(tr.trazo, ficha(t, p1.id), ficha(t, p2.id), 'entera');
+  ok(cruce && cruce.dentro, 'y ahora pasa por dentro');
+  eq(t.fueraDePuerta(tr), false);
+});
+
+test('FORZADO POR FUERA SE PINTA EN ROJO, y el imán no lo devuelve', () => {
+  const { t, a1, p1 } = conPuerta();
+  corta(t, a1.id, { x: 0.5, y: 0.2 });
+  /* El entrenador arrastra el trazo por fuera de la puerta. */
+  t._editando = t.tramos[0];
+  t._trazoCorregido([{ x: 0.5, y: 0.8, tipo_nodo: 'lineal' }, { x: 0.5 + 2.5 / 18, y: 0.5, tipo_nodo: 'lineal' }, { x: 0.5, y: 0.2, tipo_nodo: 'lineal' }]);
+  ok(t.tramos[0].sorteando[0].forzada, 'la puerta queda forzada');
+  eq(t.fueraDePuerta(t.tramos[0]), true, 'y el trazo, en rojo:');
+  /* Mover un cono vuelve a leer todo: lo forzado sigue forzado. */
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === p1.id ? { ...e, y: 0.505 } : e)));
+  eq(t.fueraDePuerta(t.tramos[0]), true, 'el imán no se lo lleva por dentro:');
+  /* Y llevándolo otra vez por dentro, deja de estar forzado. */
+  t._editando = t.tramos[0];
+  t._trazoCorregido([{ x: 0.5, y: 0.8, tipo_nodo: 'lineal' }, { x: 0.5, y: 0.2, tipo_nodo: 'lineal' }]);
+  ok(!t.tramos[0].sorteando[0].forzada, 'por dentro, ya no:');
+  eq(t.fueraDePuerta(t.tramos[0]), false);
+});
+
+test('EL CLIC EN LA PUERTA LA ANULA —no tiene lado— y el siguiente la devuelve', () => {
+  const { t, a1, p1, p2 } = conPuerta();
+  corta(t, a1.id, { x: 0.5, y: 0.2 });
+  const tr = () => t.tramos[0];
+  t.cambiarSorteo(tr().id, p1.id);
+  eq(tr().sorteando.map((x) => [x.cono, !!x.anulado]), [[p1.id, true], [p2.id, true]], 'anulados los dos palos:');
+  eq(t.fueraDePuerta(tr()), false, 'y anulada no se pinta en rojo:');
+  t.cambiarSorteo(tr().id, p1.id);
+  eq(tr().sorteando[0].tipo, 'puerta', 'y vuelve:');
+});
+
+test('DESHACER LA PUERTA DESDE EL PANEL la anula en todos los trazos de la fase', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.45, 0.80);
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.55, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.5 - 1 / 18, 0.50);
+  l = anadir(l, { kind: 'cono' }, 0.5 + 1 / 18, 0.50);
+  const [a1, a2, p1, p2] = l;
+  t.poner(l);
+  corta(t, a1.id, { x: 0.47, y: 0.2 });
+  corta(t, a2.id, { x: 0.53, y: 0.2 });
+  eq(t.puertasDeLaFase(), [[p1.id, p2.id]], 'una sola puerta, aunque la crucen dos:');
+  eq(t.nombreDe(ficha(t, p1.id)), `el cono ${p1.id.split('_')[1]}`, 'y el cono tiene nombre:');
+  ok(t.deshacerPuerta(p2.id), 'se deshace desde cualquiera de sus palos');
+  eq(t.puertasDeLaFase(), [], 'ya no hay puerta:');
+  ok(t.tramos.every((x) => x.sorteando.every((s) => s.anulado)), 'anulada en los dos trazos');
+  eq(t.deshacerPuerta(p2.id), false, 'y deshacerla otra vez no hace nada:');
+});
+
 test('un PASE no rodea conos: vuela', () => {
   reiniciarIds();
   const { t } = montar();

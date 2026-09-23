@@ -429,6 +429,23 @@ test('y una intercepción se cuenta como tal, sin contar el pase dos veces', () 
   eq(g.fases[0].lineas, ['El 1 del equipo 2 intercepta el pase para el 2 y su equipo pasa a atacar']);
 });
 
+test('POR UNA PUERTA SE PASA, y así se cuenta (§7.4.1)', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }],
+    balones: [],
+    conos: [
+      { id: 'pa', posicion: [0.45, 0.5], funcion: 'puerta' },
+      { id: 'pb', posicion: [0.55, 0.5], funcion: 'puerta' },
+    ],
+    fases: [{
+      duracion_ms: 900,
+      movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: [pt([0.5, 0.8]), pt([0.5, 0.3])] }],
+    }],
+  });
+  contiene(g.fases[0].lineas[0], 'pasando por la puerta');
+});
+
 test('la duración suma movimiento + pausa de cada fase', () => {
   const g = guionDeAnimacion({
     pista: 'entera', jugadores: [], balones: [],
