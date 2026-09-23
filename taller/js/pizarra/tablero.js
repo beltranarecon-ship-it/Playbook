@@ -49,7 +49,7 @@ import {
 } from './repertorio.js';
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
 import {
-  interpretarConos, sorteandoDe, volverASortear, intencionDe, otroLado, respectoAlTrazo, cruceConPuerta,
+  interpretarConos, sorteandoDe, volverASortear, intencionDe, otroLado, respectoAlTrazo, cruceConPuerta, puertasDe,
 } from './conos.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto, alPinchar } from './seleccion.js';
@@ -58,7 +58,7 @@ import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
 import { compilar } from './motor/compilar.js';
 import {
   defensaPorDefecto, papelesDeJugada, tramosQueNoEncajan, normalizarDefensa, colocar, explicarRegla, REGLAS,
-  ACCIONES_DEFENSOR, SENALA,
+  ACCIONES_DEFENSOR, SENALA, carrilesDe,
 } from './motor/defensa.js';
 import { COLORS } from '../canvas/colors.js';
 import {
@@ -389,6 +389,7 @@ export class Tablero {
     const sitios = colocar({
       pista: this.lienzo.vista.pistaKey, canasta: this.canastaEnCurso,
       elementos: this.fichas.elementos, papeles, defensa: this.defensa, solo: quienes,
+      carriles: this.carriles(),
     });
     const movidos = {};
     for (const [id, s] of Object.entries(sitios)) movidos[id] = { x: s.x, y: s.y };
@@ -616,6 +617,7 @@ export class Tablero {
     return explicarRegla({
       pista: this.lienzo.vista.pistaKey, canasta: this.canastaEnCurso,
       elementos: this.fichas.elementos, papeles, defensa: this.defensa, defensor: ids[0],
+      carriles: this.carriles(),
     });
   }
 
@@ -897,6 +899,17 @@ export class Tablero {
 
   /** Los conos que hay en la pista, que son los que se sortean (§7.4). */
   conos() { return this.fichas.elementos.filter((e) => e.kind === 'cono'); }
+
+  /** Los defensores confinados a una puerta en la fase que se edita
+   *  (§7.4.1), con los mismos números que usará el proyector. */
+  carriles() {
+    return carrilesDe({
+      pista: this.lienzo.vista.pistaKey,
+      elementos: this.fichas.elementos,
+      defensores: this.papelesDeFase().defensores,
+      puertas: puertasDe(this.tramos, this.conos()),
+    });
+  }
 
   /* Vuelve a leer los conos de un trazo: los que había, con los conos
      donde estén AHORA. `lados` fuerza el de alguno, que es lo que hace

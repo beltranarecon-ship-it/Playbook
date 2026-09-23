@@ -46,6 +46,7 @@ import { trasElTiro, frenteDelBloqueo } from '../destino.js';
 import { papelesDeJugada, seguirDefensa, SEGUIMIENTO } from './defensa.js';
 import { metrosEntre } from '../../canvas/escala.js';
 import { fraccionMasCercana, cortarTrazo } from '../trazo.js';
+import { puertasDe } from '../conos.js';
 import { metaDeFase } from '../../canvas/fotograma.js';
 import { posicionesDe } from '../../canvas/anclas.js';
 
@@ -238,6 +239,9 @@ export function compilar(jugada) {
 
     const r = metaDeFase(fase, { jugadores, balones, escena, aro });
     const seguida = seguirDefensa({
+      /* Las puertas de la fase, por si algún defensor está sobre una
+         (§7.4.1): queda confinado a su carril. */
+      puertas: puertasDe(((j.fases || [])[fase.indice] || {}).tramos, elementos.filter((e) => e.kind === 'cono')),
       pista, canasta: papelesFase.canasta || canasta, defensa: j.defensa, papeles: comoFuera(papelesFase),
       jugadores, balones, reglas, meta: r.meta, inicio: escena,
       duracion_ms: fase.duracion_ms, tiros: fase.tiros,

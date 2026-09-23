@@ -13,7 +13,7 @@
 
 import {
   interpretarConos, respectoAlTrazo, sorteandoDe, otroLado, trazoSorteando, sitioAlPasar,
-  sinSorteos, volverASortear, intencionDe, cruceConPuerta, CONOS,
+  sinSorteos, volverASortear, intencionDe, cruceConPuerta, puertasDe, CONOS,
 } from '../js/pizarra/conos.js';
 import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
 
@@ -297,6 +297,20 @@ test('DE LA INTENCIÓN SALE LO QUE HAY QUE RESPETAR: el lado de cada lectura y l
 });
 
 /* ── 8. Puertas (§7.4.1) ─────────────────────────────────── */
+
+test('LAS PUERTAS DE UNA FASE: las que se cruzan, con sus palos, y sin las anuladas', () => {
+  const conos = [cono('pa', -1.0, 0.5), cono('pb', 1.0, 0.5)];
+  const cruzada = [{ sorteando: [{ cono: 'pa', puerta: ['pa', 'pb'], tipo: 'puerta' }] }];
+  const p = puertasDe(cruzada, conos);
+  eq(p.map((x) => x.ids), [['pa', 'pb']]);
+  eq([p[0].a.x, p[0].b.x], [conos[0].x, conos[1].x], 'con dónde está cada palo:');
+  eq(puertasDe([...cruzada, ...cruzada], conos).length, 1, 'una puerta que cruzan dos trazos es UNA puerta:');
+  /* Anulada, en cualquiera de sus formas —también la que pudiera traer
+     una jugada guardada con el tipo puesto—, no cuenta. */
+  eq(puertasDe([{ sorteando: [{ cono: 'pa', anulado: true, grupo: 'pa' }, { cono: 'pb', anulado: true, grupo: 'pa' }] }], conos), []);
+  eq(puertasDe([{ sorteando: [{ cono: 'pa', puerta: ['pa', 'pb'], tipo: 'puerta', anulado: true }] }], conos), []);
+  eq(puertasDe(cruzada, [conos[0]]), [], 'sin uno de sus palos en la pista, tampoco:');
+});
 
 test('LOS CONOS DE UN SLALOM APRETADO NO SON PUERTAS: el trazo los recorre, no los cruza', () => {
   /* Cuatro conos en hilera a 2 m: cada par está a menos de 3 m, pero el

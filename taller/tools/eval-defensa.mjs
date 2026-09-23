@@ -16,6 +16,7 @@ import {
   quienAtaca, emparejar, situacionDe, papelesDeJugada, tramosQueNoEncajan,
   colocar, explicarRegla, enCancha, seguirDefensa, SEGUIMIENTO,
   ACCIONES_DEFENSOR, SENALA, AYUDA_VUELVE, normalizarDeclaradas, declaradasDe, laContraria,
+  carrilesDe, CONFINADO_M,
 } from '../js/pizarra/motor/defensa.js';
 import { metaDeFase, fotograma } from '../js/canvas/fotograma.js';
 import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
@@ -968,6 +969,104 @@ test('LO DECLARADO PIDE UN JUGADOR, Y NO A SÍ MISMO', () => {
     'ni señalarse a sí mismo:');
   eq(normalizarDeclaradas({ B1: { accion: 'ayuda', objetivo_id: 'A1' } }, { ids, jugadores }).declaradas,
     { B1: { accion: 'ayuda', objetivo_id: 'A1' } }, 'y lo bueno sigue entrando:');
+});
+
+/* ── 11. El carril de la puerta (§7.4.1) ─────────────────── */
+
+/* Una puerta de 3 m, horizontal, a media pista. */
+const PUERTA = { ids: ['pa', 'pb'], a: { x: 0.5 - 1.5 / 18, y: 0.5 }, b: { x: 0.5 + 1.5 / 18, y: 0.5 } };
+/* ¿Está q sobre la puerta? A menos de un milímetro de su segmento. */
+const sobreLaPuerta = (q) => {
+  const e = escalaDe('entera');
+  const ax = PUERTA.a.x * e.x, ay = PUERTA.a.y * e.y, bx = PUERTA.b.x * e.x, by = PUERTA.b.y * e.y;
+  const px = q.x * e.x, py = q.y * e.y;
+  const l2 = (bx - ax) ** 2 + (by - ay) ** 2;
+  const t = Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2));
+  return Math.hypot(px - (ax + t * (bx - ax)), py - (ay + t * (by - ay))) < 1e-3;
+};
+
+test('EL DEFENSOR QUE ESTÁ SOBRE LA LÍNEA DE UNA PUERTA QUEDA CONFINADO A ELLA', () => {
+  const encima = { id: 'B1', x: 0.5, y: 0.5 + 0.3 / 27 };
+  const lejos = { id: 'B2', x: 0.5, y: 0.5 + 2.0 / 27 };
+  const c = carrilesDe({ pista: 'entera', elementos: [encima, lejos], defensores: ['B1', 'B2'], puertas: [PUERTA] });
+  ok(c.B1, 'el de encima, confinado');
+  eq(c.B2, undefined, 'el de lejos, no:');
+  ok(CONFINADO_M > 0.3 && CONFINADO_M < 2.0, 'con un margen de pabellón');
+  eq(carrilesDe({ pista: 'entera', elementos: [encima], defensores: ['B1'], puertas: [] }), {}, 'sin puertas, nadie:');
+});
+
+test('SU REGLA SE PROYECTA SOBRE EL CARRIL: va al punto más cercano al que le tocaría', () => {
+  const e = escena([['A1', 'jugador', 'A', 0.5, 0.75], ['B1', 'jugador', 'B', 0.5, 0.5], ['bal', 'balon', null, 0.5, 0.75]]);
+  const l = e.dar('bal', 'A1');
+  const papeles = papelesDeJugada({ pista: 'entera', elementos: l, fases: [{}] }).inicio;
+  const libre = colocar({ pista: 'entera', canasta: 'norte', elementos: l, papeles })[e.ids.B1];
+  const conf = colocar({ pista: 'entera', canasta: 'norte', elementos: l, papeles, carriles: { [e.ids.B1]: { a: PUERTA.a, b: PUERTA.b } } })[e.ids.B1];
+  ok(sobreLaPuerta(conf), `sobre la puerta: ${JSON.stringify(conf)}`);
+  ok(Math.abs(conf.x - libre.x) < 1e-9, 'justo enfrente de donde le tocaría');
+  ok(!sobreLaPuerta(libre), 'y sin carril habría ido a otro sitio');
+  eq(conf.carril.length, 2, 'y dice cuál es su carril:');
+});
+
+test('EL SEGUIMIENTO NO LE SACA NUNCA DEL CARRIL, ni para apartarse', () => {
+  const jugadores = [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }];
+  const balones = [{ id: 'b1' }];
+  const papeles = { ataca: 'A', atacantes: ['A1'], defensores: ['B1'], pares: { B1: 'A1' }, situacion: 'igualdad', retrasa: null };
+  /* A1 cruza la puerta de abajo arriba, justo por encima de B1. */
+  const inicio = { P: { A1: { x: 0.52, y: 0.8 }, B1: { x: 0.5, y: 0.5 } }, B: { b1: { x: 0.52, y: 0.8 } }, owner: { b1: 'A1' } };
+  const fase = { duracion_ms: 2500, movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: [{ x: 0.52, y: 0.8, tipo_nodo: 'lineal' }, { x: 0.45, y: 0.2, tipo_nodo: 'lineal' }], inicio_ms: 0, duracion_ms: 2500 }], pases: [], tiros: [], recogidas: [], bloqueos: [] };
+  const r = metaDeFase(fase, { jugadores, balones, escena: inicio, aro: () => AR });
+  const s = seguirDefensa({ pista: 'entera', canasta: 'norte', papeles, jugadores, balones, meta: r.meta, inicio, duracion_ms: 2500, puertas: [PUERTA] });
+  ok(s.B1.muestras.every(sobreLaPuerta), 'todas sus muestras sobre la puerta');
+  ok(new Set(s.B1.muestras.map((q) => q.x.toFixed(3))).size > 1, 'y se mueve por ella, no se queda clavado');
+});
+
+test('Y SE EXPLICA (§8.7): su regla, y que está en la puerta', () => {
+  const e = escena([['A1', 'jugador', 'A', 0.5, 0.75], ['B1', 'jugador', 'B', 0.5, 0.5], ['bal', 'balon', null, 0.5, 0.75]]);
+  const l = e.dar('bal', 'A1');
+  const papeles = papelesDeJugada({ pista: 'entera', elementos: l, fases: [{}] }).inicio;
+  const x = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: l, papeles, defensor: e.ids.B1, carriles: { [e.ids.B1]: { a: PUERTA.a, b: PUERTA.b } } });
+  ok(/Está en la puerta/.test(x.texto), x.texto);
+  ok(x.primitivas.some((pr) => pr.tipo === 'linea' && pr.a.x === PUERTA.a.x && pr.b.x === PUERTA.b.x), 'y se dibuja el carril');
+  const sin = explicarRegla({ pista: 'entera', canasta: 'norte', elementos: l, papeles, defensor: e.ids.B1 });
+  ok(!/puerta/.test(sin.texto), 'sin carril no se habla de puertas');
+});
+
+test('SI SU PAR LE PASA POR ENCIMA, SE APARTA DESLIZÁNDOSE POR EL CARRIL, sin salirse', () => {
+  const jugadores = [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }];
+  const balones = [{ id: 'b1' }];
+  const papeles = { ataca: 'A', atacantes: ['A1'], defensores: ['B1'], pares: { B1: 'A1' }, situacion: 'igualdad', retrasa: null };
+  /* A1 cruza la puerta de frente, justo por donde está B1 (algo a la
+     izquierda del centro). */
+  const B1 = { x: 0.5 - 0.2 / 18, y: 0.5 };
+  const inicio = { P: { A1: { x: 0.5, y: 0.8 }, B1 }, B: { b1: { x: 0.5, y: 0.8 } }, owner: { b1: 'A1' } };
+  const camino = [{ x: 0.5, y: 0.8, tipo_nodo: 'lineal' }, { x: 0.5, y: 0.2, tipo_nodo: 'lineal' }];
+  const fase = { duracion_ms: 3000, movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: camino, inicio_ms: 0, duracion_ms: 3000 }], pases: [], tiros: [], recogidas: [], bloqueos: [] };
+  const r = metaDeFase(fase, { jugadores, balones, escena: inicio, aro: () => AR });
+  const s = seguirDefensa({ pista: 'entera', canasta: 'norte', papeles, jugadores, balones, meta: r.meta, inicio, duracion_ms: 3000, puertas: [PUERTA] });
+  ok(s.B1.muestras.every(sobreLaPuerta), 'no sale nunca de la puerta');
+  /* Y en el instante en que A1 cruza la línea de la puerta, B1 está
+     apartado A LO LARGO del carril, a un metro: ni encima ni fuera. */
+  const cruce = s.B1.muestras.reduce((m, q) => {
+    const a1 = fotogramaEn(r.meta, inicio, jugadores, balones, q.t).players.A1;
+    return !m || Math.abs(a1.y - 0.5) < m.dy ? { q, a1, dy: Math.abs(a1.y - 0.5) } : m;
+  }, null);
+  ok(M(cruce.q, cruce.a1) >= SEGUIMIENTO.apartarse - 0.05, `se ha apartado: a ${M(cruce.q, cruce.a1).toFixed(2)} m del que cruza`);
+  ok(Math.abs(cruce.q.y - 0.5) < 1e-3, 'y sigue en la línea de la puerta');
+});
+
+test('Y VA POR EL CARRIL A TODA VELOCIDAD hacia donde le toca, no a paso de cangrejo', () => {
+  /* Empieza en una punta de la puerta y su regla le pide estar bajo la
+     otra, lejos: tiene que llegar deslizándose. */
+  const jugadores = [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }];
+  const balones = [{ id: 'b1' }];
+  const papeles = { ataca: 'A', atacantes: ['A1'], defensores: ['B1'], pares: { B1: 'A1' }, situacion: 'igualdad', retrasa: null };
+  const inicio = { P: { A1: { x: 0.5 + 1.5 / 18, y: 0.8 }, B1: { x: 0.5 - 1.4 / 18, y: 0.5 } }, B: { b1: { x: 0.5 + 1.5 / 18, y: 0.8 } }, owner: { b1: 'A1' } };
+  const quieto = [{ x: inicio.P.A1.x, y: 0.8, tipo_nodo: 'lineal' }, { x: inicio.P.A1.x, y: 0.8, tipo_nodo: 'lineal' }];
+  const fase = { duracion_ms: 3000, movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: quieto, inicio_ms: 0, duracion_ms: 3000 }], pases: [], tiros: [], recogidas: [], bloqueos: [] };
+  const r = metaDeFase(fase, { jugadores, balones, escena: inicio, aro: () => AR });
+  const s = seguirDefensa({ pista: 'entera', canasta: 'norte', papeles, jugadores, balones, meta: r.meta, inicio, duracion_ms: 3000, puertas: [PUERTA] });
+  const fin = s.B1.fin;
+  ok(fin.x > 0.5 + 1.2 / 18, `llega a la otra punta, bajo su par: x=${fin.x.toFixed(4)}`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

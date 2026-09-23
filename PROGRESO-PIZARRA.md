@@ -34,14 +34,14 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
 | 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
-| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar); pasos 6.0 a 6.3 hechos | — |
+| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar); pasos 6.0 a 6.4 hechos | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **66 en verde, 1607
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **66 en verde, 1616
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -390,7 +390,7 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
 | 6.1 | Rodear un cono al dibujar: el trazo se curva por el lado de entrada, con su iconito encima; un clic cambia el lado y otro lo anula. Se guarda la intención, así que mover el cono rehace la curva. Compila como `funcion: 'rodear'` y el guion lo cuenta | ✅ (66 bancos, 1594 pruebas; 13 mutantes, los 13 muertos; probado en la Pizarra: dibujar, los tres clics y compilar). El slalom (6.2) ha salido con él: el módulo ya lo leía |
 | 6.2 | Slalom: tres o más conos alineados cerca del trazo, alternando lados desde el de entrada | ✅ con el 6.1 |
 | 6.3 | Puertas (§7.4.1): emparejamiento automático por distancia, la banda, el trazo imantado a pasar por dentro y en rojo si se fuerza por fuera; deshacer el par en el panel | ✅ (66 bancos, 1607 pruebas; 14 mutantes, los 14 muertos; probado en la Pizarra: cruzar, imantar, forzar en rojo, el iconito y deshacerla desde el panel) |
-| 6.4 | El defensor confinado al carril de la puerta: su regla se proyecta sobre el carril | pendiente |
+| 6.4 | El defensor confinado al carril de la puerta: su regla se proyecta sobre el carril | ✅ (66 bancos, 1616 pruebas; 8 mutantes: 7 muertos y 1 equivalente; probado en la Pizarra y con el fotograma del proyector: nunca sale de la puerta y, al cruzarla su par, se aparta 1,0 m deslizándose por ella) |
 | 6.5 | Filas (§7.4.2): un cono es cola —jugadores, equipo, papel, un balón por cabeza—, con su tirador de orientación y su destino de vuelta. Se enciende «Vuelve a la fila», que hoy no puede | pendiente |
 | 6.6 | Rondas: salen todos uno tras otro, con cadencia, y variación por ronda | pendiente |
 | 6.7 | Balones múltiples y equipos del club. Cierre de la capa | pendiente |
@@ -437,6 +437,22 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
   puerta» la anula en todos los trazos de la fase.
 - Los palos se compilan como `funcion: 'puerta'` y el guion dice «…pasando
   por la puerta».
+
+**Decidido en el paso 6.4 (dicho al entrenador):**
+
+- **Está «sobre la puerta» el defensor que empieza la fase a menos de
+  0,75 m de la línea entre los dos palos** (número nuevo). Se decide al
+  empezar la fase y no cambia a mitad (§8.2).
+- **Su regla manda y el carril la recorta**: va al punto de la puerta más
+  cercano a donde le pondría su regla —cualquiera, también lo declarado y
+  la situación—, y por ella se mueve a su velocidad de siempre.
+- **Cuando su par cruza la puerta, se aparta deslizándose por ella** hasta
+  quedar a 1,0 m, hacia el lado en el que ya estaba; si la puerta no da
+  para tanto, se queda en su punta. Apartarse de frente le habría sacado
+  de la puerta.
+- **«A menos de 3 m» es estricto**: dos conos a 3,0 m justos ya no son
+  puerta. Probándolo en el navegador con los palos a 3 m exactos no salía
+  la puerta; es lo que dice el §7.4, pero conviene saberlo al colocarlos.
 
 **Preguntas para el entrenador antes de llegar a 6.6 y 6.7:**
 

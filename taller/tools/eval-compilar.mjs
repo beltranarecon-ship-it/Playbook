@@ -604,6 +604,18 @@ test('LOS PALOS DE UNA PUERTA SE COMPILAN COMO «PUERTA»', () => {
   eq(anim.conos.map((c) => c.funcion), ['puerta', 'puerta']);
 });
 
+test('EL DEFENSOR SOBRE UNA PUERTA SE QUEDA EN SU CARRIL TAMBIÉN EN EL PROYECTOR (§7.4.1)', () => {
+  const { l, a1, b1 } = escena();
+  /* B1 sobre la línea de la puerta que cruza A1. */
+  const conB1 = l.map((e) => (e.id === b1.id ? { ...e, x: 0.3, y: 0.6 } : e));
+  const conos = [{ id: 'pa', kind: 'cono', x: 0.3 - 1.4 / 18, y: 0.6 }, { id: 'pb', kind: 'cono', x: 0.3 + 1.4 / 18, y: 0.6 }];
+  const t = { ...tramo(a1.id, P(0.3, 0.8), P(0.3, 0.3), { accion: 'bota', tipo: 'run' }), sorteando: [{ cono: 'pa', puerta: ['pa', 'pb'], tipo: 'puerta' }] };
+  const anim = compilar(jugadaCon([...conB1, ...conos], [{ id: 'f1', tramos: [t] }]));
+  const suya = anim.fases[0].movimientos.find((m) => m.elemento_id === 'B1');
+  ok(suya.muestras.every((q) => Math.abs(q.y - 0.6) < 1e-6 && q.x >= 0.3 - 1.4 / 18 - 1e-6 && q.x <= 0.3 + 1.4 / 18 + 1e-6),
+    `todas sus muestras sobre la puerta: ${JSON.stringify(suya.muestras.slice(0, 3))}`);
+});
+
 /* ── Robar (§8.6) ────────────────────────────────────────── */
 
 test('ROBO EN EL BOTE: el balón pasa a ser del que roba A MITAD DE FASE', () => {

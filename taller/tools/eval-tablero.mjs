@@ -577,6 +577,20 @@ test('DESHACER LA PUERTA DESDE EL PANEL la anula en todos los trazos de la fase'
   eq(t.deshacerPuerta(p2.id), false, 'y deshacerla otra vez no hace nada:');
 });
 
+test('LA PIZARRA SABE QUIÉN ESTÁ CONFINADO A UNA PUERTA, con los números del proyector', () => {
+  const { t, a1, a2, b1 } = conDefensa();
+  const palos = [
+    t.anadirFicha({ kind: 'cono' }, { x: ficha(t, b1.id).x - 1.2 / 18, y: ficha(t, b1.id).y }),
+    t.anadirFicha({ kind: 'cono' }, { x: ficha(t, b1.id).x + 1.2 / 18, y: ficha(t, b1.id).y }),
+  ];
+  /* A1 cruza esa puerta. */
+  corta(t, a1.id, { x: ficha(t, b1.id).x, y: 0.2 });
+  ok(t.puertasDeLaFase().length === 1, 'hay una puerta');
+  const c = t.carriles();
+  ok(c[b1.id], `B1, que está encima, confinado: ${JSON.stringify(Object.keys(c))}`);
+  ok(palos.length === 2 && a2, 'y todo lo demás en su sitio');
+});
+
 test('un PASE no rodea conos: vuela', () => {
   reiniciarIds();
   const { t } = montar();

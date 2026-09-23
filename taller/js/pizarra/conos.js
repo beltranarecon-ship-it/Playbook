@@ -416,6 +416,29 @@ export function intencionDe(sorteando = []) {
 }
 
 /**
+ * LAS PUERTAS DE UNA FASE (§7.4.1): los pares de palos que algún trazo
+ * cruza, sin las anuladas, y con dónde está cada palo.
+ *
+ * @param tramos  los de la fase
+ * @param conos   los de la pista
+ * @returns [{ ids: [a, b], a: {x,y}, b: {x,y} }]
+ */
+export function puertasDe(tramos = [], conos = []) {
+  const porId = new Map((conos || []).filter((c) => c && c.id).map((c) => [c.id, c]));
+  const vistas = new Map();
+  for (const t of tramos || []) {
+    for (const x of (t && t.sorteando) || []) {
+      if (!x || x.tipo !== 'puerta' || x.anulado || !Array.isArray(x.puerta)) continue;
+      const [ia, ib] = x.puerta;
+      const a = porId.get(ia), b = porId.get(ib);
+      if (!a || !b) continue;
+      vistas.set([ia, ib].sort().join('|'), { ids: [ia, ib], a: punto(a), b: punto(b) });
+    }
+  }
+  return [...vistas.values()];
+}
+
+/**
  * Lo que se guarda en el tramo (§11.1, `args.sorteando`): la intención,
  * no la curva. Mover el cono rehace el trazo porque lo que se guardó fue
  * «sorteando el cono 3 por la izquierda».

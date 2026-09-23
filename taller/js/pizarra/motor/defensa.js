@@ -117,6 +117,10 @@ export const SENALA = Object.freeze({ ayuda: 'atacante', cambia_marca: 'defensor
  *  fase, para que se vea ir, tapar y volver (§8.5). */
 export const AYUDA_VUELVE = 0.75;
 
+/** A menos de esto de la línea de una puerta, un defensor queda
+ *  confinado a ella (§7.4.1): está SOBRE la puerta. */
+export const CONFINADO_M = 0.75;
+
 /** Una defensa nueva: nada decidido a mano. */
 export function defensaPorDefecto() {
   return { preajuste: REGLA_POR_DEFECTO, parametros: {}, situacion: null, ataca: null };
@@ -543,6 +547,50 @@ function conCambiosDeMarca(pares, acciones, defensores) {
   return r;
 }
 
+/**
+ * QUIÉN QUEDA CONFINADO A UNA PUERTA (§7.4.1): el defensor que está
+ * sobre su línea —entre los dos palos— al empezar la fase. Se decide al
+ * empezar y no se cambia a mitad (§8.2).
+ *
+ * @param puertas  las de la fase ([{ ids, a, b }])
+ * @returns { [defensor]: { a, b } }
+ */
+export function carrilesDe({ pista = 'entera', elementos = [], defensores = [], puertas = [] } = {}) {
+  const r = {};
+  if (!(puertas || []).length) return r;
+  const porId = new Map((elementos || []).filter(Boolean).map((e) => [e.id, e]));
+  for (const d of defensores || []) {
+    const e = porId.get(d);
+    if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.y)) continue;
+    let mejor = null;
+    for (const p of puertas) {
+      const q = alSegmento(pista, e, p.a, p.b);
+      const m = metrosEntre(pista, e, q);
+      if (m <= CONFINADO_M && (!mejor || m < mejor.m)) mejor = { m, a: p.a, b: p.b };
+    }
+    if (mejor) r[d] = { a: mejor.a, b: mejor.b };
+  }
+  return r;
+}
+
+/* Dónde se pone, SOBRE SU CARRIL, un confinado que tiene que quedar a
+   `metros` de alguien: se proyecta ese alguien sobre el carril y se
+   desliza desde ahí hacia el lado en el que ya estaba el defensor. Si el
+   carril no da para tanto, se queda en su punta. */
+function aparteEnElCarril(pista, carril, quien, desde, metros) {
+  const e = escalaDe(pista);
+  const P = alSegmento(pista, quien, carril.a, carril.b);
+  const lejos = metrosEntre(pista, quien, P);
+  const falta = Math.sqrt(Math.max(0, metros * metros - lejos * lejos));
+  const gx = (carril.b.x - carril.a.x) * e.x, gy = (carril.b.y - carril.a.y) * e.y;
+  const largo = Math.hypot(gx, gy) || 1;
+  const ux = gx / largo, uy = gy / largo;
+  /* Hacia qué punta: la del lado del defensor. */
+  const lado = ((desde.x - P.x) * e.x * ux + (desde.y - P.y) * e.y * uy) >= 0 ? 1 : -1;
+  const q = { x: P.x + (ux * lado * falta) / e.x, y: P.y + (uy * lado * falta) / e.y };
+  return alSegmento(pista, q, carril.a, carril.b);
+}
+
 /** La canasta contraria, o la misma si la pista solo tiene una (§8.6). */
 export function laContraria(pista, canasta) {
   const canastas = (marcoDe(pista) || {}).canastas || [];
@@ -575,11 +623,17 @@ export function laContraria(pista, canasta) {
 export function seguirDefensa({
   pista = 'entera', canasta = 'norte', defensa = null, papeles = null,
   jugadores = [], balones = [], reglas = {}, meta = null, inicio = null,
-  duracion_ms = 0, tiros = [], cuantas = SEGUIMIENTO.muestras,
+  duracion_ms = 0, tiros = [], cuantas = SEGUIMIENTO.muestras, puertas = [],
 } = {}) {
   const salida = {};
   const defensores = (papeles && papeles.defensores) || [];
   if (!inicio || !defensores.length || !(duracion_ms > 0)) return salida;
+  /* Los confinados a una puerta se deciden AL EMPEZAR la fase, con donde
+     está cada uno (§7.4.1, §8.2). */
+  const carriles = carrilesDe({
+    pista, defensores, puertas,
+    elementos: defensores.filter((d) => inicio.P[d]).map((d) => ({ id: d, ...inicio.P[d] })),
+  });
   const p = parametrosDe(defensa);
   const n = Math.max(2, cuantas | 0);
   const dt = duracion_ms / (n - 1);
@@ -630,6 +684,7 @@ export function seguirDefensa({
       /* Por dónde va la fase: lo mira «ayuda», que vuelve con su par
          antes de que acabe (§8.5). */
       u: duracion_ms > 0 ? t / duracion_ms : 0,
+      carriles,
     });
     for (const d of defensores) {
       if (!donde[d]) continue;
@@ -652,7 +707,12 @@ export function seguirDefensa({
       const roba = ((papeles.acciones || {})[d] || {}).accion === 'roba';
       if (!roba && suPar && metrosEntre(pista, siguiente, suPar) < SEGUIMIENTO.apartarse) {
         const desde = metrosEntre(pista, donde[d], suPar) > 1e-6 ? donde[d] : { x: suPar.x, y: suPar.y - 0.01 };
-        const fuera = aDistancia(pista, suPar, desde, SEGUIMIENTO.apartarse);
+        /* El confinado a una puerta se aparta POR SU CARRIL: se desliza a
+           lo largo de él, del lado en el que ya estaba, hasta quedar a un
+           metro. Apartarse en perpendicular le sacaría de la puerta. */
+        const fuera = carriles[d]
+          ? aparteEnElCarril(pista, carriles[d], suPar, desde, SEGUIMIENTO.apartarse)
+          : aDistancia(pista, suPar, desde, SEGUIMIENTO.apartarse);
         const antes = par ? previo.f.players[par] : null;
         const tope = paso + (antes ? metrosEntre(pista, suPar, antes) : 0);
         siguiente = metrosEntre(pista, donde[d], fuera) <= tope ? fuera : hacia(pista, donde[d], fuera, tope);
@@ -687,6 +747,9 @@ export function seguirDefensa({
  *                   que traigan los papeles
  * @param u          por dónde va la fase (0 a 1): lo mira «ayuda», que
  *                   vuelve con su par antes de acabarla
+ * @param carriles   { [defensor]: { a, b } } los confinados a una puerta
+ *                   (§7.4.1): su sitio se lleva al punto del carril más
+ *                   cercano al que le tocaría
  * @returns { [defensor]: { x, y, regla, aplica, balon, portador, trampa } }
  *   regla    la que tiene (la suya o la del ejercicio)
  *   aplica   la que cumple de verdad: si niega pero su par está lejos del
@@ -694,7 +757,7 @@ export function seguirDefensa({
  *            mandar retrasar, hacer la trampa o proteger el aro
  *   balon    el sitio del balón que mira, si mira alguno
  */
-export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, solo = null, cerrandoRebote = false, acciones = null, u = 0 } = {}) {
+export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, solo = null, cerrandoRebote = false, acciones = null, u = 0, carriles = null } = {}) {
   const r = {};
   const pos = posicionesDe(pista, canasta);
   if (!pos || !pos.aro || !papeles || !papeles.ataca || !(papeles.defensores || []).length) return r;
@@ -920,6 +983,15 @@ export function colocar({ pista = 'entera', canasta = 'norte', elementos = [], p
     pon(t.d, sitio, 'dos_contra_uno', { balon: t.C, portador: t.C, trampa: [t.otro, t.d] });
     hechos.add(t.d);
   }
+
+  /* EL CONFINADO A UNA PUERTA (§7.4.1) solo se mueve por su carril: su
+     regla dice dónde le tocaría, y él va al punto del carril más cercano
+     a eso. Va lo último para que valga para cualquier regla y situación. */
+  for (const [d, c] of Object.entries(carriles || {})) {
+    if (!r[d] || !c || !c.a || !c.b) continue;
+    const q = alSegmento(pista, r[d], c.a, c.b);
+    r[d] = { ...r[d], x: q.x, y: q.y, carril: [{ ...c.a }, { ...c.b }] };
+  }
   return r;
 }
 
@@ -933,8 +1005,21 @@ const metros = (v) => `${String(Math.round(v * 100) / 100).replace('.', ',')} m`
  *   primitivas: { tipo: 'linea', a, b } · { tipo: 'circulo', centro, metros }
  *               · { tipo: 'punto', p }
  */
-export function explicarRegla({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, defensor = null } = {}) {
-  const sitios = colocar({ pista, canasta, elementos, papeles, defensa });
+export function explicarRegla({ pista = 'entera', canasta = 'norte', elementos = [], papeles = null, defensa = null, defensor = null, carriles = null } = {}) {
+  const explicada = explicarSinCarril({ pista, canasta, elementos, papeles, defensa, defensor, carriles });
+  const c = explicada && carriles && carriles[defensor];
+  if (!c) return explicada;
+  /* Confinado a una puerta (§7.4.1): lo que diga su regla, llevado a su
+     carril. Se dice al final de la frase y se dibuja el carril. */
+  return {
+    ...explicada,
+    texto: `${explicada.texto} Está en la puerta: solo se mueve por su carril, al punto más cercano al que le tocaría.`,
+    primitivas: [...explicada.primitivas, { tipo: 'linea', a: { ...c.a }, b: { ...c.b } }],
+  };
+}
+
+function explicarSinCarril({ pista, canasta, elementos, papeles, defensa, defensor, carriles }) {
+  const sitios = colocar({ pista, canasta, elementos, papeles, defensa, carriles });
   const s = sitios[defensor];
   if (!s) return null;
   const p = parametrosDe(defensa);
