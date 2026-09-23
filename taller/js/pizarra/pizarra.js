@@ -73,6 +73,8 @@ export class Pizarra {
       onFila: (cono, parcial) => {
         if (parcial === null) this.tablero.deshacerFila(cono);
         else if (Object.keys(parcial).length === 1 && 'orientacion' in parcial) this.tablero.orientarFila(cono, parcial.orientacion);
+        /* Cómo salen —por rondas, su cadencia— tampoco la rehace (§7.4.2). */
+        else if (Object.keys(parcial).length && Object.keys(parcial).every((k) => k === 'rondas' || k === 'cadencia_ms')) this.tablero.ajustarFila(cono, parcial);
         else this.tablero.hacerFila(cono, parcial);
         this._cambio();
       },

@@ -27,6 +27,7 @@ import { CATALOGO_SISTEMA } from '../js/ia/acciones.js';
 import { aroExacto } from '../js/canvas/anclas.js';
 import { trasElTiro, frenteDelBloqueo } from '../js/pizarra/destino.js';
 import { TRAS_EL_TIRO_MS } from '../js/pizarra/fases.js';
+import { soloPrimeraRonda } from '../js/pizarra/motor/rondas.js';
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -616,7 +617,29 @@ test('EL DEFENSOR SOBRE UNA PUERTA SE QUEDA EN SU CARRIL TAMBIÉN EN EL PROYECTO
     `todas sus muestras sobre la puerta: ${JSON.stringify(suya.muestras.slice(0, 3))}`);
 });
 
-test('UN CONO DE FILA SE COMPILA CON SU COLA, y los que esperan no son jugadores de la animación', () => {
+test('UN CONO DE FILA SIN RONDAS SE COMPILA CON SU COLA, y los que esperan no son jugadores de la animación', () => {
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal' });
+  const j = {
+    version: 3, pista: 'entera', canasta: 'norte',
+    elementos: [
+      { id: 'cono_1', kind: 'cono', x: 0.5, y: 0.6, fila: { n: 3, equipo: 'A', papel: 'atacante', balon: true, orientacion: 90, vuelta: null, rondas: false } },
+      { id: 'jugador_2', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.6, fila_de: 'cono_1', puesto: 0, en_juego: true },
+      { id: 'jugador_3', kind: 'jugador', equipo: 'A', label: null, x: 0.5, y: 0.65, fila_de: 'cono_1', puesto: 1, en_juego: false },
+      { id: 'jugador_4', kind: 'jugador', equipo: 'A', label: null, x: 0.5, y: 0.7, fila_de: 'cono_1', puesto: 2, en_juego: false },
+      { id: 'balon_5', kind: 'balon', x: 0.54, y: 0.6, portador_id: 'jugador_2' },
+      { id: 'balon_6', kind: 'balon', x: 0.54, y: 0.65, portador_id: 'jugador_3' },
+      { id: 'balon_7', kind: 'balon', x: 0.54, y: 0.7, portador_id: 'jugador_4' },
+    ],
+    fases: [{ id: 'f1', tramos: [{ id: 'tr1', elemento_id: 'jugador_2', corre_id: 'jugador_2', accion: 'bota', tipo: 'run', trazo: [N(0.5, 0.6), N(0.5, 0.3)] }] }],
+  };
+  const anim = compilar(j);
+  eq(anim.conos[0].funcion, 'fila');
+  eq(anim.conos[0].fila_config, { n_jugadores: 2, direccion_grados: 90, equipo: 'A' }, 'con los dos que esperan:');
+  eq(anim.jugadores.length, 1, 'el que sale es el único jugador:');
+  eq(anim.balones.map((b) => b.id), ['balon_5'], 'y solo su balón:');
+});
+
+test('CON RONDAS (§7.4.2) LOS DE LA COLA SALEN UNO TRAS OTRO, sin número y marcados como repetición', () => {
   const N = (x, y) => ({ x, y, tipo_nodo: 'lineal' });
   const j = {
     version: 3, pista: 'entera', canasta: 'norte',
@@ -632,10 +655,49 @@ test('UN CONO DE FILA SE COMPILA CON SU COLA, y los que esperan no son jugadores
     fases: [{ id: 'f1', tramos: [{ id: 'tr1', elemento_id: 'jugador_2', corre_id: 'jugador_2', accion: 'bota', tipo: 'run', trazo: [N(0.5, 0.6), N(0.5, 0.3)] }] }],
   };
   const anim = compilar(j);
-  eq(anim.conos[0].funcion, 'fila');
-  eq(anim.conos[0].fila_config, { n_jugadores: 2, direccion_grados: 90, equipo: 'A' }, 'con los dos que esperan:');
-  eq(anim.jugadores.length, 1, 'el que sale es el único jugador:');
-  eq(anim.balones.map((b) => b.id), ['balon_5'], 'y solo su balón:');
+  eq(anim.conos[0].fila_config.n_jugadores, 0, 'nadie se queda en la cola del motor:');
+  eq(anim.jugadores.map((x) => x.id), ['A1', 'A_jugador_3', 'A_jugador_4'], 'los que salen, con nombre propio y sin chocar:');
+  eq(anim.jugadores.map((x) => x.dorsal), [null, '', ''], 'y sin número, como en la Pizarra:');
+  eq(anim.balones.length, 3, 'cada uno con su balón:');
+  const m = anim.fases[0].movimientos.filter((x) => x.tipo_elemento === 'jugador');
+  eq(m.map((x) => [x.elemento_id, x.repeticion ?? 0]), [['A1', 0], ['A_jugador_3', 1], ['A_jugador_4', 2]]);
+  ok(m[1].inicio_ms > m[0].inicio_ms && cerca(m[2].inicio_ms - m[1].inicio_ms, m[1].inicio_ms - m[0].inicio_ms, 1e-6),
+    `salen escalonados, a turnos iguales: ${m.map((x) => x.inicio_ms)}`);
+  ok(cerca(m[1].path[0].y, 0.65, 1e-9) && cerca(m[2].path[0].y, 0.7, 1e-9), 'cada uno sale de su sitio en la cola');
+  eq(anim.rondas, 3, 'la animación sabe cuántas rondas son:');
+  const una = soloPrimeraRonda(anim.fases);
+  eq(una[0].movimientos.filter((x) => x.tipo_elemento === 'jugador').map((x) => x.elemento_id), ['A1'], 'la miniatura y el guion cuentan una:');
+  ok(anim.fases[0].duracion_ms >= m[2].inicio_ms + m[2].duracion_ms, 'y la fase dura hasta que acaba el último');
+  /* Y el motor de verdad lo reproduce así: cuando sale el segundo, el
+     tercero sigue esperando en su sitio, y cada uno lleva su balón. */
+  const motor = enElMotor(anim);
+  const f = enElInstante(motor, 0, m[1].inicio_ms + m[1].duracion_ms / 2);
+  ok(f.players.A_jugador_3.y < 0.65 && f.players.A_jugador_3.y > 0.3, `el segundo va de camino: ${JSON.stringify(f.players.A_jugador_3)}`);
+  ok(cerca(f.players.A_jugador_4.y, 0.7), `el tercero espera: ${JSON.stringify(f.players.A_jugador_4)}`);
+  ok(Math.abs(f.balls.balon_6.y - f.players.A_jugador_3.y) < 0.02, `y el balón del segundo va con él: ${JSON.stringify(f.balls.balon_6)}`);
+  const fin = enElInstante(motor, 0, anim.fases[0].duracion_ms);
+  ok(['A1', 'A_jugador_3', 'A_jugador_4'].every((id) => cerca(fin.players[id].y, 0.3)), 'al acabar, los tres han llegado');
+});
+
+test('CON RONDAS, QUIEN NO PUEDE SALIR ESPERA EN SU SITIO, y el aviso llega al proyector', () => {
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal' });
+  const j = {
+    version: 3, pista: 'entera', canasta: 'norte',
+    elementos: [
+      { id: 'cono_1', kind: 'cono', x: 0.5, y: 0.6, fila: { n: 3, equipo: 'A', papel: 'atacante', balon: true, orientacion: 90, vuelta: null } },
+      { id: 'jugador_2', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.6, fila_de: 'cono_1', puesto: 0, en_juego: true },
+      { id: 'jugador_3', kind: 'jugador', equipo: 'A', label: null, x: 0.5, y: 0.65, fila_de: 'cono_1', puesto: 1, en_juego: false },
+      { id: 'jugador_4', kind: 'jugador', equipo: 'A', label: null, x: 0.5, y: 0.7, fila_de: 'cono_1', puesto: 2, en_juego: false },
+      { id: 'balon_5', kind: 'balon', x: 0.54, y: 0.6, portador_id: 'jugador_2' },
+      { id: 'balon_7', kind: 'balon', x: 0.54, y: 0.7, portador_id: 'jugador_4' },
+    ],
+    fases: [{ id: 'f1', tramos: [{ id: 'tr1', elemento_id: 'jugador_2', corre_id: 'jugador_2', accion: 'bota', tipo: 'run', trazo: [N(0.5, 0.6), N(0.5, 0.3)] }] }],
+  };
+  const anim = compilar(j);
+  eq(anim.jugadores.map((x) => x.id), ['A1', 'A_jugador_3', 'A_jugador_4'], 'el segundo, sin balón, sigue en la pista:');
+  eq(anim.conos[0].fila_config.n_jugadores, 0, 'y no en la cola que pinta el motor, que lo pondría en el cono:');
+  eq(anim.fases[0].movimientos.filter((x) => x.tipo_elemento === 'jugador').map((x) => x.elemento_id), ['A1', 'A_jugador_4'], 'sale el tercero:');
+  ok(anim.warnings.some((w) => /balón por cabeza/.test(w)), `y se avisa: ${anim.warnings}`);
 });
 
 /* ── Robar (§8.6) ────────────────────────────────────────── */

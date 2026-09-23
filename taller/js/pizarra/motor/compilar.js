@@ -49,6 +49,7 @@ import { fraccionMasCercana, cortarTrazo } from '../trazo.js';
 import { puertasDe } from '../conos.js';
 import { metaDeFase } from '../../canvas/fotograma.js';
 import { posicionesDe } from '../../canvas/anclas.js';
+import { conRondas } from '../rondas-fila.js';
 
 export const VERSION_JUGADA = 3;
 
@@ -79,22 +80,38 @@ const punto = (p) => [p.x, p.y];
  * @returns la animación en el formato del §10, más lo del §11.2
  */
 export function compilar(jugada) {
-  const j = jugada || {};
-  const pista = j.pista || 'entera';
-  const canasta = j.canasta || 'norte';
-  const elementos = (j.elementos || []).filter(Boolean);
+  const dibujada = jugada || {};
+  const pista = dibujada.pista || 'entera';
+  const canasta = dibujada.canasta || 'norte';
   const warnings = [];
 
-  /* ── los nombres ── */
+  /* ── los papeles (§8.1) ── los mismos que ve la Pizarra, de lo dibujado */
+  const papeles = papelesDeJugada({ ...dibujada, pista, elementos: (dibujada.elementos || []).filter(Boolean) });
+  const defiendeAlEmpezar = new Set(papeles.inicio.defensores);
+
+  /* ── las rondas (§7.4.2) ── los de la cola salen uno tras otro. Se
+     deducen de lo dibujado con el primero, con la misma cuenta que
+     enseña la Pizarra, y traen los balones del carro de quien pasa desde
+     fuera. */
+  const conLasRondas = conRondas(dibujada.fases || [], (dibujada.elementos || []).filter(Boolean), {
+    pista, canasta, canastaDe: (i) => (papeles.fases[i] || {}).canasta,
+  });
+  warnings.push(...conLasRondas.avisos);
+  const j = { ...dibujada, fases: conLasRondas.fases };
+  const elementos = [...(dibujada.elementos || []).filter(Boolean), ...conLasRondas.balones];
+  const repeticionDe = (id) => (conLasRondas.rondas[id] || {}).ronda || 0;
+  const conRondasEn = new Set(Object.values(conLasRondas.rondas).map((r) => r.fila));
+
+  /* ── los nombres ──
+     Quien espera en una fila no lleva dorsal (§7.1): si sale, se le
+     nombra por su ficha para que no se llame igual que otro, y en la
+     pista va sin número, como en la Pizarra. */
   const nombre = new Map();
+  const sinNumero = (e) => e.kind === 'jugador' && e.fila_de && (e.label == null || e.label === '');
   for (const e of elementos) {
-    nombre.set(e.id, e.kind === 'jugador' ? `${e.equipo || 'A'}${e.label || '0'}` : e.id);
+    nombre.set(e.id, e.kind !== 'jugador' ? e.id : sinNumero(e) ? `${e.equipo || 'A'}_${e.id}` : `${e.equipo || 'A'}${e.label || '0'}`);
   }
   const de = (id) => (id == null ? null : (nombre.get(id) ?? null));
-
-  /* ── los papeles (§8.1) ── los mismos que ve la Pizarra */
-  const papeles = papelesDeJugada({ ...j, pista, elementos });
-  const defiendeAlEmpezar = new Set(papeles.inicio.defensores);
 
   /* ── la escena ── */
   /* LOS QUE ESPERAN EN UNA FILA (§7.4.2) sin hacer nada en ninguna fase
@@ -105,8 +122,10 @@ export function compilar(jugada) {
     .flatMap((f) => (f && Array.isArray(f.tramos) ? f.tramos : []))
     .flatMap((t) => (t ? [t.elemento_id, t.corre_id, t.receptor_id, t.companero_id] : []))
     .filter(Boolean));
+  /* Una fila que sale por rondas no deja a nadie en la cola del motor:
+     quien no sale espera en su sitio, como en la Pizarra. */
   const esperan = elementos.filter((e) => e.kind === 'jugador' && e.fila_de && conosFila.has(e.fila_de)
-    && e.en_juego === false && !conTramos.has(e.id));
+    && e.en_juego === false && !conTramos.has(e.id) && !conRondasEn.has(e.fila_de));
   const enLaCola = new Set(esperan.map((e) => e.id));
   const balonesDeLaCola = new Set(elementos.filter((e) => e.kind === 'balon' && enLaCola.has(e.portador_id)).map((e) => e.id));
   const conBalon = new Set(elementos.filter((e) => e.kind === 'balon' && e.portador_id).map((e) => e.portador_id));
@@ -118,7 +137,7 @@ export function compilar(jugada) {
     tipo: defiendeAlEmpezar.has(e.id) ? 'defensor' : 'atacante',
     posicion_inicial: punto(e),
     tiene_balon: conBalon.has(e.id),
-    dorsal: e.dorsal ?? null,
+    dorsal: e.dorsal ?? (sinNumero(e) ? '' : null),
     nombre: e.nombre ?? null,
   }));
   const balones = elementos.filter((e) => e.kind === 'balon' && !balonesDeLaCola.has(e.id)).map((e) => ({
@@ -176,7 +195,7 @@ export function compilar(jugada) {
     .map((f, i) => (f && Array.isArray(f.tramos) && f.tramos.length
       /* La canasta es LA DE ESA FASE: si en la anterior robaron o
          anotaron, se ataca al otro aro (§8.6). */
-      ? compilarFase(f, i, { pista, canasta: (papeles.fases[i] || {}).canasta || canasta, de, nombre, warnings, papeles: papeles.fases[i] })
+      ? compilarFase(f, i, { pista, canasta: (papeles.fases[i] || {}).canasta || canasta, de, nombre, warnings, papeles: papeles.fases[i], repeticionDe })
       : null))
     .filter(Boolean);
 
@@ -282,10 +301,12 @@ export function compilar(jugada) {
     for (const [id, s] of Object.entries(seguida)) escena.P[id] = { ...s.fin };
   }
 
-  return { motor: MOTOR_PIZARRA, pista, canasta, jugadores, balones, conos, materiales, fases, warnings };
+  /* Cuántas rondas: la miniatura y el guion cuentan una (§7.4.2). */
+  const rondas = 1 + Math.max(0, ...Object.values(conLasRondas.rondas).map((r) => r.ronda));
+  return { motor: MOTOR_PIZARRA, pista, canasta, jugadores, balones, conos, materiales, fases, warnings, ...(rondas > 1 ? { rondas } : {}) };
 }
 
-function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = null }) {
+function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = null, repeticionDe = () => 0 }) {
   const tramos = (f && f.tramos) || [];
   const fase = { ...(f || {}), carriles: carrilesDesde(tramos) };
   const tiempos = tiemposDe(fase, { pista });
@@ -313,7 +334,11 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
       continue;
     }
     const m = tiempos.tramos[t.id] || { inicio_ms: 0, duracion_ms: 0 };
-    const cuando = { inicio_ms: m.inicio_ms, duracion_ms: m.duracion_ms };
+    /* Lo de una ronda que no es la primera va marcado: la miniatura y el
+       guion enseñan una sola (§7.4.2). */
+    const k = repeticionDe(t.id);
+    const ronda = k ? { repeticion: k } : {};
+    const cuando = { inicio_ms: m.inicio_ms, duracion_ms: m.duracion_ms, ...ronda };
     const modo = accion.parametros && accion.parametros.modo;
 
     if (!acciones.includes(t.accion)) acciones.push(t.accion);
@@ -360,11 +385,12 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
           path: [{ x: desde.x, y: desde.y, tipo_nodo: 'lineal' }, { x: fin.x, y: fin.y, tipo_nodo: 'lineal' }],
           inicio_ms: m.inicio_ms + m.duracion_ms * (1 - RECOGIDA_FRACCION),
           duracion_ms: m.duracion_ms * RECOGIDA_FRACCION,
+          ...ronda,
         });
         /* Y CUÁNDO es suyo: al llegarle a las manos. Sin el instante, el
            motor lo fechaba al final del último viaje del balón en la fase,
            y si después lo pasaba, el balón volvía a él. */
-        recogidas.push({ jugador_id: de(t.elemento_id), balon_id: t.balon_id, t_ms: m.inicio_ms + m.duracion_ms });
+        recogidas.push({ jugador_id: de(t.elemento_id), balon_id: t.balon_id, t_ms: m.inicio_ms + m.duracion_ms, ...ronda });
       }
       continue;
     }
@@ -394,6 +420,7 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
           path: [{ x: fin.x, y: fin.y, tipo_nodo: 'lineal' }, { x: cae.x, y: cae.y, tipo_nodo: 'lineal' }],
           inicio_ms: m.inicio_ms + m.duracion_ms,
           duracion_ms: TRAS_EL_TIRO_MS,
+          ...ronda,
         });
       }
       continue;
@@ -433,6 +460,7 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
         ...(frente ? { hacia: [frente.x, frente.y] } : {}),
         inicio_ms: llega,
         duracion_ms: Math.max(0, hasta - llega),
+        ...ronda,
       });
       continue;
     }

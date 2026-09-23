@@ -17,9 +17,23 @@
    seis veces: la miniatura y el guion del planificador enseñan una.
    ============================================================ */
 
+/* Lo que la Pizarra marca como de otra ronda dentro de una fase. */
+const LISTAS = ['movimientos', 'pases', 'tiros', 'recogidas', 'bloqueos'];
+const deLaPrimera = (x) => !(x && x.repeticion >= 1);
+
 /** Las fases de la primera ronda: es lo que van a enseñar la miniatura
- *  y el guion. Una animación sin rondas se devuelve entera. */
+ *  y el guion. Una animación sin rondas se devuelve entera.
+ *
+ *  Las rondas vienen de dos maneras: las guardadas antes de la Pizarra
+ *  repetían FASES (`fase.ronda`), y las de la Pizarra van DENTRO de cada
+ *  fase, con lo de cada repetición marcado (`repeticion`, §7.4.2). */
 export function soloPrimeraRonda(fases) {
   const conRonda = (fases || []).filter((f) => f.ronda != null);
-  return conRonda.length ? conRonda.filter((f) => f.ronda === 1) : (fases || []);
+  const primeras = conRonda.length ? conRonda.filter((f) => f.ronda === 1) : (fases || []);
+  return primeras.map((f) => {
+    if (!f || !LISTAS.some((k) => Array.isArray(f[k]) && !f[k].every(deLaPrimera))) return f;
+    const limpia = { ...f };
+    for (const k of LISTAS) if (Array.isArray(f[k])) limpia[k] = f[k].filter(deLaPrimera);
+    return limpia;
+  });
 }

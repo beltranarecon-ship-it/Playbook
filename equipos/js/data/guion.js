@@ -96,6 +96,8 @@ function referencias(jugadores) {
     const nombre = String(j.nombre || '').trim();
     if (nombre) { ref.set(j.id, { txt: nombre, propio: true }); continue; }
     const e = etiquetaJugador(j);
+    /* Quien sale de una fila no lleva número (§7.1 de la Pizarra). */
+    if (e === '') { ref.set(j.id, { txt: 'uno de la fila', propio: false }); continue; }
     const ambiguo = (veces.get(e)?.size ?? 0) > 1;
     const eq = EQUIPO_ORDINAL[j.equipo] || '1';
     ref.set(j.id, { txt: ambiguo ? `el ${e} del equipo ${eq}` : `el ${e}`, propio: false });

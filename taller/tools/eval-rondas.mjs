@@ -18,6 +18,7 @@ function test(nombre, fn) {
   try { fn(); pasan++; console.log(`  ✓ ${nombre}`); }
   catch (e) { fallan++; console.error(`  ✗ ${nombre}\n      ${e.message}`); }
 }
+const ok = (cond, msg) => { if (!cond) throw new Error(msg); };
 const eq = (real, esp, msg = '') => {
   const r = JSON.stringify(real), e = JSON.stringify(esp);
   if (r !== e) throw new Error(`${msg} esperado=${e} real=${r}`);
@@ -41,6 +42,21 @@ test('una animación SIN rondas se devuelve entera', () => {
 
 test('mezcladas, se queda con las que dicen de qué ronda son', () => {
   eq(soloPrimeraRonda([fase(1, 1), { id: 'suelta' }, fase(2, 2)]).map((f) => f.id), ['f1']);
+});
+
+test('LAS RONDAS DE LA PIZARRA van dentro de cada fase: se quita lo marcado como repetición', () => {
+  const f = {
+    id: 'f1',
+    movimientos: [{ elemento_id: 'A1' }, { elemento_id: 'A_j3', repeticion: 1 }, { elemento_id: 'A_j4', repeticion: 2 }],
+    pases: [{ de_id: 'A1' }, { de_id: 'A_j3', repeticion: 1 }],
+    tiros: [], recogidas: [{ jugador_id: 'A_j3', repeticion: 1 }], bloqueos: [],
+  };
+  const [una] = soloPrimeraRonda([f]);
+  eq(una.movimientos.map((m) => m.elemento_id), ['A1']);
+  eq([una.pases.length, una.recogidas.length], [1, 0]);
+  eq(f.movimientos.length, 3, 'sin tocar la animación de verdad:');
+  const limpia = { id: 'f2', movimientos: [{ elemento_id: 'A1' }] };
+  ok(soloPrimeraRonda([limpia])[0] === limpia, 'y una fase sin repeticiones sale tal cual');
 });
 
 test('sin fases no revienta', () => {

@@ -270,6 +270,9 @@
 /* Lo que ha DICHO el entrenador (§8.5) no es lo que saldría solo: se ve
    con el celeste de la selección, sin llegar al azul de lo dibujado. */
 .pz-barra--auto.is-dicha { background: var(--accent-soft); color: var(--color-text); }
+/* Lo que repite cada uno de una fila por rondas (§7.4.2): en gris, con un
+   filo de lo dibujado para que se vea de dónde sale. */
+.pz-barra--auto.is-ronda { box-shadow: inset 0 0 0 1px var(--color-accent); }
 
 /* ---- La pantalla (§2.1) -------------------------------------
    Barra arriba, panel de fichas a la izquierda, y la pista con la línea

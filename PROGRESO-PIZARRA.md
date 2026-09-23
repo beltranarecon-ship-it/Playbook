@@ -34,14 +34,14 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
 | 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
-| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar); pasos 6.0 a 6.5 hechos | — |
+| 6 · Conos y elementos | ⏳ en curso: pasos 6.0 a 6.6 hechos | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **67 en verde, 1640
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **68 en verde, 1664
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -392,7 +392,7 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
 | 6.3 | Puertas (§7.4.1): emparejamiento automático por distancia, la banda, el trazo imantado a pasar por dentro y en rojo si se fuerza por fuera; deshacer el par en el panel | ✅ (66 bancos, 1607 pruebas; 14 mutantes, los 14 muertos; probado en la Pizarra: cruzar, imantar, forzar en rojo, el iconito y deshacerla desde el panel) |
 | 6.4 | El defensor confinado al carril de la puerta: su regla se proyecta sobre el carril | ✅ (66 bancos, 1616 pruebas; 8 mutantes: 7 muertos y 1 equivalente; probado en la Pizarra y con el fotograma del proyector: nunca sale de la puerta y, al cruzarla su par, se aparta 1,0 m deslizándose por ella) |
 | 6.5 | Filas (§7.4.2): un cono es cola —jugadores, equipo, papel, un balón por cabeza—, con su tirador de orientación y su destino de vuelta. Se enciende «Vuelve a la fila», que hoy no puede | ✅ (67 bancos, 1640 pruebas; banco nuevo `eval-filas.mjs`; probado en la Pizarra: hacerla desde el panel, cambiarla, el tirador, mover el cono con su cola, «Vuelve a la fila» y compilar) |
-| 6.6 | Rondas: salen todos uno tras otro, con cadencia, y variación por ronda | pendiente |
+| 6.6 | Rondas: salen todos uno tras otro, con cadencia. La variación por ronda queda para más adelante (lo decidió el entrenador) | ✅ (68 bancos, 1664 pruebas; banco nuevo `eval-rondas-fila.mjs`, 16 pruebas; 37 mutantes, los 37 muertos; probado en la Pizarra: la línea de tiempo con una barra por ronda, el panel «Salen» y «Cadencia», reproducir, reabrir lo dibujado, y lo mismo en el compilador y en el motor del proyector) |
 | 6.7 | Balones múltiples y equipos del club. Cierre de la capa | pendiente |
 
 **Decidido en los pasos 6.1 y 6.2 (dicho al entrenador):**
@@ -484,20 +484,70 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
   entrenador quiere que una fila de defensores defienda aunque no haya
   balón, hay que decidirlo.
 
-**Preguntas para el entrenador antes de llegar a 6.6 y 6.7:**
+**Decidido por el entrenador para el paso 6.6 (2026-09-23):**
 
-1. **Rondas**: ¿qué tiene que verse en el proyector? ¿La jugada entera
-   repetida una vez por ronda, o una sola animación en la que los de la
-   fila van saliendo escalonados?
-2. **Variación por ronda** («el tercero tira en vez de entrar»): ¿se
-   dibuja encima la ronda que cambia, o se elige de una lista lo que hace
-   distinto?
-3. **Equipos del club**: ¿es elegir el color/equipo de la fila (1 a 4), o
-   traerse de verdad la plantilla del club —nombres y dorsales— para que
-   salgan en las fichas?
+1. **Rondas: UNA sola animación** en la que los de la cola salen uno
+   tras otro, con la cadencia que se diga, y la cola se va acortando. Nada
+   de repetir la jugada entera una vez por cabeza.
+2. **La variación por ronda** («el tercero tira en vez de entrar") **queda
+   para más adelante**.
+3. **Los de fuera que juegan con el que sale lo repiten con cada uno**:
+   el que devuelve el pase se lo devuelve a cada uno con su balón, y el
+   que pasa desde fuera tiene un balón para cada uno, como un carro de
+   balones. Lo que hacen por su cuenta, sin el que sale, no se repite.
 
-Mientras no haya respuesta se va por los pasos 6.0 a 6.5, que la
-especificación deja cerrados.
+**Decidido en el paso 6.6 (detalles, sin preguntar):**
+
+- **Las rondas no se guardan: se deducen** de lo dibujado con el primero
+  de la cola (`pizarra/rondas-fila.js`). La Pizarra y el compilador hacen
+  la misma cuenta, así que se ve igual al dibujar y al proyectar.
+- **Una ronda es todo lo dibujado en lo que sale el primero o su balón**:
+  lo que hace él, los pases que le hacen, y lo que cualquiera hace con su
+  balón (el reboteador que recoge su tiro).
+- **Por rondas es lo de serie** en una fila; en el panel del cono,
+  «Salen: todos, uno tras otro / solo el primero». Cambiarlo, o la
+  cadencia, NO rehace la fila: vale aunque el primero ya tenga algo
+  dibujado, y en cualquier fase.
+- **El turno**: sin cadencia, cada uno sale cuando acaba la ronda del
+  anterior en esa fase (contando el balón de un tiro hasta que cae); con
+  cadencia (de 1 a 5 s en el panel), cada tantos segundos aunque el
+  anterior no haya acabado. Cada ronda repite los tiempos de la del
+  primero, así que lo que esperaba un pase lo sigue esperando.
+- **Cada uno sale de su sitio en la cola** —el primero, del cono— y
+  **«vuelve a la fila» le pone detrás del que volvió antes**.
+- **Con varias fases, la cascada va fase a fase**: todos hacen lo de la
+  fase 1, uno tras otro, y luego lo de la fase 2.
+- **Dos colas que juegan entre sí salen a la par** (el segundo de una con
+  el segundo de la otra), tantas rondas como jugadores tenga la más corta;
+  si no son iguales, se avisa.
+- **Quien de la cola ya tiene algo dibujado hace lo suyo** y no repite; su
+  hueco en la cascada se queda para él.
+- **Sin balón**: si la ronda lo necesita (pasar, tirar, botar, recoger el
+  suyo) y alguno no lo tiene, **esa ronda no sale y se avisa**; lo que no
+  necesita balón se repite igual.
+- **Una fase con la duración puesta a mano se alarga** lo que haga falta
+  para que quepan todas las rondas.
+- **En la línea de tiempo**, lo de cada ronda va en gris con un filo azul
+  y no se arrastra (se cambia cambiando lo del primero); los que esperan
+  se ven por su puesto («2.º», «3.º»), y en los mensajes, «el 2.º de la
+  fila».
+- **Al compilar**, los que salen son jugadores sin número (como en la
+  Pizarra), con nombre propio para no chocar entre sí; lo de cada ronda
+  va marcado (`repeticion`) y la animación dice cuántas rondas son
+  (`rondas`), así que **la miniatura y el guion de Equipos cuentan una**.
+  Si alguno de la cola no sale, espera en su sitio (ya no en la cola que
+  pintaba el motor, que le pondría en el cono). En el guion, quien sale
+  de una fila es «uno de la fila».
+- **Arreglado de paso, en el repaso de la Pizarra**: un balón que va a
+  salir en un pase o un tiro va en las manos de quien lo hace hasta que
+  sale. Antes esperaba plantado en el sitio del pase mientras su jugador
+  botaba hasta allí; con las rondas, cada balón de la cola flotaba en el
+  sitio del tiro.
+
+**Pregunta que queda para el 6.7:** ¿«equipos del club» es elegir el
+color/equipo de la fila (1 a 4), o traerse de verdad la plantilla del
+club —nombres y dorsales— para que salgan en las fichas? (Se mira antes
+si el §7.2 lo deja dicho.)
 
 ## Capa 4, paso a paso
 
@@ -522,11 +572,9 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
-**Hoy (2026-09-23): el paso 6.6, las rondas**, esperando dos respuestas
-del entrenador (ver «Capa 6, paso a paso»): cómo se ve en el proyector
-una fila que sale por rondas y cómo se dice lo que cambia en una ronda.
-Lo que viene después de esta línea es el siguiente paso de la capa 4,
-que ya está hecho; se deja como historia.
+**Hoy (2026-09-24): el paso 6.7**, balones múltiples y equipos del club,
+y el cierre de la capa 6. Lo que viene después de esta línea es el
+siguiente paso de la capa 4, que ya está hecho; se deja como historia.
 
 **4.4b**, con dos decisiones ya tomadas (2026-09-11): el creador v2.1 se
 borra ya, como dice el §12, y lo guardado se trata como dice el §11.4.
@@ -716,6 +764,21 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
 - Una vez, en una prueba automatizada, apareció un aviso de «Defiende» que
   nadie eligió. No se ha podido reproducir; se comprobó que las 12 casillas
   de los anillos disparan exactamente su acción.
+- **Capa 6, rondas (6.6):** en la Pizarra, al pasar a la fase siguiente,
+  los de la cola se ven en su sitio aunque en el proyector ya hayan
+  salido: el arranque de la fase 2 cuenta lo dibujado, no las rondas. El
+  repaso de la jugada entera y el proyector sí lo hacen bien. Solo
+  importa si se dibuja algo DESPUÉS de las rondas; decidir si hace falta.
+- **Capa 6, rondas:** mientras salen, los de la cola se pintan
+  semitransparentes en la Pizarra (como mientras esperan); en el proyector
+  van opacos.
+- **Capa 6, rondas:** si lo dibujado con el primero no le lleva de vuelta,
+  todos acaban en el mismo sitio, unos encima de otros. Es lo dibujado;
+  se arregla dibujando «vuelve a la fila» o, más adelante, con la
+  variación por ronda.
+- Un jugador fuera de juego que NO está en una fila sigue sin dorsal y el
+  compilador lo llama «A0»; dos así chocarían. Viene de antes de las
+  filas; a los de las filas ya no les pasa.
 
 ---
 

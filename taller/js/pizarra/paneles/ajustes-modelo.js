@@ -60,6 +60,10 @@ const opcion = (valor, nombre) => ({ valor, nombre });
  * @param explicacion la frase de por qué está ahí el defensor, si lo es
  * @param puertas     [[a, b]] las puertas de la fase que se edita (§7.4.1)
  */
+/* Las cadencias que se ofrecen para una fila por rondas (§7.4.2). */
+const CADENCIAS = [1000, 1500, 2000, 2500, 3000, 4000, 5000];
+const segundosDe = (ms) => `${String(ms / 1000).replace('.', ',')} s`;
+
 export function modeloAjustes({
   seleccion = [], elementos = [], papeles = null, defensa = null, nombreDe = (e) => e.id, explicacion = null,
   puertas = [],
@@ -203,6 +207,17 @@ export function modeloAjustes({
         vuelta: {
           valor: f.vuelta,
           opciones: [opcion(null, 'A su propia cola'), ...otras.map((o) => opcion(o.id, `A la de ${nombre(o.id)}`))],
+        },
+        /* LAS RONDAS (§7.4.2): salen todos, uno tras otro, repitiendo lo
+           que se dibuje con el primero; o solo el primero. */
+        rondas: {
+          valor: f.rondas === false ? 'no' : 'si',
+          opciones: [opcion('si', 'Todos, uno tras otro'), opcion('no', 'Solo el primero')],
+        },
+        cadencia: f.rondas === false ? null : {
+          valor: f.cadencia_ms ? String(f.cadencia_ms) : null,
+          opciones: [opcion(null, 'Al acabar el anterior'), ...CADENCIAS.map((ms) => opcion(String(ms), `Cada ${segundosDe(ms)}`))]
+            .concat(f.cadencia_ms && !CADENCIAS.includes(f.cadencia_ms) ? [opcion(String(f.cadencia_ms), `Cada ${segundosDe(f.cadencia_ms)}`)] : []),
         },
       } : null,
     };

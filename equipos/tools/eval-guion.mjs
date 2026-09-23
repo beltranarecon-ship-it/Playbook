@@ -126,6 +126,19 @@ test('bote + pase + tiro se leen como una jugada', () => {
 
 console.log('· guionDeAnimacion · honestidad del verbo');
 
+test('quien sale de una fila no lleva número: se le llama «uno de la fila»', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A_jugador_3', equipo: 'A', dorsal: '' }],
+    balones: [],
+    fases: [{
+      duracion_ms: 800,
+      movimientos: [{ elemento_id: 'A_jugador_3', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: camino(P.esquina_izq, P.poste_bajo_izq) }],
+    }],
+  });
+  eq(g.fases[0].lineas, ['Uno de la fila corta hacia el poste bajo izquierdo']);
+});
+
 test('quien NO lleva balón corta, no bota', () => {
   const g = guionDeAnimacion({
     pista: 'entera',

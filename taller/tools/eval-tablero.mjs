@@ -674,6 +674,90 @@ test('«VUELVE A LA FILA» DESDE EL ANILLO lleva al primero al final de su cola'
   ok(fin.y > 0.6, `acaba detrás de la cola: ${JSON.stringify(fin)}`);
 });
 
+test('LAS RONDAS SE VEN EN LA PIZARRA CON LA MISMA CUENTA QUE EN EL PROYECTOR (§7.4.2)', () => {
+  const { t, cono } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 3, orientacion: 90 });
+  const cola = filasMod.deLaFila(t.fichas.elementos, cono.id);
+  corta(t, cola[0].id, { x: 0.5, y: 0.3 });
+  const { tramos, tiempos, rondas } = t.conRondasEn();
+  eq(tramos.map((x) => x.elemento_id), cola.map((j) => j.id), 'el primero y, detrás, los otros dos:');
+  eq(Object.values(rondas).map((r) => r.ronda), [1, 2]);
+  eq(t.tramos.length, 1, 'lo dibujado sigue siendo un tramo:');
+  const anim = compilarMod.compilar(t.jugada());
+  const enAnim = anim.fases[0].movimientos.filter((m) => m.tipo_elemento === 'jugador').map((m) => m.inicio_ms);
+  eq(enAnim, tramos.map((x) => tiempos.tramos[x.id].inicio_ms), 'y salen cuando en el proyector:');
+  eq(t.nombreDe(cola[2]), 'el 3.º de la fila', 'quien espera se nombra por su puesto:');
+});
+
+test('CAMBIAR CÓMO SALE UNA FILA NO LA REHACE, aunque el primero ya tenga algo dibujado', () => {
+  const { t, cono } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 3, orientacion: 90 });
+  const ids = filasMod.deLaFila(t.fichas.elementos, cono.id).map((j) => j.id);
+  corta(t, ids[0], { x: 0.5, y: 0.3 });
+  ok(t.ajustarFila(cono.id, { rondas: false }), 'se cambia');
+  eq(filasMod.deLaFila(t.fichas.elementos, cono.id).map((j) => j.id), ids, 'los mismos, en su sitio:');
+  eq(t.conRondasEn().tramos.length, 1, 'solo sale el primero:');
+  t.ajustarFila(cono.id, { rondas: true, cadencia_ms: 1500 });
+  const { tramos, tiempos } = t.conRondasEn();
+  eq(tramos.slice(1).map((x) => tiempos.tramos[x.id].inicio_ms), [1500, 3000], 'y a la cadencia:');
+  eq(ficha(t, cono.id).fila.cadencia_ms, 1500);
+  eq(t.ajustarFila('nadie', { rondas: false }), false, 'sin cono de fila no hay nada que cambiar:');
+});
+
+test('EL BALÓN QUE VA A SALIR VA EN LAS MANOS DE QUIEN LO PASA, también en el repaso', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.30, 0.80);
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.70, 0.40);
+  l = anadir(l, { kind: 'balon' }, 0.34, 0.80);
+  const [a1, a2, bal] = l;
+  t.poner(asignarBalon(l, bal.id, a1.id, 'entera'));
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('bota'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), { x: 0.30, y: 0.50 }), tipo: 'run' });
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('pasa'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), ficha(t, a2.id)), tipo: 'pass' });
+  eq(t.tramos.map((x) => x.corre_id), [a1.id, bal.id], 'bota y pasa:');
+  const { tiempos } = t.conRondasEn();
+  eq(t._paraRepaso(t.tramos, tiempos).map((x) => x.manos || null), [null, a1.id], 'el pase sale de las manos de A1:');
+  t.reproducirFase();
+  const mitad = tiempos.tramos[t.tramos[0].id].duracion_ms / 2;
+  /* El reloj, quieto: si no, entre una pregunta y otra A1 ya se ha movido. */
+  const ahora = performance.now();
+  t.repaso._ahora = () => ahora;
+  t.repaso.activo.t0 = ahora - mitad;
+  const jugador = t.repaso.posicion(a1.id);
+  const balon = t.repaso.donde(ficha(t, bal.id));
+  t.repaso.parar();
+  ok(jugador.y < 0.79 && jugador.y > 0.51, `A1 va botando: ${JSON.stringify(jugador)}`);
+  ok(Math.abs(balon.y - jugador.y) < 1e-9 && balon.x > jugador.x, `y el balón con él, a su lado: ${JSON.stringify(balon)}`);
+});
+
+test('EL CARRO DEL QUE PASA DESDE FUERA SE PINTA SOLO MIENTRAS SE REPRODUCE', () => {
+  const { t, cono } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 3, orientacion: 90 });
+  const cola = filasMod.deLaFila(t.fichas.elementos, cono.id);
+  t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.8, y: 0.3 });
+  const pasador = t.fichas.elementos[t.fichas.elementos.length - 1];
+  t.anadirFicha({ kind: 'balon' }, { x: pasador.x, y: pasador.y });
+  const carro = t.fichas.elementos.find((e) => e.kind === 'balon');
+  eq(carro.portador_id, pasador.id, 'el balón, en las manos del que pasa:');
+  corta(t, cola[0].id, { x: 0.5, y: 0.3 });
+  t._trazoHecho({ elemento: ficha(t, pasador.id), accion: t._accionDe('pasa'), variante: null, trazo: nuevoTrazo(ficha(t, pasador.id), ficha(t, cola[0].id)), tipo: 'pass' });
+  eq(t.tramos[1].receptor_id, cola[0].id, 'le pasa al primero:');
+  eq(t.fichas.extras(), [], 'quieto, no se pinta nada de más:');
+  t.reproducirFase();
+  eq(t.fichas.extras().map((b) => b.id), [`${carro.id}_r1`, `${carro.id}_r2`], 'reproduciendo, un balón más por ronda:');
+  /* Al empezar, el del carro espera en las manos del que pasa —que no se
+     mueve—, al lado de él y no encima. */
+  const ahora = performance.now();
+  t.repaso._ahora = () => ahora;
+  t.repaso.activo.t0 = ahora;
+  const enManos = t.repaso.donde(t.fichas.extras()[1]);
+  const quieto = ficha(t, pasador.id);
+  ok(Math.abs(enManos.y - quieto.y) < 1e-9 && enManos.x > quieto.x + 1e-6, `a su lado: ${JSON.stringify(enManos)} y ${JSON.stringify(quieto)}`);
+  t.repaso.parar();
+  eq(t.fichas.extras(), [], 'y al acabar, nada:');
+});
+
 test('EL TIRADOR GIRA LA FILA: se coge al final de la cola y se imanta cada 15°', () => {
   const { t, cono } = conConoDeFila();
   t.hacerFila(cono.id, { n: 2, orientacion: 90 });

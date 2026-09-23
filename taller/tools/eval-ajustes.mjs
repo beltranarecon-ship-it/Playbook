@@ -191,5 +191,18 @@ test('EL PANEL DEL CONO OFRECE HACER FILA, y la de un cono de fila se cambia ah�
   eq([desdeUno.tipo, desdeUno.id], ['cono', 'c1'], 'uno que espera enseña la fila de su cono:');
 });
 
+test('LA FILA DICE CÓMO SALEN: todos uno tras otro, con su cadencia, o solo el primero (§7.4.2)', () => {
+  const con = (fila) => modeloAjustes({ seleccion: ['c1'], elementos: [{ id: 'c1', kind: 'cono', x: 0.5, y: 0.5, fila: { n: 3, equipo: 'A', papel: 'atacante', balon: false, orientacion: 90, vuelta: null, ...fila } }], nombreDe: () => 'el cono 1' }).fila;
+  const serie = con({});
+  eq(serie.rondas.valor, 'si', 'de serie, salen todos:');
+  eq(serie.rondas.opciones.map((o) => o.valor), ['si', 'no']);
+  eq(serie.cadencia.valor, null, 'cada uno al acabar el anterior:');
+  eq(serie.cadencia.opciones[0], { valor: null, nombre: 'Al acabar el anterior' });
+  ok(serie.cadencia.opciones.some((o) => o.valor === '1500' && o.nombre === 'Cada 1,5 s'), 'y cadencias en segundos');
+  eq(con({ cadencia_ms: 1750 }).cadencia.opciones.slice(-1)[0], { valor: '1750', nombre: 'Cada 1,75 s' }, 'una cadencia que no está en la lista se enseña igual:');
+  const solo = con({ rondas: false });
+  eq([solo.rondas.valor, solo.cadencia], ['no', null], 'si solo sale el primero, no hay cadencia:');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

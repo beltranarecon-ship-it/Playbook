@@ -261,7 +261,9 @@ export class Fichas {
   /* ---- dibujo ------------------------------------------------ */
 
   _dibujar({ ctx, vista, R, toPx, seVe }) {
-    const orden = [...this.elementos].sort((a, b) => (ORDEN[a.kind] ?? 9) - (ORDEN[b.kind] ?? 9));
+    /* `extras`: lo que se pinta sin estar en la pista —los balones del
+       carro de las rondas mientras se reproduce (§7.4.2)—. */
+    const orden = [...this.elementos, ...(this.extras?.() || [])].sort((a, b) => (ORDEN[a.kind] ?? 9) - (ORDEN[b.kind] ?? 9));
     for (const e of orden) {
       if (e.kind === 'zona') { this._dibujarZona(ctx, vista, e, R); continue; }
       /* `donde` deja que otro diga en qué punto pintar una ficha SIN

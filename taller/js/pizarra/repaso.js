@@ -61,6 +61,10 @@ export class Repaso {
     this.activo = null;   // { porElemento, dur, t0 }
     this._raf = null;
     this._reloj = null;
+    /* Los balones que se pintan solo mientras se reproduce (el carro de
+       las rondas, §7.4.2), y cómo encontrar una ficha que no se mueve. */
+    this.extras = [];
+    this.fichaDe = null;
   }
 
   get corriendo() { return !!this.activo; }
@@ -136,6 +140,7 @@ export class Repaso {
         sampler: m ? muestreadorPorTiempo(m) : muestreador(t.trazo),
         inicio: Math.max(0, inicio_ms) / velocidad,
         dur: Math.max(1, duracion_ms) / velocidad,
+        manos: t.manos || null,
       };
       paso.fin = paso.inicio + paso.dur;
       if (!porElemento.has(t.corre_id)) porElemento.set(t.corre_id, []);
@@ -200,7 +205,17 @@ export class Repaso {
     if (!a) return null;
     const suyos = id === undefined ? [...a.porElemento.values()][0] : a.porElemento.get(id);
     if (!suyos || !suyos.length) return null;
-    return posicionEn(suyos, this._ahora() - a.t0);
+    const t = this._ahora() - a.t0;
+    /* UN BALÓN QUE ESPERA A SALIR va en las manos de quien lo va a pasar
+       o a tirar, y con él. Si no, se quedaba plantado donde sale su
+       tramo mientras su jugador botaba hasta allí —y en una fila por
+       rondas, cada balón de la cola flotaba en el sitio del tiro—. */
+    const siguiente = suyos.find((x) => t < x.inicio);
+    if (siguiente && siguiente.manos && siguiente.manos !== id && !suyos.some((x) => t >= x.inicio && t <= x.fin)) {
+      const p = this.posicion(siguiente.manos) || this.fichaDe?.(siguiente.manos);
+      if (p && Number.isFinite(p.x)) return sitioDelBalon({ x: p.x, y: p.y }, this.lienzo.vista.pistaKey);
+    }
+    return posicionEn(suyos, t);
   }
 
   _ahora() { return typeof performance !== 'undefined' ? performance.now() : Date.now(); }

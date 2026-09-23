@@ -32,7 +32,8 @@
    ============================================================ */
 
 import { h } from '../ui/dom.js';
-import { carrilesDesde, tiemposDe, duracionDeCarril } from './fases.js';
+import { carrilesDesde, duracionDeCarril } from './fases.js';
+import { numeroDe } from './elementos.js';
 
 /** Cuánto hay que arrastrar para que sea mover y no un clic. */
 const UMBRAL_PX = 4;
@@ -57,12 +58,14 @@ export class LineaTiempo {
    *  desincronizarse de lo que hay dibujado. */
   refrescar() {
     const t = this.tablero;
-    const fase = { ...t.fases[t.iFase], carriles: carrilesDesde(t.tramos) };
-    const tiempos = tiemposDe(fase, { pista: t.lienzo.vista.pistaKey });
+    /* Con las rondas de las filas (§7.4.2): la fase dura hasta que sale
+       el último, y lo de cada ronda se ve en gris. */
+    const { tramos, tiempos, rondas } = t.conRondasEn();
+    const fase = { ...t.fases[t.iFase], carriles: carrilesDesde(tramos) };
     this.el.replaceChildren(
       this._mandos(tiempos),
       this._tira(),
-      this._carriles(fase, tiempos),
+      this._carriles(fase, tiempos, rondas),
     );
   }
 
@@ -121,7 +124,7 @@ export class LineaTiempo {
 
   /* ---- los carriles ----------------------------------------- */
 
-  _carriles(fase, tiempos) {
+  _carriles(fase, tiempos, rondas = {}) {
     const t = this.tablero;
     const caja = h('div', { class: 'pz-tiempo__carriles' });
     if (!fase.carriles.length) {
@@ -133,11 +136,24 @@ export class LineaTiempo {
     const declaradas = t.declaradas();
     for (const c of fase.carriles) {
       const ficha = t.fichas.elementos.find((e) => e.id === c.elemento);
-      const fila = h('div', { class: 'pz-carril' },
-        h('span', { class: 'pz-carril__quien' }, ficha ? t.nombreDe(ficha) : '—'));
+      const soloRondas = c.tramos.every((tr) => rondas[tr.id]);
+      const fila = h('div', { class: 'pz-carril' + (soloRondas ? ' pz-carril--auto' : '') }, this._quien(ficha));
       const pista = h('div', { class: 'pz-carril__pista' });
       for (const tr of c.tramos) {
         const m = tiempos.tramos[tr.id];
+        const r = rondas[tr.id];
+        if (r) {
+          /* LO DE UNA RONDA (§7.4.2) sale de lo del primero de la fila:
+             no se dibuja ni se arrastra; se cambia cambiando lo suyo. */
+          const copia = h('div', {
+            class: 'pz-barra pz-barra--auto is-ronda',
+            title: `ronda ${r.ronda + 1} · repite lo del primero de la fila: se cambia cambiando lo suyo`,
+          }, tr.accion);
+          copia.style.left = `${(m.inicio_ms / total) * 100}%`;
+          copia.style.width = `${Math.max(2, (m.duracion_ms / total) * 100)}%`;
+          pista.append(copia);
+          continue;
+        }
         const barra = h('div', {
           class: 'pz-barra' + (tr.manual ? ' is-manual' : ''),
           title: `${tr.accion} · ${segundos(m.duracion_ms)}`
@@ -174,6 +190,16 @@ export class LineaTiempo {
         h('span', { class: 'pz-carril__dur' }, segundos(total))));
     }
     return caja;
+  }
+
+  /* Quién es el de cada carril. Quien espera en una fila no lleva dorsal
+     (§7.1): se le ve por su puesto, que es como se le reconoce. */
+  _quien(ficha) {
+    const t = this.tablero;
+    if (ficha && ficha.kind === 'jugador' && ficha.fila_de && !numeroDe(ficha)) {
+      return h('span', { class: 'pz-carril__quien', title: t.nombreDe(ficha) }, `${(ficha.puesto ?? 0) + 1}.º`);
+    }
+    return h('span', { class: 'pz-carril__quien' }, ficha ? t.nombreDe(ficha) : '—');
   }
 
   /* Arrastrar una barra adelanta o retrasa ese tramo (§2.5), y al

@@ -153,6 +153,8 @@ export class PanelDerecho {
       this._campoSelect('Balones', f.balon, cambiar('balon', (v) => v === 'si')),
       this._campoSelect('Orientación', f.orientacion, cambiar('orientacion', Number)),
       this._campoSelect('Vuelve', f.vuelta, cambiar('vuelta')),
+      this._campoSelect('Salen', f.rondas, cambiar('rondas', (v) => v === 'si')),
+      f.cadencia ? this._campoSelect('Cadencia', f.cadencia, cambiar('cadencia_ms', (v) => (v == null ? null : Number(v)))) : null,
       h('button', { class: 'pz-der__serie', type: 'button', onClick: () => this.onFila?.(m.id, null) }, 'Deshacer la fila'),
     ];
   }

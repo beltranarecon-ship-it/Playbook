@@ -80,9 +80,9 @@ test('EL FINAL DE LA COLA ES UN HUECO DETRÁS DEL ÚLTIMO: ahí va quien vuelve 
 });
 
 test('UNA FILA EN CONDICIONES: lo que falte, con lo de serie, y sin pasarse', () => {
-  eq(normalizarFila({}), { n: 3, equipo: 'A', papel: 'atacante', balon: false, orientacion: 90, vuelta: null });
-  eq(normalizarFila({ n: 40, equipo: 'Z', papel: 'defensor', balon: 1, orientacion: -15, vuelta: 'cono_9' }),
-    { n: 12, equipo: 'A', papel: 'defensor', balon: true, orientacion: 345, vuelta: 'cono_9' });
+  eq(normalizarFila({}), { n: 3, equipo: 'A', papel: 'atacante', balon: false, orientacion: 90, vuelta: null, rondas: true, cadencia_ms: null });
+  eq(normalizarFila({ n: 40, equipo: 'Z', papel: 'defensor', balon: 1, orientacion: -15, vuelta: 'cono_9', rondas: false, cadencia_ms: 1500.4 }),
+    { n: 12, equipo: 'A', papel: 'defensor', balon: true, orientacion: 345, vuelta: 'cono_9', rondas: false, cadencia_ms: 1500 });
   eq(normalizarFila({ n: 0 }).n, 1, 'como poco, uno:');
   eq(normalizarFila(null), null);
 });

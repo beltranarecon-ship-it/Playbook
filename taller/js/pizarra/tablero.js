@@ -55,6 +55,7 @@ import {
   hacerFila as hacerLaFila, deshacerFila as deshacerLaFila, orientarFila as orientarLaFila,
   deLaFila, puestosDeFila, orientacionHacia, normalizarFila,
 } from './filas.js';
+import { conRondas } from './rondas-fila.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
@@ -148,6 +149,13 @@ export class Tablero {
 
     this.repaso = new Repaso(lienzo, { onFin: () => this._finDelRepaso() });
     this.fichas.donde = this.repaso.donde;
+    /* LAS RONDAS (§7.4.2) traen balones que no están en la pista —el carro
+       de quien pasa desde fuera—: se pintan solo mientras se reproduce. Y
+       el repaso necesita saber dónde está quien lleva un balón aunque no
+       se mueva. */
+    this.fichas.extras = () => (this.repaso.corriendo ? (this.repaso.extras || []) : []);
+    this.repaso.fichaDe = (id) => this.fichas.elementos.find((e) => e.id === id)
+      || (this.repaso.extras || []).find((e) => e.id === id) || null;
     /* CUALQUIER COSA QUE MUEVA LA PISTA CORTA EL REPASO. El repaso dice
        dónde pintar a quien viaja, así que mientras dura tapa la posición
        de verdad: arrastrando esa ficha se veía quieta hasta que el
@@ -863,7 +871,13 @@ export class Tablero {
   nombreDe(e) {
     if (!e) return 'esa ficha';
     if (e.kind === 'balon') return 'el balón';
-    if (e.kind === 'jugador') return `${e.equipo || ''}${numeroDe(e) || ''}`.trim() || 'ese jugador';
+    if (e.kind === 'jugador') {
+      /* Quien espera en una fila no lleva dorsal (§7.1): se le nombra por
+         su puesto en la cola. */
+      const n = numeroDe(e);
+      if (!n && e.fila_de) return `el ${(e.puesto ?? 0) + 1}.º de la fila`;
+      return `${e.equipo || ''}${n || ''}`.trim() || 'ese jugador';
+    }
     /* Todo cono es un sitio con nombre (§7.4.3): «Cono 2» mientras nadie
        le ponga otro. */
     if (e.kind === 'cono' && !e.nombre) {
@@ -1005,6 +1019,20 @@ export class Tablero {
       return false;
     }
     this._conFichasNuevas(deshacerLaFila(this.fichas.elementos, conoId));
+    return true;
+  }
+
+  /** Cambia CÓMO SALE una fila (§7.4.2) —por rondas o solo el primero, y
+   *  su cadencia— sin rehacerla: los que esperan y lo dibujado con el
+   *  primero se quedan como están. Vale en cualquier fase. */
+  ajustarFila(conoId, parcial = {}) {
+    const cono = this.fichas.elementos.find((e) => e.id === conoId && e.kind === 'cono');
+    if (!cono || !cono.fila) return false;
+    const config = normalizarFila({ ...cono.fila, ...parcial });
+    this.fichas._cambio(this.fichas.elementos.map((e) => (e.id === conoId ? { ...e, fila: config } : e)));
+    this._avisarDeFases();
+    this.onEscena?.(this.fichas.elementos);
+    this.lienzo.pintar();
     return true;
   }
 
@@ -1398,9 +1426,9 @@ export class Tablero {
   siguienteFase() {
     if (!this.tramos.length) { this.onNoPuede?.({ nombre: 'Siguiente fase' }, 'no has dibujado nada en esta fase'); return false; }
     this.cerrar();
-    const { tiempos } = this.faseEnCurso();
+    const { tramos, tiempos } = this.conRondasEn();
     const defensa = this._defensaDeLasFases();
-    this.repaso.reproducirFase({ tramos: this._paraRepaso(this.tramos, tiempos, 0, defensa[this.iFase]) });
+    this._repasar(this._paraRepaso(tramos, tiempos, 0, defensa[this.iFase]));
     this._cerrarFaseAlAcabar = true;
     return true;
   }
@@ -1410,9 +1438,9 @@ export class Tablero {
   reproducirFase() {
     if (!this.tramos.length) return false;
     this.cerrar();
-    const { tiempos } = this.faseEnCurso();
+    const { tramos, tiempos } = this.conRondasEn();
     const defensa = this._defensaDeLasFases();
-    this.repaso.reproducirFase({ tramos: this._paraRepaso(this.tramos, tiempos, 0, defensa[this.iFase]) });
+    this._repasar(this._paraRepaso(tramos, tiempos, 0, defensa[this.iFase]));
     return true;
   }
 
@@ -1426,20 +1454,52 @@ export class Tablero {
    */
   reproducirJugada() {
     this.cerrar();
-    const pista = this.lienzo.vista.pistaKey;
     const todos = [];
     const defensa = this._defensaDeLasFases();
     let desfase = 0;
     for (let i = 0; i < this.fases.length; i++) {
-      const f = this.fases[i];
-      const fase = { ...f, carriles: carrilesDesde(f.tramos) };
-      const tiempos = tiemposDe(fase, { pista });
-      todos.push(...this._paraRepaso(f.tramos, tiempos, desfase, defensa[i]));
+      const { tramos, tiempos } = this.conRondasEn(i);
+      todos.push(...this._paraRepaso(tramos, tiempos, desfase, defensa[i]));
       desfase += tiempos.duracion_ms;
     }
     if (!todos.length) return false;
-    this.repaso.reproducirFase({ tramos: todos });
+    this._repasar(todos);
     return true;
+  }
+
+  /* Reproduce con los balones del carro de las rondas a mano. */
+  _repasar(tramos) {
+    this.repaso.extras = this.rondas().balones;
+    this.repaso.reproducirFase({ tramos });
+  }
+
+  /**
+   * LAS RONDAS DE LAS FILAS (§7.4.2): lo que repite cada uno de la cola,
+   * cuándo y con qué balón. Es la MISMA cuenta que hace el compilador, así
+   * que lo que se ve al dibujar es lo que sale en el proyector. Se
+   * recuerda mientras la jugada sea la misma.
+   *
+   * @returns { fases, balones, rondas, avisos } — ver rondas-fila.js
+   */
+  rondas() {
+    const j = this.jugada();
+    const clave = JSON.stringify([j.pista, j.canasta, j.elementos, j.fases.map((f) => [f.tramos, f.duracion_ms])]);
+    if (this._rondasCache && this._rondasCache.clave === clave) return this._rondasCache.valor;
+    const papeles = this.papeles();
+    const valor = conRondas(j.fases, j.elementos, {
+      pista: j.pista, canasta: j.canasta, canastaDe: (i) => (papeles.fases[i] || {}).canasta,
+    });
+    this._rondasCache = { clave, valor };
+    return valor;
+  }
+
+  /** Los tramos de una fase CON los de las rondas, y sus tiempos: es lo
+   *  que se reproduce y lo que enseña la línea de tiempo. */
+  conRondasEn(i = this.iFase) {
+    const r = this.rondas();
+    const f = r.fases[i] || this.fases[i];
+    const tiempos = tiemposDe({ ...f, carriles: carrilesDesde(f.tramos) }, { pista: this.lienzo.vista.pistaKey });
+    return { tramos: f.tramos, tiempos, rondas: r.rondas };
   }
 
   /**
@@ -1511,7 +1571,12 @@ export class Tablero {
     for (const t of tramos) {
       const m = tiempos.tramos[t.id];
       if (!m) continue;
-      lista.push({ corre_id: t.corre_id, trazo: t.trazo, inicio_ms: desfase + m.inicio_ms, duracion_ms: m.duracion_ms });
+      lista.push({
+        corre_id: t.corre_id, trazo: t.trazo, inicio_ms: desfase + m.inicio_ms, duracion_ms: m.duracion_ms,
+        /* Un pase o un tiro: hasta que sale, el balón está en las manos de
+           quien lo hace, y va con él. */
+        ...(t.corre_id !== t.elemento_id ? { manos: t.elemento_id } : {}),
+      });
       if (esTiro(t)) {
         const tras = this._trasElTiro(t);
         if (tras) lista.push({ corre_id: t.corre_id, trazo: tras, inicio_ms: desfase + m.fin_ms, duracion_ms: TRAS_EL_TIRO_MS });

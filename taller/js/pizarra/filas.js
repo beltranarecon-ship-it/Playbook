@@ -94,6 +94,11 @@ export function normalizarFila(f) {
     balon: !!f.balon,
     orientacion: normalizarGrados(Number.isFinite(f.orientacion) ? f.orientacion : 90),
     vuelta: typeof f.vuelta === 'string' && f.vuelta ? f.vuelta : null,
+    /* POR RONDAS (§7.4.2): salen todos, uno tras otro. Es lo normal en
+       una fila; se puede apagar para que solo salga el primero. */
+    rondas: f.rondas !== false,
+    /* Cada cuánto sale el siguiente; sin ella, cuando acaba el anterior. */
+    cadencia_ms: Number.isFinite(f.cadencia_ms) && f.cadencia_ms > 0 ? Math.round(f.cadencia_ms) : null,
   };
 }
 
