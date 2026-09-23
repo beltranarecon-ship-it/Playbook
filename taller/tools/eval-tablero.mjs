@@ -758,6 +758,40 @@ test('EL CARRO DEL QUE PASA DESDE FUERA SE PINTA SOLO MIENTRAS SE REPRODUCE', ()
   eq(t.fichas.extras(), [], 'y al acabar, nada:');
 });
 
+test('«DALE UN BALÓN» (§7.3): uno nuevo en sus manos desde el principio, y él sigue seleccionado', () => {
+  const { t, avisos, a1, a2, b1 } = sinAtacante();
+  ok(t.darBalon(b1.id), 'se le da');
+  const suyo = t.fichas.elementos.find((e) => e.kind === 'balon' && e.portador_id === b1.id);
+  ok(suyo, 'lo lleva');
+  eq(t.fases[0].posesion[suyo.id], b1.id, 'desde el principio:');
+  eq([...t.fichas.seleccion], [b1.id], 'y sigue seleccionado él:');
+  avisos.length = 0;
+  eq(t.darBalon(b1.id), false, 'uno como mucho:');
+  ok(avisos.some(([, , motivo]) => /ya lleva uno/.test(motivo || '')), 'y se dice');
+  eq(t.porQueNoDarBalon(a2.id), 'A2 ya tiene algo dibujado; dale el balón antes de dibujar', 'a quien ya tiene algo dibujado, no:');
+  eq(t.porQueNoDarBalon(a1.id), null, 'a quien no tiene nada, sí:');
+  t._cerrarFase();
+  ok(/fase 1/.test(t.porQueNoDarBalon(a1.id)), 'y solo en la fase 1');
+});
+
+test('CTRL+CLIC EN UNA FILA: un balón para cada uno, sin rehacerla ni tocar a quien ya ha salido', () => {
+  const { t, cono } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 3, orientacion: 90 });
+  const cola = filasMod.deLaFila(t.fichas.elementos, cono.id);
+  corta(t, cola[0].id, { x: 0.5, y: 0.3 });
+  t._tocarFicha(ficha(t, cola[2].id), { ctrl: true });
+  const conBalon = (id) => t.fichas.elementos.some((e) => e.kind === 'balon' && e.portador_id === id);
+  eq(cola.map((j) => conBalon(j.id)), [false, true, true], 'los que esperan, con balón; el que ya ha salido, como estaba:');
+  eq(filasMod.deLaFila(t.fichas.elementos, cono.id).map((j) => j.id), cola.map((j) => j.id), 'los mismos:');
+  eq(ficha(t, cono.id).fila.balon, true, 'y la fila lo sabe:');
+  t._tocarFicha(ficha(t, cono.id), { ctrl: true });
+  eq(t.fichas.elementos.filter((e) => e.kind === 'balon').length, 2, 'otra vez no da más:');
+  ok(t.balonesDeLaFila(cono.id, false), '«sin balón» desde el panel');
+  eq(cola.map((j) => conBalon(j.id)), [false, false, false], 'se los quita:');
+  eq(ficha(t, cono.id).fila.balon, false);
+  eq(Object.keys(t.fases[0].posesion || {}).length, 0, 'y la jugada tampoco los recuerda:');
+});
+
 test('EL TIRADOR GIRA LA FILA: se coge al final de la cola y se imanta cada 15°', () => {
   const { t, cono } = conConoDeFila();
   t.hacerFila(cono.id, { n: 2, orientacion: 90 });
@@ -877,6 +911,13 @@ test('«ROBA» SE DECLARA SEÑALANDO AL QUE TIENE EL BALÓN, y cambia quién ata
   eq(t.canastaEnCurso, 'sur', 'y se ataca al otro aro:');
   eq(t.papelesDeFase().pares[a1.id], b1.id, 'con el emparejamiento invertido:');
   ok(a2, 'y el otro atacante sigue en la pista');
+});
+
+test('AL QUE LE ROBAN EL BALÓN NO SE LE DA OTRO: ya tenía uno al empezar (§7.3)', () => {
+  const { t, a1, b1 } = conDefensa();
+  elegir(t, b1.id, 'roba');
+  t._companeroElegido(ficha(t, a1.id), t.companero.activo);
+  eq(t.porQueNoDarBalon(a1.id), 'A1 ya lleva uno');
 });
 
 test('CAMBIAR SI EL TIRO ENTRA O FALLA CAMBIA QUIÉN ATACA EN LA FASE SIGUIENTE', () => {

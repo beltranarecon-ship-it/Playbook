@@ -27,8 +27,10 @@ export class PanelDerecho {
    * @param onDeshacerPuerta (cono) — deshacer la puerta de ese cono (§7.4.1)
    * @param onFila     (cono, parcial|null) — hacer, cambiar o deshacer
    *                   (con null) la fila de un cono (§7.4.2)
+   * @param onDarBalon (jugador) — «dale un balón» (§7.3)
    */
-  constructor({ onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null, onDeshacerPuerta = null, onFila = null } = {}) {
+  constructor({ onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null, onDeshacerPuerta = null, onFila = null, onDarBalon = null } = {}) {
+    this.onDarBalon = onDarBalon;
     this.onDeshacerPuerta = onDeshacerPuerta;
     this.onFila = onFila;
     this.onDefensa = onDefensa;
@@ -102,9 +104,10 @@ export class PanelDerecho {
       }
       case 'atacante':
         return [h('h4', { class: 'pz-der__titulo' }, m.nombre),
-          h('p', { class: 'pz-der__nota' }, m.defensor ? `Le defiende ${m.defensor}. Para cambiarlo, selecciona al defensor o arrastra su línea discontinua.` : 'Nadie le defiende.')];
+          h('p', { class: 'pz-der__nota' }, m.defensor ? `Le defiende ${m.defensor}. Para cambiarlo, selecciona al defensor o arrastra su línea discontinua.` : 'Nadie le defiende.'),
+          this._darBalon(m)];
       case 'sinPapel':
-        return [h('h4', { class: 'pz-der__titulo' }, m.nombre), h('p', { class: 'pz-der__nota' }, m.texto)];
+        return [h('h4', { class: 'pz-der__titulo' }, m.nombre), h('p', { class: 'pz-der__nota' }, m.texto), this._darBalon(m)];
       default:
         return [h('p', { class: 'pz-der__nota' }, (m && m.texto) || '')];
     }
@@ -134,8 +137,16 @@ export class PanelDerecho {
       this._campoSelect('Regla', m.regla, (v) => this.onReglaDe?.(m.id, v)),
       m.hace ? this._campoSelect('En esta fase', m.hace, (v) => this.onHaceDe?.(m.id, v)) : null,
       m.explicacion ? h('p', { class: 'pz-der__porque' }, m.explicacion) : null,
+      this._darBalon(m),
       h('p', { class: 'pz-der__nota' }, 'También se cambia el par arrastrando su línea discontinua hasta otro atacante. Ayudar y cambiar el par con otro defensor se eligen en el anillo, pinchando a quién.'),
     ];
+  }
+
+  /* «Dale un balón» (§7.3): solo sale si se puede dar. */
+  _darBalon(m) {
+    return m.darBalon
+      ? h('button', { class: 'pz-der__serie', type: 'button', onClick: () => this.onDarBalon?.(m.id) }, 'Dale un balón')
+      : null;
   }
 
   /* LA FILA DE UN CONO (§7.4.2): hacerla, sus datos y deshacerla. La

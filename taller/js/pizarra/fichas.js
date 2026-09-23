@@ -145,7 +145,7 @@ export class Fichas {
     return {
       mover: () => { if (!dicho) { dicho = true; this.onVeto?.(agarrado, motivo); } },
       soltar: () => {},
-      tocar: (p) => { this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero }); },
+      tocar: (p) => { this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero, ctrl: !!(p.ctrl || p.meta) }); },
       abortar: () => {},
     };
   }
@@ -209,7 +209,7 @@ export class Fichas {
            cuando alguien recoge un balón. */
         this.onArrastrado?.([...desfase.keys()]);
       },
-      tocar: (p) => { this._guias = null; this._pegado = null; this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero }); },
+      tocar: (p) => { this._guias = null; this._pegado = null; this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero, ctrl: !!(p.ctrl || p.meta) }); },
       abortar: () => {
         /* No ha pasado: todo vuelve a donde estaba. Es lo que hace que
            apoyar el meñique a mitad de un arrastre no deje la ficha en

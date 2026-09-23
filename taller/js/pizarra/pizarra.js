@@ -68,6 +68,7 @@ export class Pizarra {
       onReglaDe: (defensor, regla) => this.tablero.setReglaDe(defensor, regla),
       onHaceDe: (defensor, accion) => this.tablero.declararDefensa(defensor, accion ? { accion } : null),
       onDeshacerPuerta: (cono) => this.tablero.deshacerPuerta(cono),
+      onDarBalon: (jugador) => { this.tablero.darBalon(jugador); this._cambio(); },
       /* La fila (§7.4.2): girarla no la rehace —conserva a los que
          esperan—; todo lo demás, sí. */
       onFila: (cono, parcial) => {
@@ -75,6 +76,8 @@ export class Pizarra {
         else if (Object.keys(parcial).length === 1 && 'orientacion' in parcial) this.tablero.orientarFila(cono, parcial.orientacion);
         /* Cómo salen —por rondas, su cadencia— tampoco la rehace (§7.4.2). */
         else if (Object.keys(parcial).length && Object.keys(parcial).every((k) => k === 'rondas' || k === 'cadencia_ms')) this.tablero.ajustarFila(cono, parcial);
+        /* Ni sus balones: se dan o se quitan a quien no ha salido (§7.3). */
+        else if (Object.keys(parcial).length === 1 && 'balon' in parcial) this.tablero.balonesDeLaFila(cono, parcial.balon);
         else this.tablero.hacerFila(cono, parcial);
         this._cambio();
       },
@@ -221,6 +224,7 @@ export class Pizarra {
       nombreDe: (e) => t.nombreDe(e),
       explicacion: explicada ? explicada.texto : null,
       puertas: t.puertasDeLaFase(),
+      porQueNoDarBalon: (id) => t.porQueNoDarBalon(id),
     }));
   }
 

@@ -66,7 +66,7 @@ const segundosDe = (ms) => `${String(ms / 1000).replace('.', ',')} s`;
 
 export function modeloAjustes({
   seleccion = [], elementos = [], papeles = null, defensa = null, nombreDe = (e) => e.id, explicacion = null,
-  puertas = [],
+  puertas = [], porQueNoDarBalon = null,
 } = {}) {
   const d = defensa || defensaPorDefecto();
   const p = papeles || { ataca: null, atacantes: [], defensores: [], pares: {}, situacion: null };
@@ -120,6 +120,8 @@ export function modeloAjustes({
     && elegidos[0].fila_de && elegidos[0].en_juego === false;
   if (elegidos.length === 1 && elegidos[0].kind === 'jugador' && !esperando) {
     const j = elegidos[0];
+    /* «Dale un balón» (§7.3): solo si se puede. */
+    const darBalon = typeof porQueNoDarBalon === 'function' && !porQueNoDarBalon(j.id);
     if (p.defensores.includes(j.id)) {
       const actual = p.pares[j.id] ?? null;
       /* Lo que hace DISTINTO en esta fase (§8.5). Las que hay que señalar
@@ -154,11 +156,12 @@ export function modeloAjustes({
           opciones: [opcion(null, `La del ejercicio (${NOMBRE_REGLA[d.preajuste]})`), ...REGLAS.map((r) => opcion(r, NOMBRE_REGLA[r]))],
         },
         explicacion,
+        darBalon,
       };
     }
     if (p.atacantes.includes(j.id)) {
       const defensor = Object.keys(p.pares).find((k) => p.pares[k] === j.id);
-      return { tipo: 'atacante', id: j.id, nombre: nombreDe(j), defensor: defensor ? nombre(defensor) : null };
+      return { tipo: 'atacante', id: j.id, nombre: nombreDe(j), defensor: defensor ? nombre(defensor) : null, darBalon };
     }
     return {
       tipo: 'sinPapel',
@@ -167,6 +170,7 @@ export function modeloAjustes({
       texto: p.ataca
         ? `${nombreDe(j)} no está en juego: ni ataca ni defiende.`
         : 'Nadie ataca todavía: dale el balón a alguien, o elige quién ataca en los ajustes del ejercicio (sin nada seleccionado).',
+      darBalon,
     };
   }
 

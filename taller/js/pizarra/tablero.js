@@ -1022,6 +1022,69 @@ export class Tablero {
     return true;
   }
 
+  /**
+   * «DALE UN BALÓN» (§7.3): uno nuevo, en sus manos desde el principio.
+   * Él sigue seleccionado, que es desde donde se ha pedido.
+   */
+  darBalon(jugadorId) {
+    const j = this.fichas.elementos.find((e) => e.id === jugadorId && e.kind === 'jugador');
+    if (!j) return false;
+    const motivo = this.porQueNoDarBalon(jugadorId);
+    if (motivo) { this.onNoPuede?.({ nombre: 'Dale un balón' }, motivo); return false; }
+    let lista = anadir(this.fichas.elementos, { kind: 'balon' }, j.x, j.y);
+    lista = asignarBalon(lista, lista[lista.length - 1].id, j.id, this.lienzo.vista.pistaKey);
+    this._conFichasNuevas(lista);
+    this.fichas.seleccionar(new Set([j.id]));
+    return true;
+  }
+
+  /**
+   * Por qué no se le puede dar un balón a este jugador, o null si se
+   * puede. Como poner una ficha, solo en la fase 1; un jugador lleva como
+   * mucho uno (§7.3); y a quien ya tiene algo dibujado, no: lo dibujado
+   * se hizo sin él.
+   */
+  porQueNoDarBalon(jugadorId) {
+    const j = this.fichas.elementos.find((e) => e.id === jugadorId && e.kind === 'jugador');
+    if (!j) return 'no es un jugador';
+    if (this.iFase !== 0) return 'los balones se dan en la fase 1, que es donde empieza la jugada';
+    /* Lo que cuenta es con qué EMPIEZA la jugada, no lo que se ve en la
+       pista, que es cómo acaba la fase. */
+    if (Object.values(this.fases[0].posesion || {}).includes(j.id)) return `${this.nombreDe(j)} ya lleva uno`;
+    if (tramosConFicha(this.fases, j.id).length) return `${this.nombreDe(j)} ya tiene algo dibujado; dale el balón antes de dibujar`;
+    return null;
+  }
+
+  /**
+   * UN BALÓN PARA CADA UNO DE LA COLA (§7.3), o ninguno: `Ctrl`+clic en
+   * la fila, o «Balones» en su panel. No la rehace: se le da a quien no
+   * lo tiene —o se le quita a quien lo tiene— sin tocar a quien ya sale
+   * en algo dibujado.
+   */
+  balonesDeLaFila(conoId, conBalon = true) {
+    const cono = this.fichas.elementos.find((e) => e.id === conoId && e.kind === 'cono');
+    if (!cono || !cono.fila) return false;
+    if (this.iFase !== 0) {
+      this.onNoPuede?.({ nombre: 'Balones de la fila' }, 'los balones se dan en la fase 1, que es donde empieza la jugada');
+      return false;
+    }
+    const pista = this.lienzo.vista.pistaKey;
+    const libres = deLaFila(this.fichas.elementos, conoId).filter((j) => !tramosConFicha(this.fases, j.id).length);
+    let lista = this.fichas.elementos.map((e) => (e.id === conoId ? { ...e, fila: normalizarFila({ ...e.fila, balon: !!conBalon }) } : e));
+    if (conBalon) {
+      for (const j of libres) {
+        if (llevaBalon(lista, j.id)) continue;
+        lista = anadir(lista, { kind: 'balon' }, j.x, j.y);
+        lista = asignarBalon(lista, lista[lista.length - 1].id, j.id, pista);
+      }
+    } else {
+      const suyos = new Set(libres.map((j) => j.id));
+      lista = quitar(lista, lista.filter((b) => b.kind === 'balon' && suyos.has(b.portador_id) && !balonEnJuego(this.fases, b.id)).map((b) => b.id));
+    }
+    this._conFichasNuevas(lista);
+    return true;
+  }
+
   /** Cambia CÓMO SALE una fila (§7.4.2) —por rondas o solo el primero, y
    *  su cadencia— sin rehacerla: los que esperan y lo dibujado con el
    *  primero se quedan como están. Vale en cualquier fase. */
@@ -1718,8 +1781,11 @@ export class Tablero {
 
   /* ---- el bucle ---------------------------------------------- */
 
-  _tocarFicha(elemento, { tipoPuntero } = {}) {
+  _tocarFicha(elemento, { tipoPuntero, ctrl = false } = {}) {
     if (this.dibujo.dibujando) return;   // en mitad de un trazo no se abre nada
+    /* `Ctrl`+clic sobre una fila —su cono o uno de la cola—: un balón
+       para cada uno (§7.3). */
+    if (ctrl && this.filaDe(elemento.id)) { this.balonesDeLaFila(this.filaDe(elemento.id), true); return; }
     /* Con qué se ha abierto el anillo viaja hasta el modo destino: la
        barra de ayuda tiene que nombrar Alt o «mantén pulsado» desde el
        primer momento, no a partir del primer gesto. */

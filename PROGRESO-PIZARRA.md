@@ -34,14 +34,14 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
 | 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
-| 6 · Conos y elementos | ⏳ en curso: pasos 6.0 a 6.6 hechos | — |
+| 6 · Conos y elementos | ✅ cerrada en la rama `pizarra-v3` (pasos 6.0 a 6.7; los equipos del club, para más adelante) | ver «Capa 6» |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **68 en verde, 1664
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **68 en verde, 1668
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -393,7 +393,7 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
 | 6.4 | El defensor confinado al carril de la puerta: su regla se proyecta sobre el carril | ✅ (66 bancos, 1616 pruebas; 8 mutantes: 7 muertos y 1 equivalente; probado en la Pizarra y con el fotograma del proyector: nunca sale de la puerta y, al cruzarla su par, se aparta 1,0 m deslizándose por ella) |
 | 6.5 | Filas (§7.4.2): un cono es cola —jugadores, equipo, papel, un balón por cabeza—, con su tirador de orientación y su destino de vuelta. Se enciende «Vuelve a la fila», que hoy no puede | ✅ (67 bancos, 1640 pruebas; banco nuevo `eval-filas.mjs`; probado en la Pizarra: hacerla desde el panel, cambiarla, el tirador, mover el cono con su cola, «Vuelve a la fila» y compilar) |
 | 6.6 | Rondas: salen todos uno tras otro, con cadencia. La variación por ronda queda para más adelante (lo decidió el entrenador) | ✅ (68 bancos, 1664 pruebas; banco nuevo `eval-rondas-fila.mjs`, 16 pruebas; 37 mutantes, los 37 muertos; probado en la Pizarra: la línea de tiempo con una barra por ronda, el panel «Salen» y «Cadencia», reproducir, reabrir lo dibujado, y lo mismo en el compilador y en el motor del proyector) |
-| 6.7 | Balones múltiples y equipos del club. Cierre de la capa | pendiente |
+| 6.7 | Balones múltiples (§7.3): «Dale un balón» en el panel del jugador y `Ctrl`+clic en una fila, que da uno a cada uno sin rehacerla. Los equipos del club, para más adelante (lo decidió el entrenador). Cierre de la capa: `sw.js` a la v16 | ✅ (68 bancos, 1668 pruebas; 13 mutantes: 12 muertos, y el que vivía destapó una comprobación que sobraba y se quitó; probado en la Pizarra con el ratón de verdad: `Ctrl`+clic en uno de la cola y el botón del panel) |
 
 **Decidido en los pasos 6.1 y 6.2 (dicho al entrenador):**
 
@@ -544,10 +544,29 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
   botaba hasta allí; con las rondas, cada balón de la cola flotaba en el
   sitio del tiro.
 
-**Pregunta que queda para el 6.7:** ¿«equipos del club» es elegir el
-color/equipo de la fila (1 a 4), o traerse de verdad la plantilla del
-club —nombres y dorsales— para que salgan en las fichas? (Se mira antes
-si el §7.2 lo deja dicho.)
+**Decidido por el entrenador para el paso 6.7 (2026-09-24):**
+
+- **«Cargar equipo del club» (§7.2) queda para más adelante.**
+- Cuando se haga, **el segundo equipo se empareja POR POSICIÓN**: el base
+  es el 1, el escolta el 2, el alero el 3, el ala-pívot el 4 y el pívot
+  el 5 (la plantilla del club ya guarda la posición de cada jugador); si
+  hay dos de la misma posición, se hace automático y luego se ajusta a
+  mano.
+
+**Decidido en el paso 6.7 (detalles, sin preguntar):**
+
+- **«Dale un balón»** sale en el panel de un jugador —ataque, defensa o
+  sin papel— solo si se puede: en la fase 1, si no empieza la jugada con
+  balón y no tiene nada dibujado (lo dibujado se hizo sin él). El balón
+  es suyo desde el principio y él sigue seleccionado.
+- **`Ctrl`+clic (o `Cmd`+clic) en una fila** —en su cono o en uno de la
+  cola— da un balón a cada uno que no lo tenga y no haya salido todavía,
+  sin rehacer la fila. «Balones» en el panel de la fila hace lo mismo, y
+  «Sin balón» se los quita a los que no han salido (salvo el que ya se
+  usa en algo dibujado).
+- **El balón va AL LADO de la ficha, no centrado** como dice el §7.3: se
+  decidió en la capa 1 para poder cogerlo con el dedo (0,75 m; ver
+  `SEPARACION_BALON`). El anillo naranja marca a quien lo lleva.
 
 ## Capa 4, paso a paso
 
@@ -572,8 +591,9 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
-**Hoy (2026-09-24): el paso 6.7**, balones múltiples y equipos del club,
-y el cierre de la capa 6. Lo que viene después de esta línea es el
+**Hoy (2026-09-24): la capa 7, texto y voz** (§9): la frase automática
+de cada fase, el panel de descripción, la narración y «llevar al paso 3».
+La capa 6 está cerrada. Lo que viene después de esta línea es el
 siguiente paso de la capa 4, que ya está hecho; se deja como historia.
 
 **4.4b**, con dos decisiones ya tomadas (2026-09-11): el creador v2.1 se

@@ -99,12 +99,20 @@ test('UN DEFENSOR: A QUIÉN DEFIENDE Y CON QUÉ REGLA, y por qué está ahí', (
 });
 
 test('UN ATACANTE: QUIÉN LE DEFIENDE; y quien no juega, lo dice', () => {
-  eq(modelo(['A1']), { tipo: 'atacante', id: 'A1', nombre: 'A1', defensor: 'B1' });
+  eq(modelo(['A1']), { tipo: 'atacante', id: 'A1', nombre: 'A1', defensor: 'B1', darBalon: false });
   const m = modelo(['A1'], escena(null));
   eq(m.tipo, 'sinPapel');
   ok(/Nadie ataca/.test(m.texto), m.texto);
   const fuera = escena().map((e) => (e.id === 'B2' ? { ...e, en_juego: false } : e));
   ok(/no está en juego/.test(modelo(['B2'], fuera).texto));
+});
+
+test('«DALE UN BALÓN» SALE SOLO SI SE PUEDE DAR (§7.3), sea cual sea su papel', () => {
+  const puede = { porQueNoDarBalon: () => null };
+  const no = { porQueNoDarBalon: () => 'ya lleva uno' };
+  eq([modelo(['A1'], escena(), null, puede).darBalon, modelo(['B1'], escena(), null, puede).darBalon], [true, true], 'al atacante y al defensor:');
+  eq(modelo(['A1'], escena(null), null, puede).darBalon, true, 'y a quien todavía no tiene papel:');
+  eq(modelo(['A1'], escena(), null, no).darBalon, false, 'si no se puede, no sale:');
 });
 
 test('VARIAS FICHAS, O UN BALÓN: dice dónde están los ajustes', () => {
