@@ -31,6 +31,7 @@
 
 import { metrosEntre, escalaDe } from '../canvas/escala.js';
 import { flattenPath } from '../canvas/geometry.js';
+import { segmentoEn, insertarEn } from './trazo.js';
 
 /** Los números del §7.4, en metros. Ajustables por el club más adelante. */
 export const CONOS = Object.freeze({
@@ -40,9 +41,46 @@ export const CONOS = Object.freeze({
   /* Cuánto puede torcerse una hilera de conos y seguir siendo un slalom:
      los conos de un pabellón nunca están en línea recta perfecta. */
   alineados: 1.2,
+  /* A cuánto se pasa del cono al rodearlo. Ni pisándolo ni dando un
+     rodeo que no ha pedido nadie. */
+  paso: 0.9,
 });
 
 const punto = (e) => ({ x: e.x, y: e.y });
+
+/* Por dónde va el trazo en el punto más cercano a `p`: el vector unidad
+   del camino, en metros. */
+function direccionEn(trazo, p, pista) {
+  const flat = flattenPath(trazo || []);
+  let mejor = null;
+  for (let i = 1; i < flat.length; i++) {
+    const c = enElSegmento(pista, p, flat[i - 1], flat[i]);
+    const metros = metrosEntre(pista, p, c.punto);
+    if (!mejor || metros < mejor.metros - 1e-9) mejor = { metros, dx: c.dx, dy: c.dy, punto: c.punto };
+  }
+  if (!mejor) return null;
+  const largo = Math.hypot(mejor.dx, mejor.dy);
+  if (!(largo > 0)) return null;
+  return { dx: mejor.dx / largo, dy: mejor.dy / largo, punto: mejor.punto };
+}
+
+/**
+ * Por dónde tiene que pasar el jugador para dejar el cono a un lado:
+ * a `metros` del cono, en perpendicular al camino y por el lado que se
+ * diga (el del JUGADOR, mirando hacia donde va).
+ */
+export function sitioAlPasar(trazo, cono, lado, { pista = 'entera', metros = CONOS.paso } = {}) {
+  const d = direccionEn(trazo, cono, pista);
+  if (!d) return null;
+  const e = escalaDe(pista);
+  /* Con la y hacia abajo, la derecha del que corre es (-dy, dx). */
+  const rx = -d.dy, ry = d.dx;
+  const signo = lado === 'der' ? 1 : -1;
+  return {
+    x: cono.x + (rx * signo * metros) / e.x,
+    y: cono.y + (ry * signo * metros) / e.y,
+  };
+}
 
 /* El punto del segmento a–b más cercano a p, y su parámetro t. Todo en
    metros, que es donde las distancias significan algo. */
@@ -203,6 +241,111 @@ export function interpretarConos(trazo, conos = [], { pista = 'entera' } = {}) {
 }
 
 /**
+ * EL TRAZO QUE SORTEA LO LEÍDO (§7.4): el camino que pasa por donde
+ * tiene que pasar.
+ *
+ * Se mete un nodo curvo por cada cono, a `paso` metros de él y por el
+ * lado que diga la lectura. Ni el origen ni el destino se tocan: lo que
+ * cambia es por dónde se va, no de dónde se sale ni a dónde se llega.
+ *
+ * Los conos se meten de atrás adelante para que insertar uno no mueva el
+ * sitio de los que faltan.
+ *
+ * @param lecturas  las de `interpretarConos`
+ * @param conos     los de la pista, para saber dónde está cada uno
+ */
+export function trazoSorteando(trazo, lecturas = [], conos = [], { pista = 'entera' } = {}) {
+  if (!Array.isArray(trazo) || trazo.length < 2) return trazo;
+  const porId = new Map((conos || []).filter((c) => c && c.id).map((c) => [c.id, c]));
+  /* Cada cono con su lado, ya alternado si era un slalom. */
+  const pasos = [];
+  for (const l of lecturas || []) {
+    if (!l || l.tipo === 'puerta') continue;
+    l.conos.forEach((id, i) => {
+      const c = porId.get(id);
+      if (!c) return;
+      const lado = l.tipo === 'zigzag' && i % 2 ? otroLado(l.lado) : l.lado;
+      pasos.push({ cono: c, lado, en: l.en });
+    });
+  }
+  if (!pasos.length) return trazo;
+  let salida = trazo;
+  const conSitio = pasos
+    .map((p) => ({ ...p, sitio: sitioAlPasar(trazo, p.cono, p.lado, { pista }) }))
+    .filter((p) => p.sitio)
+    .map((p) => ({ ...p, seg: segmentoEn(trazo, p.cono, { pista, tolerancia: 99 }) }))
+    .filter((p) => p.seg)
+    .sort((a, b) => b.seg.seg - a.seg.seg || b.en - a.en);
+  for (const p of conSitio) {
+    salida = insertarEn(salida, p.seg.seg, p.sitio);
+    /* El nodo queda MARCADO con el cono que lo puso y por qué lado: es
+       lo que permite deshacerlo y volver a hacerlo cuando el cono se
+       mueve o cuando un clic cambia el lado (§7.4). */
+    salida = salida.map((n, i) => (i === p.seg.seg + 1 ? { ...n, por_cono: p.cono.id, lado: p.lado } : n));
+  }
+  return salida;
+}
+
+/**
+ * El trazo SIN los nodos que puso un cono: el camino tal y como se
+ * dibujó.
+ *
+ * @param conos  si se pasa un Set de ids, solo se quitan los de esos
+ *               conos; sin él, todos
+ */
+export function sinSorteos(trazo, conos = null) {
+  const limpio = (trazo || []).filter((n) => n && (!n.por_cono || (conos && !conos.has(n.por_cono))));
+  /* Nunca menos de dos nodos: un trazo con uno solo no es un trazo. */
+  return limpio.length >= 2 ? limpio.map((n) => ({ ...n })) : (trazo || []);
+}
+
+/**
+ * VOLVER A SORTEAR: el trazo dibujado, leído otra vez con los conos
+ * donde estén ahora.
+ *
+ * Es lo que hace que mover un cono rehaga la curva (§7.4): se guardó la
+ * intención —qué cono y por qué lado—, no la curva.
+ *
+ * @param lados  { [cono]: 'izq'|'der' } para forzar el lado de alguno
+ *               (lo que cambia un clic sobre el iconito)
+ */
+export function volverASortear(trazo, conos = [], { pista = 'entera', lados = null, anulados = null } = {}) {
+  const base = sinSorteos(trazo);
+  /* Lo que el entrenador ANULÓ no se vuelve a leer: si no, el siguiente
+     cono que se moviera lo devolvería. */
+  const quedan = anulados && anulados.size ? (conos || []).filter((c) => c && !anulados.has(c.id)) : conos;
+  const lecturas = interpretarConos(base, quedan, { pista }).map((l) => {
+    const forzado = lados && l.conos.length && lados[l.conos[0]];
+    return forzado && l.tipo !== 'puerta' ? { ...l, lado: forzado } : l;
+  });
+  return { trazo: trazoSorteando(base, lecturas, quedan, { pista }), lecturas };
+}
+
+/**
+ * De la intención guardada en un tramo, lo que hay que respetar al
+ * volver a leer: el lado de cada lectura (por su primer cono) y lo
+ * anulado.
+ */
+export function intencionDe(sorteando = []) {
+  const lados = {};
+  const anulados = new Set();
+  let enSlalom = false;
+  for (const x of sorteando || []) {
+    if (!x || !x.cono) continue;
+    if (x.anulado) { anulados.add(x.cono); continue; }
+    /* En un slalom solo manda el lado del PRIMERO: los demás alternan. */
+    if (x.tipo === 'zigzag') {
+      if (!enSlalom) lados[x.cono] = x.lado;
+      enSlalom = true;
+      continue;
+    }
+    enSlalom = false;
+    if (x.lado) lados[x.cono] = x.lado;
+  }
+  return { lados, anulados };
+}
+
+/**
  * Lo que se guarda en el tramo (§11.1, `args.sorteando`): la intención,
  * no la curva. Mover el cono rehace el trazo porque lo que se guardó fue
  * «sorteando el cono 3 por la izquierda».
@@ -213,8 +356,8 @@ export function sorteandoDe(lecturas = []) {
     if (!l) continue;
     if (l.tipo === 'puerta') { r.push({ puerta: l.conos.slice(0, 2) }); continue; }
     const lados = l.tipo === 'zigzag'
-      ? l.conos.map((id, i) => ({ cono: id, lado: i % 2 === 0 ? l.lado : otroLado(l.lado) }))
-      : l.conos.map((id) => ({ cono: id, lado: l.lado }));
+      ? l.conos.map((id, i) => ({ cono: id, lado: i % 2 === 0 ? l.lado : otroLado(l.lado), tipo: 'zigzag' }))
+      : l.conos.map((id) => ({ cono: id, lado: l.lado, tipo: 'rodeo' }));
     r.push(...lados);
   }
   return r;

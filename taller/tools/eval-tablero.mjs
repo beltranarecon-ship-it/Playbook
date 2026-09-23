@@ -49,6 +49,7 @@ const { anadir, asignarBalon, reiniciarIds } = await import('../js/pizarra/eleme
 const { nuevoTrazo } = await import('../js/pizarra/trazo.js');
 const defensaMod = await import('../js/pizarra/motor/defensa.js');
 const compilarMod = await import('../js/pizarra/motor/compilar.js');
+const conosMod = await import('../js/pizarra/conos.js');
 const { metrosEntre } = await import('../js/canvas/escala.js');
 
 let pasan = 0, fallan = 0;
@@ -366,6 +367,146 @@ test('UN BLOQUEO SE LE PONE AL DEFENSOR DE VERDAD, y se guarda a quién', () => 
   const d = ficha(t, b1.id);
   const m = metrosEntre('entera', fin, { x: d.x, y: d.y });
   ok(Math.abs(m - defensaMod.PARAMETROS.bloqueo) < 1e-6, `se planta a ${m.toFixed(2)} m del defensor de verdad`);
+});
+
+console.log('\n· los conos del camino (§7.4)');
+
+test('UN TRAZO QUE PASA JUNTO A UN CONO LO RODEA, y se guarda por qué lado', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.50, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.50 + 0.3 / 18, 0.50);
+  const [a1, cono] = l;
+  t.poner(l);
+  corta(t, a1.id, { x: 0.5, y: 0.2 });
+  const tr = t.tramos[0];
+  eq(tr.sorteando, [{ cono: cono.id, lado: tr.sorteando[0].lado, tipo: 'rodeo' }], 'el tramo dice qué cono sortea:');
+  ok(['izq', 'der'].includes(tr.sorteando[0].lado), 'con su lado');
+  ok(tr.trazo.length > 2, `y el trazo se ha curvado: ${tr.trazo.length} nodos`);
+  const puesto = tr.trazo.find((n) => n.por_cono === cono.id);
+  ok(puesto, 'con el nodo marcado por su cono');
+  ok(metrosEntre('entera', puesto, ficha(t, cono.id)) > 0.5, 'y pasando por al lado, no por encima');
+});
+
+test('Y MOVER EL CONO REHACE LA CURVA', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.50, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.50 + 0.3 / 18, 0.50);
+  const [a1, cono] = l;
+  t.poner(l);
+  corta(t, a1.id, { x: 0.5, y: 0.2 });
+  const lado = t.tramos[0].sorteando[0].lado;
+  /* El cono se va al otro lado del camino. Lo que se guardó es la
+     intención —«por la izquierda del cono»—, así que la curva se rehace
+     alrededor de su sitio nuevo y POR EL MISMO LADO. */
+  const movido = { ...ficha(t, cono.id), x: 0.5 - 0.3 / 18 };
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === cono.id ? movido : e)));
+  const tr = t.tramos[0];
+  eq(tr.sorteando.length, 1, 'sigue sorteándose una vez:');
+  eq(tr.sorteando[0].lado, lado, 'por el mismo lado, que es lo que se guardó:');
+  eq(tr.trazo.filter((n) => n.por_cono).length, 1, 'sin acumular nodos:');
+  const r = conosMod.respectoAlTrazo(tr.trazo, movido, 'entera');
+  eq(r.lado, lado, 'y la curva nueva lo cumple:');
+  ok(Math.abs(r.metros - conosMod.CONOS.paso) < 0.15, `pasando a 0,9 m del sitio nuevo: ${r.metros.toFixed(2)}`);
+  /* Y si el cono se va lejos, el trazo vuelve a ser recto. */
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === cono.id ? { ...e, x: 0.9, y: 0.9 } : e)));
+  eq(t.tramos[0].sorteando, undefined, 'lejos ya no se sortea:');
+  eq(t.tramos[0].trazo.length, 2, 'y el trazo vuelve a ser el que se dibujó:');
+});
+
+test('EL ICONITO DEL CONO: un clic cambia el lado, otro lo anula y otro lo devuelve (§7.4)', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.50, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.50 + 0.3 / 18, 0.50);
+  const [a1, cono] = l;
+  t.poner(l);
+  corta(t, a1.id, { x: 0.5, y: 0.2 });
+  const tr = () => t.tramos[0];
+  const lado = tr().sorteando[0].lado;
+  const iconos = t.iconosDeConos();
+  eq(iconos.length, 1, 'un iconito:');
+  eq([iconos[0].cono, iconos[0].tipo], [cono.id, 'rodeo']);
+  /* 1 · cambia el lado */
+  ok(t.cambiarSorteo(tr().id, cono.id), 'el clic se atiende');
+  eq(tr().sorteando[0].lado, conosMod.otroLado(lado), 'el primer clic cambia el lado:');
+  eq(conosMod.respectoAlTrazo(tr().trazo, ficha(t, cono.id), 'entera').lado, conosMod.otroLado(lado), 'y el trazo lo cumple:');
+  /* 2 · lo anula */
+  t.cambiarSorteo(tr().id, cono.id);
+  eq(tr().sorteando, [{ cono: cono.id, anulado: true }], 'el segundo lo anula:');
+  eq(tr().trazo.length, 2, 'y el trazo vuelve a ser recto:');
+  eq(t.iconosDeConos().map((i) => i.tipo), ['anulado'], 'con su iconito de anulado, para poder volver:');
+  /* y anulado SIGUE anulado aunque se mueva algo */
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === cono.id ? { ...e, y: 0.52 } : e)));
+  eq(tr().sorteando, [{ cono: cono.id, anulado: true }], 'mover el cono no lo resucita:');
+  /* 3 · vuelve a lo que se lee solo */
+  t.cambiarSorteo(tr().id, cono.id);
+  eq(tr().sorteando.length, 1);
+  ok(!tr().sorteando[0].anulado, 'el tercero lo devuelve');
+});
+
+test('UN SLALOM ES UNA SOLA INTERPRETACIÓN: el clic va para los tres conos', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.40, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.41, 0.60);
+  l = anadir(l, { kind: 'cono' }, 0.40, 0.45);
+  l = anadir(l, { kind: 'cono' }, 0.39, 0.30);
+  const [a1, c1, c2, c3] = l;
+  t.poner(l);
+  corta(t, a1.id, { x: 0.40, y: 0.15 });
+  const tr = () => t.tramos[0];
+  eq(tr().sorteando.map((x) => x.tipo), ['zigzag', 'zigzag', 'zigzag']);
+  eq(t.iconosDeConos().length, 1, 'un solo iconito:');
+  const lados = tr().sorteando.map((x) => x.lado);
+  t.cambiarSorteo(tr().id, c1.id);
+  eq(tr().sorteando.map((x) => x.lado), lados.map(conosMod.otroLado), 'el primer clic da la vuelta al slalom entero:');
+  t.cambiarSorteo(tr().id, c1.id);
+  eq(tr().sorteando.map((x) => [x.cono, !!x.anulado]), [[c1.id, true], [c2.id, true], [c3.id, true]], 'el segundo lo anula entero:');
+  eq(tr().trazo.length, 2, 'y el trazo vuelve a ser recto:');
+  eq(t.iconosDeConos().length, 1, 'con un solo iconito para devolverlo:');
+  t.cambiarSorteo(tr().id, c1.id);
+  eq(tr().sorteando.map((x) => x.tipo), ['zigzag', 'zigzag', 'zigzag'], 'y el tercero lo devuelve entero:');
+});
+
+test('y el clic se atiende con el gesto, por encima de las fichas', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.50, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.50 + 0.3 / 18, 0.50);
+  const [a1, cono] = l;
+  t.poner(l);
+  corta(t, a1.id, { x: 0.5, y: 0.2 });
+  const lado = t.tramos[0].sorteando[0].lado;
+  const [icono] = t.iconosDeConos();
+  const g = t._atenderIconoCono({ ...icono.punto, agarrePx: 0, tipoPuntero: 'mouse' });
+  ok(g, 'encima del iconito, el gesto es suyo');
+  g.tocar(icono.punto);
+  eq(t.tramos[0].sorteando[0].lado, conosMod.otroLado(lado), 'y el toque cambia el lado:');
+  eq(t._atenderIconoCono({ x: 0.1, y: 0.9, agarrePx: 0, tipoPuntero: 'mouse' }), null, 'lejos de todo iconito no coge nada:');
+  ok(cono, 'y el cono sigue en la pista');
+});
+
+test('un PASE no rodea conos: vuela', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.50, 0.80);
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.50, 0.20);
+  l = anadir(l, { kind: 'balon' }, 0.54, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.50 + 0.3 / 18, 0.50);
+  const [a1, a2, bal] = l;
+  t.poner(asignarBalon(l, bal.id, a1.id, 'entera'));
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('pasa'), variante: null,
+    trazo: nuevoTrazo(ficha(t, a1.id), ficha(t, a2.id)), tipo: 'pass' });
+  eq(t.tramos[0].sorteando, undefined);
+  eq(t.tramos[0].trazo.length, 2);
 });
 
 console.log('\n· lo que un defensor hace distinto (§8.5)');

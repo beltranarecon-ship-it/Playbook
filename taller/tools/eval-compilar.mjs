@@ -582,6 +582,20 @@ test('LO QUE EL ENTRENADOR HA DICHO QUE HACE UN DEFENSOR LLEGA A LA ANIMACIÓN (
   ok(d(media, A2) < d(sinDecir.muestras[10], A2) - 1, 'y más cerca de A2 que si no se hubiera dicho nada');
 });
 
+/* ── Los conos del camino (§7.4) ─────────────────────────── */
+
+test('UN CONO QUE SE SORTEA SE COMPILA COMO «RODEAR»; uno anulado, como decoración', () => {
+  const { l, a1 } = escena();
+  const conos = [{ id: 'cono_x', kind: 'cono', x: 0.31, y: 0.6 }, { id: 'cono_y', kind: 'cono', x: 0.8, y: 0.2 }];
+  const t = { ...tramo(a1.id, P(0.3, 0.8), P(0.3, 0.4)), sorteando: [{ cono: 'cono_x', lado: 'izq', tipo: 'rodeo' }] };
+  const anim = compilar(jugadaCon([...l, ...conos], [{ id: 'f1', tramos: [t] }]));
+  const f = (id) => anim.conos.find((c) => c.id === id).funcion;
+  eq([f('cono_x'), f('cono_y')], ['rodear', 'decorativo']);
+  const anulado = { ...t, sorteando: [{ cono: 'cono_x', anulado: true }] };
+  const otra = compilar(jugadaCon([...l, ...conos], [{ id: 'f1', tramos: [anulado] }]));
+  eq(otra.conos.find((c) => c.id === 'cono_x').funcion, 'decorativo', 'anulado no se rodea:');
+});
+
 /* ── Robar (§8.6) ────────────────────────────────────────── */
 
 test('ROBO EN EL BOTE: el balón pasa a ser del que roba A MITAD DE FASE', () => {

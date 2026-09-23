@@ -34,14 +34,14 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
 | 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
-| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar) y paso 6.0 hecho | — |
+| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar); pasos 6.0 a 6.2 hechos | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **66 en verde, 1577
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **66 en verde, 1594
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -387,13 +387,35 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
 | Paso | Qué queda funcionando | Estado |
 |---|---|---|
 | 6.0 | El módulo PURO de «qué hace este cono con este trazo» (§7.4): rodeo, slalom y puerta, con sus números y su banco. Y los arreglos que la capa destape | ✅ (66 bancos, 1577 pruebas; banco nuevo `eval-conos.mjs`, 18 pruebas; 11 mutantes, 10 muertos y 1 equivalente) |
-| 6.1 | Rodear un cono al dibujar: el trazo se curva por el lado de entrada, con su iconito encima; un clic cambia el lado y otro lo anula. Se guarda la intención, así que mover el cono rehace la curva. Compila como `funcion: 'rodear'` y el guion lo cuenta | pendiente |
-| 6.2 | Slalom: tres o más conos alineados cerca del trazo, alternando lados desde el de entrada | pendiente |
+| 6.1 | Rodear un cono al dibujar: el trazo se curva por el lado de entrada, con su iconito encima; un clic cambia el lado y otro lo anula. Se guarda la intención, así que mover el cono rehace la curva. Compila como `funcion: 'rodear'` y el guion lo cuenta | ✅ (66 bancos, 1594 pruebas; 13 mutantes, los 13 muertos; probado en la Pizarra: dibujar, los tres clics y compilar). El slalom (6.2) ha salido con él: el módulo ya lo leía |
+| 6.2 | Slalom: tres o más conos alineados cerca del trazo, alternando lados desde el de entrada | ✅ con el 6.1 |
 | 6.3 | Puertas (§7.4.1): emparejamiento automático por distancia, la banda, el trazo imantado a pasar por dentro y en rojo si se fuerza por fuera; deshacer el par en el panel | pendiente |
 | 6.4 | El defensor confinado al carril de la puerta: su regla se proyecta sobre el carril | pendiente |
 | 6.5 | Filas (§7.4.2): un cono es cola —jugadores, equipo, papel, un balón por cabeza—, con su tirador de orientación y su destino de vuelta. Se enciende «Vuelve a la fila», que hoy no puede | pendiente |
 | 6.6 | Rondas: salen todos uno tras otro, con cadencia, y variación por ronda | pendiente |
 | 6.7 | Balones múltiples y equipos del club. Cierre de la capa | pendiente |
+
+**Decidido en los pasos 6.1 y 6.2 (dicho al entrenador):**
+
+- **Se guarda la intención y manda ella**: qué cono se sortea y por qué
+  lado. Si el cono se mueve —incluso al otro lado del camino—, la curva
+  se rehace alrededor de su sitio nuevo y **por el mismo lado**; si se
+  aleja más de 1,5 m, deja de sortearse. Un cono que se acerca a un
+  trazo ya dibujado empieza a sortearse por su lado de entrada.
+- **Los tres clics del iconito**: el primero cambia el lado, el segundo
+  lo anula (el trazo pasa recto y el cono ya no se vuelve a leer aunque
+  se mueva) y el tercero lo devuelve a lo que se leería solo.
+- **Un slalom es UNA interpretación**: un solo iconito (⇄), y el clic va
+  para todos sus conos. Sin el tercero —anulando uno de tres— los otros
+  dos quedaban como dos rodeos sueltos.
+- Se pasa a **0,9 m** del cono (número nuevo, ajustable): ni pisándolo
+  ni dando un rodeo que no ha pedido nadie.
+- **Un pase no rodea conos**: vuela. Solo el camino de quien corre.
+- Mover un cono rehace las curvas **de la fase que se está editando**:
+  es lo que se tiene delante, y rehacer las de todas movería trazos que
+  no se ven.
+- Los conos de una PUERTA quedan como decoración al compilar hasta el
+  paso 6.3, que les da su papel.
 
 **Preguntas para el entrenador antes de llegar a 6.6 y 6.7:**
 

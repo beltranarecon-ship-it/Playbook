@@ -113,11 +113,24 @@ export function compilar(jugada) {
     posicion_inicial: punto(e),
     portador_id: de(e.portador_id),
   }));
+  /* Los conos QUE SE SORTEAN (§7.4): los que algún tramo nombra en su
+     `sorteando`. Los demás son decoración: están en la pista, ocupan
+     sitio y salen en el material, pero nadie los rodea. */
+  const sorteados = new Set();
+  for (const f of j.fases || []) {
+    for (const t of (f && f.tramos) || []) {
+      for (const x of (t && t.sorteando) || []) {
+        /* Lo anulado no se sortea, y las puertas no se rodean: se pasa
+           por dentro (su papel propio llega en el paso 6.3). */
+        if (x && x.cono && !x.anulado) sorteados.add(x.cono);
+      }
+    }
+  }
   const conos = elementos.filter((e) => e.kind === 'cono').map((e) => ({
     id: e.id,
     posicion: punto(e),
-    /* Filas y puertas son de la capa 6: por ahora un cono es un cono. */
-    funcion: 'decorativo',
+    /* Las filas llegan en el paso 6.5. */
+    funcion: sorteados.has(e.id) ? 'rodear' : 'decorativo',
     fila_config: null,
   }));
   const materiales = elementos

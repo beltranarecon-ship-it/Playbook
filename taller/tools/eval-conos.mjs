@@ -11,7 +11,10 @@
    entrenador ve un slalom donde puso un slalom.
    ============================================================ */
 
-import { interpretarConos, respectoAlTrazo, sorteandoDe, otroLado, CONOS } from '../js/pizarra/conos.js';
+import {
+  interpretarConos, respectoAlTrazo, sorteandoDe, otroLado, trazoSorteando, sitioAlPasar,
+  sinSorteos, volverASortear, intencionDe, CONOS,
+} from '../js/pizarra/conos.js';
 import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
 
 let pasan = 0, fallan = 0;
@@ -158,10 +161,10 @@ test('y un cono pegado a la puerta no se cuenta dos veces', () => {
 
 test('SE GUARDA LA INTENCIÓN, no la curva: qué cono y por qué lado', () => {
   const rodeo = { tipo: 'rodeo', conos: ['c1'], lado: 'izq', en: 0.5 };
-  eq(sorteandoDe([rodeo]), [{ cono: 'c1', lado: 'izq' }]);
+  eq(sorteandoDe([rodeo]), [{ cono: 'c1', lado: 'izq', tipo: 'rodeo' }]);
   const zig = { tipo: 'zigzag', conos: ['c1', 'c2', 'c3'], lado: 'der', en: 0.2 };
   eq(sorteandoDe([zig]), [
-    { cono: 'c1', lado: 'der' }, { cono: 'c2', lado: 'izq' }, { cono: 'c3', lado: 'der' },
+    { cono: 'c1', lado: 'der', tipo: 'zigzag' }, { cono: 'c2', lado: 'izq', tipo: 'zigzag' }, { cono: 'c3', lado: 'der', tipo: 'zigzag' },
   ], 'el slalom alterna desde el lado de entrada:');
   eq(sorteandoDe([{ tipo: 'puerta', conos: ['c1', 'c2'], lado: null, en: 0.4 }]), [{ puerta: ['c1', 'c2'] }]);
   eq(sorteandoDe([]), []);
@@ -190,6 +193,105 @@ test('LAS LECTURAS SALEN EN EL ORDEN EN QUE SE LAS ENCUENTRA', () => {
     cono('rodeo', 1.0, 0.70), cono('puerta_a', 1.2, 0.35), cono('puerta_b', -1.2, 0.35),
   ], { pista: 'entera' });
   eq(mezcla.map((x) => x.tipo), ['rodeo', 'puerta'], 'primero el rodeo, que cae antes:');
+});
+
+/* ── 7. El trazo que sortea ──────────────────────────────── */
+
+test('EL TRAZO SE CURVA PARA PASAR A 0,9 m DEL CONO, por el lado leído', () => {
+  const c = cono('c1', 0.3, 0.5);
+  const lecturas = interpretarConos(RECTO, [c], { pista: 'entera' });
+  const t = trazoSorteando(RECTO, lecturas, [c], { pista: 'entera' });
+  ok(t.length === RECTO.length + 1, `mete un nodo: ${t.length} nodos`);
+  const r = respectoAlTrazo(t, c, 'entera');
+  ok(Math.abs(r.metros - CONOS.paso) < 0.15, `pasa a ${r.metros.toFixed(2)} m del cono`);
+  eq(r.lado, lecturas[0].lado, 'y por el mismo lado que decía la lectura:');
+  eq([t[0].x, t[0].y], [RECTO[0].x, RECTO[0].y], 'el origen no se toca:');
+  eq([t[t.length - 1].x, t[t.length - 1].y], [RECTO[1].x, RECTO[1].y], 'ni el destino:');
+});
+
+test('UN SLALOM METE UN NODO POR CONO, alternando lados', () => {
+  const conos = [cono('c1', 0.3, 0.65), cono('c2', 0.0, 0.5), cono('c3', -0.3, 0.35)];
+  const lecturas = interpretarConos(RECTO, conos, { pista: 'entera' });
+  eq(lecturas[0].tipo, 'zigzag');
+  const t = trazoSorteando(RECTO, lecturas, conos, { pista: 'entera' });
+  eq(t.length, RECTO.length + 3, 'tres nodos nuevos:');
+  const lados = conos.map((c) => respectoAlTrazo(t, c, 'entera').lado);
+  ok(lados[0] !== lados[1] && lados[1] !== lados[2], `alterna: ${lados.join(', ')}`);
+});
+
+test('una puerta no curva el trazo: se pasa por dentro y ya', () => {
+  const conos = [cono('c1', 1.2, 0.5), cono('c2', -1.2, 0.5)];
+  const lecturas = interpretarConos(RECTO, conos, { pista: 'entera' });
+  eq(lecturas[0].tipo, 'puerta');
+  eq(trazoSorteando(RECTO, lecturas, conos, { pista: 'entera' }), RECTO);
+});
+
+test('sin lecturas, sin conos o con un trazo roto, el trazo se queda como estaba', () => {
+  eq(trazoSorteando(RECTO, [], [], { pista: 'entera' }), RECTO);
+  eq(trazoSorteando(RECTO, null, null, { pista: 'entera' }), RECTO);
+  const c = cono('c1', 0.3, 0.5);
+  eq(trazoSorteando(RECTO, interpretarConos(RECTO, [c]), [], { pista: 'entera' }), RECTO, 'sin saber dónde está el cono:');
+  eq(trazoSorteando([N(0.5, 0.5)], [], []), [N(0.5, 0.5)]);
+});
+
+test('EL NODO QUE PONE UN CONO QUEDA MARCADO, y se puede quitar', () => {
+  const c = cono('c1', 0.3, 0.5);
+  const t = trazoSorteando(RECTO, interpretarConos(RECTO, [c], { pista: 'entera' }), [c], { pista: 'entera' });
+  const puesto = t.filter((n) => n.por_cono);
+  eq(puesto.length, 1);
+  eq(puesto[0].por_cono, 'c1');
+  ok(puesto[0].lado === 'izq' || puesto[0].lado === 'der', 'con su lado');
+  eq(sinSorteos(t).length, RECTO.length, 'y quitándolo se vuelve al trazo dibujado:');
+  eq(sinSorteos(t, new Set(['otro'])).length, t.length, 'quitando solo los de otro cono, no se toca:');
+});
+
+test('MOVER EL CONO REHACE LA CURVA: se guardó la intención, no el trazo', () => {
+  const c = cono('c1', 0.3, 0.5);
+  const uno = volverASortear(RECTO, [c], { pista: 'entera' });
+  const antes = respectoAlTrazo(uno.trazo, c, 'entera');
+  /* El cono se va al otro lado del camino: la curva tiene que rehacerse
+     por el lado nuevo, y sin acumular nodos. */
+  const movido = { ...c, x: 0.5 - 0.3 / E.x };
+  const dos = volverASortear(uno.trazo, [movido], { pista: 'entera' });
+  eq(dos.trazo.filter((n) => n.por_cono).length, 1, 'un solo nodo puesto por el cono:');
+  const despues = respectoAlTrazo(dos.trazo, movido, 'entera');
+  ok(Math.abs(despues.metros - CONOS.paso) < 0.15, `sigue pasando a 0,9 m: ${despues.metros.toFixed(2)}`);
+  ok(antes.lado !== despues.lado, `y por el otro lado: ${antes.lado} → ${despues.lado}`);
+});
+
+test('Y UN CLIC CAMBIA EL LADO: se fuerza y se rehace', () => {
+  const c = cono('c1', 0.3, 0.5);
+  const uno = volverASortear(RECTO, [c], { pista: 'entera' });
+  const lado = uno.lecturas[0].lado;
+  const dos = volverASortear(uno.trazo, [c], { pista: 'entera', lados: { c1: otroLado(lado) } });
+  eq(respectoAlTrazo(dos.trazo, c, 'entera').lado, otroLado(lado), 'pasa por el otro lado:');
+  eq(dos.trazo.filter((n) => n.por_cono).length, 1, 'y sigue habiendo un solo nodo suyo:');
+});
+
+test('y si el cono desaparece, el trazo vuelve a ser el que se dibujó', () => {
+  const c = cono('c1', 0.3, 0.5);
+  const uno = volverASortear(RECTO, [c], { pista: 'entera' });
+  const dos = volverASortear(uno.trazo, [], { pista: 'entera' });
+  eq(dos.trazo.length, RECTO.length);
+  eq(dos.lecturas, []);
+});
+
+test('LO ANULADO NO SE VUELVE A LEER aunque el cono siga ahí', () => {
+  const c = cono('c1', 0.3, 0.5);
+  const r = volverASortear(RECTO, [c], { pista: 'entera', anulados: new Set(['c1']) });
+  eq(r.lecturas, [], 'no se lee:');
+  eq(r.trazo.length, RECTO.length, 'y el trazo pasa recto:');
+});
+
+test('DE LA INTENCIÓN SALE LO QUE HAY QUE RESPETAR: el lado de cada lectura y lo anulado', () => {
+  const i = intencionDe([
+    { cono: 'c1', lado: 'izq', tipo: 'rodeo' },
+    { cono: 'z1', lado: 'der', tipo: 'zigzag' }, { cono: 'z2', lado: 'izq', tipo: 'zigzag' }, { cono: 'z3', lado: 'der', tipo: 'zigzag' },
+    { cono: 'c9', anulado: true },
+  ]);
+  eq(i.lados, { c1: 'izq', z1: 'der' }, 'del slalom solo manda el primero:');
+  eq([...i.anulados], ['c9']);
+  eq(intencionDe(null), { lados: {}, anulados: new Set() });
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

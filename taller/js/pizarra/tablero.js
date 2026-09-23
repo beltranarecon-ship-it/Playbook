@@ -34,6 +34,7 @@
    ============================================================ */
 
 import { h } from '../ui/dom.js';
+import { metrosEntre as metrosEntreFichas } from '../canvas/escala.js';
 import { posicionesDe } from '../canvas/anclas.js';
 import { Fichas } from './fichas.js';
 import { Anillo } from './anillo.js';
@@ -47,6 +48,7 @@ import {
   estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS, porQueNoCompanero, saleEn,
 } from './repertorio.js';
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
+import { interpretarConos, sorteandoDe, volverASortear, intencionDe, otroLado, respectoAlTrazo } from './conos.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
@@ -153,6 +155,7 @@ export class Tablero {
     this.fichas.onCambio = (elementos) => {
       this.repaso.parar();
       this._seguirALasFichas(elementos);
+      this._rehacerSorteos();
       this._recordarDonde(elementos);
       this.onEscena?.(elementos);
       /* Lo seleccionado decide qué enseña la pestaña «Ajustes» y qué regla
@@ -209,6 +212,10 @@ export class Tablero {
        selección— y por debajo de nodos y trazos. Nunca coge si hay una
        ficha debajo, y un toque sin arrastre es tocar el suelo. */
     this._quitarGestoPareja = lienzo.gesto('pareja', (i) => this._atenderPareja(i), { orden: 10 });
+    /* El iconito de cada cono que se sortea (§7.4): se pinta encima de
+       los trazos y un clic en él cambia el lado o lo anula. */
+    this._quitarCapaConos = lienzo.capa('conos-iconos', (c) => this._dibujarIconosConos(c), { tipo: 'mundo', orden: 13 });
+    this._quitarGestoConos = lienzo.gesto('conos', (i) => this._atenderIconoCono(i), { orden: 30 });
     /* El anillo vive en píxeles y la pista se mueve debajo de él: la
        rueda atraviesa el velo, que solo intercepta `pointerdown`. Se
        recoloca con cada pintada, que es justo cuando la vista ha podido
@@ -850,6 +857,214 @@ export class Tablero {
     this.nodos.canasta = k;
   }
 
+  /** Los conos que hay en la pista, que son los que se sortean (§7.4). */
+  conos() { return this.fichas.elementos.filter((e) => e.kind === 'cono'); }
+
+  /* Vuelve a leer los conos de un trazo: los que había, con los conos
+     donde estén AHORA. `lados` fuerza el de alguno, que es lo que hace
+     un clic sobre su iconito. */
+  _sorteando(trazo, intencion = null) {
+    const { lados, anulados } = intencionDe(intencion || []);
+    return volverASortear(trazo, this.conos(), { pista: this.lienzo.vista.pistaKey, lados, anulados });
+  }
+
+  /* La intención que queda tras volver a leer: lo leído, y lo anulado,
+     que se sigue guardando aunque ya no se sortee. */
+  _intencion(lecturas, anterior = []) {
+    const anulados = (anterior || []).filter((x) => x && x.anulado);
+    return [...sorteandoDe(lecturas), ...anulados];
+  }
+
+  /**
+   * MOVER UN CONO REHACE LAS CURVAS (§7.4).
+   *
+   * Solo las de la fase que se está editando: es lo que el entrenador
+   * tiene delante, y rehacer las de todas las fases movería trazos que
+   * no se ven. Se rehacen enteras —no solo las del cono movido— porque
+   * un cono que se aparta deja de sortearse y uno que se acerca empieza.
+   */
+  _rehacerSorteos() {
+    if (!this.tramos.length) return false;
+    const antes = JSON.stringify(this.tramos.map((t) => t.trazo));
+    const tramos = this.tramos.map((t) => {
+      if (t.tipo === 'pass') return t;
+      /* Con la intención que se guardó: el lado de cada cono y lo
+         anulado se respetan, que es lo que el §7.4 dice que se guarda. */
+      const r = this._sorteando(t.trazo, t.sorteando);
+      const sorteando = this._intencion(r.lecturas, t.sorteando);
+      const limpio = { ...t, trazo: r.trazo };
+      if (sorteando.length) limpio.sorteando = sorteando;
+      else delete limpio.sorteando;
+      return limpio;
+    });
+    if (JSON.stringify(tramos.map((t) => t.trazo)) === antes) {
+      /* El trazo no cambia, pero la intención sí puede (un cono que se va
+         lejos deja de sortearse): se guarda sin avisar a nadie. */
+      this.tramos = tramos;
+      return false;
+    }
+    this.tramos = tramos;
+    this._recalcularSiguientes();
+    this.onTramos?.(this.tramos);
+    this.lienzo.pintar();
+    return true;
+  }
+
+  /**
+   * EL CLIC SOBRE EL ICONITO DE UN CONO (§7.4): el primero cambia el
+   * lado, el segundo lo anula —el trazo deja de sortearlo— y el tercero
+   * lo devuelve a lo que se leería solo.
+   *
+   * @param tramoId  el tramo que sortea
+   * @param conoId   el cono (el primero, si es un slalom)
+   */
+  cambiarSorteo(tramoId, conoId) {
+    const t = this.tramos.find((x) => x.id === tramoId);
+    if (!t || t.tipo === 'pass') return false;
+    const intencion = (t.sorteando || []).map((x) => ({ ...x }));
+    const i = intencion.findIndex((x) => x.cono === conoId);
+    if (i < 0) return false;
+    const suya = intencion[i];
+    /* UN SLALOM ES UNA SOLA INTERPRETACIÓN: el clic va para todos sus
+       conos. Anulado, se recuerda en `grupo` quién iba con quién, para
+       poder devolverlo entero. */
+    let grupo = [conoId];
+    if (suya.tipo === 'zigzag') {
+      grupo = [];
+      for (let k = i; k < intencion.length && intencion[k].tipo === 'zigzag'; k++) grupo.push(intencion[k].cono);
+    } else if (suya.anulado && suya.grupo) {
+      grupo = intencion.filter((x) => x.anulado && x.grupo === suya.grupo).map((x) => x.cono);
+    }
+    const enGrupo = new Set(grupo);
+    let nueva;
+    if (suya.anulado) {
+      nueva = intencion.filter((x) => !enGrupo.has(x.cono));        // vuelve a leerse solo
+    } else if (!suya.cambiado) {
+      /* Cambiar el lado del primero basta: el resto de un slalom alterna. */
+      nueva = intencion.map((x) => (x.cono === conoId ? { ...x, lado: otroLado(x.lado), cambiado: true } : x));
+    } else {
+      nueva = intencion.map((x) => (enGrupo.has(x.cono)
+        ? { cono: x.cono, anulado: true, ...(grupo.length > 1 ? { grupo: conoId } : {}) }
+        : x));
+    }
+    const r = this._sorteando(t.trazo, nueva);
+    /* Lo cambiado a mano se queda marcado: es lo que hace que el
+       siguiente clic lo anule en vez de volver a cambiarlo. */
+    const cambiados = new Set(nueva.filter((x) => x.cambiado).map((x) => x.cono));
+    const sorteando = this._intencion(r.lecturas, nueva)
+      .map((x) => (cambiados.has(x.cono) && !x.anulado ? { ...x, cambiado: true } : x));
+    this.tramos = this.tramos.map((x) => (x.id === tramoId
+      ? { ...x, trazo: r.trazo, ...(sorteando.length ? { sorteando } : {}) }
+      : x));
+    if (!sorteando.length) this.tramos = this.tramos.map((x) => {
+      if (x.id !== tramoId) return x;
+      const { sorteando: _fuera, ...resto } = x;
+      return resto;
+    });
+    this._recalcularSiguientes();
+    this.onTramos?.(this.tramos);
+    this.lienzo.pintar();
+    return true;
+  }
+
+  /**
+   * Dónde va el iconito de cada cono sorteado en la fase que se edita
+   * (§7.4): sobre el trazo, en el nodo que puso el cono —o, si está
+   * anulado, en el punto del trazo más cercano a él—.
+   *
+   * @returns [{ tramo, cono, tipo, anulado, punto }]
+   */
+  iconosDeConos() {
+    const pista = this.lienzo.vista.pistaKey;
+    const conos = new Map(this.conos().map((c) => [c.id, c]));
+    const r = [];
+    for (const t of this.tramos) {
+      let enSlalom = false;
+      for (const x of t.sorteando || []) {
+        if (!x || !x.cono) continue;
+        /* Un slalom es UNA interpretación: un solo iconito, en su primer
+           cono. Y anulado, igual: solo el que encabezaba el grupo. */
+        if (x.tipo === 'zigzag' && enSlalom) continue;
+        enSlalom = x.tipo === 'zigzag';
+        if (x.anulado && x.grupo && x.grupo !== x.cono) continue;
+        const nodo = t.trazo.find((n) => n.por_cono === x.cono);
+        let punto = nodo ? { x: nodo.x, y: nodo.y } : null;
+        if (!punto && x.anulado && conos.has(x.cono)) {
+          const c = conos.get(x.cono);
+          const en = respectoAlTrazo(t.trazo, c, pista);
+          punto = en ? this._puntoDelTrazo(t.trazo, en.en) : null;
+        }
+        if (punto) r.push({ tramo: t.id, cono: x.cono, tipo: x.anulado ? 'anulado' : (x.tipo || 'rodeo'), anulado: !!x.anulado, punto });
+      }
+    }
+    return r;
+  }
+
+  /* El punto del trazo en la fracción `u` de su longitud. */
+  _puntoDelTrazo(trazo, u) {
+    const flat = flattenPath(trazo);
+    if (flat.length < 2) return flat[0] || null;
+    const pista = this.lienzo.vista.pistaKey;
+    const largos = [];
+    let total = 0;
+    for (let i = 1; i < flat.length; i++) { const l = metrosEntreFichas(pista, flat[i - 1], flat[i]); largos.push(l); total += l; }
+    let hasta = total * Math.max(0, Math.min(1, u));
+    for (let i = 1; i < flat.length; i++) {
+      if (hasta <= largos[i - 1] || i === flat.length - 1) {
+        const k = largos[i - 1] > 0 ? Math.min(1, hasta / largos[i - 1]) : 0;
+        return { x: flat[i - 1].x + (flat[i].x - flat[i - 1].x) * k, y: flat[i - 1].y + (flat[i].y - flat[i - 1].y) * k };
+      }
+      hasta -= largos[i - 1];
+    }
+    return flat[flat.length - 1];
+  }
+
+  /* Un clic cerca de un iconito lo cambia. Por encima de las fichas y de
+     las líneas de los pares; por debajo de los nodos, que mandan
+     mientras se corrige un trazo. */
+  _atenderIconoCono(intento) {
+    const px = this.lienzo.metros(this.lienzo.agarre(12, intento.tipoPuntero));
+    const radio = Number.isFinite(px) && px > 0 ? px : 0.6;
+    const pista = this.lienzo.vista.pistaKey;
+    let mejor = null;
+    for (const i of this.iconosDeConos()) {
+      const m = metrosEntreFichas(pista, i.punto, intento);
+      if (m <= radio && (!mejor || m < mejor.m)) mejor = { ...i, m };
+    }
+    if (!mejor) return null;
+    return {
+      mover: () => {},
+      soltar: () => {},
+      tocar: () => { this.cambiarSorteo(mejor.tramo, mejor.cono); },
+      abortar: () => {},
+    };
+  }
+
+  /* Los iconitos, en pantalla: ↻ rodeo · ⇄ slalom · ∅ anulado. */
+  _dibujarIconosConos({ ctx, toPx, R }) {
+    const iconos = this.iconosDeConos();
+    if (!iconos.length) return;
+    const GLIFO = { rodeo: '↻', zigzag: '⇄', anulado: '∅' };
+    const radio = Math.max(7, (R && R.jugador ? R.jugador * 0.42 : 8));
+    ctx.save();
+    ctx.font = `600 ${Math.round(radio * 1.3)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const i of iconos) {
+      const [x, y] = toPx(i.punto.x, i.punto.y);
+      ctx.beginPath();
+      ctx.arc(x, y, radio, 0, Math.PI * 2);
+      ctx.fillStyle = i.anulado ? 'rgba(255,255,255,0.75)' : '#fff';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = i.anulado ? COLORS.ink : COLORS.ball;
+      ctx.stroke();
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillText(GLIFO[i.tipo] || '•', x, y + 0.5);
+    }
+    ctx.restore();
+  }
+
   /** La fase en curso, con sus carriles y sus tiempos ya calculados. */
   faseEnCurso() {
     const fase = { ...this.fases[this.iFase], carriles: carrilesDesde(this.tramos) };
@@ -1424,10 +1639,18 @@ export class Tablero {
    * «conBalón» la próxima vez que se la toque. Si termina en el suelo,
    * es un pase a un sitio y el balón se queda ahí.
    */
-  _trazoHecho({ elemento, accion, variante, trazo, tipo, balon = null, desenlace = null, companero = null, defensor = null }) {
+  _trazoHecho({ elemento, accion, variante, trazo: dibujado, tipo, balon = null, desenlace = null, companero = null, defensor = null }) {
+    const pista = this.lienzo.vista.pistaKey;
+    /* LOS CONOS DEL CAMINO (§7.4). Un trazo que pasa junto a un cono lo
+       rodea, y lo que se guarda es la intención —qué cono y por qué
+       lado—, no la curva: por eso mover el cono la rehace.
+
+       Solo el camino de quien CORRE: un pase vuela, y un cono no le hace
+       nada. */
+    const trazo = tipo === 'pass' ? dibujado : this._sorteando(dibujado).trazo;
+    const sorteando = tipo === 'pass' ? [] : sorteandoDe(this._sorteando(dibujado).lecturas);
     const fin = trazo[trazo.length - 1];
     const ritmo = ritmoDe(accion);
-    const pista = this.lienzo.vista.pistaKey;
     /* «Recoge» es familia balón pero NO vuela el balón: el que va es el
        jugador, a por él. Metido en el mismo saco que el pase, la ficha
        se quedaba quieta y lo que se movía era el balón —al revés de lo
@@ -1492,6 +1715,8 @@ export class Tablero {
       ...(companero ? { companero_id: companero } : {}),
       // y a quién se le pone: el defensor de verdad, si lo había
       ...(defensor ? { defensor_id: defensor } : {}),
+      // por qué conos pasa y por qué lado (§7.4): la intención, no la curva
+      ...(sorteando.length ? { sorteando } : {}),
     };
     this.tramos = [...this.tramos, nuevo];
     this._enCurso = null;
@@ -1805,6 +2030,8 @@ export class Tablero {
     this._quitarCapaParejas?.();
     this._quitarCapaRegla?.();
     this._quitarGestoPareja?.();
+    this._quitarCapaConos?.();
+    this._quitarGestoConos?.();
     this._quitarCapaAnillo?.();
     this._quitarCapaDesenlace?.();
     this._cerrarDesenlace();
