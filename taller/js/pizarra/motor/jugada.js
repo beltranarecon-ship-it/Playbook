@@ -26,6 +26,7 @@
 import { VERSION_JUGADA } from './compilar.js';
 import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
 import { normalizarDefensa, normalizarDeclaradas, REGLAS } from './defensa.js';
+import { normalizarFila } from '../filas.js';
 
 const DE_TIRO = new Set(CATALOGO_SISTEMA.filter((a) => a.parametros && a.parametros.modo === 'tiro').map((a) => a.slug));
 
@@ -86,6 +87,27 @@ export function normalizarJugada(bruta) {
         b.regla_defensa = null;
       }
     }
+  }
+  /* LAS FILAS (§7.4.2): un cono que es cola, y los que esperan en ella.
+     Una fila rota se queda como cono suelto, y quien esperaba en una que
+     ya no existe pasa a ser un jugador más —en juego—, y se dice. */
+  const filas = new Set();
+  for (const c of elementos) {
+    if (c.kind !== 'cono' || c.fila == null) continue;
+    const f = normalizarFila(c.fila);
+    if (!f) { avisos.push('Una fila guardada estaba rota: el cono se queda suelto.'); c.fila = null; continue; }
+    c.fila = f;
+    filas.add(c.id);
+  }
+  for (const j of elementos) {
+    if (j.kind !== 'jugador' || j.fila_de == null) continue;
+    if (!filas.has(j.fila_de)) {
+      avisos.push('Alguien esperaba en una fila que ya no está: pasa a jugar suelto.');
+      delete j.fila_de; delete j.puesto;
+      j.en_juego = true;
+      continue;
+    }
+    if (!(Number.isInteger(j.puesto) && j.puesto >= 0)) j.puesto = 0;
   }
   const { defensa, avisos: deDefensa } = normalizarDefensa(bruta.defensa);
   avisos.push(...deDefensa);

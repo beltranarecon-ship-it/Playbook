@@ -51,6 +51,10 @@ import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
 import {
   interpretarConos, sorteandoDe, volverASortear, intencionDe, otroLado, respectoAlTrazo, cruceConPuerta, puertasDe,
 } from './conos.js';
+import {
+  hacerFila as hacerLaFila, deshacerFila as deshacerLaFila, orientarFila as orientarLaFila,
+  deLaFila, puestosDeFila, orientacionHacia, normalizarFila,
+} from './filas.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
@@ -155,6 +159,11 @@ export class Tablero {
        modelo y DESPUÉS llama a `reproducir`, así que esto no se come el
        repaso que acaba de nacer. */
     this.fichas.onCambio = (elementos) => {
+      /* UNA FILA LLEVA A SU COLA (§7.4.2): si el cono se ha movido, los
+         que esperan vuelven a su puesto —y se vuelve a entrar aquí con
+         todo ya en su sitio, así que no da vueltas—. */
+      const conColas = this._colasEnSuSitio(elementos);
+      if (conColas !== elementos) { this.fichas._cambio(conColas); return; }
       this.repaso.parar();
       this._seguirALasFichas(elementos);
       this._rehacerSorteos();
@@ -218,6 +227,10 @@ export class Tablero {
        los trazos y un clic en él cambia el lado o lo anula. */
     this._quitarCapaConos = lienzo.capa('conos-iconos', (c) => this._dibujarIconosConos(c), { tipo: 'mundo', orden: 13 });
     this._quitarGestoConos = lienzo.gesto('conos', (i) => this._atenderIconoCono(i), { orden: 30 });
+    /* El TIRADOR de la fila seleccionada (§7.4.2): se arrastra alrededor
+       de su cono para girarla. Imán cada 15°, libre con Mayús. */
+    this._quitarCapaTirador = lienzo.capa('tirador-fila', (c) => this._dibujarTirador(c), { tipo: 'mundo', orden: 16 });
+    this._quitarGestoTirador = lienzo.gesto('tirador-fila', (i) => this._atenderTirador(i), { orden: 36 });
     /* El anillo vive en píxeles y la pista se mueve debajo de él: la
        rueda atraviesa el velo, que solo intercepta `pointerdown`. Se
        recoloca con cada pintada, que es justo cuando la vista ha podido
@@ -417,8 +430,22 @@ export class Tablero {
    * @returns true si se ha quitado algo
    */
   quitarSeleccion() {
-    const ids = [...this.fichas.seleccion].filter((id) => this.fichas.elementos.some((e) => e.id === id));
+    let ids = [...this.fichas.seleccion].filter((id) => this.fichas.elementos.some((e) => e.id === id));
     if (!ids.length) return false;
+    /* UNO DE LA COLA no se quita suelto (§7.4.2): la fila dice cuántos
+       son, y se cambia desde su cono. Y un cono de fila se lleva su cola
+       —con los balones de cada uno—. */
+    const deCola = ids.map((id) => this.fichas.elementos.find((e) => e.id === id))
+      .filter((e) => e && e.kind === 'jugador' && e.fila_de && !ids.includes(e.fila_de));
+    if (deCola.length) {
+      this.onNoPuede?.({ nombre: 'Quitar' }, `${deCola.map((e) => this.nombreDe(e)).join(', ')} espera en una fila; cambia cuántos son desde su cono`);
+      return false;
+    }
+    for (const c of ids.map((id) => this.fichas.elementos.find((e) => e.id === id)).filter((e) => e && e.kind === 'cono' && e.fila)) {
+      const cola = deLaFila(this.fichas.elementos, c.id).map((j) => j.id);
+      const balones = this.fichas.elementos.filter((b) => b.kind === 'balon' && cola.includes(b.portador_id)).map((b) => b.id);
+      ids = [...new Set([...ids, ...cola, ...balones])];
+    }
     const conTrazos = ids
       .filter((id) => tramosConFicha(this.fases, id).length)
       .map((id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id)));
@@ -895,6 +922,169 @@ export class Tablero {
     this.fichas.canasta = k;
     this.dibujo.canasta = k;
     this.nodos.canasta = k;
+  }
+
+  /* Los que esperan en una fila y no hacen nada en ninguna fase van en su
+     puesto: si el cono se ha movido o girado, se les lleva. Quien ya ha
+     salido —tiene algo dibujado— vive en la punta de su trazo, y no se
+     le toca. Devuelve la MISMA lista si no hay nada que mover. */
+  _colasEnSuSitio(lista) {
+    if (this.iFase !== 0) return lista;
+    const pista = this.lienzo.vista.pistaKey;
+    const conTramos = new Set(this.fases.flatMap((f) => f.tramos || [])
+      .flatMap((t) => [t.elemento_id, t.corre_id, t.receptor_id]).filter(Boolean));
+    const movidos = {};
+    for (const c of lista.filter((e) => e.kind === 'cono' && e.fila)) {
+      const sitios = puestosDeFila(c, c.fila.n, c.fila.orientacion, pista);
+      for (const j of deLaFila(lista, c.id)) {
+        if (conTramos.has(j.id)) continue;
+        const s = sitios[j.puesto ?? 0];
+        if (s && (Math.abs(s.x - j.x) > 1e-9 || Math.abs(s.y - j.y) > 1e-9)) movidos[j.id] = s;
+      }
+    }
+    if (!Object.keys(movidos).length) return lista;
+    const salida = seguirAlPortador(mover(lista, movidos), pista);
+    /* Lo movido en la fase 1 es además su arranque, balones incluidos. */
+    const arranques = {};
+    for (const e of salida) {
+      const antes = lista.find((x) => x.id === e.id);
+      if (antes && (antes.x !== e.x || antes.y !== e.y)) arranques[e.id] = { x: e.x, y: e.y };
+    }
+    this.fases = this.fases.map((f, i) => (i === 0 ? { ...f, entrada: { ...(f.entrada || {}), ...arranques } } : f));
+    return salida;
+  }
+
+  /* Aplica una lista nueva de fichas en la que han entrado y salido
+     fichas: las fases lo apuntan (arranques y posesión), y se avisa. */
+  _conFichasNuevas(lista) {
+    const antes = new Set(this.fichas.elementos.map((e) => e.id));
+    const despues = new Set(lista.map((e) => e.id));
+    const idos = [...antes].filter((id) => !despues.has(id));
+    if (idos.length) this.fases = sinFichas(this.fases, idos);
+    for (const e of lista) if (!antes.has(e.id)) this.fases = conFichaNueva(this.fases, e);
+    this.fichas._cambio(lista);
+    this._recalcularSiguientes();
+    this._avisarDeFases();
+    this.onEscena?.(this.fichas.elementos);
+    this.lienzo.pintar();
+  }
+
+  /**
+   * HACE FILA DE UN CONO (§7.4.2), o la rehace con lo nuevo. Como poner
+   * fichas, solo en la fase 1, que es donde empieza la jugada.
+   *
+   * @param parcial  { n, equipo, papel, balon, orientacion, vuelta }; lo
+   *                 que no venga se queda como estaba
+   */
+  hacerFila(conoId, parcial = {}) {
+    if (this.iFase !== 0) {
+      this.onNoPuede?.({ nombre: 'Hacer fila' }, 'las filas se hacen en la fase 1, que es donde empieza la jugada');
+      return false;
+    }
+    const cono = this.fichas.elementos.find((e) => e.id === conoId && e.kind === 'cono');
+    if (!cono) return false;
+    /* Quien de la fila ya sale en algo dibujado no se puede rehacer: se
+       perdería su trazo. */
+    const conTramos = deLaFila(this.fichas.elementos, conoId).filter((j) => tramosConFicha(this.fases, j.id).length);
+    if (conTramos.length) {
+      this.onNoPuede?.({ nombre: 'Cambiar la fila' }, 'alguien de la fila ya tiene algo dibujado; bórralo antes');
+      return false;
+    }
+    const config = normalizarFila({ ...(cono.fila || {}), ...parcial });
+    this._conFichasNuevas(hacerLaFila(this.fichas.elementos, conoId, config, this.lienzo.vista.pistaKey));
+    return true;
+  }
+
+  /** Quita la cola de un cono (§7.4.2): el cono se queda suelto. */
+  deshacerFila(conoId) {
+    if (this.iFase !== 0) return false;
+    const cono = this.fichas.elementos.find((e) => e.id === conoId && e.kind === 'cono');
+    if (!cono || !cono.fila) return false;
+    if (deLaFila(this.fichas.elementos, conoId).some((j) => tramosConFicha(this.fases, j.id).length)) {
+      this.onNoPuede?.({ nombre: 'Deshacer la fila' }, 'alguien de la fila ya tiene algo dibujado; bórralo antes');
+      return false;
+    }
+    this._conFichasNuevas(deshacerLaFila(this.fichas.elementos, conoId));
+    return true;
+  }
+
+  /** Gira la fila (§7.4.2): el tirador, o el panel. */
+  orientarFila(conoId, grados) {
+    if (this.iFase !== 0) return false;
+    const cono = this.fichas.elementos.find((e) => e.id === conoId && e.kind === 'cono');
+    if (!cono || !cono.fila) return false;
+    this.fichas._cambio(orientarLaFila(this.fichas.elementos, conoId, grados, this.lienzo.vista.pistaKey));
+    this.lienzo.pintar();
+    return true;
+  }
+
+  /**
+   * Dónde está el tirador de la fila seleccionada: medio hueco detrás del
+   * último de la cola, en su orientación. Solo en la fase 1, que es
+   * donde se cambia la fila.
+   */
+  tiradorDeFila() {
+    if (this.iFase !== 0) return null;
+    const sel = [...this.fichas.seleccion];
+    if (sel.length !== 1) return null;
+    const conoId = this.filaDe(sel[0]);
+    const cono = conoId ? this.fichas.elementos.find((e) => e.id === conoId) : null;
+    if (!cono || !cono.fila) return null;
+    const sitios = puestosDeFila(cono, cono.fila.n + 1, cono.fila.orientacion, this.lienzo.vista.pistaKey);
+    const ultimo = sitios[sitios.length - 1];
+    return { cono: conoId, punto: ultimo };
+  }
+
+  _dibujarTirador({ ctx, toPx, R }) {
+    const t = this.tiradorDeFila();
+    if (!t) return;
+    const cono = this.fichas.elementos.find((e) => e.id === t.cono);
+    const [cx, cy] = toPx(cono.x, cono.y);
+    const [x, y] = toPx(t.punto.x, t.punto.y);
+    const radio = Math.max(7, R && R.jugador ? R.jugador * 0.45 : 8);
+    ctx.save();
+    ctx.strokeStyle = COLORS.accent;
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.arc(x, y, radio, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = COLORS.accent;
+    ctx.font = `600 ${Math.round(radio * 1.2)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('↻', x, y + 0.5);
+    ctx.restore();
+  }
+
+  _atenderTirador(intento) {
+    const t = this.tiradorDeFila();
+    if (!t) return null;
+    const px = this.lienzo.metros(this.lienzo.agarre(12, intento.tipoPuntero));
+    const radio = Number.isFinite(px) && px > 0 ? px : 0.6;
+    const pista = this.lienzo.vista.pistaKey;
+    if (metrosEntreFichas(pista, t.punto, intento) > radio) return null;
+    const cono = this.fichas.elementos.find((e) => e.id === t.cono);
+    const girar = (p) => {
+      const g = orientacionHacia(cono, p, pista, { libre: !!(p.shift ?? intento.shift) });
+      if (g != null) this.orientarFila(t.cono, g);
+    };
+    return {
+      mover: (p) => girar(p),
+      soltar: (p) => { girar(p); this.onEscena?.(this.fichas.elementos); },
+      tocar: () => {},
+      abortar: () => {},
+    };
+  }
+
+  /** De qué cono es la fila de esta ficha: el suyo si es un cono de fila,
+   *  o el de la cola en la que espera. */
+  filaDe(id) {
+    const e = this.fichas.elementos.find((x) => x.id === id);
+    if (!e) return null;
+    if (e.kind === 'cono') return e.fila ? e.id : null;
+    return e.kind === 'jugador' && e.fila_de ? e.fila_de : null;
   }
 
   /** Los conos que hay en la pista, que son los que se sortean (§7.4). */
@@ -2156,6 +2346,8 @@ export class Tablero {
     this._quitarGestoPareja?.();
     this._quitarCapaConos?.();
     this._quitarGestoConos?.();
+    this._quitarCapaTirador?.();
+    this._quitarGestoTirador?.();
     this._quitarCapaAnillo?.();
     this._quitarCapaDesenlace?.();
     this._cerrarDesenlace();

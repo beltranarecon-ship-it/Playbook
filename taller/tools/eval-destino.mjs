@@ -270,6 +270,22 @@ test('un defensor sin sitio no cuela: se vuelve al supuesto', () => {
   }
 });
 
+test('«VUELVE A LA FILA» VA AL FINAL DE SU COLA, o a la que diga su fila (§7.4.2)', () => {
+  const vuelve = de('vuelve_a_fila');
+  const cono = { id: 'c1', kind: 'cono', x: 0.5, y: 0.5, fila: { n: 3, orientacion: 90, vuelta: null } };
+  const otra = { id: 'c2', kind: 'cono', x: 0.2, y: 0.5, fila: { n: 2, orientacion: 0, vuelta: null } };
+  const j = { id: 'j1', kind: 'jugador', x: 0.5, y: 0.3, fila_de: 'c1' };
+  const r = destinoDe(vuelve, j, { pista: 'entera', elementos: [cono, otra, j] });
+  ok(r.punto, r.motivo);
+  /* Un hueco detrás del tercero: 3 huecos del cono hacia abajo. */
+  aprox(metrosEntre('entera', r.punto, cono), 3 * 1.95 * 0.65, 1e-9, 'al final de la suya:');
+  ok(r.punto.y > cono.y, 'por detrás, que es hacia abajo');
+  const aOtra = destinoDe(vuelve, j, { pista: 'entera', elementos: [{ ...cono, fila: { ...cono.fila, vuelta: 'c2' } }, otra, j] });
+  aprox(metrosEntre('entera', aOtra.punto, otra), 2 * 1.95 * 0.65, 1e-9, 'y a la otra, si su fila lo dice:');
+  const suelto = destinoDe(vuelve, { id: 'j9', kind: 'jugador', x: 0.4, y: 0.4 }, { pista: 'entera', elementos: [cono] });
+  ok(!suelto.punto && /fila/.test(suelto.motivo), `quien no salió de una fila no tiene a dónde volver: ${suelto.motivo}`);
+});
+
 test('con el compañero en el aro se acerca por su camino; sin compañero o sin aro, no se inventa', () => {
   const aro = aroDe('entera', 'norte');
   const desde = { x: 0.5, y: 0.5 };

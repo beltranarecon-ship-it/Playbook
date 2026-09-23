@@ -35,6 +35,7 @@
    ============================================================ */
 
 import { posicionesDe } from '../canvas/anclas.js';
+import { finalDeFila } from './filas.js';
 import { puntoADistanciaDe, metrosEntre, escalaDe } from '../canvas/escala.js';
 import { limitesCancha } from '../canvas/medidas.js';
 import { FAMILIAS } from '../ia/acciones.js';
@@ -91,9 +92,16 @@ export function destinoDe(accion, elemento, {
   if (p.destino === 'aro') return { punto: alAro(desde, p, pista, canasta) };
   if (p.modo === 'recoge') return alBalon(desde, p, pista, elementos);
   if (p.destino === 'fila_propia') {
-    /* Las filas son de los conos (§7). Hasta que existan, esto no se
-       puede saber y no se inventa. */
-    return { motivo: 'todavía no hay filas en la pista' };
+    /* AL FINAL DE SU FILA (§7.4.2): la del cono del que salió, o la que
+       diga su fila como vuelta. Quien no salió de ninguna no tiene a
+       dónde volver, y no se inventa. */
+    const suya = elemento.fila_de ? (elementos || []).find((e) => e && e.id === elemento.fila_de && e.kind === 'cono') : null;
+    if (!suya || !suya.fila) return { motivo: 'no ha salido de ninguna fila' };
+    const vuelta = suya.fila.vuelta
+      ? (elementos || []).find((e) => e && e.id === suya.fila.vuelta && e.kind === 'cono' && e.fila)
+      : null;
+    const cono = vuelta || suya;
+    return { punto: finalDeFila(cono, cono.fila.n, cono.fila.orientacion, pista) };
   }
   return { motivo: 'esta acción no tiene un destino propio' };
 }

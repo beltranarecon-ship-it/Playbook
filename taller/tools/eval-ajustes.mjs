@@ -173,5 +173,23 @@ test('UN CONO DICE SI FORMA UNA PUERTA, y con quién (§7.4.1)', () => {
   ok(/rodea|slalom|puerta/.test(suelto.texto), 'y dice qué puede llegar a ser');
 });
 
+test('EL PANEL DEL CONO OFRECE HACER FILA, y la de un cono de fila se cambia ahí (§7.4.2)', () => {
+  const suelto = modeloAjustes({ seleccion: ['c1'], elementos: [{ id: 'c1', kind: 'cono', x: 0.5, y: 0.5 }], nombreDe: () => 'el cono 1' });
+  eq(suelto.fila, null, 'sin fila todavía:');
+  ok(/fila/.test(suelto.texto), 'y dice que puede serlo');
+  const elementos = [
+    { id: 'c1', kind: 'cono', x: 0.5, y: 0.5, fila: { n: 3, equipo: 'B', papel: 'atacante', balon: true, orientacion: 90, vuelta: null } },
+    { id: 'c2', kind: 'cono', x: 0.2, y: 0.5, fila: { n: 2, equipo: 'A', papel: 'atacante', balon: false, orientacion: 0, vuelta: null } },
+    { id: 'j1', kind: 'jugador', equipo: 'B', x: 0.5, y: 0.55, fila_de: 'c1', puesto: 1, en_juego: false },
+  ];
+  const m = modeloAjustes({ seleccion: ['c1'], elementos, nombreDe: (e) => `el ${e.id}` });
+  eq([m.fila.n.valor, m.fila.equipo.valor, m.fila.balon.valor, m.fila.orientacion.valor], ['3', 'B', 'si', '90']);
+  eq(m.fila.n.opciones.length, 12, 'de uno a doce:');
+  eq(m.fila.orientacion.opciones.length, 24, 'de 15 en 15 grados:');
+  eq(m.fila.vuelta.opciones.map((o) => o.valor), [null, 'c2'], 'y puede volver a su cola o a la otra:');
+  const desdeUno = modeloAjustes({ seleccion: ['j1'], elementos, nombreDe: (e) => `el ${e.id}` });
+  eq([desdeUno.tipo, desdeUno.id], ['cono', 'c1'], 'uno que espera enseña la fila de su cono:');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

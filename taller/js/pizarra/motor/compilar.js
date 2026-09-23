@@ -97,8 +97,20 @@ export function compilar(jugada) {
   const defiendeAlEmpezar = new Set(papeles.inicio.defensores);
 
   /* ── la escena ── */
+  /* LOS QUE ESPERAN EN UNA FILA (§7.4.2) sin hacer nada en ninguna fase
+     no son jugadores de la animación: son la cola que el motor pinta
+     detrás de su cono. Tampoco sus balones, que van con ellos. */
+  const conosFila = new Set(elementos.filter((e) => e.kind === 'cono' && e.fila).map((e) => e.id));
+  const conTramos = new Set((j.fases || [])
+    .flatMap((f) => (f && Array.isArray(f.tramos) ? f.tramos : []))
+    .flatMap((t) => (t ? [t.elemento_id, t.corre_id, t.receptor_id, t.companero_id] : []))
+    .filter(Boolean));
+  const esperan = elementos.filter((e) => e.kind === 'jugador' && e.fila_de && conosFila.has(e.fila_de)
+    && e.en_juego === false && !conTramos.has(e.id));
+  const enLaCola = new Set(esperan.map((e) => e.id));
+  const balonesDeLaCola = new Set(elementos.filter((e) => e.kind === 'balon' && enLaCola.has(e.portador_id)).map((e) => e.id));
   const conBalon = new Set(elementos.filter((e) => e.kind === 'balon' && e.portador_id).map((e) => e.portador_id));
-  const jugadores = elementos.filter((e) => e.kind === 'jugador').map((e) => ({
+  const jugadores = elementos.filter((e) => e.kind === 'jugador' && !enLaCola.has(e.id)).map((e) => ({
     id: de(e.id),
     equipo: e.equipo || 'A',
     /* El papel AL EMPEZAR. Es lo que miran la miniatura y el linter; al
@@ -109,7 +121,7 @@ export function compilar(jugada) {
     dorsal: e.dorsal ?? null,
     nombre: e.nombre ?? null,
   }));
-  const balones = elementos.filter((e) => e.kind === 'balon').map((e) => ({
+  const balones = elementos.filter((e) => e.kind === 'balon' && !balonesDeLaCola.has(e.id)).map((e) => ({
     id: e.id,
     posicion_inicial: punto(e),
     portador_id: de(e.portador_id),
@@ -130,12 +142,19 @@ export function compilar(jugada) {
       }
     }
   }
+  /* LAS FILAS (§7.4.2): el motor pinta la cola de un cono de fila, así
+     que los que ESPERAN y no hacen nada en ninguna fase no se compilan
+     como jugadores, sino como la cola de su cono. Quien sale —o tiene
+     algo dibujado— sí es un jugador. */
+  const conosDeFila = conosFila;
   const conos = elementos.filter((e) => e.kind === 'cono').map((e) => ({
     id: e.id,
     posicion: punto(e),
-    /* Las filas llegan en el paso 6.5. */
-    funcion: puertas.has(e.id) ? 'puerta' : sorteados.has(e.id) ? 'rodear' : 'decorativo',
-    fila_config: null,
+    funcion: conosDeFila.has(e.id) ? 'fila'
+      : puertas.has(e.id) ? 'puerta' : sorteados.has(e.id) ? 'rodear' : 'decorativo',
+    fila_config: conosDeFila.has(e.id)
+      ? { n_jugadores: esperan.filter((j) => j.fila_de === e.id).length, direccion_grados: e.fila.orientacion, equipo: e.fila.equipo }
+      : null,
   }));
   const materiales = elementos
     .filter((e) => e.kind === 'escalera' || e.kind === 'pelota')

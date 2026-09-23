@@ -34,14 +34,14 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
 | 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
-| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar); pasos 6.0 a 6.4 hechos | — |
+| 6 · Conos y elementos | ⏳ en curso: plan propuesto (sin confirmar); pasos 6.0 a 6.5 hechos | — |
 | 7 · Texto y voz | pendiente | — |
 | 8 · Ramas | pendiente | — |
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **66 en verde, 1616
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **67 en verde, 1640
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -391,7 +391,7 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
 | 6.2 | Slalom: tres o más conos alineados cerca del trazo, alternando lados desde el de entrada | ✅ con el 6.1 |
 | 6.3 | Puertas (§7.4.1): emparejamiento automático por distancia, la banda, el trazo imantado a pasar por dentro y en rojo si se fuerza por fuera; deshacer el par en el panel | ✅ (66 bancos, 1607 pruebas; 14 mutantes, los 14 muertos; probado en la Pizarra: cruzar, imantar, forzar en rojo, el iconito y deshacerla desde el panel) |
 | 6.4 | El defensor confinado al carril de la puerta: su regla se proyecta sobre el carril | ✅ (66 bancos, 1616 pruebas; 8 mutantes: 7 muertos y 1 equivalente; probado en la Pizarra y con el fotograma del proyector: nunca sale de la puerta y, al cruzarla su par, se aparta 1,0 m deslizándose por ella) |
-| 6.5 | Filas (§7.4.2): un cono es cola —jugadores, equipo, papel, un balón por cabeza—, con su tirador de orientación y su destino de vuelta. Se enciende «Vuelve a la fila», que hoy no puede | pendiente |
+| 6.5 | Filas (§7.4.2): un cono es cola —jugadores, equipo, papel, un balón por cabeza—, con su tirador de orientación y su destino de vuelta. Se enciende «Vuelve a la fila», que hoy no puede | ✅ (67 bancos, 1640 pruebas; banco nuevo `eval-filas.mjs`; probado en la Pizarra: hacerla desde el panel, cambiarla, el tirador, mover el cono con su cola, «Vuelve a la fila» y compilar) |
 | 6.6 | Rondas: salen todos uno tras otro, con cadencia, y variación por ronda | pendiente |
 | 6.7 | Balones múltiples y equipos del club. Cierre de la capa | pendiente |
 
@@ -453,6 +453,36 @@ de punta a punta, con sus bancos en verde y su commit en la rama).
 - **«A menos de 3 m» es estricto**: dos conos a 3,0 m justos ya no son
   puerta. Probándolo en el navegador con los palos a 3 m exactos no salía
   la puerta; es lo que dice el §7.4, pero conviene saberlo al colocarlos.
+
+**Decidido en el paso 6.5 (dicho al entrenador):**
+
+- **Los de la cola son jugadores de verdad** (§7.1): el primero, EN el
+  cono y en juego (lleva dorsal y puede defender o atacar); los demás
+  detrás, sin dorsal y sin contar para la defensa. Se ponen justo donde
+  el proyector pinta la cola, así que se ven igual al dibujar y al
+  proyectar.
+- **La fila se hace y se cambia desde el panel del cono**: cuántos (1 a
+  12), equipo, papel, un balón por cabeza, orientación y a qué cola se
+  vuelve. Cambiar cualquier cosa menos la orientación la rehace entera;
+  girarla conserva a los que esperan. Seleccionar a uno que espera
+  enseña la fila de su cono.
+- **El tirador**: un círculo al final de la cola, con la fila
+  seleccionada; se arrastra alrededor del cono, imán cada 15°, libre con
+  Mayús.
+- **Mover el cono se lleva a la cola en el mismo gesto**; quien ya ha
+  salido —tiene algo dibujado— se queda en la punta de su trazo.
+- **Uno de la cola no se quita suelto** (la fila dice cuántos son); el
+  cono se lleva a toda su cola y sus balones. Y no se rehace ni se
+  deshace una fila con alguien que ya tiene algo dibujado.
+- **«Vuelve a la fila»** lleva al final de su cola (un hueco detrás del
+  último) o de la que diga su fila.
+- Al compilar, los que esperan sin hacer nada no son jugadores de la
+  animación: son la cola que el motor ya sabía pintar
+  (`funcion: 'fila'`, `n_jugadores`); sus balones, igual.
+- **El «papel» de la fila se guarda y se enseña, pero todavía no decide
+  quién ataca** —eso lo sigue decidiendo el balón, o los Ajustes—. Si el
+  entrenador quiere que una fila de defensores defienda aunque no haya
+  balón, hay que decidirlo.
 
 **Preguntas para el entrenador antes de llegar a 6.6 y 6.7:**
 

@@ -110,7 +110,11 @@ export function modeloAjustes({
     };
   }
 
-  if (elegidos.length === 1 && elegidos[0].kind === 'jugador') {
+  /* Quien ESPERA en una fila no tiene papel: enseña la fila de su cono
+     (más abajo). El que sale, sí, y tiene su panel de jugador. */
+  const esperando = elegidos.length === 1 && elegidos[0].kind === 'jugador'
+    && elegidos[0].fila_de && elegidos[0].en_juego === false;
+  if (elegidos.length === 1 && elegidos[0].kind === 'jugador' && !esperando) {
     const j = elegidos[0];
     if (p.defensores.includes(j.id)) {
       const actual = p.pares[j.id] ?? null;
@@ -165,18 +169,42 @@ export function modeloAjustes({
   /* UN CONO (§7.4): qué papel le da lo dibujado. De momento, si forma
      una puerta, con quién —y cómo deshacerla, que es lo que pide el
      §7.4.1—. */
-  if (elegidos.length === 1 && elegidos[0].kind === 'cono') {
-    const c = elegidos[0];
+  /* Uno que ESPERA EN UNA FILA se configura desde su cono: el panel
+     enseña la fila. */
+  const cola = elegidos.length === 1 && elegidos[0].kind === 'jugador' && elegidos[0].fila_de
+    ? porId.get(elegidos[0].fila_de) : null;
+  if (elegidos.length === 1 && (elegidos[0].kind === 'cono' || (cola && cola.fila))) {
+    const c = elegidos[0].kind === 'cono' ? elegidos[0] : cola;
     const par = (puertas || []).find((p) => p.includes(c.id));
     const otro = par ? par.find((id) => id !== c.id) : null;
+    const f = c.fila || null;
+    /* Las otras filas, por si se vuelve a otra cola (§7.4.2). */
+    const otras = (elementos || []).filter((e) => e && e.kind === 'cono' && e.fila && e.id !== c.id);
     return {
       tipo: 'cono',
       id: c.id,
       nombre: nombreDe(c),
       puerta: otro ? { con: otro, nombre: nombre(otro) } : null,
-      texto: otro
-        ? `Forma una puerta con ${nombre(otro)}: el que la cruza pasa por dentro.`
-        : 'Un cono se rodea, hace de slalom o de puerta según por dónde pase el trazo.',
+      texto: f
+        ? `Es una fila de ${f.n}: el primero sale y los demás esperan detrás, sin dorsal.`
+        : otro
+          ? `Forma una puerta con ${nombre(otro)}: el que la cruza pasa por dentro.`
+          : 'Un cono se rodea, hace de slalom o de puerta según por dónde pase el trazo. Y puede ser una fila.',
+      fila: f ? {
+        n: { valor: String(f.n), opciones: Array.from({ length: 12 }, (_, i) => opcion(String(i + 1), String(i + 1))) },
+        equipo: { valor: f.equipo, opciones: EQUIPOS.map((eq) => opcion(eq, NOMBRE_EQUIPO[eq])) },
+        papel: { valor: f.papel, opciones: [opcion('atacante', 'Atacan'), opcion('defensor', 'Defienden')] },
+        balon: { valor: f.balon ? 'si' : 'no', opciones: [opcion('no', 'Sin balón'), opcion('si', 'Un balón por cabeza')] },
+        orientacion: {
+          valor: String(f.orientacion),
+          opciones: Array.from({ length: 24 }, (_, i) => opcion(String(i * 15), `${i * 15}°`))
+            .concat(f.orientacion % 15 ? [opcion(String(f.orientacion), `${Math.round(f.orientacion)}°`)] : []),
+        },
+        vuelta: {
+          valor: f.vuelta,
+          opciones: [opcion(null, 'A su propia cola'), ...otras.map((o) => opcion(o.id, `A la de ${nombre(o.id)}`))],
+        },
+      } : null,
     };
   }
 

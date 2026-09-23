@@ -50,6 +50,7 @@ const { nuevoTrazo } = await import('../js/pizarra/trazo.js');
 const defensaMod = await import('../js/pizarra/motor/defensa.js');
 const compilarMod = await import('../js/pizarra/motor/compilar.js');
 const conosMod = await import('../js/pizarra/conos.js');
+const filasMod = await import('../js/pizarra/filas.js');
 const { metrosEntre } = await import('../js/canvas/escala.js');
 
 let pasan = 0, fallan = 0;
@@ -589,6 +590,102 @@ test('LA PIZARRA SABE QUIÉN ESTÁ CONFINADO A UNA PUERTA, con los números del 
   const c = t.carriles();
   ok(c[b1.id], `B1, que está encima, confinado: ${JSON.stringify(Object.keys(c))}`);
   ok(palos.length === 2 && a2, 'y todo lo demás en su sitio');
+});
+
+/* Un cono, listo para ser fila. */
+function conConoDeFila() {
+  reiniciarIds();
+  const m = montar();
+  let l = [];
+  l = anadir(l, { kind: 'cono' }, 0.50, 0.60);
+  m.t.poner(l);
+  return { ...m, cono: l[0] };
+}
+
+test('HACER FILA DESDE EL PANEL PONE A LA COLA EN LA PISTA Y EN LA JUGADA (§7.4.2)', () => {
+  const { t, cono } = conConoDeFila();
+  ok(t.hacerFila(cono.id, { n: 3, equipo: 'B', balon: true }), 'se hace');
+  const cola = filasMod.deLaFila(t.fichas.elementos, cono.id);
+  eq(cola.length, 3);
+  eq(cola.map((j) => j.en_juego), [true, false, false]);
+  eq(t.fichas.elementos.filter((e) => e.kind === 'balon').length, 3, 'con su balón cada uno:');
+  for (const j of cola) ok(t.fases[0].entrada[j.id], 'cada uno con su arranque');
+  const b = t.fichas.elementos.find((e) => e.kind === 'balon');
+  eq(t.fases[0].posesion[b.id], b.portador_id, 'y la jugada sabe de quién es cada balón:');
+  eq(t.filaDe(cola[2].id), cono.id, 'y de qué fila es cada uno:');
+});
+
+test('MOVER EL CONO SE LLEVA A LA COLA, en el mismo gesto', () => {
+  const { t, cono } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 3, orientacion: 90 });
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === cono.id ? { ...e, x: 0.3, y: 0.4 } : e)));
+  const cola = filasMod.deLaFila(t.fichas.elementos, cono.id);
+  ok(Math.abs(cola[0].x - 0.3) < 1e-9 && Math.abs(cola[0].y - 0.4) < 1e-9, 'el primero, en el cono nuevo');
+  ok(cola[1].y > 0.4, 'y los demás detrás');
+  eq(t.fases[0].entrada[cola[1].id], { x: cola[1].x, y: cola[1].y }, 'y es su arranque:');
+});
+
+test('EL QUE YA HA SALIDO NO VUELVE A LA COLA al mover el cono: vive en la punta de su trazo', () => {
+  const { t, cono } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 2 });
+  const [primero] = filasMod.deLaFila(t.fichas.elementos, cono.id);
+  corta(t, primero.id, { x: 0.5, y: 0.2 });
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === cono.id ? { ...e, x: 0.3 } : e)));
+  const ahora = ficha(t, primero.id);
+  ok(Math.abs(ahora.y - 0.2) < 1e-9, `sigue en la punta de su trazo: ${JSON.stringify(ahora)}`);
+});
+
+test('GIRAR LA FILA CONSERVA A LOS QUE ESPERAN; y solo se hace en la fase 1', () => {
+  const { t, cono, avisos } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 2, orientacion: 90 });
+  const ids = filasMod.deLaFila(t.fichas.elementos, cono.id).map((j) => j.id);
+  ok(t.orientarFila(cono.id, 0), 'se gira');
+  eq(filasMod.deLaFila(t.fichas.elementos, cono.id).map((j) => j.id), ids, 'los mismos:');
+  ok(filasMod.deLaFila(t.fichas.elementos, cono.id)[1].x > 0.5, 'ahora a la derecha');
+  corta(t, ids[0], { x: 0.5, y: 0.2 });
+  t._cerrarFase();
+  avisos.length = 0;
+  eq(t.hacerFila(cono.id, { n: 4 }), false, 'en la fase 2 no:');
+  ok(avisos.some(([tipo]) => tipo === 'noPuede'), 'y se dice');
+});
+
+test('UNO DE LA COLA NO SE QUITA SUELTO; el cono se lleva a toda su cola', () => {
+  const { t, cono, avisos } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 3, balon: true });
+  const cola = filasMod.deLaFila(t.fichas.elementos, cono.id);
+  t.fichas.seleccion = new Set([cola[1].id]);
+  eq(t.quitarSeleccion(), false, 'uno de la cola, no:');
+  ok(avisos.some(([, , motivo]) => /fila/.test(motivo || '')), 'y se dice por qué');
+  t.fichas.seleccion = new Set([cono.id]);
+  ok(t.quitarSeleccion(), 'el cono, sí');
+  eq(t.fichas.elementos.length, 0, 'y con él su cola y sus balones:');
+});
+
+test('«VUELVE A LA FILA» DESDE EL ANILLO lleva al primero al final de su cola', () => {
+  const { t, cono } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 3, orientacion: 90 });
+  const [primero] = filasMod.deLaFila(t.fichas.elementos, cono.id);
+  corta(t, primero.id, { x: 0.5, y: 0.3 });
+  t._tocarFicha(ficha(t, primero.id));
+  t._elegir('vuelve_a_fila', {});
+  const tr = t.tramos[t.tramos.length - 1];
+  eq(tr.accion, 'vuelve_a_fila');
+  const fin = tr.trazo[tr.trazo.length - 1];
+  ok(fin.y > 0.6, `acaba detrás de la cola: ${JSON.stringify(fin)}`);
+});
+
+test('EL TIRADOR GIRA LA FILA: se coge al final de la cola y se imanta cada 15°', () => {
+  const { t, cono } = conConoDeFila();
+  t.hacerFila(cono.id, { n: 2, orientacion: 90 });
+  t.fichas.seleccion = new Set([cono.id]);
+  const tirador = t.tiradorDeFila();
+  ok(tirador && tirador.cono === cono.id, 'con la fila seleccionada hay tirador');
+  const g = t._atenderTirador({ ...tirador.punto, agarrePx: 0, tipoPuntero: 'mouse' });
+  ok(g, 'y se coge');
+  /* Se arrastra hacia la derecha y un poco arriba: 0° imantado. */
+  g.soltar({ x: 0.7, y: 0.59 });
+  eq(ficha(t, cono.id).fila.orientacion, 0);
+  eq(t._atenderTirador({ x: 0.1, y: 0.1, agarrePx: 0, tipoPuntero: 'mouse' }), null, 'lejos de él, no coge nada:');
 });
 
 test('un PASE no rodea conos: vuela', () => {

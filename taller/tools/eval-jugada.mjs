@@ -319,5 +319,25 @@ test('UNA ACCIÓN DE LA DEFENSA CONTRA UN CONO NO ENTRA, y se dice', () => {
   eq(r.avisos.length, 2, `y las dos se dicen: ${JSON.stringify(r.avisos)}`);
 });
 
+test('LAS FILAS SE GUARDAN Y SE ABREN; una rota o huérfana se dice', () => {
+  const r = normalizarJugada({
+    version: 3,
+    elementos: [
+      { id: 'cono_1', kind: 'cono', x: 0.5, y: 0.5, fila: { n: 3, equipo: 'B', orientacion: 405 } },
+      { id: 'cono_2', kind: 'cono', x: 0.2, y: 0.2, fila: 'rota' },
+      { id: 'j1', kind: 'jugador', equipo: 'B', x: 0.5, y: 0.5, fila_de: 'cono_1', puesto: 0 },
+      { id: 'j2', kind: 'jugador', equipo: 'B', x: 0.5, y: 0.55, fila_de: 'cono_1', puesto: -3, en_juego: false },
+      { id: 'j3', kind: 'jugador', equipo: 'A', x: 0.8, y: 0.8, fila_de: 'cono_9', puesto: 1, en_juego: false },
+    ],
+    fases: [{ id: 'f1', tramos: [] }],
+  });
+  const e = (id) => r.jugada.elementos.find((x) => x.id === id);
+  eq(e('cono_1').fila.orientacion, 45, 'la fila, en condiciones:');
+  eq(e('cono_2').fila, null, 'la rota, cono suelto:');
+  eq(e('j2').puesto, 0, 'un puesto que no vale, al principio:');
+  eq([e('j3').fila_de, e('j3').en_juego], [undefined, true], 'el de una fila que no está, a jugar suelto:');
+  eq(r.avisos.filter((a) => /fila/.test(a)).length, 2, 'y las dos cosas se dicen:');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

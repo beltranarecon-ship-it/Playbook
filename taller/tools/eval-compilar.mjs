@@ -616,6 +616,28 @@ test('EL DEFENSOR SOBRE UNA PUERTA SE QUEDA EN SU CARRIL TAMBIÉN EN EL PROYECTO
     `todas sus muestras sobre la puerta: ${JSON.stringify(suya.muestras.slice(0, 3))}`);
 });
 
+test('UN CONO DE FILA SE COMPILA CON SU COLA, y los que esperan no son jugadores de la animación', () => {
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal' });
+  const j = {
+    version: 3, pista: 'entera', canasta: 'norte',
+    elementos: [
+      { id: 'cono_1', kind: 'cono', x: 0.5, y: 0.6, fila: { n: 3, equipo: 'A', papel: 'atacante', balon: true, orientacion: 90, vuelta: null } },
+      { id: 'jugador_2', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.6, fila_de: 'cono_1', puesto: 0, en_juego: true },
+      { id: 'jugador_3', kind: 'jugador', equipo: 'A', label: null, x: 0.5, y: 0.65, fila_de: 'cono_1', puesto: 1, en_juego: false },
+      { id: 'jugador_4', kind: 'jugador', equipo: 'A', label: null, x: 0.5, y: 0.7, fila_de: 'cono_1', puesto: 2, en_juego: false },
+      { id: 'balon_5', kind: 'balon', x: 0.54, y: 0.6, portador_id: 'jugador_2' },
+      { id: 'balon_6', kind: 'balon', x: 0.54, y: 0.65, portador_id: 'jugador_3' },
+      { id: 'balon_7', kind: 'balon', x: 0.54, y: 0.7, portador_id: 'jugador_4' },
+    ],
+    fases: [{ id: 'f1', tramos: [{ id: 'tr1', elemento_id: 'jugador_2', corre_id: 'jugador_2', accion: 'bota', tipo: 'run', trazo: [N(0.5, 0.6), N(0.5, 0.3)] }] }],
+  };
+  const anim = compilar(j);
+  eq(anim.conos[0].funcion, 'fila');
+  eq(anim.conos[0].fila_config, { n_jugadores: 2, direccion_grados: 90, equipo: 'A' }, 'con los dos que esperan:');
+  eq(anim.jugadores.length, 1, 'el que sale es el único jugador:');
+  eq(anim.balones.map((b) => b.id), ['balon_5'], 'y solo su balón:');
+});
+
 /* ── Robar (§8.6) ────────────────────────────────────────── */
 
 test('ROBO EN EL BOTE: el balón pasa a ser del que roba A MITAD DE FASE', () => {

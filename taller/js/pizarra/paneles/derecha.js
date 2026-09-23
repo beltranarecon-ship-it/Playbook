@@ -25,9 +25,12 @@ export class PanelDerecho {
    * @param onHaceDe   (defensor, accion|null) — lo que hace distinto en
    *                   esta fase (§8.5); `null` es defender a su par
    * @param onDeshacerPuerta (cono) — deshacer la puerta de ese cono (§7.4.1)
+   * @param onFila     (cono, parcial|null) — hacer, cambiar o deshacer
+   *                   (con null) la fila de un cono (§7.4.2)
    */
-  constructor({ onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null, onDeshacerPuerta = null } = {}) {
+  constructor({ onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null, onDeshacerPuerta = null, onFila = null } = {}) {
     this.onDeshacerPuerta = onDeshacerPuerta;
+    this.onFila = onFila;
     this.onDefensa = onDefensa;
     this.onParDe = onParDe;
     this.onReglaDe = onReglaDe;
@@ -94,6 +97,7 @@ export class PanelDerecho {
             class: 'pz-der__serie', type: 'button',
             onClick: () => this.onDeshacerPuerta?.(m.id),
           }, 'Deshacer la puerta') : null,
+          ...this._fila(m),
         ];
       }
       case 'atacante':
@@ -131,6 +135,25 @@ export class PanelDerecho {
       m.hace ? this._campoSelect('En esta fase', m.hace, (v) => this.onHaceDe?.(m.id, v)) : null,
       m.explicacion ? h('p', { class: 'pz-der__porque' }, m.explicacion) : null,
       h('p', { class: 'pz-der__nota' }, 'También se cambia el par arrastrando su línea discontinua hasta otro atacante. Ayudar y cambiar el par con otro defensor se eligen en el anillo, pinchando a quién.'),
+    ];
+  }
+
+  /* LA FILA DE UN CONO (§7.4.2): hacerla, sus datos y deshacerla. La
+     orientación también se cambia con el tirador de la pista. */
+  _fila(m) {
+    if (!m.fila) {
+      return [h('button', { class: 'pz-der__serie', type: 'button', onClick: () => this.onFila?.(m.id, {}) }, 'Hacer fila')];
+    }
+    const f = m.fila;
+    const cambiar = (clave, traducir = (v) => v) => (v) => this.onFila?.(m.id, { [clave]: traducir(v) });
+    return [
+      this._campoSelect('Cuántos', f.n, cambiar('n', Number)),
+      this._campoSelect('Equipo', f.equipo, cambiar('equipo')),
+      this._campoSelect('Papel', f.papel, cambiar('papel')),
+      this._campoSelect('Balones', f.balon, cambiar('balon', (v) => v === 'si')),
+      this._campoSelect('Orientación', f.orientacion, cambiar('orientacion', Number)),
+      this._campoSelect('Vuelve', f.vuelta, cambiar('vuelta')),
+      h('button', { class: 'pz-der__serie', type: 'button', onClick: () => this.onFila?.(m.id, null) }, 'Deshacer la fila'),
     ];
   }
 

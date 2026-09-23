@@ -68,6 +68,14 @@ export class Pizarra {
       onReglaDe: (defensor, regla) => this.tablero.setReglaDe(defensor, regla),
       onHaceDe: (defensor, accion) => this.tablero.declararDefensa(defensor, accion ? { accion } : null),
       onDeshacerPuerta: (cono) => this.tablero.deshacerPuerta(cono),
+      /* La fila (§7.4.2): girarla no la rehace —conserva a los que
+         esperan—; todo lo demás, sí. */
+      onFila: (cono, parcial) => {
+        if (parcial === null) this.tablero.deshacerFila(cono);
+        else if (Object.keys(parcial).length === 1 && 'orientacion' in parcial) this.tablero.orientarFila(cono, parcial.orientacion);
+        else this.tablero.hacerFila(cono, parcial);
+        this._cambio();
+      },
     });
 
     const aros = Object.keys(this.lienzo.vista.pista?.baskets || {});
