@@ -51,6 +51,7 @@ const defensaMod = await import('../js/pizarra/motor/defensa.js');
 const compilarMod = await import('../js/pizarra/motor/compilar.js');
 const conosMod = await import('../js/pizarra/conos.js');
 const filasMod = await import('../js/pizarra/filas.js');
+const { Descripcion } = await import('../js/pizarra/paneles/descripcion.js');
 const { metrosEntre } = await import('../js/canvas/escala.js');
 
 let pasan = 0, fallan = 0;
@@ -93,6 +94,7 @@ function montar(pista = 'entera') {
     el: { querySelector: () => null },
     panel: { recuento() {} },
     linea: { refrescar() {} },
+    descripcion: { refrescar() {} },
   });
   p.avisar = (html) => avisos.push(html);
   t.onTramos = () => p._cambio();
@@ -790,6 +792,46 @@ test('CTRL+CLIC EN UNA FILA: un balón para cada uno, sin rehacerla ni tocar a q
   eq(cola.map((j) => conBalon(j.id)), [false, false, false], 'se los quita:');
   eq(ficha(t, cono.id).fila.balon, false);
   eq(Object.keys(t.fases[0].posesion || {}).length, 0, 'y la jugada tampoco los recuerda:');
+});
+
+test('LA FRASE DE LA FASE SE REESCRIBE Y SE DEVUELVE A LA AUTOMÁTICA (§9.2)', () => {
+  const { t, a2 } = sinAtacante();
+  ok(/^A2 corta/.test(t.frases()[0]), `sale de lo dibujado: ${t.frases()[0]}`);
+  ok(t.escribirTexto('  A2 se va hacia arriba.  '), 'se escribe');
+  eq(t.jugada().fases[0].texto, 'A2 se va hacia arriba.', 'y la jugada se lo lleva, sin espacios de sobra:');
+  eq(t.escribirTexto('A2 se va hacia arriba.'), false, 'lo mismo otra vez no es un cambio:');
+  ok(/^A2 corta/.test(t.frases()[0]), 'la automática sigue ahí, para la voz');
+  t.escribirTexto('   ');
+  eq(t.jugada().fases[0].texto, null, 'en blanco vuelve a la automática:');
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  ok(/y corta/.test(t.frases()[0]), `y cambia al dibujar: ${t.frases()[0]}`);
+});
+
+test('LO ESCRITO SE GUARDA EN LA FASE DE LA QUE SE ESCRIBÍA, aunque la fase cambie con la caja abierta', () => {
+  const { t } = sinAtacante();
+  const d = new Descripcion(falso(), t);
+  const antes = globalThis.document.activeElement;
+  globalThis.document.activeElement = d.caja;   // el entrenador está en la caja
+  d._fase = 0;
+  d.caja.value = 'A2 sube a recibir.';
+  t._cerrarFase();                               // el repaso de «Siguiente fase» acaba
+  d.refrescar();
+  globalThis.document.activeElement = antes;
+  eq([t.fases[0].texto, t.fases[1].texto], ['A2 sube a recibir.', null]);
+  eq(d.etiqueta.textContent, 'Fase 2');
+});
+
+test('LA CAJA DE LA FRASE ENSEÑA LA AUTOMÁTICA O LA ESCRITA, y guardarla igual es no escribir nada', () => {
+  const { t } = sinAtacante();
+  const d = new Descripcion(falso(), t);
+  eq(d.caja.value, t.frases()[0], 'la automática:');
+  eq(d.volver.hidden, true, 'sin nada escrito no hay a qué volver:');
+  d.caja.value = 'Lo escribo yo.';
+  d._guardar();
+  eq([t.fases[0].texto, d.volver.hidden, d.caja.value], ['Lo escribo yo.', false, 'Lo escribo yo.']);
+  d.caja.value = t.frases()[0];
+  d._guardar();
+  eq(t.fases[0].texto, null, 'dejarla como la automática es quedarse con ella:');
 });
 
 test('EL TIRADOR GIRA LA FILA: se coge al final de la cola y se imanta cada 15°', () => {

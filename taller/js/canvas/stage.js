@@ -14,7 +14,12 @@ import { AnimationEngine } from './engine.js';
 import { controls } from './controls.js';
 
 export class Stage {
-  constructor({ pista = 'entera' } = {}) {
+  /**
+   * @param voz  con la narración en los mandos (§9.3): la ficha del
+   *             ejercicio sí; la columna del asistente, no.
+   */
+  constructor({ pista = 'entera', voz = false } = {}) {
+    this.voz = voz;
     this.view = new CourtView({ pista });
     this.engine = null;
     this._mandos = null;
@@ -54,7 +59,7 @@ export class Stage {
        hay botón de ronda—, pero antes se sueltan los de antes: el motor
        es el mismo y seguiría avisándoles en cada fotograma. */
     this._mandos?.destroy();
-    this._mandos = controls(this.engine);
+    this._mandos = controls(this.engine, { voz: this.voz });
     this.controlsSlot.replaceChildren(this._mandos.el);
     this._setTocarPausa(true);
   }

@@ -274,6 +274,27 @@
    filo de lo dibujado para que se vea de dónde sale. */
 .pz-barra--auto.is-ronda { box-shadow: inset 0 0 0 1px var(--color-accent); }
 
+/* La frase de la fase (§9.1), debajo de la línea de tiempo: se lee de
+   un vistazo y se puede reescribir (§9.2). */
+.pz-desc {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 0 12px 8px;
+  background: var(--color-surface);
+  font-family: var(--font-body); font-size: var(--fs-300);
+}
+.pz-desc__cabeza { display: flex; align-items: baseline; gap: 6px; color: var(--color-text-muted); }
+.pz-desc__fase { font-weight: 600; color: var(--color-text); }
+.pz-desc__volver {
+  margin-left: auto; padding: 0; border: 0; background: none;
+  color: var(--color-accent); font: inherit; cursor: pointer;
+}
+.pz-desc__volver[hidden] { display: none; }
+.pz-desc__texto {
+  width: 100%; min-height: 2.8em; resize: vertical; box-sizing: border-box;
+  padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--r-sm);
+  background: var(--color-surface); color: var(--color-text); font: inherit; line-height: 1.35;
+}
+
 /* ---- La pantalla (§2.1) -------------------------------------
    Barra arriba, panel de fichas a la izquierda, y la pista con la línea
    de tiempo debajo ocupando lo que sobra. Los `min-*: 0` son los mismos

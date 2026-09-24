@@ -28,6 +28,11 @@ export class AnimationEngine {
     // Vista previa (§Tramo 1): null en reproducción normal; en modo preview,
     // { canasta } — render() omite las flechas de fase y resalta ese aro.
     this.preview = null;
+    /* Quien necesite que una fase no se acabe todavía —la voz que está
+       leyendo su frase (§9.3)— pone aquí una función que diga si hay que
+       esperar. Al final de cada fase, mientras diga que sí, el motor se
+       queda quieto. */
+    this.retener = null;
     this.load(animacion, { paused: opts.paused });
   }
 
@@ -154,7 +159,10 @@ export class AnimationEngine {
      Un ejercicio de seis en fila son seis rondas de las mismas fases.
      El proyector enseña «2 de 6» y salta de una a otra: ver las seis
      seguidas fase a fase no aporta nada, porque son la misma. */
-  get rondas() { return this.anim?.rondas || 1; }
+  /* Solo las del modelo antiguo, que repetían FASES (`fase.ronda`). Las
+     rondas de la Pizarra (§7.4.2) van dentro de cada fase: se ven
+     enteras, uno tras otro, y no hay ronda a la que saltar. */
+  get rondas() { return this.fases.some((f) => f && f.ronda != null) ? (this.anim?.rondas || 1) : 1; }
   rondaActual() { return this.fases[this.k]?.ronda || 1; }
   /** Primera fase de una ronda; -1 si esa ronda no existe. */
   _inicioDeRonda(r) { return this.fases.findIndex((f) => (f.ronda || 1) === r); }
@@ -192,7 +200,7 @@ export class AnimationEngine {
         if (this.phaseElapsed >= this._dur()) { this.phaseElapsed = this._dur(); this.mode = 'pausePost'; this.pauseElapsed = 0; }
       } else {
         this.pauseElapsed += dt * this.speed;
-        if (this.pauseElapsed >= (this.fases[this.k]?.pausa_post_ms ?? 400)) this._advance();
+        if (this.pauseElapsed >= (this.fases[this.k]?.pausa_post_ms ?? 400) && !(this.retener && this.retener())) this._advance();
       }
     }
     this.render();

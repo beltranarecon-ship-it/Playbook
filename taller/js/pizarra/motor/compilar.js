@@ -50,6 +50,7 @@ import { puertasDe } from '../conos.js';
 import { metaDeFase } from '../../canvas/fotograma.js';
 import { posicionesDe } from '../../canvas/anclas.js';
 import { conRondas } from '../rondas-fila.js';
+import { frasesDeJugada } from './frase.js';
 
 export const VERSION_JUGADA = 3;
 
@@ -100,6 +101,10 @@ export function compilar(jugada) {
   const j = { ...dibujada, fases: conLasRondas.fases };
   const elementos = [...(dibujada.elementos || []).filter(Boolean), ...conLasRondas.balones];
   const repeticionDe = (id) => (conLasRondas.rondas[id] || {}).ronda || 0;
+  /* ── la frase de cada fase (§9.1) ── de lo dibujado, sin las rondas:
+     la voz y la ficha cuentan una. */
+  let frases = [];
+  try { frases = frasesDeJugada({ ...dibujada, pista, canasta }); } catch { frases = []; }
   const conRondasEn = new Set(Object.values(conLasRondas.rondas).map((r) => r.fila));
 
   /* ── los nombres ──
@@ -195,7 +200,13 @@ export function compilar(jugada) {
     .map((f, i) => (f && Array.isArray(f.tramos) && f.tramos.length
       /* La canasta es LA DE ESA FASE: si en la anterior robaron o
          anotaron, se ataca al otro aro (§8.6). */
-      ? compilarFase(f, i, { pista, canasta: (papeles.fases[i] || {}).canasta || canasta, de, nombre, warnings, papeles: papeles.fases[i], repeticionDe })
+      ? { ...compilarFase(f, i, { pista, canasta: (papeles.fases[i] || {}).canasta || canasta, de, nombre, warnings, papeles: papeles.fases[i], repeticionDe }),
+        /* Lo que pasa, en palabras (§9): la automática —la que lee la voz—
+           y la reescrita, que manda en la ficha. Y el hueco para un audio
+           grabado más adelante (§9.3). */
+        frase: frases[i] || '',
+        texto: typeof f.texto === 'string' && f.texto.trim() ? f.texto.trim() : null,
+        audio_url: null }
       : null))
     .filter(Boolean);
 

@@ -25,6 +25,7 @@ import { h } from '../ui/dom.js';
 import { Lienzo } from './lienzo.js';
 import { Tablero } from './tablero.js';
 import { LineaTiempo } from './linea-tiempo.js';
+import { Descripcion } from './paneles/descripcion.js';
 import { PanelIzquierdo } from './paneles/izquierda.js';
 import { PanelDerecho } from './paneles/derecha.js';
 import { modeloAjustes } from './paneles/ajustes-modelo.js';
@@ -87,9 +88,10 @@ export class Pizarra {
     this.tablero = new Tablero(this.lienzo, {
       canasta: aros.includes(canasta) ? canasta : (aros[0] || 'norte'),
       onAyuda: (t) => { this._ayudaTablero = t || ''; this._pintarAyuda(); },
-      onTramos: () => { this.linea?.refrescar(); this._cambio(); },
+      onTramos: () => { this.linea?.refrescar(); this.descripcion?.refrescar(); this._cambio(); },
       onFases: (fases, enCurso, huerfanos) => {
         this.linea?.refrescar();
+        this.descripcion?.refrescar();
         if (huerfanos && huerfanos.length) {
           const n = huerfanos.length;
           this.avisar(`<b>${n} tramo${n > 1 ? 's' : ''}</b> de fases posteriores ya no encaja${n > 1 ? 'n' : ''}: su protagonista no está en la pista.`);
@@ -98,7 +100,7 @@ export class Pizarra {
       },
       onSinSoporte: (a) => this.avisar(`<b>«${a.nombre}»</b> todavía no se puede dibujar en la Pizarra: llega en una capa posterior.`),
       onNoPuede: (a, motivo) => this.avisar(`<b>«${a.nombre}»</b> no se puede: ${motivo}.`),
-      onEscena: (elementos) => { this.panel.recuento(recuento(elementos)); this._cambio(); },
+      onEscena: (elementos) => { this.panel.recuento(recuento(elementos)); this.descripcion?.refrescar(); this._cambio(); },
       onSeleccion: () => this._refrescarAjustes(),
     });
 
@@ -117,7 +119,8 @@ export class Pizarra {
     if (aros.length > 1) {
       const sel = h('select', { 'aria-label': 'Canasta a la que se ataca' },
         ...aros.map((k) => h('option', { value: k, selected: k === this.tablero.canasta }, NOMBRE_CANASTA[k] || k)));
-      sel.addEventListener('change', () => { this.tablero.setCanasta(sel.value); this._cambio(); });
+      /* La frase nombra las zonas respecto al aro que se ataca (§9.1). */
+      sel.addEventListener('change', () => { this.tablero.setCanasta(sel.value); this.descripcion?.refrescar(); this._cambio(); });
       herramientas.append(h('span', { class: 'pz-arriba__sep' }), h('label', { class: 'pz-arriba__canasta' }, 'Ataca a', sel));
     }
 
@@ -131,6 +134,8 @@ export class Pizarra {
         h('div', { class: 'pz-centro' }, this.lienzo.el, this.elAviso, tiempo),
         this.derecha.el));
     this.linea = new LineaTiempo(tiempo, this.tablero);
+    /* Y debajo, lo que pasa en la fase, en palabras (§9.1). */
+    this.descripcion = new Descripcion(tiempo, this.tablero);
 
     /* Con una ficha pulsada en el panel, pinchar la pista la pone. Va por
        delante de todo —dibujar incluido— porque mientras hay una
@@ -152,6 +157,7 @@ export class Pizarra {
   medir() {
     this.lienzo.medir();
     this.linea.refrescar();
+    this.descripcion.refrescar();
   }
 
   /** Una escena nueva, sin nada dibujado. */
@@ -173,6 +179,7 @@ export class Pizarra {
     if (sel) sel.value = this.tablero.canasta;
     this.panel.recuento(recuento(this.tablero.fichas.elementos));
     this.linea.refrescar();
+    this.descripcion.refrescar();
     this._refrescarAjustes();
     /* Los avisos de la carga y el de la defensa, JUNTOS: al abrir ya se ha
        dicho lo de la defensa, y el aviso de la carga lo tapaba para
@@ -295,6 +302,7 @@ export class Pizarra {
     this._quitarGesto?.();
     this.el.removeEventListener('keydown', this._onTecla);
     this.linea.destroy();
+    this.descripcion.destroy();
     this.tablero.destroy();
     this.lienzo.destroy();
     this.el.remove();

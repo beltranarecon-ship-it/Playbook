@@ -339,5 +339,15 @@ test('LAS FILAS SE GUARDAN Y SE ABREN; una rota o huérfana se dice', () => {
   eq(r.avisos.filter((a) => /fila/.test(a)).length, 2, 'y las dos cosas se dicen:');
 });
 
+test('LA FRASE REESCRITA SE GUARDA EN SU FASE (§9.2); lo que no es texto, no', () => {
+  const b = buena();
+  b.fases[0].texto = '  A2 corta al aro.  ';
+  b.fases[1].texto = 42;
+  const r = normalizarJugada(b);
+  eq(r.jugada.fases.map((f) => f.texto), ['A2 corta al aro.', null]);
+  eq(normalizarJugada({ ...buena(), fases: [{ id: 'f1', tramos: [], texto: '   ' }] }).jugada.fases[0].texto, null, 'en blanco es la automática:');
+  eq(normalizarJugada({ version: 3, elementos: [], fases: [] }).jugada.fases[0].texto, null, 'y la fase vacía de serie, también:');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

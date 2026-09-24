@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { h } from '../ui/dom.js';
+import { Narrador, VELOCIDADES_VOZ, hayVoz, tieneFrases } from '../pizarra/voz.js';
 
 const ICON = {
   restart: 'M7 5h2.2v14H7zM20 5v14l-10.5-7z',
@@ -13,6 +14,7 @@ const ICON = {
   play: 'M8 5v14l11-7z',
   pause: 'M7 5h3.2v14H7zM13.8 5H17v14h-3.2z',
   loop: 'M17 2l3.5 3.5L17 9M20 5.5H8A4 4 0 0 0 4 9.5v1M7 22l-3.5-3.5L7 15M4 18.5h12a4 4 0 0 0 4-4v-1',
+  voz: 'M3 9v6h4l5 4V5L7 9H3z|M16 8.5a4 4 0 0 1 0 7|M18.5 6a7.5 7.5 0 0 1 0 12',
 };
 
 function svg(d, { fill = 'currentColor', stroke = 'none', w = 2 } = {}) {
@@ -20,7 +22,13 @@ function svg(d, { fill = 'currentColor', stroke = 'none', w = 2 } = {}) {
   return h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill, stroke, 'stroke-width': w, 'aria-hidden': 'true' }, ...paths);
 }
 
-export function controls(engine) {
+/**
+ * @param engine  el motor que se controla
+ * @param voz     con la narración (§9.3): el proyector y la ficha del
+ *                ejercicio. La columna del asistente, no: se reproduce
+ *                sola mientras se escribe la ficha, y hablaría sin parar.
+ */
+export function controls(engine, { voz = false } = {}) {
   /* Arrastrar la barra con la animación en marcha era pelearse con el
      reloj: se soltaba el dedo en el fotograma que se quería enseñar y
      ese fotograma ya se había ido. Ahora arrastrar SOSTIENE la
@@ -44,6 +52,36 @@ export function controls(engine) {
     class: 'ac-pill' + (s === engine.speed ? ' is-active' : ''), type: 'button',
     onClick: () => { engine.setSpeed(s); setPill(s); },
   }, '×' + s));
+
+  /* LA VOZ (§9.3): lee la frase automática al empezar cada fase. Solo
+     si el navegador tiene voz y la animación tiene frases —las de antes
+     de la Pizarra no—. El interruptor y su velocidad se recuerdan. */
+  const narrador = voz && hayVoz() && tieneFrases(engine.anim) ? new Narrador(engine) : null;
+  const velVoz = narrador ? h('select', {
+    class: 'ac-voz-vel', 'aria-label': 'Velocidad de la voz', title: 'Velocidad de la voz',
+    /* Suelta el foco al elegir: con él dentro, las flechas y las letras
+       de los atajos del proyector cambiaban también la velocidad. */
+    onChange: (e) => { narrador.setVelocidad(Number(e.target.value)); e.target.blur(); },
+  }, ...VELOCIDADES_VOZ.map((v) => h('option', { value: String(v), selected: v === narrador.velocidad }, `voz ×${String(v).replace('.', ',')}`))) : null;
+  if (velVoz) velVoz.hidden = !narrador.activa;
+  const vozBtn = narrador ? btn('ac-voz' + (narrador.activa ? ' is-active' : ''), 'Narración: lee lo que pasa al empezar cada fase',
+    svg(ICON.voz, { fill: 'none', stroke: 'currentColor' }), () => {
+      narrador.activar(!narrador.activa);
+      vozBtn.classList.toggle('is-active', narrador.activa);
+      vozBtn.setAttribute('aria-pressed', String(narrador.activa));
+      velVoz.hidden = !narrador.activa;
+    }) : null;
+  if (vozBtn) vozBtn.setAttribute('aria-pressed', String(narrador.activa));
+  /* Lo guardado puede cambiar desde otros mandos (la ficha y el
+     proyector a la vez): al cambiar de fase, el botón se pone al día. */
+  const pintarVoz = () => {
+    if (!narrador) return;
+    const on = narrador.activa;
+    vozBtn.classList.toggle('is-active', on);
+    vozBtn.setAttribute('aria-pressed', String(on));
+    velVoz.hidden = !on;
+    velVoz.value = String(narrador.velocidad);
+  };
 
   const phase = h('span', { class: 'ac-phase mono' }, 'Fase 1 / 1');
   const progress = h('input', {
@@ -69,6 +107,7 @@ export function controls(engine) {
       ...(engine.rondas > 1 ? [btn('btn--sm', 'Ronda siguiente', '»', () => engine.siguienteRonda())] : []),
       loopBtn,
       h('div', { class: 'ac-speed' }, ...pills),
+      ...(vozBtn ? [h('div', { class: 'ac-voz-grupo' }, vozBtn, velVoz)] : []),
       phase,
     ),
     progress,
@@ -86,7 +125,7 @@ export function controls(engine) {
     setPlayIcon(f.playing);
     setPill(engine.speed);
   };
-  const alCambiarDeFase = (p) => { phase.textContent = etiqueta(p.k, p.n, p.ronda, p.rondas); };
+  const alCambiarDeFase = (p) => { phase.textContent = etiqueta(p.k, p.n, p.ronda, p.rondas); pintarVoz(); };
   engine.on('frame', alFotograma);
   engine.on('phase', alCambiarDeFase);
 
@@ -96,6 +135,6 @@ export function controls(engine) {
      siguen actualizándose en cada fotograma aunque ya no se vean. */
   return {
     el,
-    destroy() { engine.off('frame', alFotograma); engine.off('phase', alCambiarDeFase); },
+    destroy() { engine.off('frame', alFotograma); engine.off('phase', alCambiarDeFase); narrador?.destroy(); },
   };
 }

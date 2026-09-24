@@ -61,6 +61,7 @@ import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
 import { compilar } from './motor/compilar.js';
+import { frasesDeJugada } from './motor/frase.js';
 import {
   defensaPorDefecto, papelesDeJugada, tramosQueNoEncajan, normalizarDefensa, colocar, explicarRegla, REGLAS,
   ACCIONES_DEFENSOR, SENALA, carrilesDe,
@@ -543,6 +544,8 @@ export class Tablero {
         tramos: f.tramos,
         // lo que algún defensor hace distinto en esa fase (§8.5)
         defensa: f.defensa || {},
+        // la frase reescrita a mano (§9.2); null = la automática
+        texto: f.texto ?? null,
       })),
       defensa: this.defensa,
     };
@@ -1527,6 +1530,35 @@ export class Tablero {
     }
     if (!todos.length) return false;
     this._repasar(todos);
+    return true;
+  }
+
+  /**
+   * LA FRASE AUTOMÁTICA DE CADA FASE (§9.1): la misma que se guarda con la
+   * animación y lee la voz. Se recuerda mientras lo que cuenta no cambie.
+   */
+  frases() {
+    const j = this.jugada();
+    const clave = JSON.stringify([j.pista, j.canasta, j.elementos, j.defensa, j.fases.map((f) => [f.tramos, f.defensa])]);
+    if (this._frasesCache && this._frasesCache.clave === clave) return this._frasesCache.valor;
+    let valor = [];
+    try { valor = frasesDeJugada(j); } catch { valor = []; }
+    this._frasesCache = { clave, valor };
+    return valor;
+  }
+
+  /**
+   * REESCRIBE LA FRASE de una fase (§9.2) —la que se edita, si no se
+   * dice otra—; con `null` —o vacía— vuelve a la automática. Lo escrito
+   * manda para la ficha y el paso 3; la voz sigue leyendo la automática
+   * (§9.3).
+   */
+  escribirTexto(texto, i = this.iFase) {
+    if (!this.fases[i]) return false;
+    const limpio = typeof texto === 'string' && texto.trim() ? texto.trim() : null;
+    if ((this.fases[i].texto ?? null) === limpio) return false;
+    this.fases = this.fases.map((f, k) => (k === i ? { ...f, texto: limpio } : f));
+    this._avisarDeFases();
     return true;
   }
 

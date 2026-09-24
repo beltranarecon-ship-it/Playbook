@@ -34,14 +34,14 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
 | 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
 | 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
-| 6 · Conos y elementos | ✅ cerrada en la rama `pizarra-v3` (pasos 6.0 a 6.7; los equipos del club, para más adelante) | ver «Capa 6» |
-| 7 · Texto y voz | pendiente | — |
+| 6 · Conos y elementos | ✅ cerrada en la rama `pizarra-v3` (pasos 6.0 a 6.7; los equipos del club, para más adelante) | `1633407` |
+| 7 · Texto y voz | ✅ cerrada en la rama `pizarra-v3` (pasos 7.0 a 7.3, y los arreglos de su revisión) | ver «Capa 7» |
 | 8 · Ramas | pendiente | — |
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **68 en verde, 1668
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **71 en verde, 1718
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -378,6 +378,93 @@ tocarlos): `eval-repertorio` (anillo del defensor con pendientes;
 `eval-compilar` (B1 pasa a defender y a moverse), `eval-dibujo` (texto
 del bloqueo) y `eval-acciones` si cambian las mecánicas.
 
+## Capa 7, paso a paso
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 7.0 | La frase automática de cada fase (§9.1), módulo puro `pizarra/motor/frase.js` con su banco `eval-frase.mjs`. Los nombres de zona («el codo derecho», «la punta») se mudan del guion de Equipos a `canvas/anclas.js` para que los dos digan lo mismo | ✅ |
+| 7.1 | La frase en la Pizarra, debajo de la línea de tiempo (`paneles/descripcion.js`): se reescribe (§9.2), «Volver a la automática», y viaja en la jugada (`fase.texto`) y en la animación (`frase`, `texto`, `audio_url: null`) | ✅ |
+| 7.2 | La voz (§9.3, `pizarra/voz.js`): lee la frase automática al empezar cada fase, en el proyector y en la ficha; interruptor y velocidad en los mandos, recordados | ✅ |
+| 7.3 | «Llevar al paso 3» (§9.4, `wizard/llevar.js`): contenido, etiquetas, material y desarrollo a la ficha; la duración, no | ✅ (71 bancos, 1718 pruebas; 35 mutantes, los 35 muertos; probado en la Pizarra y en el proyector del arnés, sin guardar nada) |
+
+**Decidido por el entrenador (2026-09-24):**
+
+- **La duración de la ficha no se rellena**: lo dibujado dura segundos y la
+  ficha habla de minutos de sesión. Al lado del deslizador sale «una
+  vuelta completa de lo dibujado dura unos N s (todas las fases y
+  rondas)», solo si la animación es de la Pizarra.
+- **La animación espera a la voz**: si al acabar una fase la frase no ha
+  terminado, se queda quieta hasta que termina y entonces sigue (como
+  mucho 20 s, por si el navegador no avisa). Con la voz apagada, todo va
+  como antes.
+
+**Decidido en la capa 7 (detalles, sin preguntar):**
+
+- **La frase cuenta lo que pasa en el orden en que pasa**: lo seguido de
+  un mismo jugador va en una oración («A1 bota hasta el codo derecho y
+  pasa picado a A2»); cuando actúa otro, empieza otra. Así un «dame y va»
+  se cuenta como ocurre. Quien corta para recibir se cuenta en el pase,
+  con la variante y los conos de su corte («…a A2, que ha cortado por la
+  puerta atrás al aro, y corta…»). El sujeto, por su dorsal (A1); quien
+  espera en una fila, «el 2.º de la fila».
+- **El destino**: el cono en el que acaba el trazo (a menos de 0,6 m), si
+  no la zona de la pista, y si no un cono cercano. Un tiro pegado al aro
+  es «finaliza junto al aro»; tras entrar a canasta, «…y anota». Tras un
+  fallo, «coge el rebote»; tras una canasta, «recoge el balón».
+- **La defensa, al final**: cada cosa que ha dicho el entrenador en su
+  oración, y lo que sale sola en una más, según la regla que cumple en
+  ese momento («B1 y B2 siguen a su par por el lado de canasta»). Tras un
+  tiro fallado, «tras el tiro, B1 y B2 cierran el rebote». Quien ha
+  dibujado algo suyo no sale otra vez.
+- **Una fila por rondas se cuenta en una línea** antes de la defensa:
+  «Detrás, lo repiten uno a uno los otros 3 de la fila».
+- **Una fase sin dibujar no tiene frase** (ni de la defensa): es la que
+  abre «Siguiente fase» y el compilador no compila.
+- **La caja de la frase** guarda al poco de dejar de teclear (entra en el
+  borrador aunque se recargue sin salir de ella) y lo escrito va a la
+  fase de la que se escribía aunque la fase cambie con la caja abierta.
+- **La voz empieza apagada**; con ella encendida se lee también la
+  primera fase al abrir, y la que para el vídeo de referencia se lee al
+  seguir. La ficha y el proyector obedecen al mismo interruptor; abrir el
+  proyector para la ficha, que sigue al cerrarlo. La columna del
+  asistente no habla (se reproduce sola mientras se escribe la ficha).
+- **«Llevar al paso 3» se hace al pasar de la Pizarra a Metadatos**, por
+  el botón del pie («Llevar a Metadatos») o por la barra de pasos: el
+  asistente numera sus pasos 0, 1 y 2, y «paso 3» no se ve en ningún
+  sitio. Rellena lo vacío y lo que trajo la vez anterior sin que nadie lo
+  tocara (queda apuntado en el borrador, `traido_de_la_pizarra`, que no
+  se guarda con el ejercicio): al volver a dibujar, lo traído se pone al
+  día; lo escrito a mano no se toca nunca. El puente al chat trata lo
+  traído como hueco, así que su respuesta, más completa, lo sustituye.
+- **Las etiquetas** salen del catálogo (acciones dibujadas y dichas de la
+  defensa, y sus variantes), solo las del vocabulario de la biblioteca;
+  un bloqueo sin variante es «bloqueo directo»; recoger es «rebote
+  ofensivo» o «defensivo» según quién lo coge; la situación se cuenta
+  desde el ataque, como en la biblioteca (un 2c1 es «superioridad»).
+  **Con un tiro de fuera no se ponen las de finalización** (entrada,
+  bandeja…): el linter de la biblioteca exigiría entonces que todos los
+  tiros salieran pegados al aro.
+- **El contenido**, por prioridad: bloqueo o pasar y cortar → juego de dos
+  (como en la biblioteca, aunque acabe en canasta); lo dicho «cierra el
+  rebote» → rebote; entrada; tiro; pase; bote (también con los gestos de
+  bote); juego de pies (finta, parada, pivote); recoger → rebote; y si
+  solo hay defensa, defensa.
+- **El desarrollo** son las frases de las fases dibujadas —la reescrita si
+  la hay—, numeradas si son varias. Si la pizarra no tiene nada que
+  contar, «Traer las frases de las fases» ofrece las líneas del viejo
+  paso 2 de un borrador de antes. Al chat le llega el desarrollo escrito
+  y, si no lo hay, las frases.
+- **Arreglado de paso** (lo destapó la revisión, viene del 6.6): con una
+  fila por rondas los mandos enseñaban «Ronda 1 / 3» y un botón «Ronda
+  siguiente» que no hacía nada. Las rondas de la Pizarra van dentro de
+  cada fase: el motor solo ofrece saltar de ronda con las del modelo
+  antiguo.
+
+**La revisión adversarial** (5 revisores y 3 escépticos por hallazgo; el
+límite de uso cortó a muchos escépticos, así que el resto se comprobó a
+mano): de 45 hallazgos distintos se arreglaron todos los que eran
+defectos, con su prueba. Lo que no se ha tocado va en «Pendiente».
+
 ## Capa 6, paso a paso
 
 Plan propuesto el 2026-09-19, **sin confirmar todavía por el entrenador**
@@ -591,10 +678,10 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
-**Hoy (2026-09-24): la capa 7, texto y voz** (§9): la frase automática
-de cada fase, el panel de descripción, la narración y «llevar al paso 3».
-La capa 6 está cerrada. Lo que viene después de esta línea es el
-siguiente paso de la capa 4, que ya está hecho; se deja como historia.
+**Hoy (2026-09-24): la capa 8, ramas** (§14: ramas, reunión, cartel en
+el proyector). Las capas 6 y 7 están cerradas. Lo que viene después de
+esta línea es el siguiente paso de la capa 4, que ya está hecho; se deja
+como historia.
 
 **4.4b**, con dos decisiones ya tomadas (2026-09-11): el creador v2.1 se
 borra ya, como dice el §12, y lo guardado se trata como dice el §11.4.
@@ -799,6 +886,19 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
 - Un jugador fuera de juego que NO está en una fila sigue sin dorsal y el
   compilador lo llama «A0»; dos así chocarían. Viene de antes de las
   filas; a los de las filas ya no les pasa.
+- **Capa 7:** hay dos narradores de una animación: la frase de la Pizarra
+  (que va dentro de la animación, `fase.frase` y `fase.texto`) y el guion
+  del planificador de Equipos, que la sigue contando a su manera («El 1
+  bota hacia…»). Comparten los nombres de zona, pero no la redacción. Si
+  el entrenador quiere que Equipos enseñe la frase de la Pizarra (y la
+  reescrita) cuando la haya, es un cambio pequeño en Equipos.
+- **Capa 7:** el error del linter de la biblioteca para una finalización
+  lejos del aro dice «usa hacia: 'aro'», que es la sintaxis del compilador
+  viejo. Por eso «llevar» no pone etiquetas de finalización si hay un
+  tiro de fuera; el texto del linter habría que cambiarlo.
+- **Capa 7:** si la canasta cambia y las zonas quedan lejos, la frase se
+  queda sin destinos («A1 pasa a A2, que ha cortado, y corta.»). Es
+  verdad, pero pobre; se podría decir hacia dónde (arriba, al fondo).
 
 ---
 

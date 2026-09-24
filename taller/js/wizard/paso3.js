@@ -40,6 +40,8 @@ import { sugerirDificultad } from './draft.js';
 import { revisarBorrador, requisitosSugeridos, BLOQUES_CONTENIDO, MATERIAL } from './molde.js';
 import { DENSIDAD, OPOSICION, PRESION, TAGS } from '../ia/vocabulario.js';
 import { armarEnvio, volcar } from './puente.js';
+import { propuestaDesdeLaJugada, duracionDeUnaVuelta } from './llevar.js';
+import { esDeLaPizarra } from '../pizarra/motor/marca.js';
 import { toast } from '../ui/toast.js';
 
 const SIN_DECIDIR = 'sin decidir';
@@ -60,10 +62,17 @@ export function paso3(ctx) {
   const { draft, goTo, onDraftChange, recuento } = ctx;
 
   const r = draft.requisitos;
+  /* Lo que propone la pizarra (ESPEC-PIZARRA-v3 §9.4), si hay jugada. */
+  const propuesta = draft.jugada ? propuestaDesdeLaJugada(draft.jugada) : null;
   // El conteo del tablero es una PROPUESTA: lo dibujado es la muestra
   // (dos o tres fichas, las justas para entender el mecanismo) y el
-  // grupo de verdad son doce. Solo rellena lo que esté sin decidir.
-  if (!draft.requisitos_manual) Object.assign(r, requisitosSugeridos(recuento(), r));
+  // grupo de verdad son doce. Solo rellena lo que esté sin decidir. El
+  // material, con los nombres de la pizarra si la hay: el recuento junta
+  // escaleras y pelotas en un «material auxiliar» que no está en la lista.
+  if (!draft.requisitos_manual) {
+    if (propuesta && !(r.material || []).length && propuesta.material.length) r.material = [...propuesta.material];
+    Object.assign(r, requisitosSugeridos(recuento(), r));
+  }
   draft.dificultad_sugerida = draft.animacion ? sugerirDificultad(draft.animacion) : null;
 
   const cambio = () => { pintarListon(); onDraftChange?.(); };
@@ -128,20 +137,27 @@ export function paso3(ctx) {
   const tags = tagInput({ value: draft.tags, suggestions: TAGS, onChange: (v) => { draft.tags = v; cambio(); } });
 
   /* ---- 2 · Cómo se hace ------------------------------------------ */
-  /* El paso 2 escribió las líneas de las fases: son un buen punto de
-     partida para el desarrollo, pero no son el desarrollo. Se ofrecen,
-     no se imponen — volcarlas solas dejaba la ficha con cuatro órdenes
-     telegráficas donde tiene que haber un párrafo. */
+  /* Las frases de las fases (ESPEC-PIZARRA-v3 §9): la reescrita si la
+     hay, la automática si no. Son un buen punto de partida para el
+     desarrollo, pero no son el desarrollo: «Llevar al paso 3» las pone
+     si está vacío, y aquí se pueden volver a traer detrás de lo escrito.
+     Lo de antes de la Pizarra traía las líneas del viejo paso 2. */
   const desarrollo = parrafo('descripcion_texto', 'Montaje, reglas, rotación y cuándo se acaba. Es lo que se lee con los niños ya en la pista.', 5);
   const lineasPaso2 = (draft.fases_texto || []).map((f) => (f.texto || '').trim()).filter(Boolean);
-  const traer = lineasPaso2.length
+  /* Si la pizarra no tiene nada que contar —un borrador de antes que se
+     abrió con sus fichas y sin fases—, las líneas del viejo paso 2. */
+  const frasesFases = (propuesta && propuesta.desarrollo)
+    || lineasPaso2.map((t, i) => `${i + 1}. ${t}`).join('\n');
+  const traer = frasesFases
     ? h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => {
-      const semilla = lineasPaso2.map((t, i) => `${i + 1}. ${t}`).join('\n');
-      draft.descripcion_texto = draft.descripcion_texto ? `${draft.descripcion_texto}\n${semilla}` : semilla;
+      draft.descripcion_texto = draft.descripcion_texto ? `${draft.descripcion_texto}\n${frasesFases}` : frasesFases;
       desarrollo.value = draft.descripcion_texto;
       cambio();
-    } }, 'Traer las líneas de las fases')
+    } }, 'Traer las frases de las fases')
     : null;
+  /* Lo que dura una vuelta completa de lo dibujado: un dato para decidir
+     la duración, que la pone el entrenador (lo decidió él, 2026-09-24). */
+  const vuelta = esDeLaPizarra(draft.animacion) ? Math.round(duracionDeUnaVuelta(draft.animacion) / 1000) : 0;
 
   /* ---- 3 · Los tres niveles -------------------------------------- */
   const nivel = (k, ph) => parrafo(k, ph, 2, r.niveles);
@@ -170,7 +186,12 @@ export function paso3(ctx) {
   const respuesta = h('textarea', { class: 'textarea', rows: '5', placeholder: 'Pega aquí la respuesta del chat, entera.' });
 
   function refrescarEnvio() {
-    envioHost.value = armarEnvio(draft, { guion: lineasPaso2.join('. ') });
+    /* Lo que pasa en la pista, para el chat: el desarrollo que haya
+       escrito el entrenador y, si no hay, las frases de las fases, cada
+       una con su punto. */
+    const guion = frasesFases.replace(/^\d+\. /gm, '').split('\n').map((l) => l.trim()).filter(Boolean)
+      .map((l) => (/[.!?…]$/.test(l) ? l : `${l}.`)).join(' ');
+    envioHost.value = armarEnvio(draft, { guion: String(draft.descripcion_texto || '').trim() ? '' : guion });
   }
   refrescarEnvio();
 
@@ -242,7 +263,7 @@ export function paso3(ctx) {
       field('Categoría', h('div', { class: 'flow' }, ramaChips, nivelHost), { hint: 'El nivel solo se acota si el ejercicio es específico de él: para lo demás están los tres niveles de exigencia.' }),
       field('Dificultad', h('div', { class: 'row row--wrap' }, difSlider, difLabel, difSugerida)),
       field('Intensidad física', h('div', { class: 'row row--wrap' }, intSlider, intLabel)),
-      field('Duración estimada', durSlider),
+      field('Duración estimada', durSlider, vuelta ? { hint: `Una vuelta completa de lo dibujado dura unos ${vuelta} s (todas las fases y rondas).` } : {}),
       field('Autor', linea('autor_nombre', 'Tu nombre')),
     ),
     h('div', { class: 'card flow' },

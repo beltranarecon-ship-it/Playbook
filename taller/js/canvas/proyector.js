@@ -88,7 +88,8 @@ export function abrirProyector(animacion, meta = {}) {
   // junto con los controles.
   const view = new CourtView({ pista: animacion.pista || 'entera', rotate: 90 });
   const engine = new AnimationEngine(view, animacion, { autoplay: true, loop: true });
-  const ctrl = controls(engine);
+  /* Con la narración (§9.3): el proyector es donde más se usa. */
+  const ctrl = controls(engine, { voz: true });
   /* Repintar al tomar tamaño. Reproduciendo da igual —cada fotograma
      vuelve a pintar—, pero una colocación sola no se reproduce: sin
      esto se quedaba la pista vacía, pintada cuando aún medía 0×0. */
@@ -256,10 +257,14 @@ export function abrirProyector(animacion, meta = {}) {
     // teclado no: se cierra a mano o seguirían vivos tras salir
     capaVideo?.cerrar('manual');
     capaVideo = null;
+    /* Los mandos se sueltan: con ellos la voz, que si no seguía leyendo
+       con el proyector ya cerrado (§9.3). */
+    ctrl.destroy();
     engine.destroy();
     view.destroy();
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     root.remove();
+    meta.alCerrar?.();
   }
 
   return { cerrar };

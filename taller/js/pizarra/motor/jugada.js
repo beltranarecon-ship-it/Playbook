@@ -32,7 +32,7 @@ const DE_TIRO = new Set(CATALOGO_SISTEMA.filter((a) => a.parametros && a.paramet
 
 const finito = (v) => Number.isFinite(v);
 const nodoBueno = (n) => !!n && finito(n.x) && finito(n.y);
-const faseVacia = (id = 'f1') => ({ id, nombre: null, duracion_ms: null, pausa_post_ms: null, tramos: [], defensa: {} });
+const faseVacia = (id = 'f1') => ({ id, nombre: null, duracion_ms: null, pausa_post_ms: null, tramos: [], defensa: {}, texto: null });
 
 /**
  * Deja una jugada guardada en condiciones de abrirse.
@@ -181,6 +181,8 @@ export function normalizarJugada(bruta) {
         pausa_post_ms: finito(f.pausa_post_ms) ? f.pausa_post_ms : null,
         tramos,
         defensa: declaradas.declaradas,
+        /* La frase reescrita a mano (§9.2); null = la automática. */
+        texto: typeof f.texto === 'string' && f.texto.trim() ? f.texto.trim() : null,
       };
     })
     .filter(Boolean);

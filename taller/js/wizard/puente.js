@@ -156,13 +156,19 @@ export function volcar(d, respuesta, { pisar = false } = {}) {
 
   const puestos = [];
   const ignorados = [];
+  /* Lo que trajo la pizarra sin que nadie lo tocara («llevar al paso 3»,
+     ESPEC-PIZARRA-v3 §9.4) no lo ha escrito el entrenador: el chat puede
+     ponerle encima lo suyo, que es más completo. */
+  const traido = d.traido_de_la_pizarra || {};
   const poner = (obj, clave, valor, etiqueta) => {
     if (valor === null || valor === undefined || valor === '') return;
     const actual = obj[clave];
     const vacio = actual === null || actual === undefined || actual === ''
-      || (Array.isArray(actual) && !actual.length);
+      || (Array.isArray(actual) && !actual.length)
+      || (clave in traido && JSON.stringify(traido[clave]) === JSON.stringify(actual));
     if (!vacio && !pisar) { ignorados.push(etiqueta); return; }
     obj[clave] = valor;
+    delete traido[clave];
     puestos.push(etiqueta);
   };
 

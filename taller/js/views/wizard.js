@@ -45,6 +45,7 @@ import { jugadaDesdeAnimacion } from '../pizarra/motor/jugada.js';
 import { recuento } from '../pizarra/elementos.js';
 import { paso0 } from '../wizard/paso0.js';
 import { paso3 } from '../wizard/paso3.js';
+import { llevarAlPaso3 } from '../wizard/llevar.js';
 
 const STEPS = [
   { n: 0, label: 'Identificación' },
@@ -211,15 +212,38 @@ export function render(root, { id = null, modo = 'nuevo', paso = 0 } = {}) {
       toast('Completa el nombre, el tipo y la pista para continuar.', { type: 'warn' });
       return;
     }
+    /* Salir de la Pizarra hacia la ficha lleva lo dibujado (§9.4). */
+    if (state.step === PASO_PIZARRA && target > PASO_PIZARRA) llevar();
     state.step = Math.max(0, Math.min(STEPS.length - 1, target));
     paint();
     window.scrollTo(0, 0);
   }
 
+  /**
+   * «LLEVAR AL PASO 3» (ESPEC-PIZARRA-v3 §9.4): lo que la pizarra ya sabe
+   * —contenido, etiquetas, material y el desarrollo con las frases de las
+   * fases— pasa a la ficha donde está vacía o sigue lo traído la vez
+   * anterior. Se hace al pasar de la Pizarra a Metadatos, por el botón
+   * o por la barra de pasos: por los dos caminos, lo mismo.
+   */
+  function llevar() {
+    volcarPizarra();
+    if (!draft.jugada) return;
+    const { puestos } = llevarAlPaso3(draft, draft.jugada);
+    if (puestos.length) toast(`Traído de la pizarra: ${puestos.join(', ')}. Lo que habías escrito tú no se ha tocado.`, { type: 'ok', timeout: 5000 });
+  }
+
   function footer() {
+    /* Desde la Pizarra, «siguiente» es llevar lo dibujado a la ficha. */
+    const desdeLaPizarra = state.step === PASO_PIZARRA;
+    const siguiente = STEPS[state.step + 1];
     return h('div', { class: 'wizard-foot' },
       state.step > 0 ? h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => goTo(state.step - 1) }, '← Atrás') : h('span'),
-      state.step < STEPS.length - 1 ? h('button', { class: 'btn btn--secondary has-arrow', type: 'button', onClick: () => goTo(state.step + 1) }, 'Siguiente ', icon('M9 18l6-6-6-6', { size: 16 })) : null,
+      siguiente ? h('button', {
+        class: 'btn btn--secondary has-arrow', type: 'button',
+        title: desdeLaPizarra ? `Lleva a la ficha lo que la pizarra ya sabe —sin tocar lo que hayas escrito tú— y pasa a ${siguiente.label}` : null,
+        onClick: () => goTo(state.step + 1),
+      }, desdeLaPizarra ? `Llevar a ${siguiente.label} ` : 'Siguiente ', icon('M9 18l6-6-6-6', { size: 16 })) : null,
     );
   }
 

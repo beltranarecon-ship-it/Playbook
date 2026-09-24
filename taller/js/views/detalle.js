@@ -66,7 +66,8 @@ export function render(root, { id } = {}) {
        Lo que no tiene nada que reproducir se enseña sin mandos, que no
        harían nada. */
     const vista = paraVer(anim);
-    stage = new Stage({ pista: ej.tipo_pista || 'entera' });
+    /* La ficha, con la narración (§9.3). */
+    stage = new Stage({ pista: ej.tipo_pista || 'entera', voz: true });
     if ((vista.fases || []).length) stage.showAnimation(vista);
     else stage.showPreview(vista);
     curEj = ej; curAnim = anim;
@@ -103,7 +104,16 @@ export function render(root, { id } = {}) {
   }
 
   function abrir(anim, ej) {
-    proj = abrirProyector(paraVer(anim), { nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min, categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos, catalogo });
+    /* La ficha se para mientras se proyecta: seguía reproduciendo detrás
+       y, con la voz (§9.3), las dos narraciones se pisaban. Al cerrar el
+       proyector sigue como estaba. */
+    const iba = !!stage?.engine?.playing;
+    stage?.pausar();
+    proj = abrirProyector(paraVer(anim), {
+      nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min,
+      categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos, catalogo,
+      alCerrar: () => { proj = null; if (iba) stage?.engine?.play(); },
+    });
   }
 
   /* ESPEC-PIZARRA-v3 §11.4: al abrir un ejercicio de antes, la ficha lo
@@ -144,6 +154,8 @@ export function render(root, { id } = {}) {
   // atajos §16: F favorito · P proyector · Espacio play/pausa
   function onKey(e) {
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
+    // con el proyector abierto, las teclas son suyas
+    if (proj) return;
     if (e.key === 'f' || e.key === 'F') favBtnRef?.click();
     else if (e.key === 'p' || e.key === 'P') { if (curAnim && curEj) abrir(curAnim, curEj); }
     else if (e.key === ' ') { e.preventDefault(); stage?.engine?.toggle(); }

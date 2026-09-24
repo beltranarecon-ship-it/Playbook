@@ -665,6 +665,7 @@ test('CON RONDAS (§7.4.2) LOS DE LA COLA SALEN UNO TRAS OTRO, sin número y mar
     `salen escalonados, a turnos iguales: ${m.map((x) => x.inicio_ms)}`);
   ok(cerca(m[1].path[0].y, 0.65, 1e-9) && cerca(m[2].path[0].y, 0.7, 1e-9), 'cada uno sale de su sitio en la cola');
   eq(anim.rondas, 3, 'la animación sabe cuántas rondas son:');
+  eq(enElMotor(anim).rondas, 1, 'pero el motor no ofrece saltar de ronda: van dentro de la fase');
   const una = soloPrimeraRonda(anim.fases);
   eq(una[0].movimientos.filter((x) => x.tipo_elemento === 'jugador').map((x) => x.elemento_id), ['A1'], 'la miniatura y el guion cuentan una:');
   ok(anim.fases[0].duracion_ms >= m[2].inicio_ms + m[2].duracion_ms, 'y la fase dura hasta que acaba el último');
@@ -698,6 +699,42 @@ test('CON RONDAS, QUIEN NO PUEDE SALIR ESPERA EN SU SITIO, y el aviso llega al p
   eq(anim.conos[0].fila_config.n_jugadores, 0, 'y no en la cola que pinta el motor, que lo pondría en el cono:');
   eq(anim.fases[0].movimientos.filter((x) => x.tipo_elemento === 'jugador').map((x) => x.elemento_id), ['A1', 'A_jugador_4'], 'sale el tercero:');
   ok(anim.warnings.some((w) => /balón por cabeza/.test(w)), `y se avisa: ${anim.warnings}`);
+});
+
+/* ── La frase (§9) ───────────────────────────────────────── */
+
+test('EL MOTOR ESPERA A LA VOZ AL ACABAR LA FASE, y sigue cuando acaba de leer (§9.3)', () => {
+  const { l, a1, a2 } = escena();
+  const anim = compilar(jugadaCon(l, [
+    { id: 'f1', tramos: [tramo(a2.id, P(0.7, 0.8), P(0.7, 0.5))] },
+    { id: 'f2', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.3, 0.6), { accion: 'bota', tipo: 'run' })] },
+  ]));
+  const raf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = () => 0;
+  try {
+    const motor = enElMotor(anim);
+    let hablando = true;
+    motor.retener = () => hablando;
+    motor.playing = true; motor.k = 0; motor.mode = 'pausePost'; motor.pauseElapsed = 10000; motor._last = 0;
+    motor._tick(16);
+    eq(motor.k, 0, 'mientras lee, se queda en su fase:');
+    hablando = false;
+    motor._tick(32);
+    eq(motor.k, 1, 'y al acabar, pasa a la siguiente:');
+  } finally { globalThis.requestAnimationFrame = raf; }
+});
+
+
+test('CADA FASE LLEVA SU FRASE AUTOMÁTICA, la reescrita y el hueco del audio (§9)', () => {
+  const { l, a1, a2 } = escena();
+  const j = jugadaCon(l, [
+    { id: 'f1', tramos: [tramo(a2.id, P(0.7, 0.8), P(0.7, 0.5))], texto: 'El 2 se abre.' },
+    { id: 'f2', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.3, 0.6), { accion: 'bota', tipo: 'run' })] },
+  ]);
+  const anim = compilar(j);
+  eq(anim.fases.map((f) => [typeof f.frase, f.texto, f.audio_url]), [['string', 'El 2 se abre.', null], ['string', null, null]]);
+  ok(/^A2 corta/.test(anim.fases[0].frase), `la automática sale de lo dibujado: ${anim.fases[0].frase}`);
+  ok(/^A1 bota/.test(anim.fases[1].frase), anim.fases[1].frase);
 });
 
 /* ── Robar (§8.6) ────────────────────────────────────────── */

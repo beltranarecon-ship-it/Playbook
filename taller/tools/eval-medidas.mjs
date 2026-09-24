@@ -19,7 +19,7 @@ import {
   marcoDe, pistaAMarco, pistaANorm, limitesCancha, escalaDe, radioPx, pasoNorm,
   escalaTrazo, pxPorMetro, TAMANOS, MATERIAL,
 } from '../js/canvas/medidas.js';
-import { ANCLAS, posicionesDe, aroExacto, NOMBRE_ANCLA } from '../js/canvas/anclas.js';
+import { ANCLAS, posicionesDe, aroExacto, NOMBRE_ANCLA, ZONA } from '../js/canvas/anclas.js';
 import { metrosEntre, puntoADistanciaDe } from '../js/canvas/escala.js';
 import { PISTAS } from '../js/canvas/court.js';
 
@@ -408,6 +408,15 @@ test('TODAS LAS ANCLAS TIENEN NOMBRE de entrenador', () => {
   ok(!sinNombre.length, `sin nombre: ${sinNombre.join(', ')}`);
   const sobran = Object.keys(NOMBRE_ANCLA).filter((k) => !medidas.includes(k));
   ok(!sobran.length, `nombres de anclas que ya no existen: ${sobran.join(', ')}`);
+});
+
+test('Y TODAS TIENEN NOMBRE DENTRO DE UNA FRASE, con su artículo (§9.1)', () => {
+  /* Es lo que dicen la frase de la Pizarra y el guion de Equipos: un
+     ancla sin él se salta, y se nombraría otra más lejana. */
+  const todas = Object.keys(posicionesDe('entera', 'norte'));
+  const sin = todas.filter((k) => !ZONA[k]);
+  ok(!sin.length, `sin nombre en la frase: ${sin.join(', ')}`);
+  ok(Object.values(ZONA).every((n) => /^(el|la) /.test(n)), 'con su artículo');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

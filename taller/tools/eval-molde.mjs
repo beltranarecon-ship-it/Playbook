@@ -201,6 +201,20 @@ test('una respuesta completa deja la ficha lista para entrar', () => {
   eq(revisarBorrador(d).errores, [], 'y la ficha resultante pasa el linter');
 });
 
+test('lo traído de la pizarra sin tocar es un hueco para el chat', () => {
+  const d = nuevoDraft();
+  d.descripcion_texto = 'A1 pasa a A2.';
+  d.traido_de_la_pizarra = { descripcion_texto: 'A1 pasa a A2.' };
+  const res = volcar(d, JSON.stringify({ descripcion_texto: 'Montaje y reglas.' }));
+  eq(d.descripcion_texto, 'Montaje y reglas.');
+  eq(res.puestos, ['descripcion_texto']);
+  const lo = nuevoDraft();
+  lo.descripcion_texto = 'Lo retoqué yo.';
+  lo.traido_de_la_pizarra = { descripcion_texto: 'A1 pasa a A2.' };
+  volcar(lo, JSON.stringify({ descripcion_texto: 'Del chat.' }));
+  eq(lo.descripcion_texto, 'Lo retoqué yo.', 'retocado a mano ya no es traído:');
+});
+
 test('no pisa lo que el entrenador ya había escrito', () => {
   const d = nuevoDraft();
   d.description = 'Mi frase, la mía';
