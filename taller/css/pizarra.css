@@ -224,6 +224,31 @@
    no tiene nada, y eso no es lo mismo que un hueco. */
 .pz-fase.is-vacia:not(.is-activa) { color: var(--color-text-muted); border-style: dashed; }
 .pz-fase--mas { margin-left: auto; font-weight: 600; color: var(--color-accent); border-color: var(--color-accent); }
+/* Las fases del camino que se está viendo, con ramas (§6.7). */
+.pz-fase.is-camino { border-color: var(--color-accent); }
+
+/* LAS RAMAS EN ÁRBOL (§6.7): tras el cruce, una debajo de otra, con su
+   nombre. Sin ramas es la fila de siempre. */
+.pz-tira__tramo, .pz-tira__rama, .pz-tira__cruce { display: flex; align-items: center; gap: 6px; }
+.pz-tira__cruce { align-items: flex-start; }
+.pz-tira__ramas { display: flex; flex-direction: column; gap: 4px; padding-left: 8px; border-left: 2px solid var(--color-border); }
+.pz-tira__nombre { color: var(--color-text-muted); font-style: italic; white-space: nowrap; }
+.pz-tira__sigue { color: var(--color-text-muted); white-space: nowrap; }
+.pz-ramas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pz-ramas__b {
+  min-height: 28px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: var(--r-pill);
+  background: var(--color-surface); color: var(--color-text); font: inherit; cursor: pointer;
+}
+.pz-ramas__b:hover { border-color: var(--color-accent); }
+.pz-ramas__b--si { border-color: var(--color-accent); color: var(--color-accent); font-weight: 600; }
+.pz-ramas__b--quitar { color: var(--color-text-muted); }
+.pz-ramas__form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pz-ramas__campo { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-muted); }
+.pz-ramas__nombre, .pz-ramas__sel {
+  min-height: 28px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: var(--r-sm);
+  background: var(--color-surface); color: var(--color-text); font: inherit;
+}
+.pz-ramas__nombre { width: 12em; }
 .pz-fase--mas:disabled { color: var(--color-text-muted); border-color: var(--color-border); cursor: not-allowed; }
 
 /* Los carriles: una fila por ficha, una barra por tramo. */

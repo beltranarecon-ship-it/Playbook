@@ -33,6 +33,11 @@ export class AnimationEngine {
        esperar. Al final de cada fase, mientras diga que sí, el motor se
        queda quieto. */
     this.retener = null;
+    /* LAS RAMAS (§6.7): el proyector se para en cada cruce y pregunta. Los
+       demás —la ficha, la miniatura, el planificador— siguen el camino
+       principal sin pararse, que es lo que ya traen las fases. */
+    this.elegirRamas = !!opts.elegirRamas;
+    this.cruce = null;
     this.load(animacion, { paused: opts.paused });
   }
 
@@ -52,6 +57,11 @@ export class AnimationEngine {
     this.balones = this.anim.balones || [];
     this.conos = this.anim.conos || [];
     this.fases = this.anim.fases || [];
+    this.cruce = null;
+    /* Las fases de todos los caminos, por su id, y lo que ofrece cada
+       cruce: con eso se rehace el camino cuando se elige otra rama. */
+    this._faseDeId = new Map([...this.fases, ...(this.anim.fases_rama || [])].map((f) => [f.id, f]));
+    this._cruces = new Map((this.anim.ramas || []).map((r) => [r.desde, r.opciones || []]));
     // El rol (defensor) se define por fase con fase.defensores (§10). Si ninguna
     // fase lo declara, es una animación del modelo antiguo: caemos a jugador.tipo.
     this.usesPhaseRoles = this.fases.some((f) => Array.isArray(f.defensores));
@@ -140,6 +150,8 @@ export class AnimationEngine {
 
   play() {
     if (this.playing || !this.fases.length) return;
+    /* Parado en un cruce, darle al play es seguir por el camino principal. */
+    if (this.cruce) { this.elegirRama(0); return; }
     /* Terminada y sin bucle, `play` no hacía NADA (Tramo 2.15): el
        reloj arrancaba con la última fase ya consumida, así que el
        primer latido volvía a darla por acabada y se paraba otra vez.
@@ -151,8 +163,15 @@ export class AnimationEngine {
   }
   pause() { this.playing = false; if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } this.render(); this._emit('pause'); this._emitFrame(); }
   toggle() { this.playing ? this.pause() : this.play(); }
-  restart() { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this._emit('phase', this._infoFase(0)); this.play(); }
-  nextPhase() { this._goPhase(Math.min(this.k + 1, this.phaseCount - 1)); }
+  restart() { this._alPrincipio(); this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this._emit('phase', this._infoFase(0)); this.play(); }
+  nextPhase() {
+    /* Fase a fase también se para en un cruce y pregunta (§6.7); con el
+       cartel delante, lo que sigue lo dice la rama que se elija. */
+    if (this.cruce) return;
+    const opciones = this._opcionesDe(this.k);
+    if (opciones && opciones.length) { this._preguntar(opciones); return; }
+    this._goPhase(Math.min(this.k + 1, this.phaseCount - 1));
+  }
   prevPhase() { this._goPhase(Math.max(this.k - 1, 0)); }
 
   /* ---- rondas de fila (Tramo 2.8) ----------------------------------
@@ -175,7 +194,8 @@ export class AnimationEngine {
     if (i >= 0) this._goPhase(i);
   }
 
-  _goPhase(k) { this.k = k; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this.render(); this._emit('phase', this._infoFase(k)); this._emitFrame(); }
+  /* Ir a otra fase deja sin contestar el cruce en el que estuviera. */
+  _goPhase(k) { this.cruce = null; this.k = k; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this.render(); this._emit('phase', this._infoFase(k)); this._emitFrame(); }
   /* Qué acciones ocurren en una fase (Tramo 2.14). Lo escribe el
      compilador; una fase dibujada a mano en el editor de flechas no
      tiene ninguna, y eso es una lista vacía, no un fallo. */
@@ -187,6 +207,7 @@ export class AnimationEngine {
     const ms = Math.max(0, Math.min(1, u)) * this.totalDuration;
     let k = 0;
     while (k < this.phaseCount - 1 && (this.cumDur[k + 1] || Infinity) <= ms) k++;
+    this.cruce = null;
     this.k = k; this.phaseElapsed = ms - (this.cumDur[k] || 0); this.mode = 'play'; this.pauseElapsed = 0;
     this.render(); this._emit('phase', this._infoFase(k)); this._emitFrame();
   }
@@ -207,9 +228,83 @@ export class AnimationEngine {
     this._emitFrame();
     if (this.playing) this._schedule(); else this._raf = null;
   }
+  /* ---- las ramas (§6.7) -------------------------------------------- */
+
+  /** ¿Se abren ramas al acabar esta fase? */
+  _opcionesDe(k) { return this.elegirRamas ? (this._cruces.get(this.fases[k]?.id) || null) : null; }
+
+  /* Pone un camino nuevo y lo rehace todo: dónde empieza cada fase
+     depende de por dónde se ha llegado a ella. */
+  _ponerCamino(fases) {
+    this.fases = fases;
+    this.usesPhaseRoles = this.fases.some((f) => Array.isArray(f.defensores));
+    this._build();
+    this.cumDur = []; let acc = 0;
+    for (const f of this.fases) { this.cumDur.push(acc); acc += (f.duracion_ms || 1000); }
+    this.totalDuration = acc || 1;
+  }
+
+  /* Las fases desde esta, siguiendo a cada una por su camino. */
+  _desde(id) {
+    const r = [];
+    const vistas = new Set();
+    for (let f = this._faseDeId.get(id); f && !vistas.has(f.id); f = this._faseDeId.get(f.siguiente)) {
+      vistas.add(f.id);
+      r.push(f);
+    }
+    return r;
+  }
+
+  /**
+   * ELIGE UNA RAMA en el cruce en el que está parado: el camino sigue
+   * por ella y la animación continúa.
+   */
+  elegirRama(i) {
+    const c = this.cruce;
+    if (!c) return false;
+    const op = c.opciones[i];
+    if (!op) return false;
+    this.cruce = null;
+    const resto = op.fase ? this._desde(op.fase) : [];
+    this._ponerCamino([...this.fases.slice(0, c.k + 1), ...resto]);
+    this._emit('rama', { k: c.k, elegida: i });
+    if (!resto.length) { this.phaseElapsed = this._dur(); this.mode = 'play'; this._emit('ended'); this.render(); this._emitFrame(); return true; }
+    this.k = c.k + 1; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0;
+    /* La fase se anuncia ya reproduciendo: quien la mira puede pararla
+       —el vídeo de referencia del proyector— y entonces no se sigue. */
+    this.playing = true; this._last = performance.now(); this._schedule();
+    this._emit('phase', this._infoFase(this.k));
+    if (this.playing) { this._emit('play'); this._emitFrame(); }
+    return true;
+  }
+
+  /* Se para al final de la fase del cruce y pregunta. */
+  _preguntar(opciones) {
+    if (this.playing) { this.playing = false; if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } }
+    this.phaseElapsed = this._dur(); this.mode = 'pausePost'; this.pauseElapsed = 0;
+    this.cruce = { k: this.k, opciones };
+    this.render();
+    this._emit('cruce', { k: this.k, opciones });
+    this._emit('pause');
+    this._emitFrame();
+  }
+
+  /* Al volver a empezar, el camino principal otra vez. */
+  _alPrincipio() {
+    this.cruce = null;
+    if (this.elegirRamas && this.fases !== this.anim.fases && (this.anim.ramas || []).length) this._ponerCamino(this.anim.fases || []);
+  }
+
   _advance() {
+    const opciones = this._opcionesDe(this.k);
+    if (opciones && opciones.length) {
+      /* UN CRUCE: se para y pregunta (lo decidió el entrenador: espera a
+         que se elija). */
+      this._preguntar(opciones);
+      return;
+    }
     if (this.k < this.phaseCount - 1) { this.k++; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', this._infoFase(this.k)); }
-    else if (this.loop) { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', this._infoFase(0)); }
+    else if (this.loop) { this._alPrincipio(); this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', this._infoFase(0)); }
     else { this.playing = false; this.phaseElapsed = this._dur(); this.mode = 'play'; this._emit('ended'); this._emit('pause'); }
   }
 

@@ -20,6 +20,7 @@ import {
 } from '../js/pizarra/motor/compilar.js';
 import { MOTOR_PIZARRA, soloColocacion, paraVer, perdioLaAnimacion } from '../js/pizarra/motor/marca.js';
 import { anadir, asignarBalon, reiniciarIds } from '../js/pizarra/elementos.js';
+import { hacerFila, deLaFila } from '../js/pizarra/filas.js';
 import { nuevoTrazo } from '../js/pizarra/trazo.js';
 import { carrilesDesde, tiemposDe } from '../js/pizarra/fases.js';
 import { AnimationEngine } from '../js/canvas/engine.js';
@@ -699,6 +700,220 @@ test('CON RONDAS, QUIEN NO PUEDE SALIR ESPERA EN SU SITIO, y el aviso llega al p
   eq(anim.conos[0].fila_config.n_jugadores, 0, 'y no en la cola que pinta el motor, que lo pondría en el cono:');
   eq(anim.fases[0].movimientos.filter((x) => x.tipo_elemento === 'jugador').map((x) => x.elemento_id), ['A1', 'A_jugador_4'], 'sale el tercero:');
   ok(anim.warnings.some((w) => /balón por cabeza/.test(w)), `y se avisa: ${anim.warnings}`);
+});
+
+/* ── Las ramas (§6.7) ────────────────────────────────────── */
+
+/* f1: A2 corta. Cruce: «si le dejan» (f2, A1 le pasa) o «si le niegan»
+   (f3, A1 bota). Las dos siguen por f4 (A1 corta), que las reúne. */
+function conRamas() {
+  const { l, a1, a2, bal } = escena();
+  return {
+    a1, a2,
+    jugada: jugadaCon(l, [
+      { id: 'f1', tramos: [tramo(a2.id, P(0.7, 0.8), P(0.7, 0.5))] },
+      { id: 'f2', rama_de: 'f1', rama_nombre: 'si le dejan', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.7, 0.5), { accion: 'pasa', tipo: 'pass', corre_id: bal.id, receptor_id: a2.id })] },
+      { id: 'f4', reune: ['f2', 'f3'], tramos: [tramo(a1.id, P(0.3, 0.8), P(0.3, 0.3))] },
+      { id: 'f3', rama_de: 'f1', rama_nombre: 'si le niegan', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.2, 0.6), { accion: 'bota', tipo: 'run' })] },
+    ]),
+  };
+}
+
+test('CON RAMAS, LAS FASES SON EL CAMINO PRINCIPAL: la miniatura y el guion no saben de ramas (§6.7)', () => {
+  const anim = compilar(conRamas().jugada);
+  eq(anim.fases.map((f) => f.id), ['f1', 'f2', 'f4']);
+  eq(anim.fases.map((f) => f.siguiente), ['f2', 'f4', null], 'cada una sabe cuál le sigue:');
+  eq(anim.fases_rama.map((f) => [f.id, f.siguiente]), [['f3@1', 'f4@1'], ['f4@1', null]], 'lo de la otra rama, aparte, y la reunión otra vez:');
+  eq(anim.ramas, [{ desde: 'f1', opciones: [{ nombre: 'si le dejan', fase: 'f2' }, { nombre: 'si le niegan', fase: 'f3@1' }] }]);
+});
+
+test('UNA REUNIÓN SALE DE DONDE LA DEJA CADA RAMA', () => {
+  const { a1 } = conRamas();
+  const anim = compilar(conRamas().jugada);
+  const f4 = anim.fases.find((f) => f.id === 'f4');
+  const f4b = anim.fases_rama.find((f) => f.id === 'f4@1');
+  const suyo = (f) => f.movimientos.find((m) => m.elemento_id === 'A1' && m.tipo_elemento === 'jugador');
+  ok(cerca(suyo(f4).path[0].x, 0.3) && cerca(suyo(f4).path[0].y, 0.8), `por «si le dejan», A1 sale de donde pasó: ${JSON.stringify(suyo(f4).path[0])}`);
+  ok(cerca(suyo(f4b).path[0].x, 0.2) && cerca(suyo(f4b).path[0].y, 0.6), `por «si le niegan», de donde acabó de botar: ${JSON.stringify(suyo(f4b).path[0])}`);
+  ok(a1, 'A1');
+});
+
+test('SIN RAMAS, LA ANIMACIÓN ES LA DE SIEMPRE', () => {
+  const { l, a2 } = escena();
+  const anim = compilar(jugadaCon(l, [{ id: 'f1', tramos: [tramo(a2.id, P(0.7, 0.8), P(0.7, 0.5))] }]));
+  ok(!('fases_rama' in anim) && !('ramas' in anim) && !('siguiente' in anim.fases[0]), Object.keys(anim).join(','));
+});
+
+test('EL PROYECTOR SE PARA EN EL CRUCE Y ESPERA A QUE SE ELIJA; los demás siguen el camino principal', () => {
+  const anim = compilar(conRamas().jugada);
+  const raf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = () => 0;
+  try {
+    const sigue = enElMotor(anim);
+    eq([sigue.phaseCount, sigue.elegirRamas], [3, false], 'la ficha no se para:');
+    sigue.playing = true; sigue.k = 0; sigue.mode = 'pausePost'; sigue.pauseElapsed = 100000; sigue._last = 0;
+    sigue._tick(16);
+    eq([sigue.k, sigue.cruce], [1, null], 'sigue por el camino principal sin preguntar:');
+    const motor = new AnimationEngine(vistaMuda(), anim, { autoplay: false, loop: false, paused: true, elegirRamas: true });
+    let cruce = null;
+    motor.on('cruce', (c) => { cruce = c; });
+    motor.playing = true; motor.k = 0; motor.mode = 'pausePost'; motor.pauseElapsed = 100000; motor._last = 0;
+    motor._tick(16);
+    eq([motor.playing, motor.k, cruce && cruce.opciones.map((o) => o.nombre)], [false, 0, ['si le dejan', 'si le niegan']], 'se para y pregunta:');
+    motor._tick(32);
+    eq(motor.k, 0, 'y sigue esperando:');
+    motor.elegirRama(1);
+    eq(motor.fases.map((f) => f.id), ['f1', 'f3@1', 'f4@1'], 'elegida la segunda, el camino va por ella:');
+    eq([motor.k, motor.playing, motor.cruce], [1, true, null]);
+    motor.restart();
+    eq(motor.fases.map((f) => f.id), ['f1', 'f2', 'f4'], 'y al volver a empezar, el principal:');
+    motor.playing = true; motor.k = 0; motor.mode = 'pausePost'; motor.pauseElapsed = 100000;
+    motor._tick(48);
+    motor.pause(); motor.play();
+    eq([motor.k, motor.fases[1].id], [1, 'f2'], 'darle al play en el cruce es seguir por la primera:');
+  } finally { globalThis.requestAnimationFrame = raf; }
+});
+
+test('EL PRINCIPAL SE REANCLA: si entra en una reunión por la rama que no se dibujó, cada uno sale de donde le deja ella', () => {
+  const { l, a1, a2 } = escena();
+  const j = jugadaCon(l, [
+    { id: 'f1', tramos: [tramo(a2.id, P(0.7, 0.8), P(0.7, 0.5))] },
+    { id: 'f2', rama_de: 'f1', rama_nombre: 'a', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.3, 0.6), { accion: 'bota', tipo: 'run' })] },
+    { id: 'f3', rama_de: 'f1', rama_nombre: 'b', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.5, 0.6), { accion: 'bota', tipo: 'run' })] },
+    /* Dibujada detrás de la b; la a se reunió con ella después. */
+    { id: 'f4', reune: ['f3', 'f2'], tramos: [tramo(a1.id, P(0.5, 0.6), P(0.5, 0.3))] },
+  ]);
+  const anim = compilar(j);
+  eq(anim.fases.map((f) => f.id), ['f1', 'f2', 'f4']);
+  const suyo = (f) => f.movimientos.find((m) => m.elemento_id === 'A1' && m.tipo_elemento === 'jugador');
+  const p = suyo(anim.fases[2]).path[0];
+  ok(cerca(p.x, 0.3) && cerca(p.y, 0.6), `por la a, A1 sale de donde acaba de botar, sin saltar: ${JSON.stringify(p)}`);
+  const q = suyo(anim.fases_rama.find((f) => f.id === 'f4@1')).path[0];
+  ok(cerca(q.x, 0.5) && cerca(q.y, 0.6), `por la b, de donde le deja la b: ${JSON.stringify(q)}`);
+});
+
+test('UN CRUCE SIN NADA DIBUJADO TAMBIÉN PREGUNTA: en la primera fase, y dentro de otra rama', () => {
+  const { l, a1, a2 } = escena();
+  const a = compilar(jugadaCon(l, [
+    { id: 'f1', tramos: [] },
+    { id: 'f2', rama_de: 'f1', rama_nombre: 'por la izquierda', tramos: [tramo(a2.id, P(0.7, 0.8), P(0.5, 0.5))] },
+    { id: 'f3', rama_de: 'f1', rama_nombre: 'por la derecha', tramos: [tramo(a2.id, P(0.7, 0.8), P(0.9, 0.5))] },
+  ]));
+  eq(a.fases.map((f) => f.id), ['f1', 'f2'], 'la escena de salida es la fase del cruce:');
+  eq(a.ramas.map((r) => [r.desde, r.opciones.map((o) => o.nombre)]), [['f1', ['por la izquierda', 'por la derecha']]]);
+  const raf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = () => 0;
+  try {
+    const motor = new AnimationEngine(vistaMuda(), a, { autoplay: false, loop: false, paused: true, elegirRamas: true });
+    let cruce = null;
+    motor.on('cruce', (c) => { cruce = c; });
+    motor.playing = true; motor.k = 0; motor.mode = 'pausePost'; motor.pauseElapsed = 100000; motor._last = 0;
+    motor._tick(16);
+    ok(cruce && cruce.opciones.length === 2, 'el proyector pregunta al empezar');
+  } finally { globalThis.requestAnimationFrame = raf; }
+  const b = compilar(jugadaCon(l, [
+    { id: 'f1', tramos: [tramo(a2.id, P(0.7, 0.8), P(0.7, 0.5))] },
+    { id: 'f2', rama_de: 'f1', rama_nombre: 'a', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.3, 0.5), { accion: 'bota', tipo: 'run' })] },
+    { id: 'f3', rama_de: 'f1', rama_nombre: 'b', tramos: [] },
+    { id: 'f4', rama_de: 'f3', rama_nombre: 'b1', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.2, 0.5), { accion: 'bota', tipo: 'run' })] },
+    { id: 'f5', rama_de: 'f3', rama_nombre: 'b2', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.4, 0.5), { accion: 'bota', tipo: 'run' })] },
+  ]));
+  eq(b.ramas.map((r) => [r.desde, r.opciones.map((o) => [o.nombre, o.fase])]), [
+    ['f1', [['a', 'f2'], ['b', 'f3@1']]],
+    ['f3@1', [['b1', 'f4@1'], ['b2', 'f5@2']]],
+  ], 'cada cruce con las suyas, sin mezclarse:');
+});
+
+test('QUIEN ESPERA EN LA FILA Y SALE SOLO EN UNA RAMA ES UN JUGADOR: en esa rama se le ve', () => {
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal' });
+  const anim = compilar({
+    version: 3, pista: 'entera', canasta: 'norte',
+    elementos: [
+      { id: 'cono_1', kind: 'cono', x: 0.5, y: 0.6, fila: { n: 3, equipo: 'A', papel: 'atacante', balon: false, orientacion: 90, vuelta: null, rondas: false } },
+      { id: 'jugador_2', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.6, fila_de: 'cono_1', puesto: 0, en_juego: true },
+      { id: 'jugador_3', kind: 'jugador', equipo: 'A', label: null, x: 0.5, y: 0.65, fila_de: 'cono_1', puesto: 1, en_juego: false },
+      { id: 'jugador_4', kind: 'jugador', equipo: 'A', label: null, x: 0.5, y: 0.7, fila_de: 'cono_1', puesto: 2, en_juego: false },
+    ],
+    fases: [
+      { id: 'f1', tramos: [{ id: 'tr1', elemento_id: 'jugador_2', corre_id: 'jugador_2', accion: 'corta', tipo: 'cut', trazo: [N(0.5, 0.6), N(0.5, 0.4)] }] },
+      { id: 'f2', rama_de: 'f1', rama_nombre: 'solo', tramos: [{ id: 'tr2', elemento_id: 'jugador_2', corre_id: 'jugador_2', accion: 'corta', tipo: 'cut', trazo: [N(0.5, 0.4), N(0.5, 0.2)] }] },
+      { id: 'f3', rama_de: 'f1', rama_nombre: 'sale el segundo', tramos: [{ id: 'tr3', elemento_id: 'jugador_3', corre_id: 'jugador_3', accion: 'corta', tipo: 'cut', trazo: [N(0.5, 0.65), N(0.3, 0.4)] }] },
+    ],
+  });
+  ok(anim.jugadores.some((x) => x.id === 'A_jugador_3'), `está entre los jugadores: ${anim.jugadores.map((x) => x.id)}`);
+  eq(anim.conos[0].fila_config.n_jugadores, 1, 'y en la cola ya no se le cuenta:');
+  ok(anim.fases_rama.find((f) => f.id === 'f3@1').movimientos.some((m) => m.elemento_id === 'A_jugador_3'), 'y en su rama se mueve');
+});
+
+test('LOS BALONES DEL CARRO DE UNA RAMA TAMBIÉN SALEN: se ven al elegirla', () => {
+  reiniciarIds();
+  let l = anadir([], { kind: 'cono' }, 0.5, 0.6);
+  const conoId = l[0].id;
+  l = hacerFila(l, conoId, { n: 3, balon: false, orientacion: 90 }, 'entera');
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.8, 0.3);
+  const R = l[l.length - 1];
+  l = anadir(l, { kind: 'balon' }, R.x, R.y);
+  const C = l[l.length - 1].id;
+  l = asignarBalon(l, C, R.id, 'entera');
+  const q = deLaFila(l, conoId);
+  const fin = P(0.5, 0.3);
+  const t = (id, el, corre, accion, desde, hasta, extra = {}) => ({ ...tramo(el, desde, hasta, { accion, corre_id: corre, ...extra }), id, ...extra });
+  const anim = compilar(jugadaCon(l, [
+    { id: 'f1', tramos: [] },
+    { id: 'f2', rama_de: 'f1', rama_nombre: 'solo', tramos: [t('tr1', R.id, R.id, 'bota', P(R.x, R.y), P(0.8, 0.5), { tipo: 'run' })] },
+    { id: 'f3', rama_de: 'f1', rama_nombre: 'con la fila', tramos: [
+      t('tr2', q[0].id, q[0].id, 'corta', P(q[0].x, q[0].y), fin),
+      t('tr3', R.id, C, 'pasa', P(R.x, R.y), fin, { tipo: 'pass', receptor_id: q[0].id }),
+      t('tr4', q[0].id, C, 'tira', fin, P(0.5, 0.08), { tipo: 'shot', desenlace: 'entra' }),
+    ] },
+  ]));
+  const ids = anim.balones.map((b) => b.id);
+  ok(ids.includes(`${C}_r1`) && ids.includes(`${C}_r2`), `el carro de la rama está entre los balones: ${ids}`);
+});
+
+test('CON MÁS DE 64 CAMINOS SE DICE: solo se reproducen los primeros', () => {
+  /* Siete cruces de dos ramas que se reúnen: 128 caminos (una jugada que
+     la Pizarra ya no deja hacer, pero que puede llegar de fuera). */
+  const fases = [{ id: 'x0', tramos: [] }];
+  for (let k = 0; k < 7; k++) {
+    fases.push({ id: `a${k}`, rama_de: `x${k}`, rama_nombre: 'a', tramos: [] });
+    fases.push({ id: `b${k}`, rama_de: `x${k}`, rama_nombre: 'b', tramos: [] });
+    fases.push({ id: `x${k + 1}`, reune: [`a${k}`, `b${k}`], tramos: [] });
+  }
+  const { l } = escena();
+  const anim = compilar(jugadaCon(l, fases));
+  ok(anim.warnings.some((w) => /más de 64 caminos/.test(w)), anim.warnings.join(' | '));
+});
+
+test('FASE A FASE, EL CRUCE TAMBIÉN PREGUNTA; volver atrás lo quita, y lo que para al elegir se queda parado', () => {
+  const anim = compilar(conRamas().jugada);
+  const raf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = () => 0;
+  try {
+    const nuevo = () => new AnimationEngine(vistaMuda(), anim, { autoplay: false, loop: false, paused: true, elegirRamas: true });
+    const motor = nuevo();
+    let cruces = 0;
+    motor.on('cruce', () => { cruces++; });
+    motor.nextPhase();
+    eq([motor.k, cruces, !!motor.cruce, motor.playing], [0, 1, true, false], 'desde la fase del cruce, se pregunta:');
+    motor.nextPhase();
+    eq([motor.k, cruces], [0, 1], 'y hasta que se elija no se pasa:');
+    motor.prevPhase();
+    eq(motor.cruce, null, 'volver atrás deja la pregunta:');
+    motor.play();
+    eq([motor.k, motor.phaseElapsed], [0, 0], 'y el play sigue desde ahí, sin saltarse nada:');
+    motor.pause();
+    motor.nextPhase();
+    motor.seek(0);
+    eq(motor.cruce, null, 'la barra, igual:');
+    /* Como el vídeo de referencia del proyector: al anunciarse la fase, la para. */
+    const otro = nuevo();
+    otro.nextPhase();
+    let enLaFase = null;
+    otro.on('phase', () => { enLaFase = otro.playing; if (otro.playing) otro.pause(); });
+    otro.elegirRama(1);
+    eq([otro.k, enLaFase, otro.playing], [1, true, false], 'la rama se anuncia ya andando, y si algo la para, se queda parada:');
+  } finally { globalThis.requestAnimationFrame = raf; }
 });
 
 /* ── La frase (§9) ───────────────────────────────────────── */

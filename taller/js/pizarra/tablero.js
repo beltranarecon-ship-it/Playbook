@@ -56,6 +56,12 @@ import {
   deLaFila, puestosDeFila, orientacionHacia, normalizarFila,
 } from './filas.js';
 import { conRondas } from './rondas-fila.js';
+import {
+  caminoPor, caminoHasta, caminoPrincipal, grafoDe, siguientesDe, arbolDe, nuevoIdDeFase,
+  todosLosCaminos, tieneRamas, reunionesDe,
+  abrirRama as abrirLaRama, quitarRama as quitarLaRama, reunir as reunirFases, separar as separarFases,
+  renombrarRama as renombrarLaRama,
+} from './ramas.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
@@ -105,7 +111,7 @@ export class Tablero {
        vive una fase y dos maneras de tocarla. `this.tramos` se
        mantiene, pero como ventana a la fase activa: así todo lo que
        dibuja y corrige sigue escrito igual. */
-    this.fases = [{ ...nuevaFase('f1'), tramos: [], entrada: {} }];
+    this._reiniciarFases([{ ...nuevaFase('f1'), tramos: [], entrada: {} }]);
     this.iFase = 0;
     /* NO HAY UN MAPA DE ESTADOS APARTE, y es a propósito. Lo que cada
        ficha tiene en la mano es del MOMENTO y no del jugador —la misma
@@ -144,7 +150,7 @@ export class Tablero {
     /* Dar un balón soltándolo encima de alguien (§7.3) cambia quién lo
        tiene AL EMPEZAR. Si ese balón ya sale en algo dibujado, no: su
        pase seguiría saliendo de las manos de quien ya no lo tiene. */
-    this.fichas.puedeAsignar = (balon) => (balonEnJuego(this.fases, balon.id)
+    this.fichas.puedeAsignar = (balon) => (balonEnJuego(this._todas, balon.id)
       ? 'ya sale en lo dibujado, y dárselo a otro dejaría pases sin balón'
       : null);
 
@@ -284,7 +290,7 @@ export class Tablero {
     this.cerrar();
     this.repaso.parar();
     this.defensa = defensaPorDefecto();
-    this.fases = [{
+    this._reiniciarFases([{
       ...nuevaFase('f1'),
       tramos: [],
       entrada: Object.fromEntries(elementos.map((e) => [e.id, { x: e.x, y: e.y }])),
@@ -293,7 +299,7 @@ export class Tablero {
          se dibuja un pase, y es justo lo que el compilador necesita
          saber de antes. */
       posesion: Object.fromEntries(elementos.filter((e) => e.kind === 'balon').map((e) => [e.id, e.portador_id ?? null])),
-    }];
+    }]);
     this.iFase = 0;
     this.fichas.poner(elementos);
     this._aMano = new Set(elementos.filter((e) => e.kind === 'jugador').map((e) => e.id));
@@ -331,7 +337,7 @@ export class Tablero {
          sacado de sus manos se queda suelto. Sin apuntarlo aquí, la pista
          decía una cosa y la jugada que se guarda, otra. Si el balón ya
          sale en algo dibujado no se toca: ver `puedeAsignar`. */
-      if (e.kind === 'balon' && movidas.has(e.id) && !balonEnJuego(this.fases, e.id)
+      if (e.kind === 'balon' && movidas.has(e.id) && !balonEnJuego(this._todas, e.id)
         && (posesion[e.id] ?? null) !== (e.portador_id ?? null)) {
         posesion[e.id] = e.portador_id ?? null;
         toco = true;
@@ -456,7 +462,7 @@ export class Tablero {
       ids = [...new Set([...ids, ...cola, ...balones])];
     }
     const conTrazos = ids
-      .filter((id) => tramosConFicha(this.fases, id).length)
+      .filter((id) => tramosConFicha(this._todas, id).length)
       .map((id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id)));
     if (conTrazos.length) {
       this.onNoPuede?.({ nombre: 'Quitar' },
@@ -469,7 +475,7 @@ export class Tablero {
        más: un defensor no dibuja nada, así que esto no lo pilla lo de
        arriba. */
     const enLaDefensa = ids
-      .filter((id) => declaradasConFicha(this.fases, id).length)
+      .filter((id) => declaradasConFicha(this._todas, id).length)
       .map((id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id)));
     if (enLaDefensa.length) {
       this.onNoPuede?.({ nombre: 'Quitar' },
@@ -478,7 +484,7 @@ export class Tablero {
     }
     this.cerrar();
     this.repaso.parar();
-    this.fases = sinFichas(this.fases, ids);
+    this._todas = sinFichas(this._todas, ids);
     this.fichas.seleccion = new Set();
     this.fichas._cambio(quitar(this.fichas.elementos, ids));
     this._pintarAyuda();
@@ -524,7 +530,7 @@ export class Tablero {
    * 1 —posiciones de arranque y quién tiene cada balón— y por cada fase
    * sus tramos. Es lo que se compila y lo que hay que reabrir.
    */
-  jugada() {
+  jugada({ camino = false } = {}) {
     const inicio = this.fases[0].entrada || {};
     const posesion = this.fases[0].posesion || {};
     return {
@@ -536,7 +542,7 @@ export class Tablero {
         ...(inicio[e.id] || {}),
         ...(e.kind === 'balon' ? { portador_id: posesion[e.id] ?? null } : {}),
       })),
-      fases: this.fases.map((f) => ({
+      fases: (camino ? this.fases : this._todas).map((f) => ({
         id: f.id,
         nombre: f.nombre ?? null,
         duracion_ms: f.duracion_ms ?? null,
@@ -546,10 +552,19 @@ export class Tablero {
         defensa: f.defensa || {},
         // la frase reescrita a mano (§9.2); null = la automática
         texto: f.texto ?? null,
+        // las ramas (§6.7): el camino que se calcula ya no las necesita
+        ...(camino ? {} : { rama_de: f.rama_de ?? null, rama_nombre: f.rama_nombre ?? null, reune: f.reune || [] }),
       })),
       defensa: this.defensa,
     };
   }
+
+  /**
+   * LA JUGADA DEL CAMINO que se está viendo: una jugada de las de siempre,
+   * sin ramas. Es la que se usa para calcular —papeles, defensa, rondas,
+   * frase—, que trabajan sobre una secuencia.
+   */
+  jugadaDelCamino() { return this.jugada({ camino: true }); }
 
   /* ---- los papeles (§8.1, §8.2) ---------------------------- */
 
@@ -579,7 +594,7 @@ export class Tablero {
       ]),
     ]);
     if (!this._papeles || this._papeles.clave !== clave) {
-      this._papeles = { clave, valor: papelesDeJugada(this.jugada()) };
+      this._papeles = { clave, valor: papelesDeJugada(this.jugadaDelCamino()) };
     }
     return this._papeles.valor;
   }
@@ -704,10 +719,24 @@ export class Tablero {
   /** Los trazos de quien defiende que no son cosa de la defensa (ver
    *  motor/defensa.js, `tramosQueNoEncajan`). */
   tramosQueNoEncajan() {
-    return tramosQueNoEncajan(this.jugada(), this.papeles(), (slug) => {
+    const deDefensa = (slug) => {
       const a = this._accionDe(slug);
       return !a || saleEn(a, 'defensor');
-    });
+    };
+    if (!tieneRamas(this._todas)) return tramosQueNoEncajan(this.jugadaDelCamino(), this.papeles(), deDefensa);
+    /* Con ramas, en todos los caminos: lo que se cambia al empezar —quién
+       tiene el balón— vale para todos, y se dice en el mismo gesto. */
+    const vistos = new Set();
+    const r = [];
+    for (const ids of todosLosCaminos(this._todas)) {
+      const j = this._jugadaDe(ids.map((x) => this.faseDeId(x)));
+      let papeles = null;
+      try { papeles = papelesDeJugada(j); } catch { continue; }
+      for (const m of tramosQueNoEncajan(j, papeles, deDefensa)) {
+        if (!vistos.has(m.tramo.id)) { vistos.add(m.tramo.id); r.push(m); }
+      }
+    }
+    return r;
   }
 
   _recordarDonde(elementos) {
@@ -788,6 +817,54 @@ export class Tablero {
   }
 
   /** Los tramos de la fase que se está editando. */
+  /* ---- las fases: el árbol y el camino (§6.7) ----------------
+     La jugada puede tener ramas, y todo lo que ya sabía de fases —los
+     arranques, los papeles, la posesión, la línea de tiempo— trabaja
+     sobre una secuencia. Así que el Tablero guarda el ÁRBOL entero
+     (`_todas`) y enseña UN CAMINO de él (`fases`): el que pasa por la
+     fase que se edita. Escribir en `fases` escribe en el árbol; una fase
+     nueva al final del camino se pone detrás de su anterior. */
+  get fases() {
+    const porId = new Map(this._todas.map((f) => [f.id, f]));
+    return this._camino.map((id) => porId.get(id)).filter(Boolean);
+  }
+  set fases(lista) {
+    const nuevas = lista || [];
+    if (!this._todas) { this._reiniciarFases(nuevas); return; }
+    const porId = new Map(nuevas.map((f) => [f.id, f]));
+    let todas = this._todas.map((f) => porId.get(f.id) || f);
+    nuevas.forEach((f, i) => {
+      if (todas.some((x) => x.id === f.id)) return;
+      const k = todas.findIndex((x) => x.id === (i > 0 ? nuevas[i - 1].id : null));
+      todas = k < 0 ? [...todas, f] : [...todas.slice(0, k + 1), f, ...todas.slice(k + 1)];
+    });
+    this._todas = todas;
+    this._camino = nuevas.map((f) => f.id);
+  }
+
+  /** Empieza de nuevo con estas fases: el árbol entero y su camino principal. */
+  _reiniciarFases(lista) {
+    this._todas = lista || [];
+    this._camino = caminoPrincipal(this._todas);
+    if (!this._camino.length && this._todas.length) this._camino = [this._todas[0].id];
+  }
+
+  /** Todas las fases de la jugada, con sus ramas. */
+  get todasLasFases() { return this._todas; }
+  faseDeId(id) { return this._todas.find((f) => f.id === id) || null; }
+  /** El número de una fase en su camino: el que se ve («Fase 3»). */
+  numeroEnSuCamino(id) { return caminoHasta(this._todas, id).length; }
+  /** El nombre de la rama en la que está una fase (null en el tronco). */
+  ramaDe(id) {
+    const camino = caminoHasta(this._todas, id).map((x) => this.faseDeId(x));
+    const inicio = [...camino].reverse().find((f) => f && f.rama_de != null);
+    return inicio ? inicio.rama_nombre || null : null;
+  }
+  /** Lo que sale de una fase: sus ramas, si es un cruce. */
+  siguientesDeFase(id) { return siguientesDe(this._todas, id); }
+  /** El árbol, para dibujarlo en la línea de tiempo. */
+  arbolDeFases() { return arbolDe(this._todas); }
+
   get tramos() { return this.fases[this.iFase].tramos; }
   set tramos(v) {
     this.fases = this.fases.map((f, i) => (i === this.iFase ? { ...f, tramos: v } : f));
@@ -845,18 +922,15 @@ export class Tablero {
 
     const entrada = Object.fromEntries(j.elementos.map((e) => [e.id, { x: e.x, y: e.y }]));
     const posesion = Object.fromEntries(j.elementos.filter((e) => e.kind === 'balon').map((e) => [e.id, e.portador_id ?? null]));
-    const papelesCargados = papelesDeJugada(j);
-    const rc = recalcular(j.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) })), entrada, pista, {
-      canasta: this.canasta,
-      canastaDe: (i) => (papelesCargados.fases[i] || {}).canasta,
-    });
-    this.fases = j.fases.map((f, i) => ({
+    /* Todas las fases, con sus ramas; cada una arranca de donde la deja
+       su camino (§6.7). Se abre por el camino principal. */
+    this._reiniciarFases(j.fases.map((f, i) => ({
       ...nuevaFase(f.id),
       ...f,
-      entrada: rc.entradas[i] || entrada,
+      entrada: i === 0 ? entrada : {},
       ...(i === 0 ? { posesion } : {}),
-    }));
-    this._huerfanos = rc.huerfanos;
+    })));
+    this._huerfanos = this._recalcularArbol(null, j.elementos);
     /* La escena tal y como empezaba, y después a la fase 1 como si se
        hubiera ido a ella: así las fichas quedan en la punta de sus
        trazos y el balón en las manos de quien lo tiene al acabarla, que
@@ -948,7 +1022,8 @@ export class Tablero {
   _colasEnSuSitio(lista) {
     if (this.iFase !== 0) return lista;
     const pista = this.lienzo.vista.pistaKey;
-    const conTramos = new Set(this.fases.flatMap((f) => f.tramos || [])
+    /* En cualquier rama: quien sale en una ya no espera en la cola. */
+    const conTramos = new Set(this._todas.flatMap((f) => f.tramos || [])
       .flatMap((t) => [t.elemento_id, t.corre_id, t.receptor_id]).filter(Boolean));
     const movidos = {};
     for (const c of lista.filter((e) => e.kind === 'cono' && e.fila)) {
@@ -977,7 +1052,7 @@ export class Tablero {
     const antes = new Set(this.fichas.elementos.map((e) => e.id));
     const despues = new Set(lista.map((e) => e.id));
     const idos = [...antes].filter((id) => !despues.has(id));
-    if (idos.length) this.fases = sinFichas(this.fases, idos);
+    if (idos.length) this._todas = sinFichas(this._todas, idos);
     for (const e of lista) if (!antes.has(e.id)) this.fases = conFichaNueva(this.fases, e);
     this.fichas._cambio(lista);
     this._recalcularSiguientes();
@@ -1002,7 +1077,7 @@ export class Tablero {
     if (!cono) return false;
     /* Quien de la fila ya sale en algo dibujado no se puede rehacer: se
        perdería su trazo. */
-    const conTramos = deLaFila(this.fichas.elementos, conoId).filter((j) => tramosConFicha(this.fases, j.id).length);
+    const conTramos = deLaFila(this.fichas.elementos, conoId).filter((j) => tramosConFicha(this._todas, j.id).length);
     if (conTramos.length) {
       this.onNoPuede?.({ nombre: 'Cambiar la fila' }, 'alguien de la fila ya tiene algo dibujado; bórralo antes');
       return false;
@@ -1017,7 +1092,7 @@ export class Tablero {
     if (this.iFase !== 0) return false;
     const cono = this.fichas.elementos.find((e) => e.id === conoId && e.kind === 'cono');
     if (!cono || !cono.fila) return false;
-    if (deLaFila(this.fichas.elementos, conoId).some((j) => tramosConFicha(this.fases, j.id).length)) {
+    if (deLaFila(this.fichas.elementos, conoId).some((j) => tramosConFicha(this._todas, j.id).length)) {
       this.onNoPuede?.({ nombre: 'Deshacer la fila' }, 'alguien de la fila ya tiene algo dibujado; bórralo antes');
       return false;
     }
@@ -1054,7 +1129,7 @@ export class Tablero {
     /* Lo que cuenta es con qué EMPIEZA la jugada, no lo que se ve en la
        pista, que es cómo acaba la fase. */
     if (Object.values(this.fases[0].posesion || {}).includes(j.id)) return `${this.nombreDe(j)} ya lleva uno`;
-    if (tramosConFicha(this.fases, j.id).length) return `${this.nombreDe(j)} ya tiene algo dibujado; dale el balón antes de dibujar`;
+    if (tramosConFicha(this._todas, j.id).length) return `${this.nombreDe(j)} ya tiene algo dibujado; dale el balón antes de dibujar`;
     return null;
   }
 
@@ -1072,7 +1147,7 @@ export class Tablero {
       return false;
     }
     const pista = this.lienzo.vista.pistaKey;
-    const libres = deLaFila(this.fichas.elementos, conoId).filter((j) => !tramosConFicha(this.fases, j.id).length);
+    const libres = deLaFila(this.fichas.elementos, conoId).filter((j) => !tramosConFicha(this._todas, j.id).length);
     let lista = this.fichas.elementos.map((e) => (e.id === conoId ? { ...e, fila: normalizarFila({ ...e.fila, balon: !!conBalon }) } : e));
     if (conBalon) {
       for (const j of libres) {
@@ -1082,7 +1157,7 @@ export class Tablero {
       }
     } else {
       const suyos = new Set(libres.map((j) => j.id));
-      lista = quitar(lista, lista.filter((b) => b.kind === 'balon' && suyos.has(b.portador_id) && !balonEnJuego(this.fases, b.id)).map((b) => b.id));
+      lista = quitar(lista, lista.filter((b) => b.kind === 'balon' && suyos.has(b.portador_id) && !balonEnJuego(this._todas, b.id)).map((b) => b.id));
     }
     this._conFichasNuevas(lista);
     return true;
@@ -1538,7 +1613,7 @@ export class Tablero {
    * animación y lee la voz. Se recuerda mientras lo que cuenta no cambie.
    */
   frases() {
-    const j = this.jugada();
+    const j = this.jugadaDelCamino();
     const clave = JSON.stringify([j.pista, j.canasta, j.elementos, j.defensa, j.fases.map((f) => [f.tramos, f.defensa])]);
     if (this._frasesCache && this._frasesCache.clave === clave) return this._frasesCache.valor;
     let valor = [];
@@ -1577,7 +1652,7 @@ export class Tablero {
    * @returns { fases, balones, rondas, avisos } — ver rondas-fila.js
    */
   rondas() {
-    const j = this.jugada();
+    const j = this.jugadaDelCamino();
     const clave = JSON.stringify([j.pista, j.canasta, j.elementos, j.fases.map((f) => [f.tramos, f.duracion_ms])]);
     if (this._rondasCache && this._rondasCache.clave === clave) return this._rondasCache.valor;
     const papeles = this.papeles();
@@ -1613,10 +1688,11 @@ export class Tablero {
     /* Compilar no es gratis y esto se pregunta en cada refresco de la
        línea de tiempo: se recuerda la última respuesta mientras la
        jugada sea la misma, igual que los papeles. */
-    const clave = JSON.stringify(this.jugada());
+    const j = this.jugadaDelCamino();
+    const clave = JSON.stringify(j);
     if (this._defensaCache && this._defensaCache.clave === clave) return this._defensaCache.valor;
     let anim = null;
-    try { anim = compilar(this.jugada()); } catch { return {}; }
+    try { anim = compilar(j); } catch { return {}; }
     /* El compilador habla por nombres (A1, B2) y aquí se habla por
        fichas: se deshace el cambio con su misma cuenta. */
     const ficha = new Map();
@@ -1724,7 +1800,9 @@ export class Tablero {
     const { fase } = this.faseEnCurso();
     if (this.iFase === this.fases.length - 1) {
       this.fases = [...this.fases, {
-        ...nuevaFase(`f${this.fases.length + 1}`),
+        /* Un nombre que no esté: con ramas, «f + cuántas hay en el camino»
+           ya puede estar cogido en otra. */
+        ...nuevaFase(nuevoIdDeFase(this._todas)),
         tramos: [],
         entrada: { ...posicionesFinales(fase, this.entrada, this._opcionesFase()), ...this._finDeLaDefensa(this.iFase) },
       }];
@@ -1775,24 +1853,206 @@ export class Tablero {
    * dibujada desde un sitio donde ya no hay nadie.
    */
   _recalcularSiguientes() {
-    if (this.iFase >= this.fases.length - 1) return;
-    const pista = this.lienzo.vista.pistaKey;
-    const conCarriles = this.fases.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) }));
-    const papeles = this.papeles();
-    const r = recalcular(conCarriles, this.fases[0].entrada, pista, {
-      canasta: this.canasta,
-      canastaDe: (i) => (papeles.fases[i] || {}).canasta,
-    });
-    this.fases = this.fases.map((f, i) => (i <= this.iFase ? f : {
-      ...f,
-      entrada: r.entradas[i] || f.entrada,
-      /* Los carriles vuelven a lista plana: es como se editan, y así
-         solo hay una forma de guardar un tramo. */
-      tramos: r.fases[i].carriles.flatMap((c) => c.tramos).sort((a, b) => a.orden - b.orden),
-    }));
-    this._huerfanos = r.huerfanos;
+    if (!siguientesDe(this._todas, this.fases[this.iFase].id).length) return;
+    this._huerfanos = this._recalcularArbol(this.fases[this.iFase].id);
     this._avisarDeFases();
   }
+
+  /**
+   * RECALCULA LAS FASES QUE VIENEN DETRÁS de una —en todas sus ramas—, o
+   * todas si no se dice cuál (o solo las de `solo`). Cada una desde su
+   * camino: el que se ve si está en él —una reunión se ve, y se guarda,
+   * desde la rama por la que se ha llegado (§6.7)—, y si no, por donde se
+   * llega a ella primero.
+   *
+   * @returns los huérfanos (§6.5) de las recalculadas
+   */
+  _recalcularArbol(desde = null, elementos = null, solo = null) {
+    const pista = this.lienzo.vista.pistaKey;
+    const g = grafoDe(this._todas);
+    let cuales;
+    if (solo) cuales = solo;
+    else if (desde == null) cuales = this._todas.slice(1).map((f) => f.id);
+    else {
+      const vistas = new Set();
+      const pila = [...(g.despues.get(desde) || [])];
+      while (pila.length) {
+        const x = pila.pop();
+        if (vistas.has(x)) continue;
+        vistas.add(x);
+        pila.push(...(g.despues.get(x) || []));
+      }
+      cuales = this._todas.map((f) => f.id).filter((id) => vistas.has(id));
+    }
+    const raiz = this._todas[0];
+    const huerfanos = [];
+    const escena = elementos || this.fichas.elementos;
+    for (const id of cuales) {
+      const camino = this._caminoDeTrabajo(id);
+      if (camino.length < 2) continue;
+      const jugada = this._jugadaDe(camino, escena);
+      let papeles = null;
+      try { papeles = papelesDeJugada(jugada); } catch { papeles = null; }
+      const r = recalcular(camino.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) })), raiz.entrada || {}, pista, {
+        canasta: this.canasta,
+        canastaDe: (i) => ((papeles && papeles.fases[i]) || {}).canasta,
+      });
+      const k = camino.length - 1;
+      for (const c of r.fases[k].carriles) {
+        for (const t of c.tramos) if (t.huerfano) huerfanos.push({ fase: id, tramo: t.id, elemento: c.elemento });
+      }
+      this._todas = this._todas.map((f) => (f.id !== id ? f : {
+        ...f,
+        entrada: r.entradas[k] || f.entrada,
+        /* Los carriles vuelven a lista plana: es como se editan, y así
+           solo hay una forma de guardar un tramo. */
+        tramos: r.fases[k].carriles.flatMap((c) => c.tramos).sort((a, b) => a.orden - b.orden),
+      }));
+    }
+    return huerfanos;
+  }
+
+  /* De la raíz a esta fase: por el camino que se ve si pasa por ella; si
+     no, por donde se llega a ella primero. */
+  _caminoDeTrabajo(id) {
+    const i = (this._camino || []).indexOf(id);
+    return (i >= 0 ? this._camino.slice(0, i + 1) : caminoHasta(this._todas, id)).map((x) => this.faseDeId(x)).filter(Boolean);
+  }
+
+  /* Tras cambiar el camino que se ve: si entra en una reunión, lo que
+     viene desde ella sale de donde lo deja ESTA rama (§6.7). */
+  _reanclarElCamino() {
+    const g = grafoDe(this._todas);
+    const i = this._camino.findIndex((x) => (g.antes.get(x) || []).length > 1);
+    if (i < 0) return;
+    const cuales = this._camino.slice(i);
+    const nuevos = this._recalcularArbol(null, null, cuales);
+    this._huerfanos = [...(this._huerfanos || []).filter((x) => !cuales.includes(x.fase)), ...nuevos];
+  }
+
+  /* El camino que se ve, tal cual hasta la fase que se edita, y desde ella
+     por la primera rama de cada cruce. */
+  _seguirDesdeAqui() {
+    const g = grafoDe(this._todas);
+    const camino = this._camino.slice(0, this.iFase + 1).filter((id) => g.porId.has(id));
+    const vistos = new Set(camino);
+    let x = camino[camino.length - 1];
+    while ((g.despues.get(x) || []).length) {
+      x = g.despues.get(x)[0];
+      if (vistos.has(x)) break;
+      vistos.add(x);
+      camino.push(x);
+    }
+    this._camino = camino;
+  }
+
+  /* Una jugada con estas fases, para preguntar a lo que calcula. Quién
+     tiene cada balón al empezar, como en la que se guarda: si empieza
+     suelto, suelto. */
+  _jugadaDe(fases, elementos = this.fichas.elementos) {
+    const inicio = (fases[0] && fases[0].entrada) || {};
+    const posesion = (fases[0] && fases[0].posesion) || {};
+    return {
+      version: 3, pista: this.lienzo.vista.pistaKey, canasta: this.canasta,
+      elementos: elementos.map((e) => ({ ...e, ...(inicio[e.id] || {}), ...(e.kind === 'balon' ? { portador_id: posesion[e.id] ?? null } : {}) })),
+      fases: fases.map((f) => ({ id: f.id, duracion_ms: f.duracion_ms ?? null, pausa_post_ms: f.pausa_post_ms ?? null, tramos: f.tramos, defensa: f.defensa || {} })),
+      defensa: this.defensa,
+    };
+  }
+
+  /* ---- las ramas (§6.7) ------------------------------------ */
+
+  /** Ir a una fase de cualquier rama: el camino pasa a ser el suyo. Si
+   *  ya está en el que se ve, se sigue en él. */
+  irAFaseId(id) {
+    if (!this.faseDeId(id)) return false;
+    if (!this._camino.includes(id) || !this._camino.every((x) => this.faseDeId(x))) {
+      this._camino = caminoPor(this._todas, id);
+      this._reanclarElCamino();
+    }
+    this.irAFase(this._camino.indexOf(id));
+    return true;
+  }
+
+  /**
+   * ABRE UNA RAMA en la fase que se edita. Lo que ya venía detrás pasa a
+   * ser la primera rama (lo decidió el entrenador); la nueva empieza vacía
+   * y se va a ella para dibujarla.
+   */
+  abrirRama({ primera = '', nueva = '' } = {}) {
+    const cruce = this.fases[this.iFase].id;
+    const r = abrirLaRama(this._todas, cruce, {
+      primera, nueva, crear: (id) => ({ ...nuevaFase(id), tramos: [], entrada: {} }),
+    });
+    if (r.motivo) { this.onNoPuede?.({ nombre: 'Abrir rama' }, r.motivo); return false; }
+    this._todas = r.fases;
+    /* A la rama nueva, por el camino por el que se ha llegado al cruce. */
+    this._camino = [...this._camino.slice(0, this.iFase + 1), r.nuevas[r.nuevas.length - 1]];
+    this._huerfanos = this._recalcularArbol(cruce);
+    this.irAFase(this.iFase + 1);
+    return true;
+  }
+
+  /** Cambia el nombre de la rama que empieza en esta fase. */
+  renombrarRama(id, nombre) {
+    const r = renombrarLaRama(this._todas, id, nombre);
+    if (r.motivo) { this.onNoPuede?.({ nombre: 'Renombrar la rama' }, r.motivo); return false; }
+    this._todas = r.fases;
+    this._avisarDeFases();
+    return true;
+  }
+
+  /** Quita una rama sin nada dibujado; se vuelve a su cruce. */
+  quitarRama(id) {
+    const f = this.faseDeId(id);
+    const cruce = f && f.rama_de;
+    const r = quitarLaRama(this._todas, id);
+    if (r.motivo) { this.onNoPuede?.({ nombre: 'Quitar la rama' }, r.motivo); return false; }
+    this._todas = r.fases;
+    /* Una reunión puede pasar a dibujarse desde otra rama: todo se
+       recalcula desde su camino. */
+    const destino = cruce && this.faseDeId(cruce) ? cruce : this._todas[0].id;
+    this._camino = caminoPor(this._todas, destino);
+    this._huerfanos = this._recalcularArbol(null);
+    this.irAFase(this._camino.indexOf(destino));
+    return true;
+  }
+
+  /** Las fases con las que se puede reunir la que se edita. */
+  candidatasParaReunir() {
+    const desde = this.fases[this.iFase].id;
+    return this._todas.map((f) => f.id).filter((id) => !reunirFases(this._todas, desde, id).motivo);
+  }
+
+  /**
+   * REÚNE la rama que se edita con otra fase (§6.7): la fase actual —la
+   * última de su rama— sigue por `hasta`.
+   */
+  reunirCon(hasta) {
+    const r = reunirFases(this._todas, this.fases[this.iFase].id, hasta);
+    if (r.motivo) { this.onNoPuede?.({ nombre: 'Reunir' }, r.motivo); return false; }
+    this._todas = r.fases;
+    /* Se sigue por la reunión, desde esta rama: lo que viene detrás sale
+       de donde la deja ella. */
+    this._seguirDesdeAqui();
+    this._huerfanos = this._recalcularArbol(null);
+    this._avisarDeFases();
+    return true;
+  }
+
+  /** Deshace una reunión. */
+  separarDe(hasta) {
+    const r = separarFases(this._todas, this.fases[this.iFase].id, hasta);
+    if (r.motivo) { this.onNoPuede?.({ nombre: 'Separar' }, r.motivo); return false; }
+    this._todas = r.fases;
+    this._seguirDesdeAqui();
+    this._huerfanos = this._recalcularArbol(null);
+    this._avisarDeFases();
+    return true;
+  }
+
+  /** Las reuniones a las que llega esta fase: de ellas se puede separar. */
+  reunionesDeFase(id) { return reunionesDe(this._todas, id); }
 
   _avisarDeFases() {
     this.onFases?.(this.fases, this.numeroDeFase, this._huerfanos || []);

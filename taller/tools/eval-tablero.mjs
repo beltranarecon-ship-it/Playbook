@@ -834,6 +834,210 @@ test('LA CAJA DE LA FRASE ENSEÑA LA AUTOMÁTICA O LA ESCRITA, y guardarla igual
   eq(t.fases[0].texto, null, 'dejarla como la automática es quedarse con ella:');
 });
 
+test('ABRIR RAMA (§6.7): lo que venía pasa a ser la primera y se va a dibujar la nueva', () => {
+  const { t, a2 } = sinAtacante();          // A2 ya corta en la fase 1
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.2 });      // fase 2
+  t.irAFase(0);
+  ok(t.abrirRama({ primera: 'si le dejan', nueva: 'si le niegan' }), 'se abre');
+  const [f1, f2] = t.todasLasFases;
+  eq([f2.rama_de, f2.rama_nombre], [f1.id, 'si le dejan'], 'la que venía es la primera rama:');
+  const nueva = t.fases[t.iFase];
+  eq([nueva.rama_de, nueva.rama_nombre, t.fases.length, t.iFase], [f1.id, 'si le niegan', 2, 1], 'y se está en la nueva:');
+  eq(t.numeroEnSuCamino(nueva.id), 2);
+  eq(t.ramaDe(nueva.id), 'si le niegan');
+  corta(t, a2.id, { x: 0.8, y: 0.3 });      // se dibuja en la nueva
+  const j = t.jugada();
+  eq(j.fases.map((f) => [f.id, f.rama_de, f.rama_nombre]), [[f1.id, null, null], [f2.id, f1.id, 'si le dejan'], [nueva.id, f1.id, 'si le niegan']]);
+  const anim = compilarMod.compilar(j);
+  eq(anim.ramas[0].opciones.map((o) => o.nombre), ['si le dejan', 'si le niegan'], 'y el proyector tendrá su cruce:');
+  eq(t.jugadaDelCamino().fases.map((f) => f.id), [f1.id, nueva.id], 'lo que se calcula es el camino que se ve:');
+  ok(!('rama_de' in t.jugadaDelCamino().fases[0]), 'sin ramas');
+});
+
+test('LO QUE SE DIBUJA DETRÁS DE UNA RAMA SIGUE EN ELLA, aunque la otra vaya después en la lista', () => {
+  const { t, a2 } = sinAtacante();
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' });
+  const [f1, f2] = t.todasLasFases.map((f) => f.id);
+  t.irAFaseId(f2);
+  t._cerrarFase();
+  const nueva = t.fases[t.iFase].id;
+  eq(t.fases.map((f) => f.id), [f1, f2, nueva]);
+  eq([t.numeroEnSuCamino(nueva), t.ramaDe(nueva)], [3, 'a'], 'va detrás de la rama a, y en ella se queda:');
+});
+
+test('IR A UNA FASE DE OTRA RAMA cambia el camino; y cambiar la fase del cruce reancla las dos ramas', () => {
+  const { t, a2 } = sinAtacante();
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' });
+  corta(t, a2.id, { x: 0.8, y: 0.3 });
+  const [f1, f2, f3] = t.todasLasFases.map((f) => f.id);
+  ok(t.irAFaseId(f2));
+  eq(t.fases.map((f) => f.id), [f1, f2], 'el camino de la rama a:');
+  t.irAFase(0);
+  /* Se corrige la fase 1: A2 acaba en otro sitio. */
+  const tr = t.tramos[0];
+  t.tramos = [{ ...tr, trazo: tr.trazo.map((n, i) => (i === tr.trazo.length - 1 ? { ...n, x: 0.45, y: 0.4 } : n)) }];
+  t._recalcularSiguientes();
+  for (const id of [f2, f3]) {
+    const f = t.faseDeId(id);
+    const ini = f.tramos[0].trazo[0];
+    ok(Math.abs(ini.x - 0.45) < 1e-9 && Math.abs(ini.y - 0.4) < 1e-9, `la rama ${id} sale del sitio nuevo: ${JSON.stringify(ini)}`);
+  }
+});
+
+test('REUNIR Y SEPARAR; y una rama con algo dibujado no se quita', () => {
+  const { t, a2 } = sinAtacante();
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.1 });       // fases 1 → 2 → 3
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' }); // se está en la nueva (vacía)
+  const nueva = t.fases[t.iFase].id;
+  const [, f2, f3] = t.todasLasFases.map((f) => f.id);
+  ok(t.candidatasParaReunir().includes(f3), 'puede seguir por la fase 3 de la otra rama');
+  ok(t.reunirCon(f3), 'se reúne');
+  eq(t.faseDeId(f3).reune, [f2, nueva]);
+  eq(t.fases.map((f) => f.id).slice(-1), [f3], 'y el camino sigue por ella:');
+  ok(t.separarDe(f3));
+  eq(t.faseDeId(f3).reune, []);
+  ok(t.quitarRama(nueva), 'la nueva está vacía: se quita');
+  eq(t.todasLasFases.some((f) => f.rama_de != null), false, 'y con una sola rama ya no hay ramas:');
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' });
+  corta(t, a2.id, { x: 0.3, y: 0.3 });
+  eq(t.quitarRama(t.fases[t.iFase].id), false, 'con algo dibujado, no:');
+});
+
+test('UNA REUNIÓN SE VE DESDE LA RAMA POR LA QUE SE LLEGA (§6.7), y se separa desde cualquiera de las que llegan', () => {
+  const { t, a2 } = sinAtacante();
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.1 });       // fases 1 → 2 → 3
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' });
+  corta(t, a2.id, { x: 0.8, y: 0.3 });       // la b: A2 acaba en (0.8, 0.3)
+  const [f1, f2, f3, f4] = t.todasLasFases.map((f) => f.id);
+  ok(t.reunirCon(f3), 'se reúne');
+  const sale = (id) => t.faseDeId(id).tramos.find((x) => x.elemento_id === a2.id).trazo[0];
+  const en = (p, x, y) => !!p && Math.abs(p.x - x) < 1e-9 && Math.abs(p.y - y) < 1e-9;
+  ok(en(sale(f3), 0.8, 0.3) && en(t.faseDeId(f3).entrada[a2.id], 0.8, 0.3), `por la b, A2 sale de donde le deja la b: ${JSON.stringify(sale(f3))}`);
+  ok(t.irAFaseId(f3));
+  eq(t.fases.map((f) => f.id), [f1, f4, f3], 'yendo a ella, se sigue por la rama en la que se estaba:');
+  ok(t.irAFaseId(f2));
+  ok(en(sale(f3), 0.6, 0.2), `por la a, de donde le deja la a: ${JSON.stringify(sale(f3))}`);
+  const anim = compilarMod.compilar(t.jugada());
+  const suyo = (f) => f.movimientos.find((m) => !m.automatico && m.elemento_id === 'A2' && m.tipo_elemento === 'jugador');
+  const pa = suyo(anim.fases.find((f) => f.id === f3)).path[0];
+  const pb = suyo(anim.fases_rama.find((f) => f.id.startsWith(`${f3}@`))).path[0];
+  ok(en(pa, 0.6, 0.2) && en(pb, 0.8, 0.3), `y el proyector igual: ${JSON.stringify([pa, pb])}`);
+  /* Desde la a, que es la que ya llegaba: la a acaba y la b sigue. */
+  eq(t.reunionesDeFase(f2), [f3]);
+  ok(t.separarDe(f3), 'se separa');
+  eq(t.fases.map((f) => f.id), [f1, f2], 'la a acaba aquí:');
+  ok(en(sale(f3), 0.8, 0.3), `y la fase 3 sigue a la b, desde donde la deja: ${JSON.stringify(sale(f3))}`);
+});
+
+test('ABRIR Y REUNIR RESPETAN EL CAMINO QUE SE VE; y quitar una rama recalcula la reunión desde la que queda', () => {
+  const { t, a2 } = sinAtacante();
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.1 });       // fases 1 → 2 → 3
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' });
+  corta(t, a2.id, { x: 0.8, y: 0.3 });
+  const [f1, , f3, f4] = t.todasLasFases.map((f) => f.id);
+  t.reunirCon(f3);
+  t.irAFaseId(f3);                           // por la b
+  t.abrirRama({ primera: 'x', nueva: 'y' });
+  const [f5, f6] = t.todasLasFases.map((f) => f.id).slice(-2);
+  eq(t.fases.map((f) => f.id), [f1, f4, f3, f6], 'la rama nueva, por donde se venía:');
+  t.reunirCon(f5);
+  eq(t.fases.map((f) => f.id), [f1, f4, f3, f6, f5], 'y la reunión, también:');
+
+  /* Tres ramas que llegan a la misma fase; se quita la primera, vacía. */
+  const s = sinAtacante();
+  s.t._cerrarFase();
+  s.t._cerrarFase();
+  corta(s.t, s.a2.id, { x: 0.6, y: 0.1 });   // f2 vacía → f3
+  s.t.irAFase(0);
+  s.t.abrirRama({ primera: 'a', nueva: 'b' });
+  corta(s.t, s.a2.id, { x: 0.8, y: 0.3 });
+  const [, g2, g3, g4] = s.t.todasLasFases.map((f) => f.id);
+  s.t.reunirCon(g3);
+  s.t.irAFase(0);
+  s.t.abrirRama({ nueva: 'c' });
+  corta(s.t, s.a2.id, { x: 0.2, y: 0.2 });
+  s.t.reunirCon(g3);                          // se ve desde la c
+  ok(s.t.quitarRama(g2), 'la a está vacía: se quita');
+  eq(s.t.faseDeId(g3).reune.slice(0, 1), [g4]);
+  s.t.irAFaseId(g3);
+  const p = s.t.faseDeId(g3).tramos.find((x) => x.elemento_id === s.a2.id).trazo[0];
+  ok(Math.abs(p.x - 0.8) < 1e-9 && Math.abs(p.y - 0.3) < 1e-9, `ahora se dibuja desde la b: ${JSON.stringify(p)}`);
+});
+
+test('RECALCULAR NO DA EL BALÓN SUELTO A QUIEN LO TIENE EN LA FASE QUE SE VE', () => {
+  const { t, a1, bal } = sinAtacante();
+  t.fichas.poner(t.fichas.elementos.map((e) => (e.id === bal.id ? { ...e, portador_id: a1.id } : e)));
+  eq(t._jugadaDe(t.fases).elementos.find((e) => e.id === bal.id).portador_id, null, 'al empezar, suelto:');
+  eq(t.jugada().elementos.find((e) => e.id === bal.id).portador_id, null, 'como en la que se guarda:');
+});
+
+test('CON RAMAS, EL AVISO DE LA DEFENSA MIRA TODOS LOS CAMINOS, y la cola sabe quién ha salido en otra rama', () => {
+  const { t, a1, a2, b1 } = sinAtacante();
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' });
+  corta(t, a1.id, { x: 0.2, y: 0.2 });       // A1 corta solo en la b
+  const [, f2] = t.todasLasFases.map((f) => f.id);
+  t.irAFaseId(f2);
+  t.irAFase(0);
+  t.anadirFicha({ kind: 'balon' }, { x: ficha(t, b1.id).x, y: ficha(t, b1.id).y });
+  const malos = t.tramosQueNoEncajan().map((m) => m.tramo.elemento_id);
+  ok(malos.includes(a1.id) && malos.includes(a2.id), `los de las dos ramas, en el mismo gesto: ${malos}`);
+  /* La cola: el primero de la fila corta solo en la rama b. */
+  const c = conConoDeFila();
+  c.t.hacerFila(c.cono.id, { n: 2, orientacion: 90 });
+  const cola = filasMod.deLaFila(c.t.fichas.elementos, c.cono.id);
+  c.t._cerrarFase();
+  c.t.irAFase(0);
+  c.t.abrirRama({ primera: 'a', nueva: 'b' });
+  corta(c.t, cola[0].id, { x: 0.5, y: 0.3 });
+  const [, g2] = c.t.todasLasFases.map((f) => f.id);
+  c.t.irAFaseId(g2);
+  c.t.irAFase(0);
+  const antes = ficha(c.t, cola[0].id);
+  const movida = c.t._colasEnSuSitio(c.t.fichas.elementos.map((e) => (e.id === c.cono.id ? { ...e, x: 0.3 } : e)));
+  const suyo = movida.find((e) => e.id === cola[0].id);
+  eq([suyo.x, suyo.y], [antes.x, antes.y], 'quien ya ha salido en otra rama no vuelve a la cola:');
+});
+
+test('REABRIR UNA JUGADA CON RAMAS: se abre por el camino principal y cada rama sale de su sitio', () => {
+  const { t, a2 } = sinAtacante();
+  t._cerrarFase();
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' });
+  corta(t, a2.id, { x: 0.8, y: 0.3 });
+  const guardada = JSON.parse(JSON.stringify(t.jugada()));
+  const otro = montar().t;
+  ok(otro.cargar(guardada).ok);
+  const [f1, f2, f3] = guardada.fases.map((f) => f.id);
+  eq(otro.fases.map((f) => f.id), [f1, f2], 'por el principal:');
+  otro.irAFaseId(f3);
+  eq(otro.fases.map((f) => f.id), [f1, f3]);
+  ok(otro.frases()[1].length > 0, `con su frase: ${otro.frases()[1]}`);
+});
+
 test('EL TIRADOR GIRA LA FILA: se coge al final de la cola y se imanta cada 15°', () => {
   const { t, cono } = conConoDeFila();
   t.hacerFila(cono.id, { n: 2, orientacion: 90 });

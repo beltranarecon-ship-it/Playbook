@@ -41,7 +41,7 @@
 
 import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
 import { MOTOR_PIZARRA } from './marca.js';
-import { carrilesDesde, tiemposDe, esTiro, esBloqueo, TRAS_EL_TIRO_MS } from '../fases.js';
+import { carrilesDesde, tiemposDe, esTiro, esBloqueo, TRAS_EL_TIRO_MS, recalcular } from '../fases.js';
 import { trasElTiro, frenteDelBloqueo } from '../destino.js';
 import { papelesDeJugada, seguirDefensa, SEGUIMIENTO } from './defensa.js';
 import { metrosEntre } from '../../canvas/escala.js';
@@ -51,6 +51,7 @@ import { metaDeFase } from '../../canvas/fotograma.js';
 import { posicionesDe } from '../../canvas/anclas.js';
 import { conRondas } from '../rondas-fila.js';
 import { frasesDeJugada } from './frase.js';
+import { tieneRamas, todosLosCaminos, grafoDe, cuantosCaminos, MAX_CAMINOS } from '../ramas.js';
 
 export const VERSION_JUGADA = 3;
 
@@ -81,6 +82,137 @@ const punto = (p) => [p.x, p.y];
  * @returns la animación en el formato del §10, más lo del §11.2
  */
 export function compilar(jugada) {
+  const j = jugada || {};
+  return tieneRamas(j.fases) ? compilarConRamas(j) : compilarCamino(j);
+}
+
+/**
+ * UNA JUGADA CON RAMAS (§6.7, §11.2) se compila camino a camino: cada uno
+ * es una jugada de las de siempre, así que los arranques, la defensa, la
+ * posesión y la frase salen como en cualquier otra. Una reunión se
+ * compila una vez por cada rama que llega a ella: sus trazos salen de
+ * donde la deja esa rama.
+ *
+ *   · `fases`       el camino principal —la primera rama de cada cruce—,
+ *                   que es lo que enseñan la miniatura, el guion y la
+ *                   ficha (§6.7) sin saber nada de ramas;
+ *   · `fases_rama`  lo de los demás caminos, desde donde se separan;
+ *   · `ramas`       [{ desde, opciones: [{ nombre, fase }] }]: en qué
+ *                   fase se para el proyector y qué ofrece;
+ *   · `siguiente`   en cada fase, la que va detrás por su camino.
+ *
+ * Todos los caminos se reanclan, también el principal: la Pizarra guarda
+ * cada reunión tal y como se vio la última vez, y por cada camino tiene
+ * que salir de donde la deja la rama por la que se llega.
+ */
+function compilarConRamas(j) {
+  const porId = new Map((j.fases || []).filter(Boolean).map((f) => [f.id, f]));
+  const caminos = todosLosCaminos(j.fases);
+  const opciones = {
+    /* Quien espera en una fila y sale en alguna rama es un jugador en
+       todas: en la que sale se le tiene que ver. */
+    conTramosEn: j.fases,
+    /* Un cruce se compila aunque esté vacío: es donde se para y pregunta. */
+    mantener: new Set([...grafoDe(j.fases).despues].filter(([, sale]) => sale.length > 1).map(([id]) => id)),
+  };
+  const deCamino = (camino) => compilarCamino({ ...j, fases: reanclarCamino(j, camino.map((id) => porId.get(id))) }, opciones);
+  const principal = deCamino(caminos[0]);
+  const warnings = new Set(principal.warnings);
+  if (cuantosCaminos(j.fases) > caminos.length) warnings.add(`La jugada tiene más de ${MAX_CAMINOS} caminos distintos: solo se reproducen los ${MAX_CAMINOS} primeros.`);
+  /* Los balones de todos los caminos: las rondas de una rama pueden traer
+     los suyos. */
+  const balones = new Map(principal.balones.map((b) => [b.id, b]));
+  /* Lo compilado de cada prefijo de camino: { clave: fase compilada|null }. */
+  const deClave = new Map();
+  const clave = (camino, i) => camino.slice(0, i + 1).join('>');
+  const apuntar = (camino, anim, sufijo = '') => {
+    const porIndice = new Map(anim.fases.map((f) => [f.indice, f]));
+    camino.forEach((_, i) => {
+      if (deClave.has(clave(camino, i))) return;
+      const f = porIndice.get(i) || null;
+      deClave.set(clave(camino, i), f ? (sufijo ? { ...f, id: `${f.id}${sufijo}` } : f) : null);
+    });
+  };
+  apuntar(caminos[0], principal);
+  const cruces = new Map();   // id del cruce -> [{ nombre, fase }]
+  const opcion = (desde, nombre, fase) => {
+    const k = desde ?? '';
+    if (!cruces.has(k)) cruces.set(k, []);
+    if (!cruces.get(k).some((o) => o.nombre === nombre && o.fase === fase)) cruces.get(k).push({ nombre, fase });
+  };
+  const primeraDesde = (camino, i) => {
+    for (let k = i; k < camino.length; k++) { const f = deClave.get(clave(camino, k)); if (f) return f.id; }
+    return null;
+  };
+  const ultimaAntes = (camino, i) => {
+    for (let k = i - 1; k >= 0; k--) { const f = deClave.get(clave(camino, k)); if (f) return f.id; }
+    return null;
+  };
+  caminos.forEach((camino, n) => {
+    if (n > 0) {
+      /* Donde se separa de lo ya compilado empieza lo suyo. */
+      let i = 0;
+      while (i < camino.length && deClave.has(clave(camino, i))) i++;
+      const anim = deCamino(camino);
+      for (const w of anim.warnings) warnings.add(w);
+      for (const b of anim.balones) if (!balones.has(b.id)) balones.set(b.id, b);
+      apuntar(camino, anim, `@${n}`);
+    }
+  });
+  /* Los cruces y sus opciones, con los nombres de las ramas. */
+  caminos.forEach((camino) => {
+    camino.forEach((id, i) => {
+      if (i === 0) return;
+      const f = porId.get(id);
+      if (f.rama_de == null || f.rama_de !== camino[i - 1]) return;
+      opcion(ultimaAntes(camino, i), f.rama_nombre || 'Rama', primeraDesde(camino, i));
+    });
+  });
+  /* Cada fase compilada, una vez, con la que le sigue por su camino. */
+  const todas = new Map();
+  for (const camino of caminos) {
+    const suyas = camino.map((_, i) => deClave.get(clave(camino, i))).filter(Boolean);
+    suyas.forEach((f, k) => {
+      if (todas.has(f.id)) return;
+      todas.set(f.id, { ...f, siguiente: suyas[k + 1] ? suyas[k + 1].id : null });
+    });
+  }
+  const fases = principal.fases.map((f) => todas.get(f.id));
+  const enPrincipal = new Set(fases.map((f) => f.id));
+  const ramas = [...cruces].map(([desde, opciones]) => ({ desde: desde || null, opciones }));
+  return {
+    ...principal,
+    balones: [...balones.values()],
+    fases,
+    fases_rama: [...todas.values()].filter((f) => !enPrincipal.has(f.id)),
+    ramas,
+    warnings: [...warnings],
+  };
+}
+
+/* Por otro camino, cada uno sale de donde le deja lo anterior: los trazos
+   de una reunión se dibujaron desde la primera rama, y se reanclan
+   (§5.5) a donde deja esta, conservando su destino. */
+function reanclarCamino(j, fases) {
+  const pista = j.pista || 'entera';
+  const canasta = j.canasta || 'norte';
+  const entrada = Object.fromEntries((j.elementos || []).filter(Boolean).map((e) => [e.id, { x: e.x, y: e.y }]));
+  let papeles = null;
+  try { papeles = papelesDeJugada({ ...j, pista, fases, elementos: (j.elementos || []).filter(Boolean) }); } catch { papeles = null; }
+  const r = recalcular(fases.map((f) => ({ ...f, carriles: carrilesDesde((f && f.tramos) || []) })), entrada, pista, {
+    canasta, canastaDe: (i) => ((papeles && papeles.fases[i]) || {}).canasta,
+  });
+  return fases.map((f, i) => ({
+    ...f,
+    tramos: r.fases[i].carriles.flatMap((cc) => cc.tramos).sort((a, z) => a.orden - z.orden)
+      .map(({ orden, huerfano, ...t }) => t),
+  }));
+}
+
+/* Un camino: una jugada de las de siempre, fase tras fase.
+   · `conTramosEn` las fases en las que mirar quién sale (con ramas, todas);
+   · `mantener`    las fases que se compilan aunque estén vacías (los cruces). */
+function compilarCamino(jugada, { conTramosEn = null, mantener = null } = {}) {
   const dibujada = jugada || {};
   const pista = dibujada.pista || 'entera';
   const canasta = dibujada.canasta || 'norte';
@@ -123,7 +255,7 @@ export function compilar(jugada) {
      no son jugadores de la animación: son la cola que el motor pinta
      detrás de su cono. Tampoco sus balones, que van con ellos. */
   const conosFila = new Set(elementos.filter((e) => e.kind === 'cono' && e.fila).map((e) => e.id));
-  const conTramos = new Set((j.fases || [])
+  const conTramos = new Set([...(j.fases || []), ...(conTramosEn || [])]
     .flatMap((f) => (f && Array.isArray(f.tramos) ? f.tramos : []))
     .flatMap((t) => (t ? [t.elemento_id, t.corre_id, t.receptor_id, t.companero_id] : []))
     .filter(Boolean));
@@ -197,7 +329,7 @@ export function compilar(jugada) {
      edita. El índice es el de la jugada, para que los avisos digan la
      fase que ve el entrenador. */
   const fases = (j.fases || [])
-    .map((f, i) => (f && Array.isArray(f.tramos) && f.tramos.length
+    .map((f, i) => (f && Array.isArray(f.tramos) && (f.tramos.length || (mantener && mantener.has(f.id)))
       /* La canasta es LA DE ESA FASE: si en la anterior robaron o
          anotaron, se ataca al otro aro (§8.6). */
       ? { ...compilarFase(f, i, { pista, canasta: (papeles.fases[i] || {}).canasta || canasta, de, nombre, warnings, papeles: papeles.fases[i], repeticionDe }),

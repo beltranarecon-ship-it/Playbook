@@ -29,6 +29,7 @@ import { frasesDeJugada } from '../pizarra/motor/frase.js';
 import { papelesDeJugada } from '../pizarra/motor/defensa.js';
 import { aroExacto } from '../canvas/anclas.js';
 import { metrosEntre } from '../canvas/escala.js';
+import { caminoPrincipal } from '../pizarra/ramas.js';
 
 const porSlug = new Map(CATALOGO_SISTEMA.map((a) => [a.slug, a]));
 
@@ -79,10 +80,17 @@ function contenidoDe(usadas, { hayDefensa, pasarYCortar, dichas }) {
  * @returns { category, tags, material, desarrollo }
  */
 export function propuestaDesdeLaJugada(jugada) {
-  const j = jugada || {};
-  const fases = (j.fases || []).map((f) => (f && typeof f === 'object' ? { ...f, tramos: (f.tramos || []).filter(Boolean) } : { tramos: [] }));
+  const j0 = jugada || {};
+  const todas = (j0.fases || []).map((f) => (f && typeof f === 'object' ? { ...f, tramos: (f.tramos || []).filter(Boolean) } : { tramos: [] }));
+  /* CON RAMAS (§6.7), la ficha cuenta el camino principal: la primera
+     rama de cada cruce. Las etiquetas, en cambio, salen de todo lo
+     dibujado, que es lo que entrena el ejercicio. */
+  const porId = new Map(todas.filter((f) => f.id != null).map((f) => [f.id, f]));
+  const principal = caminoPrincipal(todas).map((id) => porId.get(id)).filter(Boolean);
+  const fases = principal.length ? principal : todas;
+  const j = { ...j0, fases };
   const elementos = (j.elementos || []).filter(Boolean);
-  const tramos = fases.flatMap((f) => f.tramos);
+  const tramos = todas.flatMap((f) => f.tramos);
   const usadas = new Set(tramos.map((t) => t.accion));
 
   let papeles = null;
@@ -115,6 +123,12 @@ export function propuestaDesdeLaJugada(jugada) {
     }
     for (const a of Object.values(f.defensa || {})) pon((porSlug.get(a && a.accion) || {}).tag);
   });
+  /* Y lo de las otras ramas, que también se entrena. */
+  for (const t of tramos) {
+    const v = (VARIANTES[t.accion] || []).find((x) => x.slug === t.variante);
+    if (t.accion !== 'recoge') pon((porSlug.get(t.accion) || {}).tag);
+    if (v) pon(v.tag);
+  }
   if (pasarYCortar) pon('pasar y cortar');
   /* La situación se cuenta desde el ATAQUE, como en la biblioteca: la
      defensa mide al revés (§8.2), y un 2c1 es inferioridad para ella. */

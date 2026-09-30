@@ -349,5 +349,31 @@ test('LA FRASE REESCRITA SE GUARDA EN SU FASE (§9.2); lo que no es texto, no', 
   eq(normalizarJugada({ version: 3, elementos: [], fases: [] }).jugada.fases[0].texto, null, 'y la fase vacía de serie, también:');
 });
 
+test('LAS RAMAS SE GUARDAN Y SE ABREN (§6.7); lo roto se arregla diciéndolo', () => {
+  const b = buena();
+  b.fases.push({ id: 'f3', tramos: [], rama_de: 'f1', rama_nombre: '  si le niegan  ' });
+  b.fases[1].rama_de = 'f1';
+  b.fases[1].rama_nombre = '';
+  b.fases.push({ id: 'f4', tramos: [], rama_de: 'nadie', reune: ['f2', 'f3', 'fantasma'] });
+  const r = normalizarJugada(b);
+  const f = Object.fromEntries(r.jugada.fases.map((x) => [x.id, x]));
+  eq([f.f3.rama_de, f.f3.rama_nombre], ['f1', 'si le niegan']);
+  eq([f.f2.rama_de, f.f2.rama_nombre], ['f1', 'Rama 1'], 'sin nombre, se le pone uno:');
+  eq([f.f4.rama_de, f.f4.reune], [null, ['f2', 'f3']], 'lo que apunta a nada, fuera:');
+  ok(r.avisos.some((a) => /sin nombre/.test(a)) && r.avisos.some((a) => /no está/.test(a)), r.avisos.join(' | '));
+  eq([r.jugada.fases[0].rama_de, r.jugada.fases[0].reune], [null, []], 'sin ramas, lo de siempre:');
+});
+
+test('UN ENLACE DE UNA SOLA FASE SE GUARDA si no lo dice el orden de la lista; si lo dice, sobra', () => {
+  const b = buena();
+  b.fases = [
+    { id: 'f1', tramos: [] }, { id: 'f2', tramos: [] },
+    { id: 'f4', tramos: [], reune: ['f3'] }, { id: 'f3', tramos: [], reune: ['f2'] },
+    { id: 'f5', tramos: [], reune: ['f3'] },
+  ];
+  const f = Object.fromEntries(normalizarJugada(b).jugada.fases.map((x) => [x.id, x.reune]));
+  eq([f.f4, f.f3, f.f5], [['f3'], ['f2'], []]);
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

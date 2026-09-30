@@ -87,7 +87,8 @@ export function abrirProyector(animacion, meta = {}) {
   // lateral de datos; solo el nombre del ejercicio como rótulo que se desvanece
   // junto con los controles.
   const view = new CourtView({ pista: animacion.pista || 'entera', rotate: 90 });
-  const engine = new AnimationEngine(view, animacion, { autoplay: true, loop: true });
+  /* En un cruce de ramas (§6.7) se para y pregunta: es donde se explica. */
+  const engine = new AnimationEngine(view, animacion, { autoplay: true, loop: true, elegirRamas: true });
   /* Con la narración (§9.3): el proyector es donde más se usa. */
   const ctrl = controls(engine, { voz: true });
   /* Repintar al tomar tamaño. Reproduciendo da igual —cada fotograma
@@ -141,6 +142,28 @@ export function abrirProyector(animacion, meta = {}) {
      ha parado» y «aquí no pasa nada» se leen igual. */
   const rotuloPausa = h('div', { class: 'proy-pausa' }, 'En pausa');
 
+  /* EL CARTEL DE RAMA (§6.7, §10.2): al llegar a un cruce la animación se
+     para y salen los nombres de las ramas. Se elige tocando uno, o con ←
+     → y Intro; con 1, 2, 3, directamente. Espera a que se elija (lo
+     decidió el entrenador). */
+  const cartel = h('div', { class: 'proy-cartel', role: 'dialog', 'aria-label': '¿Por dónde sigue?' });
+  cartel.hidden = true;
+  let marcada = 0;
+  const pintarCartel = () => {
+    const c = engine.cruce;
+    cartel.hidden = !c;
+    if (!c) return;
+    cartel.replaceChildren(
+      h('p', { class: 'proy-cartel__t' }, '¿Por dónde sigue?'),
+      h('div', { class: 'proy-cartel__opciones' }, ...c.opciones.map((o, i) => h('button', {
+        class: 'proy-cartel__op' + (i === marcada ? ' is-marcada' : ''), type: 'button',
+        onClick: (e) => { e.stopPropagation(); elegir(i); },
+      }, h('span', { class: 'proy-cartel__n mono' }, String(i + 1)), o.nombre))),
+    );
+  };
+  const elegir = (i) => { if (!engine.cruce) return; marcada = 0; engine.elegirRama(i); pintarCartel(); pintarPausa(); };
+  engine.on('cruce', () => { marcada = 0; pintarCartel(); showControls(); });
+
   const root = h('div', { class: 'proyector proyector--full' },
     h('div', { class: 'proyector__cab' },
       h('div', { class: 'proyector__title' }, meta.nombre || 'Ejercicio'),
@@ -148,10 +171,11 @@ export function abrirProyector(animacion, meta = {}) {
       barraVideos,
     ),
     btnCerrar,
-    h('div', { class: 'proyector__stage' }, view.root, rotuloPausa, sinFases ? null : h('div', { class: 'proyector__controls' }, ctrl.el)),
+    h('div', { class: 'proyector__stage' }, view.root, rotuloPausa, cartel, sinFases ? null : h('div', { class: 'proyector__controls' }, ctrl.el)),
     h('p', { class: 'proyector__hint mono' },
       (sinFases ? 'Solo la colocación: no hay nada que reproducir'
-        : 'Toca la pista o Espacio: pausa · ← → fases · R reinicio · L bucle · 1/2/3 velocidad')
+        : 'Toca la pista o Espacio: pausa · ← → fases · R reinicio · L bucle · 1/2/3 velocidad'
+          + ((animacion.ramas || []).length ? ' · en un cruce, ← → e Intro eligen la rama' : ''))
       + (ficha?.hayNiveles ? ' · N nivel' : '')
       + (chipsVideo.length ? ' · V vídeos' : '') + ' · Esc salir'),
   );
@@ -171,11 +195,15 @@ export function abrirProyector(animacion, meta = {}) {
      Sobre el canvas, no sobre `root`: la barra de controles y el botón
      de salir están fuera de él, así que darle al play no cuenta dos
      veces y cerrar no pausa antes de cerrar. */
-  view.canvas.addEventListener('click', () => { if (!capaVideo) engine.toggle(); });
+  view.canvas.addEventListener('click', () => { if (!capaVideo && !engine.cruce) engine.toggle(); });
 
-  const pintarPausa = () => root.classList.toggle('is-pausado', !engine.playing && !capaVideo && !sinFases);
+  /* Con el cartel delante no se anuncia la pausa: es una pregunta. */
+  const pintarPausa = () => root.classList.toggle('is-pausado', !engine.playing && !capaVideo && !sinFases && !engine.cruce);
   engine.on('play', pintarPausa);
   engine.on('pause', pintarPausa);
+  /* Volver atrás, reiniciar o mover la barra con el cartel delante lo
+     quita: esa pregunta ya no toca. */
+  engine.on('phase', () => { pintarCartel(); pintarPausa(); });
   pintarPausa();
 
   /* ---- el vídeo de la acción de esta fase (Tramo 2.14) ----------- */
@@ -225,6 +253,14 @@ export function abrirProyector(animacion, meta = {}) {
 
   // atajos §14.1
   const onKey = (e) => {
+    /* En un cruce, las flechas y los números eligen rama. */
+    if (engine.cruce) {
+      const n = engine.cruce.opciones.length;
+      if (e.key === 'ArrowLeft') { marcada = (marcada + n - 1) % n; pintarCartel(); e.preventDefault(); showControls(); return; }
+      if (e.key === 'ArrowRight') { marcada = (marcada + 1) % n; pintarCartel(); e.preventDefault(); showControls(); return; }
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); elegir(marcada); showControls(); return; }
+      if (/^[1-9]$/.test(e.key) && Number(e.key) <= n) { elegir(Number(e.key) - 1); showControls(); return; }
+    }
     switch (e.key) {
       case ' ': e.preventDefault(); engine.toggle(); break;
       case 'v': case 'V':

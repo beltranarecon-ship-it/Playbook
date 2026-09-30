@@ -170,6 +170,18 @@ test('EL CHAT PUEDE PONER LO SUYO ENCIMA DE LO TRAÍDO, y no encima de lo escrit
   ok(!esTraidoDeLaPizarra(d, 'category', 'pase'), 'y deja de contar como traído');
 });
 
+test('CON RAMAS, EL DESARROLLO CUENTA EL CAMINO PRINCIPAL (§6.7)', () => {
+  const el = [jugador('j1', 'A', '1', A.base), jugador('j2', 'A', '2', A.alero_der),
+    { id: 'b1', kind: 'balon', portador_id: 'j1', x: A.base.x + 0.04, y: A.base.y }];
+  const p = propuestaDesdeLaJugada(jugada(el, [
+    { id: 'f1', tramos: [tr('j2', 'j2', 'corta', A.alero_der, A.esquina_der)] },
+    { id: 'f2', rama_de: 'f1', rama_nombre: 'a', tramos: [tr('j1', 'j1', 'bota', A.base, A.codo_der)] },
+    { id: 'f3', rama_de: 'f1', rama_nombre: 'b', tramos: [tr('j1', 'j1', 'corta', A.base, A.aro)] },
+  ]));
+  eq(p.desarrollo, '1. A2 corta a la esquina derecha.' + String.fromCharCode(10) + '2. A1 bota hasta el codo derecho.');
+  ok(p.tags.includes('corte') && p.tags.includes('bote'), 'y las etiquetas, de todas las ramas');
+});
+
 test('UNA VUELTA COMPLETA: todas las fases con sus pausas', () => {
   eq(duracionDeUnaVuelta({ fases: [{ duracion_ms: 2000, pausa_post_ms: 400 }, { duracion_ms: 3500 }] }), 5900);
   eq([duracionDeUnaVuelta(null), duracionDeUnaVuelta({ fases: [] })], [0, 0]);

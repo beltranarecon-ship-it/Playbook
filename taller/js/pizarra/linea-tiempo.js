@@ -48,6 +48,8 @@ export class LineaTiempo {
   constructor(host, tablero) {
     this.host = host;
     this.tablero = tablero;
+    /* Qué formulario de ramas está abierto: null, 'abrir' o 'reunir'. */
+    this._formulario = null;
     this.el = h('div', { class: 'pz-tiempo' });
     this.host.append(this.el);
     this.refrescar();
@@ -65,6 +67,7 @@ export class LineaTiempo {
     this.el.replaceChildren(
       this._mandos(tiempos),
       this._tira(),
+      this._ramas(),
       this._carriles(fase, tiempos, rondas),
     );
   }
@@ -100,26 +103,117 @@ export class LineaTiempo {
   _tira() {
     const t = this.tablero;
     const tira = h('div', { class: 'pz-tiempo__fases' });
-    t.fases.forEach((f, i) => {
-      const vacia = !f.tramos.length;
+    const actual = t.fases[t.iFase] ? t.fases[t.iFase].id : null;
+    const enElCamino = new Set(t.fases.map((f) => f.id));
+    const boton = (id) => {
+      const f = t.faseDeId(id);
+      const vacia = !(f.tramos || []).length;
       const b = h('button', {
         class: 'pz-fase'
-          + (i === t.iFase ? ' is-activa' : '')
-          + (vacia ? ' is-vacia' : ''),
+          + (id === actual ? ' is-activa' : '')
+          + (vacia ? ' is-vacia' : '')
+          + (id !== actual && enElCamino.has(id) ? ' is-camino' : ''),
         type: 'button',
         /* Una fase vacía que no es la activa es la que se acaba de
            abrir y todavía no tiene nada: se dice, en vez de dejar un
            hueco que parece un fallo. */
         title: vacia ? 'sin dibujar todavía' : `${f.tramos.length} tramos`,
-      }, `Fase ${i + 1}`);
-      b.addEventListener('click', () => { t.irAFase(i); });
-      tira.append(b);
-    });
+      }, `Fase ${t.numeroEnSuCamino(id)}`);
+      b.addEventListener('click', () => { t.irAFaseId(id); });
+      return b;
+    };
+    /* LAS RAMAS (§6.7), EN ÁRBOL (lo decidió el entrenador): tras la fase
+       del cruce salen una debajo de otra, cada una con su nombre. Sin
+       ramas, es la fila de siempre. */
+    const tramo = (r) => {
+      const fila = h('div', { class: 'pz-tira__tramo' }, ...r.fases.map(boton));
+      if (r.sigueEn) fila.append(h('span', { class: 'pz-tira__sigue', title: 'Esta rama se reúne con otra' }, `→ sigue en la fase ${t.numeroEnSuCamino(r.sigueEn)}`));
+      if (!r.ramas.length) return fila;
+      return h('div', { class: 'pz-tira__cruce' }, fila,
+        h('div', { class: 'pz-tira__ramas' }, ...r.ramas.map((x) => h('div', { class: 'pz-tira__rama' },
+          h('span', { class: 'pz-tira__nombre' }, x.nombre || 'rama'), tramo(x)))));
+    };
+    tira.append(tramo(t.arbolDeFases()));
     const mas = h('button', { class: 'pz-fase pz-fase--mas', type: 'button' }, 'Siguiente fase →');
     mas.disabled = !t.tramos.length;
     mas.addEventListener('click', () => t.siguienteFase());
     tira.append(mas);
     return tira;
+  }
+
+  /* ---- las ramas (§6.7) ------------------------------------- */
+
+  /* Lo que se puede hacer con ramas desde la fase que se edita: abrir una,
+     reunir la rama con otra fase, cambiarle el nombre o quitarla. */
+  _ramas() {
+    const t = this.tablero;
+    const f = t.fases[t.iFase];
+    if (!f) return h('div');
+    const sale = t.siguientesDeFase(f.id);
+    const caja = h('div', { class: 'pz-ramas' });
+    const accion = (texto, titulo, alHacer, clase = '') => {
+      const b = h('button', { class: `pz-ramas__b ${clase}`.trim(), type: 'button', title: titulo }, texto);
+      b.addEventListener('click', alHacer);
+      return b;
+    };
+    caja.append(accion('⑂ Abrir rama', 'Abre otra manera de seguir desde esta fase («si le niegan el pase»)', () => { this._formulario = this._formulario === 'abrir' ? null : 'abrir'; this.refrescar(); }));
+    const candidatas = !sale.length ? t.candidatasParaReunir() : [];
+    /* Reunir solo tiene sentido si hay ramas, y desde la última fase de una. */
+    if (candidatas.length && t.todasLasFases.some((x) => x.rama_de != null)) {
+      caja.append(accion('⤳ Reunir con…', 'Esta rama sigue por una fase de otra (§6.7)', () => { this._formulario = this._formulario === 'reunir' ? null : 'reunir'; this.refrescar(); }));
+    }
+    /* Si esta fase empieza una rama: su nombre, y quitarla. */
+    if (f.rama_de != null) {
+      const nombre = h('input', { class: 'pz-ramas__nombre', type: 'text', value: f.rama_nombre || '', 'aria-label': 'Nombre de la rama' });
+      nombre.addEventListener('change', () => { if (!t.renombrarRama(f.id, nombre.value)) nombre.value = f.rama_nombre || ''; });
+      caja.append(h('label', { class: 'pz-ramas__campo' }, 'Rama:', nombre),
+        accion('Quitar la rama', 'Quita esta rama si no tiene nada dibujado', () => t.quitarRama(f.id), 'pz-ramas__b--quitar'));
+    }
+    /* Las reuniones a las que llega esta fase se pueden deshacer desde
+       cualquiera de las ramas que llegan: esa deja de seguir por ella. */
+    for (const x of t.reunionesDeFase(f.id)) caja.append(accion(`Separar de la fase ${t.numeroEnSuCamino(x)}`, 'Esta rama deja de seguir por esa fase', () => t.separarDe(x)));
+
+    if (this._formulario === 'abrir') caja.append(this._formAbrir(sale));
+    if (this._formulario === 'reunir') caja.append(this._formReunir(candidatas));
+    return caja;
+  }
+
+  /* Los nombres de las ramas, que son obligatorios (§6.7). Si detrás ya
+     había algo, pasa a ser la primera rama y se le pone nombre también. */
+  _formAbrir(sale) {
+    const t = this.tablero;
+    const campo = (texto, ejemplo) => {
+      const i = h('input', { class: 'pz-ramas__nombre', type: 'text', placeholder: ejemplo, 'aria-label': texto });
+      return { i, el: h('label', { class: 'pz-ramas__campo' }, texto, i) };
+    };
+    const yaEsCruce = sale.length > 1;
+    const primera = yaEsCruce ? null : campo(sale.length ? 'Lo que ya viene:' : 'Primera rama:', 'si le dejan');
+    const nueva = campo(yaEsCruce || sale.length ? 'La rama nueva:' : 'Segunda rama:', 'si le niegan');
+    const ok = h('button', { class: 'pz-ramas__b pz-ramas__b--si', type: 'submit' }, 'Abrir');
+    const form = h('form', { class: 'pz-ramas__form' }, primera ? primera.el : null, nueva.el, ok);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (t.abrirRama({ primera: primera ? primera.i.value : '', nueva: nueva.i.value })) { this._formulario = null; this.refrescar(); }
+    });
+    setTimeout(() => (primera ? primera.i : nueva.i).focus?.(), 0);
+    return form;
+  }
+
+  _formReunir(candidatas) {
+    const t = this.tablero;
+    const nombreDe = (id) => {
+      const rama = t.ramaDe(id);
+      return `Fase ${t.numeroEnSuCamino(id)}${rama ? ` · ${rama}` : ''}`;
+    };
+    const sel = h('select', { class: 'pz-ramas__sel', 'aria-label': 'Fase por la que sigue' },
+      ...candidatas.map((id) => h('option', { value: id }, nombreDe(id))));
+    const ok = h('button', { class: 'pz-ramas__b pz-ramas__b--si', type: 'submit' }, 'Reunir');
+    const form = h('form', { class: 'pz-ramas__form' }, h('label', { class: 'pz-ramas__campo' }, 'Sigue por:', sel), ok);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (t.reunirCon(sel.value)) { this._formulario = null; this.refrescar(); }
+    });
+    return form;
   }
 
   /* ---- los carriles ----------------------------------------- */

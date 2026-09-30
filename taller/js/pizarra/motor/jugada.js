@@ -27,12 +27,13 @@ import { VERSION_JUGADA } from './compilar.js';
 import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
 import { normalizarDefensa, normalizarDeclaradas, REGLAS } from './defensa.js';
 import { normalizarFila } from '../filas.js';
+import { sinEnlacesDeMas } from '../ramas.js';
 
 const DE_TIRO = new Set(CATALOGO_SISTEMA.filter((a) => a.parametros && a.parametros.modo === 'tiro').map((a) => a.slug));
 
 const finito = (v) => Number.isFinite(v);
 const nodoBueno = (n) => !!n && finito(n.x) && finito(n.y);
-const faseVacia = (id = 'f1') => ({ id, nombre: null, duracion_ms: null, pausa_post_ms: null, tramos: [], defensa: {}, texto: null });
+const faseVacia = (id = 'f1') => ({ id, nombre: null, duracion_ms: null, pausa_post_ms: null, tramos: [], defensa: {}, texto: null, rama_de: null, rama_nombre: null, reune: [] });
 
 /**
  * Deja una jugada guardada en condiciones de abrirse.
@@ -183,9 +184,31 @@ export function normalizarJugada(bruta) {
         defensa: declaradas.declaradas,
         /* La frase reescrita a mano (§9.2); null = la automática. */
         texto: typeof f.texto === 'string' && f.texto.trim() ? f.texto.trim() : null,
+        /* Las ramas (§6.7): se comprueban abajo, con todas las fases. */
+        rama_de: f.rama_de ?? null,
+        rama_nombre: f.rama_nombre ?? null,
+        reune: Array.isArray(f.reune) ? f.reune : [],
       };
     })
     .filter(Boolean);
+  /* LAS RAMAS (§6.7): de qué fase cuelga cada una —si no está, sigue a la
+     anterior—, su nombre —obligatorio: sin él se le pone uno y se dice— y
+     las que desembocan en una reunión. */
+  const idsFase = new Set(fases.map((f) => f.id));
+  let sinNombre = 0;
+  fases = fases.map((f, i) => {
+    const rama_de = f.rama_de != null && idsFase.has(f.rama_de) && f.rama_de !== f.id ? f.rama_de : null;
+    if (f.rama_de != null && !rama_de) avisos.push(`Fase ${i + 1}: colgaba de una fase que no está; sigue a la anterior.`);
+    let rama_nombre = rama_de && typeof f.rama_nombre === 'string' && f.rama_nombre.trim() ? f.rama_nombre.trim() : null;
+    if (rama_de && !rama_nombre) {
+      rama_nombre = `Rama ${++sinNombre}`;
+      avisos.push(`Fase ${i + 1}: una rama sin nombre se abre como «${rama_nombre}».`);
+    }
+    const reune = [...new Set(f.reune.filter((id) => idsFase.has(id) && id !== f.id))];
+    return { ...f, rama_de, rama_nombre, reune };
+  });
+  /* Un solo enlace que ya dice el orden de la lista sobra. */
+  fases = sinEnlacesDeMas(fases);
   /* Una jugada sin fases no se puede editar: siempre hay por lo menos
      la primera, aunque esté vacía. */
   if (!fases.length) fases = [faseVacia()];

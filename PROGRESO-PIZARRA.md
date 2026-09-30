@@ -36,12 +36,12 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
 | 6 · Conos y elementos | ✅ cerrada en la rama `pizarra-v3` (pasos 6.0 a 6.7; los equipos del club, para más adelante) | `1633407` |
 | 7 · Texto y voz | ✅ cerrada en la rama `pizarra-v3` (pasos 7.0 a 7.3, y los arreglos de su revisión) | ver «Capa 7» |
-| 8 · Ramas | pendiente | — |
+| 8 · Ramas | ✅ cerrada en la rama `pizarra-v3` (pasos 8.1 a 8.3, y los arreglos de su revisión) | ver «Capa 8» |
 | 9 · Variantes y vídeo | pendiente | — |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **71 en verde, 1718
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **72 en verde, 1764
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -378,6 +378,60 @@ tocarlos): `eval-repertorio` (anillo del defensor con pendientes;
 `eval-compilar` (B1 pasa a defender y a moverse), `eval-dibujo` (texto
 del bloqueo) y `eval-acciones` si cambian las mecánicas.
 
+## Capa 8, paso a paso
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 8.1 | El modelo (§6.7, §11.1; `pizarra/ramas.js` con su banco `eval-ramas.mjs`): la lista plana de fases con `rama_de`, `rama_nombre` y `reune`, sus caminos y el árbol. La jugada guarda y reabre las ramas; el compilador compila camino a camino (`fases` es el principal, y además `fases_rama`, `ramas` y `siguiente`); el motor se para en un cruce si se le pide (`elegirRamas`) | ✅ |
+| 8.2 | El cartel de rama en el proyector (§6.7, §10.2): se toca, o ← → e Intro, o 1, 2, 3; espera a que se elija | ✅ |
+| 8.3 | Las ramas en la Pizarra: el Tablero guarda el árbol y enseña un camino; la tira de fases en árbol; abrir, nombrar, quitar, reunir y separar ramas; «llevar» usa el camino principal | ✅ (72 bancos, 1764 pruebas; 59 mutantes, los 59 muertos; probado en el arnés y su proyector, sin guardar nada) |
+
+**Decidido por el entrenador (2026-09-24):** al abrir una rama, lo que ya
+venía detrás pasa a ser la primera; la tira se abre en árbol; las ramas se
+reúnen con «Reunir con…»; en el proyector, el cruce espera a que se elija.
+
+**Decidido en la capa 8 (detalles, sin preguntar):**
+
+- **El camino principal** es la primera rama de cada cruce. Es lo que
+  enseñan la miniatura, la ficha y el guion de Equipos, y lo que «llevar»
+  pasa al desarrollo. Solo el proyector pregunta en los cruces; la ficha
+  sigue el principal.
+- **Una reunión se dibuja donde se llega a ella primero** (recorriendo los
+  caminos por orden: el principal, si pasa por ella). En la Pizarra se ve,
+  y se guarda, desde la rama por la que se ha llegado: ir a ella desde otra
+  rama la reancla. El compilador reancla todos los caminos, también el
+  principal, así que el proyector nunca hace saltar a nadie.
+- **`reune` con una sola fase** dice de dónde viene una fase cuando el
+  orden de la lista ya no puede decirlo (tras quitar o separar una rama).
+  Así no hace falta reordenar la lista, que es lo que rompía las reuniones.
+- **Separar** se puede desde cualquiera de las ramas que llegan a una
+  reunión, también desde la que ya llegaba antes. Si la reunión empezaba
+  una rama de esa fase, deja de serlo; un cruce que se queda con una sola
+  rama deja de ser cruce, y esa pasa a ser lo que sigue.
+- **Quitar una rama**, solo si no tiene nada dibujado. Si empieza en una
+  reunión, lo que se quita es el paso del cruce a ella: la fase se queda.
+- **No se abren ramas en una fase que sigue por una reunión de otra
+  rama**: se dice que se separe antes.
+- **Como mucho 64 caminos distintos** de principio a fin (cada reunión los
+  multiplica y cada uno se compila entero): no se abre ni se reúne lo que
+  pasaría de ahí. Si llegara una jugada con más, se compilan los 64
+  primeros y se avisa.
+- **Un cruce sin nada dibujado se compila igual** (una fase muda de un
+  instante): es donde el proyector se para y pregunta. Así se puede abrir
+  ramas en la fase 1 sin dibujar nada en ella.
+- **En el proyector**, → fase a fase también se para en el cruce; volver
+  atrás, reiniciar o mover la barra quitan el cartel; darle al play con el
+  cartel delante es seguir por la primera rama.
+- **Quien espera en una fila y sale solo en una rama** es un jugador en
+  todos los caminos (quieto en su puesto donde no sale), y no se cuenta en
+  la cola. Los balones del carro de una rama salen también.
+- **El aviso «defiende y tiene trazos de ataque»** mira todos los caminos:
+  dar el balón al otro equipo en la fase 1 afecta a todas las ramas.
+
+**La revisión adversarial** (18 hallazgos; 11 confirmados por los
+escépticos y 6 que el límite de uso dejó sin verificar, comprobados a
+mano): todos eran defectos y están arreglados, con su prueba.
+
 ## Capa 7, paso a paso
 
 | Paso | Qué | Estado |
@@ -678,8 +732,9 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
-**Hoy (2026-09-24): la capa 8, ramas** (§14: ramas, reunión, cartel en
-el proyector). Las capas 6 y 7 están cerradas. Lo que viene después de
+**Hoy (2026-09-30): la capa 9, variantes y vídeo** (§14: anillo
+exterior, catálogo de variantes, columna de vídeo en el proyector §10.2).
+Las capas 6, 7 y 8 están cerradas. Lo que viene después de
 esta línea es el siguiente paso de la capa 4, que ya está hecho; se deja
 como historia.
 
@@ -899,6 +954,13 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
 - **Capa 7:** si la canasta cambia y las zonas quedan lejos, la frase se
   queda sin destinos («A1 pasa a A2, que ha cortado, y corta.»). Es
   verdad, pero pobre; se podría decir hacia dónde (arriba, al fondo).
+- **Capa 8:** en la tira, «Fase N» es el número por donde se llega primero
+  a esa fase; vista desde otra rama que se reúne con ella, esa misma fase
+  puede ser la 3 en un camino y la 4 en otro.
+- **Capa 8:** en el proyector, Reiniciar (R) cuando la fase 1 tiene un
+  vídeo de referencia sin ver arranca la animación debajo del vídeo (el
+  motor anuncia la fase antes de reproducir). Es lo mismo que se ha
+  arreglado al elegir una rama; viene de antes de las ramas.
 
 ---
 

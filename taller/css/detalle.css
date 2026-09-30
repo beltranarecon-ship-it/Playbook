@@ -245,6 +245,29 @@
 }
 .proyector.is-pausado .proy-pausa { opacity: 1; }
 
+/* ---- El cartel de rama en el proyector (ESPEC-PIZARRA-v3 §6.7) ----
+   Sobre la pista, grande: se lee desde el fondo de la pista y se toca
+   con el dedo. */
+.proy-cartel {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 6; min-width: min(560px, 86vw); max-width: 92vw;
+  padding: 18px 20px; border-radius: 14px;
+  background: rgba(10, 16, 28, 0.92); color: #fff; text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.proy-cartel[hidden] { display: none; }
+.proy-cartel__t { margin: 0 0 12px; font-size: 1.3rem; font-weight: 700; }
+.proy-cartel__opciones { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.proy-cartel__op {
+  display: inline-flex; align-items: center; gap: 10px;
+  min-height: 56px; padding: 10px 18px; border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.08);
+  color: #fff; font: inherit; font-size: 1.15rem; cursor: pointer;
+}
+.proy-cartel__op.is-marcada, .proy-cartel__op:hover { border-color: #F97316; background: rgba(249, 115, 22, 0.2); }
+.proy-cartel__n { opacity: 0.7; }
+
+
 /* La capa del vídeo. Cuelga del proyector (no del body) para que se vea
    por encima de la pantalla completa. */
 /* `fixed` y no `absolute`: la capa se abre también desde la FICHA, donde
