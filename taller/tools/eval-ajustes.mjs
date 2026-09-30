@@ -10,6 +10,7 @@
    ============================================================ */
 
 import { modeloAjustes, NUMEROS } from '../js/pizarra/paneles/ajustes-modelo.js';
+import { ponerVariantesDelClub } from '../js/pizarra/repertorio.js';
 import { papelesDeJugada, PARAMETROS, REGLAS } from '../js/pizarra/motor/defensa.js';
 
 let pasan = 0, fallan = 0;
@@ -210,6 +211,25 @@ test('LA FILA DICE CÓMO SALEN: todos uno tras otro, con su cadencia, o solo el 
   eq(con({ cadencia_ms: 1750 }).cadencia.opciones.slice(-1)[0], { valor: '1750', nombre: 'Cada 1,75 s' }, 'una cadencia que no está en la lista se enseña igual:');
   const solo = con({ rondas: false });
   eq([solo.rondas.valor, solo.cadencia], ['no', null], 'si solo sale el primero, no hay cadencia:');
+});
+
+test('UN TRAZO PINCHADO: su variante, el vídeo de esa variante y «Nueva variante» (§4.3, §10.1)', () => {
+  ponerVariantesDelClub([{ accion: 'pasa', slug: 'por_detras', nombre: 'Por detrás', descripcion: 'A la espalda.' }]);
+  try {
+    const el = escena();
+    const t = { id: 'tr1', elemento_id: 'A1', corre_id: 'b1', accion: 'pasa', variante: null };
+    const videos = { pasa__recto: { tipo: 'youtube', id: 'dQw4w9WgXcQ', desde: 3, hasta: 9 } };
+    const m = modeloAjustes({ seleccion: ['A1'], elementos: el, tramo: t, videos, nombreDe: (e) => e.id });
+    eq([m.tipo, m.titulo, m.accion], ['tramo', 'A1 · Pasa', 'pasa'], 'con un trazo pinchado, el trazo manda:');
+    eq(m.variante.valor, 'recto', 'sin elegir, la de siempre:');
+    eq(m.variante.opciones[0].nombre, 'Recto (la de siempre)');
+    eq(m.variante.opciones.at(-1), { valor: 'por_detras', nombre: 'Por detrás · del club' });
+    eq(m.video, { clave: 'pasa__recto', de: 'Pasa · Recto', actual: { tipo: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3', tramo: 'del 0:03 al 0:09' } });
+    const n = modeloAjustes({ elementos: el, tramo: { ...t, variante: 'por_detras' }, videos });
+    eq([n.variante.valor, n.descripcion, n.video.clave, n.video.actual, n.nuevaVariante], ['por_detras', 'A la espalda.', 'pasa__por_detras', null, true]);
+    const r = modeloAjustes({ elementos: el, tramo: { ...t, accion: 'recoge' }, videos: { recoge: videos.pasa__recto } });
+    eq([r.variante, r.video.clave, !!r.video.actual, r.nuevaVariante], [null, 'recoge', true, false], 'sin variantes, el vídeo es el de la acción y no se añaden:');
+  } finally { ponerVariantesDelClub([]); }
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

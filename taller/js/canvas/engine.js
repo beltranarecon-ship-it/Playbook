@@ -200,7 +200,9 @@ export class AnimationEngine {
      compilador; una fase dibujada a mano en el editor de flechas no
      tiene ninguna, y eso es una lista vacía, no un fallo. */
   accionesDeFase(k) { const a = this.fases[k]?.acciones; return Array.isArray(a) ? a : []; }
-  _infoFase(k) { return { k, n: this.phaseCount, ronda: this.fases[k]?.ronda || 1, rondas: this.rondas, acciones: this.accionesDeFase(k) }; }
+  _infoFase(k) { return { k, n: this.phaseCount, ronda: this.fases[k]?.ronda || 1, rondas: this.rondas, acciones: this.accionesDeFase(k), variantes: this.variantesDeFase(k) }; }
+  /* Las variantes de una fase (§11.2), para su vídeo (§10.2). */
+  variantesDeFase(k) { const v = this.fases[k]?.variantes; return Array.isArray(v) ? v : []; }
   setSpeed(s) { this.speed = s; this._emitFrame(); }
   setLoop(b) { this.loop = b; this._emitFrame(); }
   seek(u) {

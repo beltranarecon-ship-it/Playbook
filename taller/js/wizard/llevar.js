@@ -23,7 +23,7 @@
    ============================================================ */
 
 import { CATALOGO_SISTEMA } from '../ia/acciones.js';
-import { VARIANTES } from '../pizarra/repertorio.js';
+import { VARIANTES, varianteDe } from '../pizarra/repertorio.js';
 import { esTagValido, esBloqueValido } from '../ia/vocabulario.js';
 import { frasesDeJugada } from '../pizarra/motor/frase.js';
 import { papelesDeJugada } from '../pizarra/motor/defensa.js';
@@ -112,20 +112,21 @@ export function propuestaDesdeLaJugada(jugada) {
     const defienden = new Set((papeles && papeles.fases[i] && papeles.fases[i].defensores) || []);
     for (const t of f.tramos) {
       const a = porSlug.get(t.accion) || {};
-      const v = (VARIANTES[t.accion] || []).find((x) => x.slug === t.variante);
+      const v = varianteDe(t.accion, t.variante);
       /* Recoger es rebote ofensivo o defensivo según quién lo coge. */
       if (t.accion === 'recoge') pon(defienden.has(t.elemento_id) ? 'rebote defensivo' : 'rebote ofensivo');
       else if (esTagValido(a.tag)) pon(a.tag);
       /* Sin variante elegida, la de toda la vida, si su etiqueta es la
-         que falta (un bloqueo es directo mientras no se diga otra cosa). */
-      else if (!v) pon(((VARIANTES[t.accion] || [])[0] || {}).tag);
+         que falta (un bloqueo es directo mientras no se diga otra cosa).
+         Una del club no tiene etiqueta: no se pone la de otra. */
+      else if (!t.variante) pon(((VARIANTES[t.accion] || [])[0] || {}).tag);
       if (v) pon(v.tag);
     }
     for (const a of Object.values(f.defensa || {})) pon((porSlug.get(a && a.accion) || {}).tag);
   });
   /* Y lo de las otras ramas, que también se entrena. */
   for (const t of tramos) {
-    const v = (VARIANTES[t.accion] || []).find((x) => x.slug === t.variante);
+    const v = varianteDe(t.accion, t.variante);
     if (t.accion !== 'recoge') pon((porSlug.get(t.accion) || {}).tag);
     if (v) pon(v.tag);
   }

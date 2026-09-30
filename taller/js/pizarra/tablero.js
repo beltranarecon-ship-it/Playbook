@@ -45,7 +45,7 @@ import { Repaso, VELOCIDAD_REPASO, duracionRepaso } from './repaso.js';
 import { drawArrow, drawBloqueo } from '../canvas/arrows.js';
 import { flattenPath } from '../canvas/geometry.js';
 import {
-  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, necesita, ICONOS, porQueNoCompanero, saleEn,
+  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, varianteDe, necesita, ICONOS, porQueNoCompanero, saleEn,
 } from './repertorio.js';
 import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
 import {
@@ -89,9 +89,10 @@ export class Tablero {
    * @param onFases       (fases, enCurso) — ha cambiado el número de fases
    * @param onEscena      (elementos) — se ha puesto, quitado o movido algo
    * @param onSeleccion   (ids) — ha cambiado lo que está seleccionado
+   * @param onEditando    (tramo|null) — se ha pinchado un trazo, o se ha soltado
    */
   constructor(lienzo, {
-    canasta = 'norte', posiciones = {}, onTramos, onAyuda, onSinSoporte, onNoPuede, onFases, onEscena, onSeleccion,
+    canasta = 'norte', posiciones = {}, onTramos, onAyuda, onSinSoporte, onNoPuede, onFases, onEscena, onSeleccion, onEditando,
   } = {}) {
     this.lienzo = lienzo;
     this.canasta = canasta;
@@ -102,6 +103,7 @@ export class Tablero {
     this.onFases = onFases;
     this.onEscena = onEscena;
     this.onSeleccion = onSeleccion;
+    this.onEditando = onEditando;
     this._ultimaSeleccion = '';
     this._arrastrePareja = null;  // { defensor, punto } mientras se arrastra la línea de un par
 
@@ -206,7 +208,7 @@ export class Tablero {
     this.nodos = new Nodos(lienzo, {
       ...comun,
       onCambio: (trazo) => this._trazoCorregido(trazo),
-      onSalir: () => { this._editando = null; this._cerrarDesenlace(); this._pintarAyuda(); },
+      onSalir: () => { this._editando = null; this._cerrarDesenlace(); this._pintarAyuda(); this.onEditando?.(null); },
       onBorrarTrazo: () => this._borrarElQueSeEdita(),
     });
 
@@ -2067,8 +2069,10 @@ export class Tablero {
     this.companero.cancelar();
     this.nodos.soltar();
     this._enCurso = null;
+    const editaba = !!this._editando;
     this._editando = null;
     this._pintarAyuda();
+    if (editaba) this.onEditando?.(null);
   }
 
   /* ---- el bucle ---------------------------------------------- */
@@ -2515,6 +2519,27 @@ export class Tablero {
     });
     if (esTiro(tramo)) this._abrirDesenlace(tramo); else this._cerrarDesenlace();
     this._pintarAyuda();
+    this.onEditando?.(tramo);
+  }
+
+  /* ---- la variante de un trazo (§4.3) ------------------------ */
+
+  /** El tramo que se está corrigiendo (el trazo pinchado), o null. */
+  get tramoEditado() { return this._editando; }
+
+  /**
+   * CAMBIA LA VARIANTE TÉCNICA de un tramo de la fase que se edita. No
+   * toca la geometría (§4.3): solo lo que se dice, la etiqueta y el vídeo
+   * que se enseña.
+   */
+  cambiarVariante(id, variante) {
+    const t = this.tramos.find((x) => x.id === id);
+    if (!t || !varianteDe(t.accion, variante)) return false;
+    if (t.variante === variante) return false;
+    this.tramos = this.tramos.map((x) => (x.id === id ? { ...x, variante } : x));
+    if (this._editando && this._editando.id === id) this._editando = this.tramos.find((x) => x.id === id);
+    this.onTramos?.(this.tramos);
+    return true;
   }
 
   _trazoCorregido(trazo) {

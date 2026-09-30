@@ -460,6 +460,31 @@
 }
 .proyector.is-pausado .proy-pausa { opacity: 1; }
 
+/* ---- La columna del vídeo en el proyector (ESPEC-PIZARRA-v3 §10.2) ----
+   A la derecha, el clip de la variante de la fase: mudo, en bucle, los
+   primeros segundos. Sin clip se pliega y la pista ocupa todo. Tocarla
+   abre el vídeo en grande (la capa de siempre) y para la animación. */
+.proyector { --ancho-columna: min(28vw, 440px); }
+.proy-columna { display: none; }
+.proyector.con-columna .proy-columna {
+  display: grid; gap: 8px; position: absolute; z-index: 2;
+  right: 1rem; top: 50%; transform: translateY(-50%); width: var(--ancho-columna);
+}
+.proyector.con-columna .proyector__stage { padding-right: calc(var(--ancho-columna) + 24px); }
+.proyector.con-columna.proyector--full .court { width: min(calc(97vw - var(--ancho-columna) - 24px), calc(94vh * var(--court-aspect, 1.5))); }
+.proy-columna__t { font-size: 1.1rem; font-weight: 700; }
+.proy-columna__video {
+  width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px;
+  background: #111; pointer-events: none;
+}
+.proy-columna__mas { font-size: 0.8rem; opacity: 0.6; transition: opacity 0.3s ease; }
+.proyector.is-idle .proy-columna__mas { opacity: 0; }
+.proy-columna__tocar {
+  position: absolute; inset: 0; border: 0; border-radius: 10px;
+  background: transparent; cursor: pointer;
+}
+.proy-columna__tocar:focus-visible { outline: 2px solid #F97316; outline-offset: 2px; }
+
 /* ---- El cartel de rama en el proyector (ESPEC-PIZARRA-v3 §6.7) ----
    Sobre la pista, grande: se lee desde el fondo de la pista y se toca
    con el dedo. */

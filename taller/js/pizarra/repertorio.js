@@ -230,9 +230,37 @@ export const VARIANTES = {
   ],
 };
 
-/** Las variantes de una acción, o lista vacía si no tiene. */
-export const variantesDe = (slug) => VARIANTES[slug] || [];
+/* ── Las variantes del club (§4.3) ──
+   Las que va añadiendo el club (tabla `variantes`, migración 044) van
+   detrás de las de serie, y solo en las acciones que ya tienen. Las pone
+   quien las carga —la Pizarra al abrirse— y desde ese momento las ven el
+   anillo, la frase y el panel del trazo. */
+let delClub = [];
+
+/** Pone las variantes del club: [{ accion, slug, nombre, descripcion }].
+ *  Lo que no vale (sin nombre, de una acción sin variantes, o que pisa
+ *  una de serie) se deja fuera. */
+export function ponerVariantesDelClub(lista = []) {
+  const vistas = new Set();
+  delClub = [];
+  for (const v of Array.isArray(lista) ? lista : []) {
+    if (!v || !VARIANTES[v.accion] || typeof v.slug !== 'string' || !v.slug) continue;
+    if (typeof v.nombre !== 'string' || !v.nombre.trim()) continue;
+    if (VARIANTES[v.accion].some((s) => s.slug === v.slug) || vistas.has(`${v.accion}/${v.slug}`)) continue;
+    vistas.add(`${v.accion}/${v.slug}`);
+    delClub.push({ accion: v.accion, slug: v.slug, nombre: v.nombre.trim(), tag: null, descripcion: v.descripcion || '', video: null, delClub: true });
+  }
+}
+
+/** Las variantes del club que hay puestas. */
+export const variantesDelClub = () => [...delClub];
+
+/** Las variantes de una acción —las de serie y detrás las del club—, o
+ *  lista vacía si no tiene. */
+export const variantesDe = (slug) => (VARIANTES[slug] ? [...VARIANTES[slug], ...delClub.filter((v) => v.accion === slug)] : []);
 export const tieneVariantes = (slug) => variantesDe(slug).length > 0;
+/** Una variante de una acción, de serie o del club; null si no está. */
+export const varianteDe = (accion, slug) => (slug == null ? null : variantesDe(accion).find((v) => v.slug === slug) || null);
 
 /** La variante por defecto: la primera, la de toda la vida. */
 export const variantePorDefecto = (slug) => variantesDe(slug)[0] || null;

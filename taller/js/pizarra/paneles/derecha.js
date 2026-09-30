@@ -28,8 +28,19 @@ export class PanelDerecho {
    * @param onFila     (cono, parcial|null) — hacer, cambiar o deshacer
    *                   (con null) la fila de un cono (§7.4.2)
    * @param onDarBalon (jugador) — «dale un balón» (§7.3)
+   * @param onVariante (tramo, variante) — la variante técnica de un trazo (§4.3)
+   * @param onVideo   (clave, { enlace, desde, hasta }) — poner el vídeo de una variante (§10.1)
+   * @param onQuitarVideo (clave)
+   * @param onNuevaVariante (accion, { nombre, descripcion, enlace, desde, hasta }) (§4.3)
    */
-  constructor({ onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null, onDeshacerPuerta = null, onFila = null, onDarBalon = null } = {}) {
+  constructor({
+    onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null, onDeshacerPuerta = null, onFila = null, onDarBalon = null,
+    onVariante = null, onVideo = null, onQuitarVideo = null, onNuevaVariante = null,
+  } = {}) {
+    this.onVariante = onVariante;
+    this.onVideo = onVideo;
+    this.onQuitarVideo = onQuitarVideo;
+    this.onNuevaVariante = onNuevaVariante;
     this.onDarBalon = onDarBalon;
     this.onDeshacerPuerta = onDeshacerPuerta;
     this.onFila = onFila;
@@ -79,9 +90,17 @@ export class PanelDerecho {
     const abierto = !!this._cuerpo.querySelector('details[open]');
     const foco = document.activeElement;
     const etiqueta = foco && this._cuerpo.contains(foco) ? foco.getAttribute('aria-label') : null;
+    /* Lo escrito a medias en las casillas de texto (el enlace de un
+       vídeo, el nombre de una variante) tampoco se pierde. */
+    const escrito = new Map([...this._cuerpo.querySelectorAll('input[type="text"][aria-label], textarea[aria-label]')]
+      .filter((x) => x.value).map((x) => [x.getAttribute('aria-label'), x.value]));
     mount(this._cuerpo, ...this._contenido(modelo));
     const det = this._cuerpo.querySelector('details');
     if (abierto && det) det.open = true;
+    for (const [k, v] of escrito) {
+      const x = this._cuerpo.querySelector(`[aria-label="${k}"]`);
+      if (x && !x.value) { x.value = v; x.closest('details')?.setAttribute('open', ''); }
+    }
     if (etiqueta) this._cuerpo.querySelector(`[aria-label="${etiqueta}"]`)?.focus?.();
   }
 
@@ -106,6 +125,7 @@ export class PanelDerecho {
         return [h('h4', { class: 'pz-der__titulo' }, m.nombre),
           h('p', { class: 'pz-der__nota' }, m.defensor ? `Le defiende ${m.defensor}. Para cambiarlo, selecciona al defensor o arrastra su línea discontinua.` : 'Nadie le defiende.'),
           this._darBalon(m)];
+      case 'tramo': return this._tramo(m);
       case 'sinPapel':
         return [h('h4', { class: 'pz-der__titulo' }, m.nombre), h('p', { class: 'pz-der__nota' }, m.texto), this._darBalon(m)];
       default:
@@ -140,6 +160,52 @@ export class PanelDerecho {
       this._darBalon(m),
       h('p', { class: 'pz-der__nota' }, 'También se cambia el par arrastrando su línea discontinua hasta otro atacante. Ayudar y cambiar el par con otro defensor se eligen en el anillo, pinchando a quién.'),
     ];
+  }
+
+  /* UN TRAZO PINCHADO: su variante, el vídeo de la variante y «Nueva
+     variante» (§4.3, §10.1). Guardar el vídeo y crear la variante
+     escriben para todo el club: lo hace quien pinta el panel. */
+  _tramo(m) {
+    const texto = (etiqueta, ejemplo = '') => h('input', { type: 'text', 'aria-label': etiqueta, placeholder: ejemplo, class: 'pz-der__texto' });
+    const partes = [h('h4', { class: 'pz-der__titulo' }, m.titulo)];
+    if (m.variante) partes.push(this._campoSelect('Variante', m.variante, (v) => this.onVariante?.(m.id, v)));
+    else partes.push(h('p', { class: 'pz-der__nota' }, 'Esta acción no tiene variantes técnicas.'));
+    if (m.descripcion) partes.push(h('p', { class: 'pz-der__nota' }, m.descripcion));
+    if (m.video) {
+      const v = m.video;
+      const enlace = texto('Enlace del vídeo', 'https://youtu.be/…');
+      const desde = texto('Desde', '0:07');
+      const hasta = texto('Hasta', '0:14');
+      partes.push(h('div', { class: 'pz-der__video' },
+        h('h5', { class: 'pz-der__sub' }, `Vídeo de «${v.de}»`),
+        v.actual
+          ? h('p', { class: 'pz-der__nota' }, h('a', { href: v.actual.url, target: '_blank', rel: 'noopener noreferrer' }, v.actual.tipo === 'tiktok' ? 'Ver en TikTok' : 'Ver en YouTube'), v.actual.tramo ? ` · ${v.actual.tramo}` : '')
+          : h('p', { class: 'pz-der__nota' }, 'Todavía no tiene. Se pone una vez y sale en todos los ejercicios que la usan.'),
+        this._campo(v.actual ? 'Cambiarlo' : 'Enlace', enlace),
+        h('div', { class: 'pz-der__tramo' }, this._campo('Desde', desde), this._campo('Hasta', hasta)),
+        h('div', { class: 'pz-der__botones' },
+          h('button', { class: 'pz-der__serie', type: 'button', onClick: () => this.onVideo?.(v.clave, { enlace: enlace.value, desde: desde.value, hasta: hasta.value }) }, 'Guardar el vídeo'),
+          v.actual ? h('button', { class: 'pz-der__serie', type: 'button', onClick: () => this.onQuitarVideo?.(v.clave) }, 'Quitar el vídeo') : null)));
+    }
+    if (m.nuevaVariante) {
+      const nombre = texto('Nombre de la variante', 'por detrás');
+      const descripcion = h('textarea', { 'aria-label': 'Descripción de la variante', rows: '2', class: 'pz-der__texto', placeholder: 'Cómo se hace, en una línea' });
+      const enlace = texto('Enlace del vídeo de la variante', 'https://youtu.be/…');
+      const desde = texto('Desde (variante)', '0:07');
+      const hasta = texto('Hasta (variante)', '0:14');
+      partes.push(h('details', { class: 'pz-der__mas' },
+        h('summary', null, 'Nueva variante'),
+        h('p', { class: 'pz-der__nota' }, 'Queda en el anillo para todo el club.'),
+        this._campo('Nombre', nombre),
+        this._campo('Descripción', descripcion),
+        this._campo('Vídeo (si quieres)', enlace),
+        h('div', { class: 'pz-der__tramo' }, this._campo('Desde', desde), this._campo('Hasta', hasta)),
+        h('button', {
+          class: 'pz-der__serie', type: 'button',
+          onClick: () => this.onNuevaVariante?.(m.accion, { nombre: nombre.value, descripcion: descripcion.value, enlace: enlace.value, desde: desde.value, hasta: hasta.value }),
+        }, 'Crear la variante')));
+    }
+    return partes;
   }
 
   /* «Dale un balón» (§7.3): solo sale si se puede dar. */

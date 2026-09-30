@@ -52,6 +52,7 @@ import { posicionesDe } from '../../canvas/anclas.js';
 import { conRondas } from '../rondas-fila.js';
 import { frasesDeJugada } from './frase.js';
 import { tieneRamas, todosLosCaminos, grafoDe, cuantosCaminos, MAX_CAMINOS } from '../ramas.js';
+import { varianteDe } from '../repertorio.js';
 
 export const VERSION_JUGADA = 3;
 
@@ -486,7 +487,9 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
 
     if (!acciones.includes(t.accion)) acciones.push(t.accion);
     if (t.variante && !variantes.some((v) => v.accion === t.accion && v.variante === t.variante)) {
-      variantes.push({ accion: t.accion, variante: t.variante });
+      /* Con su nombre: la columna del proyector lo titula así (§10.2), y
+         una variante del club no la conoce quien no la ha cargado. */
+      variantes.push({ accion: t.accion, variante: t.variante, nombre: (varianteDe(t.accion, t.variante) || {}).nombre || null });
     }
 
     if (accion.familia === 'balon' && modo === 'pase') {

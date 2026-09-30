@@ -33,6 +33,7 @@ import { zonaDe, aroExacto } from '../../canvas/anclas.js';
 import { metrosEntre } from '../../canvas/escala.js';
 import { numeroDe } from '../elementos.js';
 import { conRondas } from '../rondas-fila.js';
+import { varianteDe } from '../repertorio.js';
 
 const porSlug = new Map(CATALOGO_SISTEMA.map((a) => [a.slug, a]));
 
@@ -85,7 +86,13 @@ export function nombreEnFrase(e) {
   return e.nombre || 'eso';
 }
 
-const variante = (t) => ((COMO_SE_DICE[t.accion] || {})[t.variante] ?? '');
+/* Una variante del club (§4.3) se dice por su nombre: «pasa por detrás». */
+const variante = (t) => {
+  const dicha = (COMO_SE_DICE[t.accion] || {})[t.variante];
+  if (dicha != null) return dicha;
+  const delClub = varianteDe(t.accion, t.variante);
+  return delClub ? ` ${delClub.nombre.toLocaleLowerCase('es')}` : '';
+};
 
 /* Una fase o un tramo roto no deja sin frase a toda la jugada. */
 const sano = (f) => (f && typeof f === 'object' ? { ...f, tramos: (Array.isArray(f.tramos) ? f.tramos : []).filter((t) => t && t.id != null) } : { tramos: [] });

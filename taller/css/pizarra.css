@@ -465,6 +465,16 @@
   border-radius: var(--r-sm); background: none; color: var(--color-text); font: inherit; cursor: pointer;
 }
 .pz-der__serie:hover { background: var(--surface-2); }
+/* El trazo pinchado: su variante, su vídeo y «Nueva variante» (§4.3, §10.1). */
+.pz-der__campo .pz-der__texto {
+  width: 100%; min-height: 32px; padding: 4px 6px; border: 1px solid var(--color-border);
+  border-radius: var(--r-sm); background: var(--color-bg); color: var(--color-text); font: inherit; resize: vertical;
+}
+.pz-der__video { margin: 12px 0 4px; padding-top: 8px; border-top: 1px solid var(--color-border); }
+.pz-der__sub { margin: 2px 0 4px; font-size: var(--fs-200); font-weight: 700; color: var(--color-text); }
+.pz-der__tramo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pz-der__tramo .pz-der__campo { margin: 2px 0; }
+.pz-der__botones { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* La ficha que se arrastra desde el panel. Flota de verdad, así que
    aquí sí hay sombra (§2.7). */

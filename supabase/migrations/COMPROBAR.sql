@@ -142,7 +142,12 @@ WITH esperado(mig, trae, clase, obj) AS (
        ejercicio se ve bien en todas partes, pero al volver a abrirlo no
        se puede seguir editando y hay que rehacerlo desde las posiciones
        iniciales. Nada más deja de funcionar: la app guarda sin ella. */
-    ('043', 'reabrir la pizarra para seguir editando', 'columna', 'exercises.jugada')
+    ('043', 'reabrir la pizarra para seguir editando', 'columna', 'exercises.jugada'),
+    /* Sin ésta, «Nueva variante» de la Pizarra dice que falta y las
+       variantes que se ofrecen son solo las de serie. Los vídeos de las
+       variantes no dependen de ella: van en videos_accion (021). */
+    ('044', 'las variantes técnicas del club', 'tabla',   'variantes'),
+    ('044', 'las variantes técnicas del club', 'funcion', 'variantes_guard')
 ),
 
 /* Cada clase se busca donde el catálogo de Postgres la guarda. Una

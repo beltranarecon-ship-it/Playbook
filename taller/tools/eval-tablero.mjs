@@ -53,6 +53,7 @@ const conosMod = await import('../js/pizarra/conos.js');
 const filasMod = await import('../js/pizarra/filas.js');
 const { Descripcion } = await import('../js/pizarra/paneles/descripcion.js');
 const { metrosEntre } = await import('../js/canvas/escala.js');
+const { ponerVariantesDelClub, variantesDe } = await import('../js/pizarra/repertorio.js');
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -1036,6 +1037,93 @@ test('REABRIR UNA JUGADA CON RAMAS: se abre por el camino principal y cada rama 
   otro.irAFaseId(f3);
   eq(otro.fases.map((f) => f.id), [f1, f3]);
   ok(otro.frases()[1].length > 0, `con su frase: ${otro.frases()[1]}`);
+});
+
+test('UN TRAZO PINCHADO SE VE EN EL PANEL, y su variante se cambia sin tocar el trazo (§4.3)', () => {
+  const { t, p } = sinAtacante();
+  let modelo = null;
+  p.derecha = { pintar: (m) => { modelo = m; } };
+  let avisado = null;
+  const otro = new Tablero(lienzoFalso(), { onEditando: (x) => { avisado = x; } });
+  ok(otro.onEditando, 'la Pizarra se entera por la opción del constructor');
+  t.onEditando = () => p._refrescarAjustes();
+  const tr = t.tramos[0];
+  t._editar(tr);
+  eq([modelo.tipo, modelo.variante.valor], ['tramo', 'recto'], 'al pincharlo, el panel es el suyo:');
+  ok(t.cambiarVariante(tr.id, 'en_v'), 'se cambia');
+  eq(t.tramos[0].trazo, tr.trazo, 'sin tocar el trazo:');
+  eq([t.tramos[0].variante, t.tramoEditado.variante], ['en_v', 'en_v']);
+  ok(/en V/.test(t.frases()[0]), `y la frase lo dice: ${t.frases()[0]}`);
+  eq([t.cambiarVariante(tr.id, 'en_v'), t.cambiarVariante(tr.id, 'volando'), t.cambiarVariante('nadie', 'recto')], [false, false, false], 'lo mismo, lo que no es de esa acción o un tramo que no está, no:');
+  t.cerrar();
+  ok(modelo.tipo !== 'tramo', 'al soltarlo, el panel vuelve a lo de antes');
+});
+
+/* Lo que habla con la base de datos, de mentira: se apunta qué se pide. */
+async function testA(nombre, fn) {
+  try { await fn(); pasan++; console.log(`  ✓ ${nombre}`); }
+  catch (e) { fallan++; console.error(`  ✗ ${nombre}\n      ${e.message}`); }
+  finally { ponerVariantesDelClub([]); }
+}
+const datosDeMentira = (llamadas, { falla = null } = {}) => ({
+  cargarVariantes: async () => [{ accion: 'corta', slug: 'flash', nombre: 'Flash' }],
+  cargarVideos: async () => ({ corta__recto: { tipo: 'youtube', id: 'dQw4w9WgXcQ', desde: null, hasta: 6 } }),
+  guardarVideo: async (clave, video) => { if (falla === 'video') throw new Error('sin red'); llamadas.push(['video', clave, video]); },
+  borrarVideo: async (clave) => { llamadas.push(['quitar', clave]); },
+  crearVariante: async (v) => { if (falla === 'variante') throw new Error('hay que aplicar la migración 044'); llamadas.push(['variante', v]); return { ...v, id: 'u1' }; },
+});
+
+await testA('AL ABRIR, LAS VARIANTES DEL CLUB Y LOS VÍDEOS LLEGAN DE FONDO', async () => {
+  const { t, p } = sinAtacante();
+  p.datos = datosDeMentira([]);
+  p.videos = {};
+  await p._cargarVariantesYVideos();
+  ok(variantesDe('corta').some((v) => v.slug === 'flash'), 'la del club está en el anillo');
+  eq(Object.keys(p.videos), ['corta__recto']);
+  ok(t, 'tablero');
+});
+
+await testA('EL VÍDEO DE UNA VARIANTE SE COMPRUEBA, SE GUARDA PARA EL CLUB Y SE QUITA', async () => {
+  const { t, p, avisos } = sinAtacante();
+  const llamadas = [];
+  let modelo = null;
+  p.derecha = { pintar: (m) => { modelo = m; } };
+  p.datos = datosDeMentira(llamadas);
+  p.videos = {};
+  t._editar(t.tramos[0]);
+  ok(await p.guardarVideo('corta__recto', { enlace: 'https://youtu.be/dQw4w9WgXcQ', desde: '3', hasta: '0:09' }), 'se guarda');
+  eq(llamadas, [['video', 'corta__recto', { tipo: 'youtube', id: 'dQw4w9WgXcQ', desde: 3, hasta: 9 }]]);
+  eq(modelo.video.actual && modelo.video.actual.tramo, 'del 0:03 al 0:09', 'y el panel lo enseña:');
+  eq(await p.guardarVideo('corta__recto', { enlace: 'hola' }), false, 'un enlace que no es de vídeo, no:');
+  ok(/no se reconoce el enlace/.test(avisos.at(-1)), avisos.at(-1));
+  eq(llamadas.length, 1, 'y no se manda nada:');
+  ok(await p.quitarVideo('corta__recto'));
+  eq([llamadas.at(-1), modelo.video.actual], [['quitar', 'corta__recto'], null]);
+  p.datos = datosDeMentira(llamadas, { falla: 'video' });
+  eq(await p.guardarVideo('corta__recto', { enlace: 'https://youtu.be/dQw4w9WgXcQ' }), false);
+  ok(/sin red/.test(avisos.at(-1)), 'si falla, se dice por qué');
+});
+
+await testA('UNA VARIANTE NUEVA: se crea para el club, con su vídeo, y se le pone al trazo pinchado', async () => {
+  const { t, p, avisos } = sinAtacante();
+  const llamadas = [];
+  p.derecha = { pintar() {} };
+  p.datos = datosDeMentira(llamadas);
+  p.videos = {};
+  t._editar(t.tramos[0]);
+  const v = await p.nuevaVariante('corta', { nombre: 'Rizo doble', descripcion: 'Dos vueltas.', enlace: 'https://youtu.be/dQw4w9WgXcQ?t=4' });
+  eq(v && v.slug, 'rizo_doble');
+  eq(llamadas, [
+    ['variante', { accion: 'corta', slug: 'rizo_doble', nombre: 'Rizo doble', descripcion: 'Dos vueltas.' }],
+    ['video', 'corta__rizo_doble', { tipo: 'youtube', id: 'dQw4w9WgXcQ', desde: 4, hasta: null }],
+  ]);
+  ok(variantesDe('corta').some((x) => x.slug === 'rizo_doble'), 'ya está en el anillo');
+  eq(t.tramos[0].variante, 'rizo_doble', 'y el trazo pinchado la lleva:');
+  ok(/rizo doble/.test(t.frases()[0]), `la frase la nombra: ${t.frases()[0]}`);
+  eq(await p.nuevaVariante('corta', { nombre: 'Rizo doble' }), null, 'dos veces la misma, no:');
+  p.datos = datosDeMentira(llamadas, { falla: 'variante' });
+  eq(await p.nuevaVariante('corta', { nombre: 'Otra' }), null);
+  ok(/migración 044/.test(avisos.at(-1)), `sin la tabla, se dice qué falta: ${avisos.at(-1)}`);
 });
 
 test('EL TIRADOR GIRA LA FILA: se coge al final de la cola y se imanta cada 15°', () => {

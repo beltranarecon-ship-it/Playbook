@@ -88,7 +88,8 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
      Se pide UNA vez al abrir el visor y se le pasa al proyector; sin
      él —sin red— el proyector se comporta como siempre (§11). */
   let catalogo = [];
-  cargarCatalogoConVideos().then(({ acciones }) => { catalogo = acciones || []; }).catch(() => {});
+  let videos = {};   // también los de las variantes (§10.1), para la columna del proyector
+  cargarCatalogoConVideos().then((r) => { catalogo = r.acciones || []; videos = r.videos || {}; }).catch(() => {});
 
   // ── lienzo (se construye UNA vez) ───────────────────────────
   // rotate 90: apaisado, como el proyector. En una columna lateral de
@@ -384,7 +385,7 @@ export function crearVisor({ onNotas = null, soloLectura = false } = {}) {
         // abierto, destroy() lo cierra en vez de dejar un telón negro encima
         // se le pasan los requisitos: el proyector enseña dosis, criterio
         // y el nivel de exigencia que se está corriendo
-        onClick: () => { proyector = abrirProyector(paraVer(ficha.animacion), { nombre: ficha.name, requisitos: ficha.requisitos, variantes: ficha.variantes, catalogo }); },
+        onClick: () => { proyector = abrirProyector(paraVer(ficha.animacion), { nombre: ficha.name, requisitos: ficha.requisitos, variantes: ficha.variantes, catalogo, videos }); },
       }, icon(ICO.proyector, { size: 18 })) : null,
       bloque.exercise_id ? h('a', {
         class: 'eq-vbtn', href: `/ejercicios/${bloque.exercise_id}`,

@@ -27,6 +27,7 @@ export const TABLA_DE = {
   session_slot_exclusions: { migracion: '018', para: 'quitar entrenamientos del calendario sin que vuelvan a generarse' },
   acciones: { migracion: '020', para: 'el catálogo de acciones del taller' },
   videos_accion: { migracion: '021', para: 'los vídeos de las acciones' },
+  variantes: { migracion: '044', para: 'las variantes técnicas del club' },
   session_stars: { migracion: '023', para: 'la estrella rápida de la sesión activa' },
   /* La 024 trae DOS tablas y la app lee las dos. Ojo con los nombres:
      aquí estuvo escrito `rubrica_niveles`, que no existe en ninguna

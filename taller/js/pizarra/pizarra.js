@@ -30,6 +30,8 @@ import { PanelIzquierdo } from './paneles/izquierda.js';
 import { PanelDerecho } from './paneles/derecha.js';
 import { modeloAjustes } from './paneles/ajustes-modelo.js';
 import { recuento } from './elementos.js';
+import { ponerVariantesDelClub, variantesDelClub } from './repertorio.js';
+import { claveDeVideo, videoDeLoEscrito, validarVarianteNueva } from './variantes.js';
 
 /* Los aros se llaman por su número, que es como los ve el entrenador
    sobre la pista (la misma convención que el resto del Taller). */
@@ -49,9 +51,15 @@ export class Pizarra {
    * @param pista    clave de pista
    * @param canasta  el aro al que se ataca, si la pista tiene dos
    * @param onCambio () — algo de la jugada ha cambiado (para autoguardar)
+   * @param datos    lo que habla con la base de datos (las variantes del
+   *   club y los vídeos, §4.3 y §10.1): { cargarVariantes, crearVariante,
+   *   cargarVideos, guardarVideo, borrarVideo }. Sin él, la Pizarra
+   *   funciona con las variantes de serie y sin vídeos.
    */
-  constructor({ pista = 'entera', canasta = 'norte', onCambio = null } = {}) {
+  constructor({ pista = 'entera', canasta = 'norte', onCambio = null, datos = null } = {}) {
     this.onCambio = null;   // se pone al final: montar no es cambiar nada
+    this.datos = datos;
+    this.videos = {};
     this._relojAviso = null;
     this._ayudaTablero = '';
 
@@ -82,6 +90,11 @@ export class Pizarra {
         else this.tablero.hacerFila(cono, parcial);
         this._cambio();
       },
+      /* El trazo pinchado (§4.3, §10.1). */
+      onVariante: (tramo, variante) => { if (this.tablero.cambiarVariante(tramo, variante)) this._cambio(); },
+      onVideo: (clave, escrito) => this.guardarVideo(clave, escrito),
+      onQuitarVideo: (clave) => this.quitarVideo(clave),
+      onNuevaVariante: (accion, escrito) => this.nuevaVariante(accion, escrito),
     });
 
     const aros = Object.keys(this.lienzo.vista.pista?.baskets || {});
@@ -102,6 +115,7 @@ export class Pizarra {
       onNoPuede: (a, motivo) => this.avisar(`<b>«${a.nombre}»</b> no se puede: ${motivo}.`),
       onEscena: (elementos) => { this.panel.recuento(recuento(elementos)); this.descripcion?.refrescar(); this._cambio(); },
       onSeleccion: () => this._refrescarAjustes(),
+      onEditando: () => this._refrescarAjustes(),
     });
 
     /* ---- la barra de arriba (§2.2) ---- */
@@ -150,6 +164,72 @@ export class Pizarra {
     this.tablero.poner([]);
     this.panel.recuento(recuento([]));
     this.onCambio = onCambio;
+    this.listo = this._cargarVariantesYVideos();
+  }
+
+  /* Las variantes del club y los vídeos, de fondo: hasta que llegan, las
+     de serie y sin vídeos. Nunca falla (quien los carga no lanza). */
+  async _cargarVariantesYVideos() {
+    if (!this.datos) return;
+    const [variantes, videos] = await Promise.all([
+      this.datos.cargarVariantes ? this.datos.cargarVariantes().catch(() => []) : [],
+      this.datos.cargarVideos ? this.datos.cargarVideos().catch(() => ({})) : {},
+    ]);
+    ponerVariantesDelClub(variantes);
+    this.videos = videos || {};
+    this.descripcion?.refrescar();
+    this._refrescarAjustes();
+  }
+
+  /**
+   * PONE EL VÍDEO de una variante (o de una acción), para todo el club
+   * (§10.1). Lo escrito se comprueba antes de mandarlo.
+   * @returns si se ha guardado
+   */
+  async guardarVideo(clave, escrito) {
+    const { video, error } = videoDeLoEscrito(escrito);
+    if (error || !video) { this.avisar(`El vídeo no se ha guardado: ${error || 'pega antes su enlace'}.`); return false; }
+    if (!this.datos?.guardarVideo) { this.avisar('Aquí no se pueden guardar vídeos.'); return false; }
+    try { await this.datos.guardarVideo(clave, video); } catch (e) { this.avisar(`El vídeo no se ha guardado: ${e.message}`); return false; }
+    this.videos = { ...this.videos, [clave]: video };
+    this._refrescarAjustes();
+    this.avisar('Vídeo guardado: sale en todos los ejercicios que usan esta variante.');
+    return true;
+  }
+
+  /** Quita el vídeo de una variante. */
+  async quitarVideo(clave) {
+    if (!this.datos?.borrarVideo) { this.avisar('Aquí no se pueden quitar vídeos.'); return false; }
+    try { await this.datos.borrarVideo(clave); } catch (e) { this.avisar(`El vídeo no se ha quitado: ${e.message}`); return false; }
+    const { [clave]: _fuera, ...resto } = this.videos;
+    this.videos = resto;
+    this._refrescarAjustes();
+    return true;
+  }
+
+  /**
+   * CREA UNA VARIANTE DEL CLUB (§4.3) —y su vídeo, si se ha pegado— y se
+   * la pone al trazo pinchado si es de esa acción.
+   * @returns la variante creada, o null
+   */
+  async nuevaVariante(accion, escrito) {
+    const r = validarVarianteNueva({ accion, ...escrito });
+    if (!r.ok) { this.avisar(`La variante no se ha creado: ${r.errores.join('; ')}.`); return null; }
+    if (!this.datos?.crearVariante) { this.avisar('Aquí no se pueden crear variantes.'); return null; }
+    let creada;
+    try { creada = (await this.datos.crearVariante(r.variante)) || r.variante; } catch (e) { this.avisar(`La variante no se ha creado: ${e.message}`); return null; }
+    ponerVariantesDelClub([...variantesDelClub(), creada]);
+    let aviso = `«${creada.nombre}» ya sale en el anillo, para todo el club.`;
+    if (r.video) {
+      const clave = claveDeVideo(accion, creada.slug);
+      try { await this.datos.guardarVideo(clave, r.video); this.videos = { ...this.videos, [clave]: r.video }; } catch (e) { aviso += ` Su vídeo no se ha guardado: ${e.message}`; }
+    }
+    const t = this.tablero.tramoEditado;
+    if (t && t.accion === accion) this.tablero.cambiarVariante(t.id, creada.slug);
+    this.descripcion?.refrescar();
+    this._cambio();
+    this.avisar(aviso);
+    return creada;
   }
 
   /** Mide y pinta. Hay que llamarla DESPUÉS de meter `el` en el DOM,
@@ -232,6 +312,8 @@ export class Pizarra {
       explicacion: explicada ? explicada.texto : null,
       puertas: t.puertasDeLaFase(),
       porQueNoDarBalon: (id) => t.porQueNoDarBalon(id),
+      tramo: t.tramoEditado,
+      videos: this.videos,
     }));
   }
 

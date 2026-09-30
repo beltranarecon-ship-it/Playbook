@@ -10,6 +10,8 @@
      un defensor         a quién defiende y con qué regla, y por qué está
                          ahí (§8.7)
      un atacante         quién le defiende
+     un trazo pinchado   su variante técnica, el vídeo de esa variante y
+                         «Nueva variante» (§4.3, §10.1)
      otra cosa           una línea que dice dónde están los ajustes
    ============================================================ */
 
@@ -19,6 +21,11 @@ import {
 } from '../motor/defensa.js';
 import { EQUIPOS } from '../elementos.js';
 import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
+import { VARIANTES, variantesDe, varianteDe } from '../repertorio.js';
+import { claveDeVideo } from '../variantes.js';
+import { normalizarVideo, textoTramo, urlPublica } from '../../ia/video.js';
+
+const NOMBRE_DE = new Map(CATALOGO_SISTEMA.map((a) => [a.slug, a.nombre]));
 
 /* Cómo se llama cada cosa que un defensor puede hacer distinto (§8.5).
    Sale del catálogo compartido: escribir aquí los nombres otra vez sería
@@ -52,6 +59,39 @@ export const NUMEROS = [
 const opcion = (valor, nombre) => ({ valor, nombre });
 
 /**
+ * UN TRAZO PINCHADO (§2.4, pestaña «Trazo»): quién y qué, su variante
+ * técnica, el vídeo de esa variante —sin elegir, el de la de siempre— y
+ * si se le pueden añadir variantes. El vídeo cuelga de la variante
+ * (§10.1): se pone una vez y sale en todos los ejercicios que la usan.
+ */
+export function modeloTramo(tramo, { elementos = [], nombreDe = (e) => e.id, videos = {} } = {}) {
+  const quien = (elementos || []).find((e) => e && e.id === tramo.elemento_id);
+  const accion = tramo.accion;
+  const nombreAccion = NOMBRE_DE.get(accion) || accion;
+  const vs = variantesDe(accion);
+  const efectiva = varianteDe(accion, tramo.variante) || vs[0] || null;
+  const clave = efectiva ? claveDeVideo(accion, efectiva.slug) : claveDeVideo(accion);
+  const video = clave ? normalizarVideo((videos || {})[clave]) : null;
+  return {
+    tipo: 'tramo',
+    id: tramo.id,
+    accion,
+    titulo: `${quien ? nombreDe(quien) : 'Trazo'} · ${nombreAccion}`,
+    variante: vs.length ? {
+      valor: efectiva ? efectiva.slug : null,
+      opciones: vs.map((v, i) => opcion(v.slug, `${v.nombre}${i === 0 ? ' (la de siempre)' : v.delClub ? ' · del club' : ''}`)),
+    } : null,
+    descripcion: (efectiva && efectiva.descripcion) || null,
+    video: clave ? {
+      clave,
+      de: efectiva ? `${nombreAccion} · ${efectiva.nombre}` : nombreAccion,
+      actual: video ? { tipo: video.tipo, url: urlPublica(video), tramo: textoTramo(video) } : null,
+    } : null,
+    nuevaVariante: !!VARIANTES[accion],
+  };
+}
+
+/**
  * @param seleccion   ids seleccionados
  * @param elementos   la escena, con sus datos de defensa
  * @param papeles     los de la fase que se edita
@@ -66,8 +106,9 @@ const segundosDe = (ms) => `${String(ms / 1000).replace('.', ',')} s`;
 
 export function modeloAjustes({
   seleccion = [], elementos = [], papeles = null, defensa = null, nombreDe = (e) => e.id, explicacion = null,
-  puertas = [], porQueNoDarBalon = null,
+  puertas = [], porQueNoDarBalon = null, tramo = null, videos = {},
 } = {}) {
+  if (tramo) return modeloTramo(tramo, { elementos, nombreDe, videos });
   const d = defensa || defensaPorDefecto();
   const p = papeles || { ataca: null, atacantes: [], defensores: [], pares: {}, situacion: null };
   const porId = new Map((elementos || []).filter(Boolean).map((e) => [e.id, e]));

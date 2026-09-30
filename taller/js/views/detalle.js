@@ -14,6 +14,7 @@ import { confirmModal } from '../ui/modal.js';
 import { getEjercicio, setFavorito, eliminarEjercicio } from '../supabase/ejercicios.js';
 import { cargarCatalogoConVideos } from '../supabase/acciones.js';
 import { chipVideo } from '../ui/video.js';
+import { videosDeAnimacion } from '../pizarra/variantes.js';
 import { dificultadDe } from '../config.js';
 import {
   PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA, PRESION_AYUDA,
@@ -29,6 +30,7 @@ export function render(root, { id } = {}) {
      proyector lo recoge en el momento de abrirse. Sin él —sin sesión,
      sin red— todo funciona igual y no hay vídeos (§11). */
   let catalogo = [];
+  let videos = {};   // los vídeos por slug, también los de las variantes (§10.1)
   const body = h('div', { class: 'taller-body' }, h('div', { class: 'detalle-loading' }, h('span', { class: 'spinner-lg' })));
   const titleEl = h('div', { class: 'header-title' }, 'Cargando…');
   const view = h('div', { class: 'taller taller--detalle' },
@@ -46,7 +48,7 @@ export function render(root, { id } = {}) {
       const ej = await getEjercicio(id);
       pintar(ej);
       cargarCatalogoConVideos()
-        .then(({ acciones }) => { catalogo = acciones || []; pintarVideos(); })
+        .then((r) => { catalogo = r.acciones || []; videos = r.videos || {}; pintarVideos(); })
         .catch(() => {});
     } catch (e) {
       mount(body, h('div', { class: 'detalle-error card' },
@@ -111,7 +113,7 @@ export function render(root, { id } = {}) {
     stage?.pausar();
     proj = abrirProyector(paraVer(anim), {
       nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min,
-      categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos, catalogo,
+      categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos, catalogo, videos,
       alCerrar: () => { proj = null; if (iba) stage?.engine?.play(); },
     });
   }
@@ -125,17 +127,15 @@ export function render(root, { id } = {}) {
       h('a', { class: 'btn btn--secondary btn--sm', href: `/ejercicios/${ej.id}/rehacer`, 'data-link': true }, 'Rehacer la pizarra'));
   }
 
-  /* ---- vídeos de las acciones de ESTE ejercicio (Tramo 2.14) ------
-     Solo las que aparecen en su animación: el catálogo entero aquí
-     sería una lista de vocabulario, no una ficha. En la ficha no
-     interrumpen nada —nadie está proyectando—: son un botón. */
+  /* ---- vídeos de ESTE ejercicio (Tramo 2.14, §10.1) ---------------
+     Solo los de lo que aparece en su animación —sus variantes y sus
+     acciones—: el catálogo entero aquí sería una lista de vocabulario,
+     no una ficha. En la ficha no interrumpen nada —nadie está
+     proyectando—: son un botón. */
   const hostVideos = h('div', { class: 'ficha-videos' });
   function pintarVideos() {
-    const usadas = new Set();
-    for (const f of curAnim?.fases || []) for (const sl of f.acciones || []) usadas.add(sl);
-    const chips = catalogo
-      .filter((a) => usadas.has(a.slug) && a.video)
-      .map((a) => chipVideo(a))
+    const chips = videosDeAnimacion(curAnim, { videos, catalogo })
+      .map((c) => chipVideo({ nombre: c.titulo, video: c.video }))
       .filter(Boolean);
     hostVideos.replaceChildren(...(chips.length
       ? [h('small', { class: 'ficha-videos__t' }, 'Cómo se hace'), ...chips]

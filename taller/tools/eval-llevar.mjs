@@ -10,6 +10,7 @@
    ============================================================ */
 
 import { propuestaDesdeLaJugada, llevarAlPaso3, duracionDeUnaVuelta, esTraidoDeLaPizarra } from '../js/wizard/llevar.js';
+import { ponerVariantesDelClub } from '../js/pizarra/repertorio.js';
 import { volcar } from '../js/wizard/puente.js';
 import { nuevoDraft } from '../js/wizard/draft.js';
 import { esTagValido } from '../js/ia/vocabulario.js';
@@ -98,6 +99,11 @@ test('LAS ETIQUETAS: la situación desde el ataque, el rebote de quien lo coge, 
   ok(tags([fallo, tr('j3', 'j3', 'recoge', A.codo_der, A.aro, { balon_id: 'b1' })]).includes('rebote defensivo'), 'lo coge la defensa');
   ok(tags([fallo, tr('j2', 'j2', 'recoge', A.alero_der, A.aro, { balon_id: 'b1' })]).includes('rebote ofensivo'), 'lo coge el ataque');
   ok(tags([tr('j2', 'j2', 'bloquea', A.alero_der, A.base, { tipo: 'bloqueo', companero_id: 'j1' })]).includes('bloqueo directo'), 'un bloqueo sin variante es directo');
+  ponerVariantesDelClub([{ accion: 'bloquea', slug: 'flare', nombre: 'Flare' }]);
+  try {
+    const conFlare = tags([tr('j2', 'j2', 'bloquea', A.alero_der, A.base, { tipo: 'bloqueo', companero_id: 'j1', variante: 'flare' })]);
+    ok(!conFlare.includes('bloqueo directo') && conFlare.every(esTagValido), `una variante del club no se lleva la etiqueta de otra: ${conFlare}`);
+  } finally { ponerVariantesDelClub([]); }
   ok(tags([tr('j1', 'b1', 'pasa', A.base, A.alero_der, { tipo: 'pass', receptor_id: 'j2' })], { j3: { accion: 'roba', objetivo_id: 'j2' } }).includes('línea de pase'),
     'lo dicho de la defensa, con la etiqueta del catálogo');
 });

@@ -40,6 +40,8 @@ import { estaViejo } from '../borradores.js';
 import { getUser, nombreDelEntrenador } from '../supabase/auth.js';
 import { guardarEjercicio, actualizarEjercicio, getEjercicio, nombresDeEjercicios } from '../supabase/ejercicios.js';
 import { Pizarra } from '../pizarra/pizarra.js';
+import { cargarVariantes, crearVariante } from '../supabase/variantes.js';
+import { cargarVideos, guardarVideo, borrarVideo } from '../supabase/videos.js';
 import { compilar, esDeLaPizarra } from '../pizarra/motor/compilar.js';
 import { jugadaDesdeAnimacion } from '../pizarra/motor/jugada.js';
 import { recuento } from '../pizarra/elementos.js';
@@ -146,7 +148,12 @@ export function render(root, { id = null, modo = 'nuevo', paso = 0 } = {}) {
     } else {
       jugada = draft.jugada;
     }
-    pizarra = new Pizarra({ pista: draft.tipo_pista, canasta: draft.canasta || 'norte', onCambio: scheduleSave });
+    /* Con lo que habla con la base de datos: las variantes del club y los
+       vídeos de las variantes (§4.3, §10.1). */
+    pizarra = new Pizarra({
+      pista: draft.tipo_pista, canasta: draft.canasta || 'norte', onCambio: scheduleSave,
+      datos: { cargarVariantes, crearVariante, cargarVideos, guardarVideo, borrarVideo },
+    });
     return () => {
       if (jugada) { pizarra.cargar({ ...jugada, pista: draft.tipo_pista }); return; }
       if (draft.animacion) {

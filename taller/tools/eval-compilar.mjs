@@ -246,7 +246,7 @@ test('acciones y variantes de cada fase, sin repetir y en orden', () => {
     tramo(a2.id, P(0.7, 0.6), P(0.7, 0.4), { variante: 'recto' }),
   ] }])).fases[0];
   eq(f.acciones, ['corta', 'bota']);
-  eq(f.variantes, [{ accion: 'corta', variante: 'recto' }, { accion: 'bota', variante: 'normal' }]);
+  eq(f.variantes, [{ accion: 'corta', variante: 'recto', nombre: 'Recto' }, { accion: 'bota', variante: 'normal', nombre: 'Normal' }], 'con su nombre, para la columna del proyector:');
 });
 
 /* ── 4. Lo que no se compila, dicho ──────────────────────── */

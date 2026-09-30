@@ -37,11 +37,11 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 6 · Conos y elementos | ✅ cerrada en la rama `pizarra-v3` (pasos 6.0 a 6.7; los equipos del club, para más adelante) | `1633407` |
 | 7 · Texto y voz | ✅ cerrada en la rama `pizarra-v3` (pasos 7.0 a 7.3, y los arreglos de su revisión) | ver «Capa 7» |
 | 8 · Ramas | ✅ cerrada en la rama `pizarra-v3` (pasos 8.1 a 8.3, y los arreglos de su revisión) | ver «Capa 8» |
-| 9 · Variantes y vídeo | pendiente | — |
+| 9 · Variantes y vídeo | en curso en la rama `pizarra-v3` (pasos 9.1 a 9.3 hechos; falta la revisión) | ver «Capa 9» |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **72 en verde, 1764
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **73 en verde, 1781
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -377,6 +377,49 @@ tocarlos): `eval-repertorio` (anillo del defensor con pendientes;
 «defender no se pierde»), `eval-fases` (`PENDIENTES.bloqueo`),
 `eval-compilar` (B1 pasa a defender y a moverse), `eval-dibujo` (texto
 del bloqueo) y `eval-acciones` si cambian las mecánicas.
+
+## Capa 9, paso a paso
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 9.1 | Lo puro (`pizarra/variantes.js`, banco `eval-variantes.mjs`): el vídeo cuelga de la variante (§10.1) con la clave `accion__variante` en `videos_accion`; las variantes del club se añaden detrás de las de serie (`repertorio.js`); qué vídeo enseña cada fase; lo que se escribe en el panel; el clip de la columna (`ia/video.js`). La frase dice una variante del club por su nombre y el compilador pone el nombre en `variantes` | ✅ |
+| 9.2 | La migración **044** (`variantes`: la ve todo el club, edita quien la creó; reserva las de serie) y su cliente `supabase/variantes.js`. **Sin aplicar**: la aplica el entrenador en Supabase; hasta entonces «Nueva variante» dice que falta | ✅ |
+| 9.3 | La pestaña del trazo en el panel derecho (§2.4): al pinchar un trazo, su variante (se cambia sin tocar la geometría), el vídeo de esa variante (poner, cambiar, quitar) y «Nueva variante» (nombre, descripción y vídeo). El proyector enseña el vídeo en una columna (§10.2) y la ficha, los de las variantes del ejercicio | ✅ (73 bancos, 1781 pruebas; probado en el arnés y su proyector, sin guardar nada) |
+
+**Decidido por el entrenador (2026-09-30):**
+
+- **«Nueva variante», ahora**, con la migración 044 que aplica él.
+- **El vídeo de una variante se pone en la Pizarra**, al pinchar un trazo.
+- **Las variantes de serie se quedan como están** (no coinciden del todo
+  con la tabla del §4.3: se eligieron en la capa 2 por las etiquetas de
+  la biblioteca); él irá añadiendo las suyas poco a poco.
+- **En el proyector, la columna por defecto**; tocarla abre el vídeo en
+  grande y para la animación, y al cerrarlo sigue.
+
+**Decidido en la capa 9 (detalles, sin preguntar):**
+
+- **Los vídeos de las variantes van en la tabla de siempre**
+  (`videos_accion`, 021), con la clave `accion__variante`: no hace falta
+  otra tabla y cabe en su regla (40 letras). La 044 solo guarda nombre y
+  descripción de las del club.
+- **Qué vídeo enseña una fase**: el de la variante elegida; si no se eligió
+  ninguna, el de la de siempre (la primera); y si tampoco, el de la acción
+  (lo de antes). Un TikTok no va en la columna (no se puede repetir): sale
+  en los botones de la cabecera y se abre aparte.
+- **La columna** repite los primeros 8 segundos del tramo, muda. Para que
+  el bucle vuelva al principio del tramo y no al segundo 0 se le manda un
+  mensaje al reproductor, sin cargar la librería de YouTube.
+- **Las variantes del club, solo en las acciones que ya tienen variantes**
+  (pasa, bota, tira, entra, corta, bloquea): son las que abren el anillo
+  exterior. En la frase se dicen por su nombre («pasa por detrás»); no
+  llevan etiqueta de la biblioteca, y «llevar» ya no les pone la de la
+  variante de siempre.
+- **«Nueva variante» está en el panel del trazo**, no en el «⋯ más» del
+  anillo como dice el §4.3: es donde ya se elige la variante y se pone su
+  vídeo, y el anillo se queda como estaba. Al crearla se le pone al trazo
+  pinchado.
+- **Los botones de vídeo de la cabecera del proyector** son ahora los de
+  ESTE ejercicio (antes, todo el catálogo con vídeo).
 
 ## Capa 8, paso a paso
 
