@@ -270,6 +270,7 @@ export class Tablero {
        aro, y el aro se mueve con el zoom: se recolocan en cada pintada. */
     this._quitarCapaDesenlace = lienzo.capa('desenlace-sitio', ({ vista }) => this._colocarDesenlace(vista), { tipo: 'pantalla', orden: 31 });
     /* Y el botón «¿qué hacen los N?» va junto al grupo seleccionado (§3.2). */
+    this.fantasma = true;        // ¿se ve el fantasma de la fase anterior? (§2.2)
     this._grupo = null;          // { resto: [ids], paralelo } mientras se le dice algo a varios
     this._enParalelo = false;    // ¿copian el trazo trasladado, o van al mismo punto?
     this._botonGrupo = null;
@@ -3240,8 +3241,14 @@ export class Tablero {
 
   /* El fantasma de la fase anterior: sus trazos, apagados. Se ve de
      dónde viene cada uno sin que compita con lo que se dibuja ahora. */
+  /** Enseña u oculta el fantasma de la fase anterior (§2.2, tecla G). */
+  verFantasma(on) {
+    this.fantasma = !!on;
+    this.lienzo.pintar();
+  }
+
   _dibujarFantasma({ ctx, R, toPx }) {
-    const previa = this.iFase > 0 ? this.fases[this.iFase - 1] : null;
+    const previa = this.fantasma !== false && this.iFase > 0 ? this.fases[this.iFase - 1] : null;
     if (!previa) return;
     ctx.save();
     ctx.globalAlpha = 0.28;

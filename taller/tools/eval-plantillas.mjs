@@ -108,6 +108,7 @@ test('AÑADIDA A LO QUE YA HAY, se numera detrás y no toca lo que estaba', () =
   ok(nuevo.id !== 'jugador_1' && r.elementos.some((e) => e.kind === 'balon' && e.portador_id === nuevo.id), 'con otro nombre, y el balón es del nuevo');
   l = r.elementos;
   eq(ponerColocacion(l, { elementos: [] }, 'entera').puestas, 0);
+  eq(ponerColocacion([], { elementos: [{ id: 'z', kind: 'zona', x: 0.5, y: 0.5 }, { id: 'j', kind: 'jugador', x: NaN, y: 0.5 }] }, 'entera').puestas, 0, 'ni lo que llegue roto de la tabla:');
 });
 
 console.log('· fases');
@@ -160,6 +161,21 @@ test('SIN BALÓN NO SE PASA: ese tramo no se pone y se dice; y cada papel, una f
   eq(tramosDePlantilla(datos, { p1: 'y' }, { ...base, posesion: {} }).motivo, 'hay que decir qué ficha hace cada papel');
   eq(tramosDePlantilla(datos, { p1: 'x', p2: 'x' }, { ...base, posesion: {} }).motivo, 'una ficha no puede hacer dos papeles');
   eq(tramosDePlantilla(datos, { p1: 'y', p2: 'z' }, { ...base, posesion: {} }).motivo, 'hay que decir qué ficha hace cada papel', 'una ficha que no está no vale:');
+});
+
+test('EL BALÓN SE SIGUE TRAMO A TRAMO: quien recibe el pase puede tirar después', () => {
+  const { l, a1, a2, bal } = escena();
+  const fase = { id: 'f1', tramos: [
+    { id: 'tr1', elemento_id: a1.id, corre_id: bal.id, receptor_id: a2.id, accion: 'pasa', tipo: 'pass', trazo: [N(0.3, 0.6), N(0.7, 0.6)] },
+    { id: 'tr2', elemento_id: a2.id, corre_id: bal.id, accion: 'tira', tipo: 'pass', desenlace: 'falla', trazo: [N(0.7, 0.6), N(0.5, 0.08)] },
+    { id: 'tr3', elemento_id: a2.id, corre_id: bal.id, accion: 'tira', tipo: 'pass', desenlace: 'entra', trazo: [N(0.7, 0.6), N(0.5, 0.08)] },
+  ] };
+  const { datos } = plantillaDeFase(fase, l, { nombreDe });
+  let n = 0;
+  const r = tramosDePlantilla(datos, { p1: 'x', p2: 'y' }, { entrada: { x: { x: 0.2, y: 0.8 }, y: { x: 0.8, y: 0.7 } }, posesion: { b9: 'x' }, pista: 'entera', nuevoId: () => `n${++n}` });
+  eq(r.tramos.map((t) => [t.accion, t.elemento_id, t.corre_id, t.desenlace ?? null]), [['pasa', 'x', 'b9', null], ['tira', 'y', 'b9', 'falla']], 'recibe y tira con ese balón; el segundo tiro, ya sin él, no:');
+  eq([r.tramos[1].trazo[0].x, r.tramos[1].trazo.at(-1).y], [0.8, 0.08], 'el tiro sale de quien tira y va al aro:');
+  ok(r.avisos.length === 1 && /tira/.test(r.avisos[0]), r.avisos.join(' | '));
 });
 
 test('CADA PAPEL, A LA FICHA QUE SE LLAMA IGUAL si la hay', () => {

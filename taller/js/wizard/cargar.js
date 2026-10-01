@@ -20,8 +20,8 @@
    tocar: no es de aquí de donde sale el dibujo.
 
    ── LO QUE SE GUARDÓ PENSANDO EN ESTE MOMENTO ───────────────
-   Las líneas de las fases y las posiciones marcadas viajan DENTRO de la
-   animación (`_fases_texto`, `_posiciones`), no fuera. Sin ellas,
+   Las líneas de las fases viajan DENTRO de la animación
+   (`_fases_texto`), no fuera. Sin ellas,
    reabrir un ejercicio devolvería el dibujo pero no lo que se escribió,
    y el paso 3 se quedaría sin las líneas con las que arma la
    descripción.
@@ -79,12 +79,11 @@ export function borradorDeEjercicio(row, { duplicar = false, nombres = [] } = {}
   if (row?.requisitos && typeof row.requisitos === 'object') {
     d.requisitos = { ...d.requisitos, ...row.requisitos };
     d.requisitos.niveles = { ...d.requisitos.niveles, ...(row.requisitos.niveles || {}) };
-    d.requisitos_manual = true;   // lo guardado manda sobre el conteo del tablero
+    d.requisitos_manual = true;   // lo guardado manda sobre el recuento de la Pizarra
   }
 
   /* Lo que se escribió a mano y no se puede sacar del dibujo: las líneas
-     de las fases —con ellas arma el paso 3 la descripción— y las
-     posiciones que se marcaron con un nombre. */
+     de las fases —con ellas arma el paso 3 la descripción—. */
   if (Array.isArray(a?._fases_texto) && a._fases_texto.length) {
     d.fases_texto = a._fases_texto.map((f) => ({
       texto: texto(f?.texto),
@@ -92,7 +91,6 @@ export function borradorDeEjercicio(row, { duplicar = false, nombres = [] } = {}
       pausa_post_ms: Number.isFinite(f?.pausa_post_ms) ? f.pausa_post_ms : null,
     }));
   }
-  if (a?._posiciones && typeof a._posiciones === 'object') d.posiciones = { ...a._posiciones };
 
   return { draft: d };
 }

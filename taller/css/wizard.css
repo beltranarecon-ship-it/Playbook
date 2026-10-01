@@ -112,13 +112,7 @@
 .collapsible__toggle.is-open .collapsible__chevron { transform: rotate(45deg); }
 .collapsible__body { margin-top: var(--sp-3); }
 
-.btn.is-loading { position: relative; color: transparent; }
-.btn.is-loading::after {
-  content: ""; position: absolute; inset: 0; margin: auto;
-  width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
-  animation: spin .7s linear infinite;
-}
+/* El giro del indicador de carga (lo usa .spinner-lg, en detalle.css). */
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---- Requisitos (§12) ------------------------------------- */

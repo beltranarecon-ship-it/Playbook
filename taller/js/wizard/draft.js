@@ -20,10 +20,6 @@ export function nuevoDraft() {
        guardar (`_fases_texto`), para que reabrir el ejercicio devuelva
        el paso 2 tal como se dejó. */
     fases_texto: [{ texto: '', duracion_ms: null, pausa_post_ms: null }],
-    /* Sitios marcados con un clic en la pista, { slug: [x,y] }. Valen
-       en este ejercicio desde el primer momento; guardarlos para el
-       club es una decisión aparte y explícita. */
-    posiciones: {},
     canasta: null,           // aro al que ataca; null = el más cercano a lo colocado
     animacion: null,         // JSON §10 una vez generada
     /* La jugada de la Pizarra (ESPEC-PIZARRA-v3 §11.1): lo que se

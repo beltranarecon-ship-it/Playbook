@@ -1375,6 +1375,66 @@ await testA('UNA VARIANTE NUEVA: se crea para el club, con su vídeo, y se le po
   ok(/migración 044/.test(avisos.at(-1)), `sin la tabla, se dice qué falta: ${avisos.at(-1)}`);
 });
 
+console.log('\n· deshacer y rehacer (§2.2)');
+
+test('DESHACER VUELVE A COMO ESTABA, fase incluida; REHACER lo repone; y lo nuevo corta lo que se había deshecho', () => {
+  const { t, p, a2, avisos } = sinAtacante();   // A2 ya corta en la fase 1
+  Object.assign(p, { derecha: { pintar() {} } });
+  p._montarHistorial();
+  t._cerrarFase();
+  p._apuntar();
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  p._apuntar();
+  eq([t.todasLasFases.length, t.iFase, t.tramos.length], [2, 1, 1]);
+  ok(p.deshacer(), 'se deshace el corte de la fase 2');
+  eq([t.todasLasFases.length, t.iFase, t.tramos.length], [2, 1, 0], 'la fase 2, vacía, y se sigue en ella:');
+  ok(p.deshacer());
+  eq([t.todasLasFases.length, t.iFase, t.tramos.length], [1, 0, 1], 'antes de «Siguiente fase»:');
+  eq(p.deshacer(), false, 'no hay nada antes de lo que había al montar:');
+  ok(/nada que deshacer/.test(avisos.at(-1)), avisos.at(-1));
+  ok(p.rehacer() && p.rehacer());
+  eq([t.todasLasFases.length, t.iFase, t.tramos.map((x) => x.accion)], [2, 1, ['corta']], 'rehecho todo:');
+  eq(p.rehacer(), false);
+  /* Deshacer y hacer otra cosa, que todavía no se ha apuntado: cuenta
+     como un paso, y ya no se puede rehacer lo de antes. */
+  p.deshacer();
+  t.fichas.seleccionar(new Set([a2.id]));
+  t._tocarFicha(ficha(t, a2.id));
+  t._elegir('finta', {});
+  t.cerrar();
+  ok(p.deshacer());
+  eq([t.todasLasFases.length, t.iFase, t.tramos.length], [2, 1, 0], 'se deshace solo la finta:');
+  ok(p.rehacer());
+  eq([p.rehacer(), t.tramos.map((x) => x.accion)], [false, ['finta']], 'y lo nuevo manda sobre lo que se había deshecho:');
+  p.deshacer();
+  /* Y sin cambios, apuntar no añade pasos. */
+  const n = p.historial.stack.length;
+  p._apuntar(); p._apuntar();
+  eq(p.historial.stack.length, n);
+});
+
+test('REABRIR UNA JUGADA EMPIEZA EL HISTORIAL: no se deshace hasta antes de abrirla; y el fantasma se enciende y se apaga', () => {
+  const { t, p } = sinAtacante();
+  Object.assign(p, { derecha: { pintar() {} } });
+  p._montarHistorial();
+  const guardada = JSON.parse(JSON.stringify(t.jugada()));
+  t._cerrarFase();
+  p._apuntar();
+  eq(p.historial.canUndo(), true);
+  p.cargar(guardada);
+  eq([p.historial.canUndo(), p.deshacer(), t.todasLasFases.length], [false, false, 1]);
+  /* El fantasma de la fase anterior se pinta, o no. */
+  t._cerrarFase();
+  let pintados = 0;
+  t._pintarTramo = () => { pintados++; };
+  const lienzo = { ctx: { save() {}, restore() {}, globalAlpha: 1 }, R: {}, toPx: () => [0, 0] };
+  t._dibujarFantasma(lienzo);
+  eq([t.fantasma, pintados], [true, 1]);
+  t.verFantasma(false);
+  t._dibujarFantasma(lienzo);
+  eq([t.fantasma, pintados], [false, 1], 'apagado, no se pinta:');
+});
+
 console.log('\n· plantillas: colocaciones y fases guardadas (§7.8)');
 
 test('UNA COLOCACIÓN GUARDADA SE AÑADE A LO QUE HAY (en la fase 1) O LO SUSTITUYE TODO', () => {
@@ -1423,6 +1483,8 @@ test('UNA FASE GUARDADA SE INSERTA CON CADA PAPEL EN SU FICHA: en la fase vacía
   eq([pase.corre_id, pase.receptor_id, [pase.trazo.at(-1).x, pase.trazo.at(-1).y]], [bal.id, b2.id, [0.7, 0.3]]);
   eq(ficha(o.t, bal.id).portador_id, b2.id, 'y el balón acaba en quien lo recibe:');
   ok(/A1 pasa a A2/.test(o.t.frases()[0]), o.t.frases()[0]);
+  /* Si no se puede, no deja una fase vacía de más. */
+  eq([o.t.insertarPlantilla(datos, { p1: b2.id, p2: b2.id }).ok, o.t.todasLasFases.length, o.t.iFase], [false, 1, 0]);
   /* Con algo ya dibujado, va en una fase nueva detrás. */
   const s = o.t.insertarPlantilla(datos, { p1: b1.id, p2: b2.id });
   eq([s.ok, o.t.iFase, o.t.todasLasFases.length, o.t.tramos.map((x) => x.accion)], [true, 1, 2, ['corta', 'pasa']]);

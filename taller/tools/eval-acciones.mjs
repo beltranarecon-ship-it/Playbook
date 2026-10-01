@@ -12,8 +12,8 @@
    ============================================================ */
 
 import {
-  FAMILIAS, FAMILIA_KEYS, CATALOGO_SISTEMA, EVENTOS_LEGADO, REFERENCIAS,
-  validarAccion, normalizarNombre, indexar, resolverAccion, fusionarCatalogo, parametroDe,
+  FAMILIAS, FAMILIA_KEYS, CATALOGO_SISTEMA, REFERENCIAS,
+  validarAccion, normalizarNombre, fusionarCatalogo, parametroDe,
 } from '../js/ia/acciones.js';
 import { TAGS } from '../../tools/biblioteca/vocabulario.mjs';
 import { MOV_TO_ARROW } from '../js/canvas/arrows.js';
@@ -69,20 +69,6 @@ test('ningún parámetro pide coordenadas', () => {
 });
 
 console.log('\n· el catálogo del sistema');
-
-test('las nueve acciones del motor anterior están cubiertas', () => {
-  // Es el criterio de aceptación del Tramo 2.5.
-  const cubiertos = new Set(CATALOGO_SISTEMA.map((a) => a._legado).filter(Boolean));
-  const faltan = EVENTOS_LEGADO.filter((e) => !cubiertos.has(e));
-  ok(!faltan.length, `sin equivalencia en el catálogo: ${faltan.join(', ')}`);
-});
-
-test('no hay equivalencias inventadas', () => {
-  const sobran = CATALOGO_SISTEMA
-    .map((a) => a._legado).filter(Boolean)
-    .filter((e) => !EVENTOS_LEGADO.includes(e));
-  ok(!sobran.length, `_legado apunta a eventos que no existían: ${[...new Set(sobran)].join(', ')}`);
-});
 
 test('todas las del sistema pasan su propio validador', () => {
   for (const a of CATALOGO_SISTEMA) {
@@ -243,32 +229,7 @@ test('sin acciones de club, el catálogo es el del sistema', () => {
   eq(fusionarCatalogo().acciones.length, CATALOGO_SISTEMA.length);
 });
 
-console.log('\n· resolver lo que se escribe a mano');
-
-const idx = indexar(CATALOGO_SISTEMA);
-
-test('el nombre, el slug y los sinónimos resuelven a la misma acción', () => {
-  for (const t of ['Tira', 'tira', 'tiro', 'lanzamiento', 'tira a canasta']) {
-    eq(resolverAccion(t, idx)?.slug, 'tira', t);
-  }
-});
-
-test('tildes, mayúsculas y artículos dan igual', () => {
-  eq(resolverAccion('  DA EL BALÓN ', idx)?.slug, 'pasa');
-  eq(resolverAccion('el rebote', idx)?.slug, 'recoge');
-});
-
-test('una frase larga encuentra la acción que lleva dentro', () => {
-  eq(resolverAccion('luego vuelve a la fila corriendo', idx)?.slug, 'vuelve_a_fila');
-});
-
-test('lo que no reconoce devuelve null, no una acción cualquiera', () => {
-  // Que devuelva null es lo correcto: el paso 2 preguntará, igual que
-  // hace con una posición que no conoce.
-  for (const t of ['', '   ', 'hace la croqueta', null, undefined]) {
-    eq(resolverAccion(t, idx), null, JSON.stringify(t));
-  }
-});
+console.log('\n· comparar nombres');
 
 test('normalizarNombre deja el texto comparable', () => {
   eq(normalizarNombre('  Bloqueó, y  DESPUÉS...  '), 'bloqueo y despues');
@@ -325,17 +286,6 @@ test('simulacion sigue siendo una familia sin acciones', () => {
 });
 
 console.log('\n· lo que no debe cambiar');
-
-test('las nueve acciones de siempre siguen resolviendo', () => {
-  /* Venía del banco de la frase. Hoy no lo lee nada de la app —lo leían
-     la frase y el compilador viejos, y los ejercicios de antes se rehacen
-     a mano en la Pizarra—, pero es el vocabulario del catálogo, que se
-     conserva y se amplía (ESPEC-PIZARRA-v3 §12). Si una de estas nueve
-     palabras deja de resolver, no lo diría ningún otro banco. */
-  for (const nombre of ['bote', 'corte', 'pase', 'tiro', 'bloqueo', 'defensa', 'zigzag', 'vuelve a la cola', 'rebote']) {
-    ok(resolverAccion(nombre, idx), `«${nombre}» debería seguir resolviendo`);
-  }
-});
 
 test('el rol defensor sigue saliendo del catálogo, no de una lista aparte', () => {
   /* Tampoco lo lee hoy la app: la Pizarra saca los papeles de su propio

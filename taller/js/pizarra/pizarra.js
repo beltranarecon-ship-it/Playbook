@@ -30,6 +30,7 @@ import { PanelIzquierdo } from './paneles/izquierda.js';
 import { PanelDerecho } from './paneles/derecha.js';
 import { modeloAjustes } from './paneles/ajustes-modelo.js';
 import { recuento } from './elementos.js';
+import { History } from '../history.js';
 import { ponerVariantesDelClub, variantesDelClub } from './repertorio.js';
 import { claveDeVideo, videoDeLoEscrito, validarVarianteNueva } from './variantes.js';
 import { nombreDePlantilla } from './plantillas.js';
@@ -41,6 +42,11 @@ const NOMBRE_CANASTA = { norte: 'Canasta 1', sur: 'Canasta 2' };
 /** Cuánto se queda a la vista un aviso: lo bastante para leer una línea
  *  con calma, y no tanto como para tapar la pista. */
 const AVISO_MS = 6000;
+
+/** Lo que se espera sin cambios antes de apuntar un punto al que volver
+ *  con «deshacer»: arrastrar una ficha son decenas de cambios seguidos, y
+ *  deshacer tiene que devolverla a donde estaba, no un píxel atrás. */
+const ESPERA_HISTORIAL_MS = 400;
 
 /** Cómo se nombra lo que se va a poner, para la barra de ayuda. */
 const queEs = (f) => (f.kind === 'jugador'
@@ -137,12 +143,18 @@ export class Pizarra {
     const boton = (texto, titulo, alHacer) => h('button', {
       class: 'pz-arriba__b', type: 'button', title: titulo, 'aria-label': titulo, onClick: alHacer,
     }, texto);
+    /* Deshacer y rehacer (§2.2). */
+    this._bDeshacer = boton('↶', 'Deshacer (Ctrl+Z)', () => this.deshacer());
+    this._bRehacer = boton('↷', 'Rehacer (Ctrl+Mayús+Z)', () => this.rehacer());
     const herramientas = h('div', { class: 'pz-arriba__herramientas' },
+      this._bDeshacer, this._bRehacer,
+      h('span', { class: 'pz-arriba__sep' }),
       boton('−', 'Alejar (−)', () => this.lienzo.alejar()),
       boton('+', 'Acercar (+)', () => this.lienzo.acercar()),
       boton('⛶', 'Encajar la pista (0)', () => this.lienzo.encajar()),
       h('span', { class: 'pz-arriba__sep' }),
-      boton('▶', 'Ver la jugada desde el principio', () => this.ver()));
+      boton('▶', 'Ver la jugada desde el principio (Espacio)', () => this.ver()),
+      boton('👻', 'Ver u ocultar el fantasma de la fase anterior (G)', () => this.tablero.verFantasma(!this.tablero.fantasma)));
     /* Solo con dos aros hay nada que elegir: en media pista sobra. */
     if (aros.length > 1) {
       const sel = h('select', { 'aria-label': 'Canasta a la que se ataca' },
@@ -177,12 +189,30 @@ export class Pizarra {
     this._quitarGesto = this.lienzo.gesto('colocar', (i) => this._atenderColocar(i), { orden: 200 });
 
     this._onTecla = (ev) => {
-      if (ev.key === 'Escape' && this.panel.armada) { ev.preventDefault(); this.panel.armar(null); }
+      if (ev.key === 'Escape' && this.panel.armada) { ev.preventDefault(); this.panel.armar(null); return; }
+      if (ev.defaultPrevented) return;
+      /* Escribiendo en una casilla, las teclas son suyas (también Ctrl+Z). */
+      const en = ev.target && ev.target.tagName;
+      if (en === 'INPUT' || en === 'TEXTAREA' || en === 'SELECT') return;
+      const k = String(ev.key || '').toLowerCase();
+      if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (k === 'z' || k === 'y')) {
+        ev.preventDefault();
+        if (k === 'y' || ev.shiftKey) this.rehacer(); else this.deshacer();
+        return;
+      }
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      /* Espacio reproduce y G enseña u oculta el fantasma (§2.2). Mientras
+         se dibuja o se corrige un trazo, no: ahí las teclas son de eso. */
+      const t = this.tablero;
+      if (t.dibujo.dibujando || t.nodos.editando || t.companero.eligiendo) return;
+      if (ev.key === ' ') { ev.preventDefault(); this.ver(); }
+      else if (k === 'g') { ev.preventDefault(); t.verFantasma(!t.fantasma); }
     };
     this.el.addEventListener('keydown', this._onTecla);
 
     this.tablero.poner([]);
     this.panel.recuento(recuento([]));
+    this._montarHistorial();
     this.onCambio = onCambio;
     this.listo = this._cargarVariantesYVideos();
   }
@@ -397,11 +427,84 @@ export class Pizarra {
     this._noEncajan = papeles.clave;
     const textos = [...r.avisos, papeles.html].filter(Boolean);
     if (textos.length) this.avisar(textos.join(' '));
+    /* Lo que se abre es el principio: no se deshace hasta antes de abrirlo. */
+    this._montarHistorial();
     return r;
   }
 
   /** La jugada tal y como se guarda (§11.1). */
   jugada() { return this.tablero.jugada(); }
+
+  /* ---- deshacer y rehacer (§2.2) ----------------------------- */
+
+  /* El historial guarda FOTOS de la jugada entera y de la fase que se
+     veía: volver a una es reabrirla, con las mismas piezas con las que
+     se reabre un ejercicio guardado. Empieza con la de ahora. */
+  _montarHistorial() {
+    clearTimeout(this._relojHistorial);
+    this._relojHistorial = null;
+    this.historial = new History(() => this._foto(), (f) => this._ponerFoto(f));
+    this.historial.onChange = () => this._pintarHistorial();
+    this.historial.push();
+  }
+
+  _foto() {
+    const t = this.tablero;
+    return { jugada: JSON.stringify(t.jugada()), fase: (t.fases[t.iFase] || {}).id || null };
+  }
+
+  _ponerFoto(foto) {
+    const t = this.tablero;
+    this._restaurando = true;
+    try {
+      t.cargar(JSON.parse(foto.jugada));
+      if (foto.fase) t.irAFaseId(foto.fase);
+      this.panel.recuento(recuento(t.fichas.elementos));
+      this.linea?.refrescar();
+      this.descripcion?.refrescar();
+      this._vigilarPapeles();
+      this._refrescarAjustes();
+      /* La foto, como ha quedado al reabrirla: reabrir sanea y completa
+         lo guardado, y comparando con la de antes parecería un cambio. */
+      this.historial.stack[this.historial.idx] = this._foto();
+    } finally { this._restaurando = false; }
+    this.onCambio?.();
+  }
+
+  /* Apunta la jugada de ahora, si ha cambiado desde la última apuntada. */
+  _apuntar() {
+    clearTimeout(this._relojHistorial);
+    this._relojHistorial = null;
+    if (!this.historial || this._restaurando) return;
+    const h0 = this.historial;
+    const ultima = h0.stack[h0.idx];
+    const ahora = this._foto();
+    if (ultima && ultima.jugada === ahora.jugada) { h0.stack[h0.idx] = ahora; return; }
+    h0.push();
+  }
+
+  /** Vuelve a como estaba antes de lo último que se hizo. */
+  deshacer() {
+    if (!this.historial) return false;
+    this._apuntar();   // lo que estuviera a medias cuenta como un paso
+    this.tablero.cerrar();
+    if (!this.historial.undo()) { this.avisar('No hay nada que deshacer.'); return false; }
+    return true;
+  }
+
+  /** Vuelve a hacer lo que se acaba de deshacer. */
+  rehacer() {
+    if (!this.historial) return false;
+    this._apuntar();
+    this.tablero.cerrar();
+    if (!this.historial.redo()) { this.avisar('No hay nada que rehacer.'); return false; }
+    return true;
+  }
+
+  _pintarHistorial() {
+    if (this._bDeshacer) this._bDeshacer.disabled = !this.historial.canUndo();
+    if (this._bRehacer) this._bRehacer.disabled = !this.historial.canRedo();
+  }
 
   /** Cuántos hay de cada cosa, para los requisitos del paso 3. */
   recuento() { return recuento(this.tablero.fichas.elementos); }
@@ -423,7 +526,16 @@ export class Pizarra {
     this._relojAviso = setTimeout(() => { this.elAviso.hidden = true; }, AVISO_MS);
   }
 
-  _cambio() { this._vigilarPapeles(); this._refrescarAjustes(); this.onCambio?.(); }
+  _cambio() {
+    this._vigilarPapeles();
+    this._refrescarAjustes();
+    /* Un punto al que volver, cuando deje de cambiar (§2.2). */
+    if (this.historial && !this._restaurando) {
+      clearTimeout(this._relojHistorial);
+      this._relojHistorial = setTimeout(() => this._apuntar(), ESPERA_HISTORIAL_MS);
+    }
+    this.onCambio?.();
+  }
 
   /* La pestaña «Ajustes», con lo seleccionado ahora. El panel solo se
      rehace si lo que enseña ha cambiado. */
@@ -510,6 +622,7 @@ export class Pizarra {
 
   destroy() {
     clearTimeout(this._relojAviso);
+    clearTimeout(this._relojHistorial);
     this._quitarGesto?.();
     this.el.removeEventListener('keydown', this._onTecla);
     this.linea.destroy();

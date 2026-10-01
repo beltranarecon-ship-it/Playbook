@@ -120,7 +120,6 @@ test('vuelven las líneas de las fases tal como se dejaron', () => {
   eq(draft.fases_texto.map((f) => f.texto), ['la Fila 1 bota hasta el aro', 'tira']);
   eq(draft.fases_texto[1].duracion_ms, 2500, 'y los ajustes de la cabecera');
   eq(draft.fases_texto[1].pausa_post_ms, 100);
-  eq(draft.posiciones, { refugio: [0.25, 0.4] });
 });
 
 test('los requisitos que falten quedan «sin decidir», no ausentes', () => {

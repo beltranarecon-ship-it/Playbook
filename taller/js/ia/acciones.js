@@ -156,10 +156,6 @@ export const FAMILIA_KEYS = Object.keys(FAMILIAS);
    una llamada de red. Las que cree el club se cargan aparte y se
    fusionan encima (fusionarCatalogo).
 
-   `_legado` es la equivalencia con el evento antiguo. Existe para que
-   la recompilación de las 204 fichas (2.6) sea mecánica y demostrable,
-   no una reinterpretación a mano. Un banco de pruebas comprueba que
-   los nueve están cubiertos y que ninguno sobra.
 */
 
 /*
@@ -185,7 +181,7 @@ const A = (a) => ({ sinonimos: [], pide: [], video: null, origen: 'sistema', ...
 
 export const CATALOGO_SISTEMA = [
   A({
-    slug: 'bota', nombre: 'Bota', familia: 'desplazamiento', _legado: 'bote', tag: 'bote',
+    slug: 'bota', nombre: 'Bota', familia: 'desplazamiento', tag: 'bote',
     sinonimos: ['bote', 'botar', 'conduce', 'conducir', 'avanza botando', 'sale botando', 'avanza'],
     descripcion: 'Avanza con el balón hacia donde se le diga. El balón va con él: no hace falta decirlo.',
     parametros: { destino: null, alcance: 'parcial', avance: 0.55, trayectoria: 'recta', ritmo: 'normal' },
@@ -193,7 +189,7 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'carrera_con_balon',
   }),
   A({
-    slug: 'entra', nombre: 'Entra a canasta', familia: 'desplazamiento', _legado: 'bote', tag: 'entrada',
+    slug: 'entra', nombre: 'Entra a canasta', familia: 'desplazamiento', tag: 'entrada',
     sinonimos: ['entrada', 'penetra', 'ataca el aro', 'doble ritmo', 'bandeja'],
     // La razón de ser de esta entrada del catálogo: 'entra' LLEGA al aro
     // y se para a la distancia de apoyo. Es la que faltaba, y por no
@@ -205,7 +201,7 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'carrera_con_balon',
   }),
   A({
-    slug: 'corta', nombre: 'Corta', familia: 'desplazamiento', _legado: 'corte', tag: 'corte',
+    slug: 'corta', nombre: 'Corta', familia: 'desplazamiento', tag: 'corte',
     sinonimos: ['corte', 'cortar', 'se mueve', 'va a', 'desmarque', 'corre', 'correr', 'sprinta', 'se desplaza'],
     descripcion: 'Se desplaza sin balón hasta el destino.',
     parametros: { destino: null, alcance: 'parcial', avance: 0.3, trayectoria: 'recta', ritmo: 'normal' },
@@ -213,7 +209,7 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'corte',
   }),
   A({
-    slug: 'rodea', nombre: 'Rodea', familia: 'desplazamiento', _legado: 'rodea_cono', tag: null,
+    slug: 'rodea', nombre: 'Rodea', familia: 'desplazamiento', tag: null,
     sinonimos: ['rodear', 'sortea', 'slalom', 'zigzag', 'esquiva'],
     // Antes era un evento SUELTO que había que declarar aparte del
     // desplazamiento, y que el compilador tejía dentro de su camino. Si
@@ -226,7 +222,7 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'carrera_con_balon',
   }),
   A({
-    slug: 'vuelve_a_fila', nombre: 'Vuelve a la fila', familia: 'desplazamiento', _legado: 'vuelve_a_fila', tag: null,
+    slug: 'vuelve_a_fila', nombre: 'Vuelve a la fila', familia: 'desplazamiento', tag: null,
     sinonimos: ['vuelve a la cola', 'vuelve', 'a la fila', 'regresa'],
     descripcion: 'Corre hasta el final de la cola de la que salió. Es lo que cierra un ejercicio de fila.',
     parametros: { destino: 'fila_propia', alcance: 'completo', trayectoria: 'recta', ritmo: 'normal' },
@@ -234,7 +230,7 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'carrera_sin_balon',
   }),
   A({
-    slug: 'pasa', nombre: 'Pasa', familia: 'balon', _legado: 'pase', tag: 'pase',
+    slug: 'pasa', nombre: 'Pasa', familia: 'balon', tag: 'pase',
     sinonimos: ['pase', 'pasar', 'da el balón', 'sirve', 'devuelve'],
     descripcion: 'Manda el balón a un compañero.',
     parametros: { modo: 'pase', destino: null, balon: null },
@@ -242,7 +238,7 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'pase',
   }),
   A({
-    slug: 'tira', nombre: 'Tira', familia: 'balon', _legado: 'tiro', tag: 'tiro',
+    slug: 'tira', nombre: 'Tira', familia: 'balon', tag: 'tiro',
     sinonimos: ['tiro', 'tirar', 'lanza', 'lanzamiento', 'tira a canasta'],
     descripcion: 'El balón sale hacia el centro del aro.',
     parametros: { modo: 'tiro', destino: 'aro', balon: null },
@@ -250,7 +246,7 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'tiro',
   }),
   A({
-    slug: 'recoge', nombre: 'Recoge', familia: 'balon', _legado: 'recoge', tag: 'rebote',
+    slug: 'recoge', nombre: 'Recoge', familia: 'balon', tag: 'rebote',
     sinonimos: ['recoger', 'coge el balón', 'rebote', 'rebotea', 'va a por el balón'],
     descripcion: 'Va a por un balón suelto y se lo queda. Sin esto, tras un tiro el balón se queda en el aro para siempre.',
     parametros: { modo: 'recoge', balon: null, separacion: 0.9 },
@@ -260,7 +256,7 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'carrera_sin_balon',
   }),
   A({
-    slug: 'bloquea', nombre: 'Bloquea', familia: 'entre_dos', _legado: 'bloqueo', tag: 'bloqueo',
+    slug: 'bloquea', nombre: 'Bloquea', familia: 'entre_dos', tag: 'bloqueo',
     sinonimos: ['bloqueo', 'pone un bloqueo', 'cortina'],
     descripcion: 'Se planta al lado del defensor del compañero para dejarle salir.',
     // Va SOLO a su sitio (§4.4): se pincha al compañero y el bloqueador se
@@ -272,7 +268,7 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'bloqueo',
   }),
   A({
-    slug: 'defiende', nombre: 'Defiende', familia: 'entre_dos', _legado: 'defiende', tag: 'defensa individual',
+    slug: 'defiende', nombre: 'Defiende', familia: 'entre_dos', tag: 'defensa individual',
     /* «ayuda» YA NO ES SINÓNIMO DE DEFENDER: es otra acción, la de ir a
        tapar a otro y volver. Mientras no existía, un ejercicio que decía
        «ayuda» se leía como «marca», que es justo lo contrario de lo que
@@ -393,11 +389,6 @@ export const CATALOGO_SISTEMA = [
   }),
 ];
 
-/** Los nueve eventos del motor anterior. El banco comprueba la cobertura. */
-export const EVENTOS_LEGADO = [
-  'bote', 'corte', 'pase', 'tiro', 'bloqueo', 'defiende', 'rodea_cono', 'vuelve_a_fila', 'recoge',
-];
-
 /* ── 3. Validación ─────────────────────────────────────────── */
 
 const SLUG_OK = /^[a-z][a-z0-9_]{1,39}$/;
@@ -476,7 +467,7 @@ export function validarAccion(a) {
   return { ok: !errores.length, errores };
 }
 
-/* ── 4. Resolver un nombre escrito a mano ──────────────────── */
+/* ── 4. Comparar nombres ───────────────────────────────────── */
 
 /** minúsculas, sin tildes, sin signos, sin artículos. */
 export function normalizarNombre(s) {
@@ -485,44 +476,6 @@ export function normalizarNombre(s) {
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9ñ]+/g, ' ')
     .trim();
-}
-
-const RELLENO = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'al', 'a', 'en', 'se', 'y']);
-const sinRelleno = (s) => normalizarNombre(s).split(' ').filter((t) => t && !RELLENO.has(t)).join(' ');
-
-/**
- * Índice nombre→acción de un catálogo. Se construye una vez y se
- * consulta muchas: el paso 2 resuelve cada palabra que se escribe.
- */
-export function indexar(catalogo) {
-  const idx = new Map();
-  for (const a of catalogo) {
-    for (const n of [a.slug, a.nombre, ...(a.sinonimos || [])]) {
-      const k = sinRelleno(n);
-      if (k && !idx.has(k)) idx.set(k, a);
-    }
-  }
-  return idx;
-}
-
-/**
- * Resuelve un texto contra el catálogo. Devuelve null si no lo
- * reconoce — y eso NO es un fallo: el paso 2 preguntará, igual que
- * hace con una posición que no conoce.
- */
-export function resolverAccion(texto, idx) {
-  const k = sinRelleno(texto);
-  if (!k) return null;
-  if (idx.has(k)) return idx.get(k);
-  // la frase entera no casa: se prueba con el trozo más largo que sí
-  const tokens = k.split(' ');
-  for (let n = tokens.length - 1; n >= 1; n--) {
-    for (let i = 0; i + n <= tokens.length; i++) {
-      const sub = tokens.slice(i, i + n).join(' ');
-      if (idx.has(sub)) return idx.get(sub);
-    }
-  }
-  return null;
 }
 
 /* ── 5. Fusión con lo que crea el club ─────────────────────── */

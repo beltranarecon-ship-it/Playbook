@@ -86,5 +86,5 @@
 .court-controls-slot { width: 100%; }
 
 /* Tocar la pista para pausar (Tramo 2.15): solo mientras se reproduce
-   de verdad; en el paso 1 y en el paso 2 el clic tiene otro dueño. */
+   de verdad; en la Pizarra el clic tiene otro dueño. */
 .court-wrap.is-tocable .court__layer { cursor: pointer; }
