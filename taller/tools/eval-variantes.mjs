@@ -55,6 +55,9 @@ test('QUÉ VÍDEO ENSEÑA UNA FASE: la variante elegida, la de siempre, y si no 
   const catalogo = [{ slug: 'entra', nombre: 'Entra', video: YT('ddddddddddd') }];
   eq(videoDeFase(f(['entra']), { videos: {}, catalogo }).titulo, 'Entra', 'el vídeo que traía la acción del catálogo, también:');
   eq([videoDeFase(null), videoDeFase(f([]), { videos })], [null, null]);
+  /* La elegida manda sobre la de siempre de otro trazo, aunque ese se dibujara antes. */
+  eq(videoDeFase(f(['corta', 'pasa'], [{ accion: 'pasa', variante: 'recto', de_siempre: true }, { accion: 'pasa', variante: 'picado' }]), { videos }).clave, 'pasa__picado');
+  eq(videoDeFase(f(['pasa'], [{ accion: 'pasa', variante: 'recto', de_siempre: true }]), { videos }).clave, 'pasa__recto', 'y sin ninguna elegida, la de siempre:');
 });
 
 test('LOS VÍDEOS DE UN EJERCICIO, sin repetir y de todas sus ramas: los botones de la cabecera del proyector', () => {

@@ -194,8 +194,13 @@ function dependencias(carriles, pista = 'entera') {
        haga después de dibujado el bloqueo, y lo que ya estaba haciendo no
        se retrasa. */
     if (esBloqueo(p)) {
-      const siguiente = carrilDe(p.companero_id).find((t) => t.orden > p.orden);
-      if (siguiente) apunta(siguiente.id, p.id);
+      /* Su primer DESPLAZAMIENTO: una finta antes de salir es en el sitio,
+         y el bloqueador aguanta hasta que pasa de verdad. La finta
+         también espera a que el bloqueo esté puesto. */
+      const suyos = carrilDe(p.companero_id).filter((t) => t.orden > p.orden);
+      const siguiente = suyos.find((t) => t.tipo !== 'gesto') || suyos[0];
+      if (suyos[0]) apunta(suyos[0].id, p.id);
+      if (siguiente && siguiente !== suyos[0]) apunta(siguiente.id, p.id);
       /* Y lo siguiente del BLOQUEADOR espera a que ese compañero le pase. */
       const propios = carrilDe(p.elemento_id);
       const despues = propios[propios.findIndex((t) => t.id === p.id) + 1];

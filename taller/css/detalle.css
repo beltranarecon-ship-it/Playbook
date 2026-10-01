@@ -262,6 +262,7 @@
   width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px;
   background: #111; pointer-events: none;
 }
+.proy-columna__video[hidden] { display: none; }
 .proy-columna__mas { font-size: 0.8rem; opacity: 0.6; transition: opacity 0.3s ease; }
 .proyector.is-idle .proy-columna__mas { opacity: 0; }
 .proy-columna__tocar {
@@ -269,15 +270,20 @@
   background: transparent; cursor: pointer;
 }
 .proy-columna__tocar:focus-visible { outline: 2px solid #F97316; outline-offset: 2px; }
-/* En vertical o en pantallas estrechas no cabe al lado: va debajo de la
-   pista, que cede sitio. */
-@media (orientation: portrait), (max-width: 700px) {
-  .proyector.con-columna .proy-columna {
-    position: relative; right: auto; top: auto; transform: none;
-    width: min(92vw, 440px); margin-top: 12px;
+/* En vertical no cabe al lado: va ARRIBA, encima de la pista, que cede
+   sitio. Abajo no, que están los mandos y se quedaría con sus toques. Un
+   móvil apaisado, por estrecho que sea, la lleva al lado. */
+@media (orientation: portrait) {
+  .proyector { --ancho-columna: min(72vw, 360px); }
+  .proyector.con-columna .proy-columna { right: auto; left: 50%; top: 64px; transform: translateX(-50%); }
+  .proyector.con-columna .proyector__stage {
+    padding-right: 0;
+    padding-top: calc(var(--ancho-columna) * 0.5625 + 110px);
+    padding-bottom: 96px;
   }
-  .proyector.con-columna .proyector__stage { padding-right: 0; }
-  .proyector.con-columna.proyector--full .court { width: min(97vw, calc(58vh * var(--court-aspect, 1.5))); }
+  .proyector.con-columna.proyector--full .court {
+    width: min(97vw, calc((100vh - var(--ancho-columna) * 0.5625 - 250px) * var(--court-aspect, 1.5)));
+  }
 }
 
 /* ---- El cartel de rama en el proyector (ESPEC-PIZARRA-v3 §6.7) ----

@@ -527,9 +527,19 @@ export class Tablero {
     this.cerrar();
     this.repaso.parar();
     this.tramos = this.tramos.filter((t) => t.id !== id);
+    /* Lo que queda en la fase detrás del borrado sale de donde queda cada
+       uno: sin esto, tras quitar un bote su finta se quedaba en el sitio
+       al que ya no llega. */
+    this._reanclarEstaFase();
     this._recalcularSiguientes();
     this.irAFase(this.iFase);
     return true;
+  }
+
+  /* Los trazos de la fase que se edita, desde donde empieza cada uno. */
+  _reanclarEstaFase() {
+    if (this.iFase === 0) { this._reanclarLaPrimera(); return; }
+    this._recalcularArbol(null, null, [this.fases[this.iFase].id]);
   }
 
   _borrarElQueSeEdita() {
@@ -799,7 +809,12 @@ export class Tablero {
       const mios = todos.filter((t) => t.tipo !== 'gesto');
       const desde = mios.length ? tramos.indexOf(mios[mios.length - 1]) : -1;
       const gestos = new Set(todos.filter((t) => t.tipo === 'gesto' && tramos.indexOf(t) > desde).map((t) => t.id));
-      if (gestos.size) {
+      /* Si no se ha desplazado pero pasa o tira, su sitio en la fase es su
+         arranque, que no cambia al arrastrarla (`_recolocadas`): sus
+         gestos se quedan ahí, con el pase. */
+      const anclada = !mios.length && tramos.some((t) => t.tipo !== 'gesto'
+        && (t.elemento_id === e.id || t.balon_id === e.id || (e.portador_id && (t.elemento_id === e.portador_id || t.corre_id === e.portador_id))));
+      if (gestos.size && !anclada) {
         tramos = tramos.map((t) => (gestos.has(t.id) ? { ...t, trazo: trasladar(t.trazo, { x: e.x, y: e.y }) } : t));
         toco = true;
         if (this._editando && gestos.has(this._editando.id)) this.nodos.refrescar(tramos.find((t) => t.id === this._editando.id).trazo);
@@ -813,7 +828,7 @@ export class Tablero {
          bote, y en el proyector el balón volaba al sitio equivocado. */
       if (e.kind === 'balon' && e.portador_id) {
         const i = tramos.indexOf(ultimo);
-        if (tramos.some((t, k) => k > i && t.corre_id === e.portador_id)) continue;
+        if (tramos.some((t, k) => k > i && t.corre_id === e.portador_id && t.tipo !== 'gesto')) continue;
       }
       /* UN TIRO NO SE ESTIRA: su final es el aro (§5.3), y el balón queda
          donde cae, no en la punta. Sin esto, al soltar el tiro el final se
@@ -1371,7 +1386,9 @@ export class Tablero {
     if (!this.tramos.length) return false;
     const antes = JSON.stringify(this.tramos.map((t) => t.trazo));
     const tramos = this.tramos.map((t) => {
-      if (t.tipo === 'pass') return t;
+      /* Ni un pase —vuela— ni un gesto en el sitio —no va a ningún lado—
+         rodean conos. */
+      if (t.tipo === 'pass' || t.tipo === 'gesto') return t;
       /* Con la intención que se guardó: el lado de cada cono y lo
          anulado se respetan, que es lo que el §7.4 dice que se guarda. */
       const r = this._sorteando(t.trazo, t.sorteando);
@@ -1404,7 +1421,7 @@ export class Tablero {
    */
   cambiarSorteo(tramoId, conoId) {
     const t = this.tramos.find((x) => x.id === tramoId);
-    if (!t || t.tipo === 'pass') return false;
+    if (!t || t.tipo === 'pass' || t.tipo === 'gesto') return false;
     const intencion = (t.sorteando || []).map((x) => ({ ...x }));
     const i = intencion.findIndex((x) => x.cono === conoId);
     if (i < 0) return false;

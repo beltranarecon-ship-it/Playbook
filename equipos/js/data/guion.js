@@ -213,6 +213,11 @@ function conosSorteados(path, conos) {
 /* Cómo se cuenta lo que un defensor hace distinto (§8.5). Una frase por
    acción, en el mismo tono que el resto del guion: lo que se vería desde
    la banda. */
+/* Cómo se dice cada gesto en el sitio (ESPEC-PIZARRA-v3 §4.4). */
+const VERBO_GESTO = {
+  finta: 'finta', pivota: 'pivota', cambia_de_mano: 'cambia de mano', protege: 'protege el balón', para: 'se para',
+};
+
 const FRASE_DEFENSA = {
   ayuda: (q, o) => (o ? `${q} ayuda sobre ${o} y recupera` : `${q} ayuda y recupera`),
   sobrepasado: (q) => `${q} es superado y persigue por detrás`,
@@ -285,6 +290,11 @@ export function guionDeAnimacion(anim) {
          diciendo lo mismo. Va en UNA frase al final. */
       if (m.automatico) continue;
       const r = ref.get(m.elemento_id);
+      /* UN GESTO EN EL SITIO (§4.4) no va a ningún lado: se dice el gesto. */
+      if (m.tipo_movimiento === 'gesto_en_sitio') {
+        lineas.push(`${txt(r)} ${VERBO_GESTO[m.gesto] || 'hace un gesto en el sitio'}`);
+        continue;
+      }
       const conBalon = m.tipo_movimiento === 'carrera_con_balon' || lleva.has(m.elemento_id);
       if (vuelveAFila(m.path, conos, defensores.has(m.elemento_id))) {
         lineas.push(`${txt(r)} vuelve al final de su fila${conBalon ? ' con el balón' : ''}`);

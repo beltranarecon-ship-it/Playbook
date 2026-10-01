@@ -508,5 +508,24 @@ test('EL TIRO DICE SI ANOTA O FALLA, cuando se sabe', () => {
   eq(base(undefined).fases[0].lineas, ['El 5 tira desde el poste bajo izquierdo'], 'lo guardado antes, igual:');
 });
 
+test('UN GESTO EN EL SITIO se cuenta por su nombre, no como un bote o un corte a donde ya está', () => {
+  const ida = [P.codo_der, [P.codo_der[0], P.codo_der[1] - 0.05], P.codo_der];
+  const g = guionDeAnimacion({
+    pista: 'entera', canasta: 'norte',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A2', equipo: 'A' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    conos: [],
+    fases: [{
+      duracion_ms: 700, pausa_post_ms: 300, pases: [], tiros: [], bloqueos: [],
+      movimientos: [
+        { elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'gesto_en_sitio', gesto: 'finta', path: ida.map(([x, y]) => ({ x, y })) },
+        { elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'gesto_en_sitio', gesto: 'para', path: ida.map(([x, y]) => ({ x, y })) },
+        { elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'gesto_en_sitio', path: ida.map(([x, y]) => ({ x, y })) },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 finta', 'El 2 se para', 'El 2 hace un gesto en el sitio']);
+});
+
 console.log(`\n${pasan} pasan · ${fallan} fallan`);
 process.exit(fallan ? 1 : 0);

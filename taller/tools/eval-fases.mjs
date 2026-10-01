@@ -404,6 +404,18 @@ test('UN GESTO EN EL SITIO VA ENTERO CON SU FICHA: no se estira, y lo de detrás
   eq(posicionesFinales(conCarriles([gesto]), { A1: P(0.5, 0.5) }).A1, { x: 0.5, y: 0.5 }, 'tras el gesto, la ficha sigue en su sitio:');
 });
 
+test('UNA FINTA ANTES DE SALIR DE UN BLOQUEO: el bloqueador aguanta hasta que su compañero pasa de verdad', () => {
+  const bloqueo = { ...tramo('A2', P(0.6, 0.4), P(0.34, 0.56)), accion: 'bloquea', tipo: 'bloqueo', companero_id: 'A1' };
+  const finta = { ...tramo('A1', P(0.3, 0.6), P(0.3, 0.6)), accion: 'finta', tipo: 'gesto', trazo: trazoDeIdaYVuelta(P(0.3, 0.6), P(0.3, 0.5)) };
+  const bote = tramo('A1', P(0.3, 0.6), P(0.5, 0.3), { accion: 'bota', tipo: 'run' });
+  const sale = tramo('A2', P(0.34, 0.56), P(0.5, 0.15));
+  const r = tiemposDe(conCarriles([bloqueo, finta, bote, sale]));
+  const t = r.tramos;
+  ok(t[finta.id].inicio_ms >= t[bloqueo.id].fin_ms, 'la finta espera al bloqueo');
+  ok(t[bote.id].inicio_ms >= t[finta.id].fin_ms, 'el bote va después de la finta');
+  ok(t[sale.id].inicio_ms > t[bote.id].inicio_ms, `el bloqueador no se va antes de que su compañero arranque: sale en ${t[sale.id].inicio_ms}, el bote en ${t[bote.id].inicio_ms}`);
+});
+
 test('EL ORIGEN LO PONE QUIEN ACTÚA, NO QUIEN VIAJA', () => {
   /* Un pase sale del pasador aunque lo recorra el balón. Siguiendo a
      quien viaja, el pase arrancaría desde donde quedó el balón. */

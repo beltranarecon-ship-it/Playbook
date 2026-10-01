@@ -200,12 +200,18 @@ export function videoDeFase(fase, { videos = {}, catalogo = [] } = {}) {
   const tabla = videos && typeof videos === 'object' ? videos : {};
   const vale = (v) => { const n = normalizarVideo(v); return n && seIncrusta(n) ? n : null; };
   const conVariante = new Set();
-  for (const x of Array.isArray(fase.variantes) ? fase.variantes : []) {
-    if (!x || !x.accion) continue;
-    conVariante.add(x.accion);
-    const k = claveDeVideo(x.accion, x.variante);
-    const v = k && vale(tabla[k]);
-    if (v) return { clave: k, video: v, titulo: tituloDeVariante(x.accion, x.variante, x.nombre) };
+  const suyas = (Array.isArray(fase.variantes) ? fase.variantes : []).filter((x) => x && x.accion);
+  /* Primero las ELEGIDAS, y después las de siempre (las que el compilador
+     apunta con `de_siempre` para los trazos sin variante): en el orden en
+     que se dibujó cada cosa. */
+  for (const elegidas of [true, false]) {
+    for (const x of suyas) {
+      if (!!x.de_siempre === elegidas) continue;
+      conVariante.add(x.accion);
+      const k = claveDeVideo(x.accion, x.variante);
+      const v = k && vale(tabla[k]);
+      if (v) return { clave: k, video: v, titulo: tituloDeVariante(x.accion, x.variante, x.nombre) };
+    }
   }
   const acciones = Array.isArray(fase.acciones) ? fase.acciones : [];
   for (const slug of acciones) {

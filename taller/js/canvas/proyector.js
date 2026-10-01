@@ -152,6 +152,23 @@ export function abrirProyector(animacion, meta = {}) {
     enviar('seekTo', [desde, true]);
     enviar('playVideo', []);
   };
+  /* UN REPRODUCTOR POR CLIP, QUE SE GUARDA. Las fases duran dos o tres
+     segundos y la proyección va en bucle: creando uno nuevo en cada cambio
+     de fase, la columna enseñaría sobre todo a YouTube cargando. Los ya
+     cargados se esconden y, al volver su fase, se enseñan desde el
+     principio del trozo. Como mucho, unos pocos a la vez. */
+  const MARCOS_MAX = 6;
+  const marcos = new Map();   // clave -> { marco, clip }
+  const titulo = h('span', { class: 'proy-columna__t' });
+  const hueco = h('div', { class: 'proy-columna__videos' });
+  const tocar = h('button', {
+    class: 'proy-columna__tocar', type: 'button',
+    onClick: (e) => { e.stopPropagation(); if (enColumna) mostrarVideo({ nombre: enColumna.titulo, video: enColumna.video }); },
+  });
+  columna.append(titulo, hueco, h('span', { class: 'proy-columna__mas mono' }, 'Toca para verlo en grande'), tocar);
+  const mandar = (marco, func, args = []) => {
+    try { marco.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), 'https://www.youtube-nocookie.com'); } catch { /* sin ventana todavía */ }
+  };
   function pintarColumna() {
     const c = videosOn ? videoDeFase({ acciones: engine.accionesDeFase(engine.k), variantes: engine.variantesDeFase(engine.k) }, { videos: tablaVideos, catalogo }) : null;
     if ((c && c.clave) === (enColumna && enColumna.clave)) return;
@@ -159,25 +176,37 @@ export function abrirProyector(animacion, meta = {}) {
     bucle = null;
     enColumna = c;
     root.classList.toggle('con-columna', !!c);
-    if (!c) { columna.replaceChildren(); return; }
-    const marco = h('iframe', {
-      class: 'proy-columna__video', src: urlEnBucle(c.video), title: `Vídeo de ${c.titulo}`, tabindex: '-1',
-      allow: 'autoplay; encrypted-media',
-      // el iframe es de un tercero: se le deja lo justo para reproducir
-      sandbox: 'allow-scripts allow-same-origin allow-presentation',
-      referrerpolicy: 'strict-origin-when-cross-origin', frameborder: '0',
-    });
-    const clip = clipDeColumna(c.video);
+    for (const [clave, m] of marcos) {
+      const suyo = !!c && clave === c.clave;
+      m.marco.hidden = !suyo;
+      if (!suyo) mandar(m.marco, 'pauseVideo');
+    }
+    if (!c) return;
+    titulo.textContent = c.titulo;
+    tocar.setAttribute('aria-label', `Ver en grande el vídeo de ${c.titulo}`);
+    let m = marcos.get(c.clave);
+    if (m) {
+      volverAlPrincipio(m.marco, m.clip.desde);
+    } else {
+      const marco = h('iframe', {
+        class: 'proy-columna__video', src: urlEnBucle(c.video), title: `Vídeo de ${c.titulo}`, tabindex: '-1',
+        allow: 'autoplay; encrypted-media',
+        // el iframe es de un tercero: se le deja lo justo para reproducir
+        sandbox: 'allow-scripts allow-same-origin allow-presentation',
+        referrerpolicy: 'strict-origin-when-cross-origin', frameborder: '0',
+      });
+      m = { marco, clip: clipDeColumna(c.video) };
+      /* El más viejo se va si ya hay muchos. */
+      if (marcos.size >= MARCOS_MAX) {
+        const [vieja, v] = marcos.entries().next().value;
+        v.marco.remove();
+        marcos.delete(vieja);
+      }
+      marcos.set(c.clave, m);
+      hueco.append(marco);
+    }
+    const { marco, clip } = m;
     bucle = setInterval(() => volverAlPrincipio(marco, clip.desde), Math.max(1, clip.hasta - clip.desde) * 1000);
-    columna.replaceChildren(
-      h('span', { class: 'proy-columna__t' }, c.titulo),
-      marco,
-      h('span', { class: 'proy-columna__mas mono' }, 'Toca para verlo en grande'),
-      h('button', {
-        class: 'proy-columna__tocar', type: 'button', 'aria-label': `Ver en grande el vídeo de ${c.titulo}`,
-        onClick: (e) => { e.stopPropagation(); mostrarVideo({ nombre: c.titulo, video: c.video }); },
-      }),
-    );
   }
 
   /* El rótulo de pausa. Desde el fondo de la pista no se ve si el
@@ -267,7 +296,9 @@ export function abrirProyector(animacion, meta = {}) {
         if (cerrando) return;   // se está saliendo del proyector
         // «continúa sola»: solo si venía andando. Si el entrenador la
         // había parado él, se queda donde la dejó.
-        if (iba) engine.play();
+        /* Y no en un cruce: ahí el play elige rama, y el cruce espera a que
+           se elija (§6.7). */
+        if (iba && !engine.cruce) engine.play();
         pintarPausa();
         showControls();
       },
@@ -285,6 +316,9 @@ export function abrirProyector(animacion, meta = {}) {
 
   // atajos §14.1
   const onKey = (e) => {
+    /* Con el vídeo en grande delante, las teclas son suyas (Espacio y Esc
+       lo cierran): si no, la animación y la voz correrían por debajo. */
+    if (capaVideo) return;
     /* En un cruce, las flechas y los números eligen rama. */
     if (engine.cruce) {
       const n = engine.cruce.opciones.length;

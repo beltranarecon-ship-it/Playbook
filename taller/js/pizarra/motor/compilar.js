@@ -420,12 +420,20 @@ function compilarCamino(jugada, { conTramosEn = null, mantener = null } = {}) {
     }
 
     const r = metaDeFase(fase, { jugadores, balones, escena, aro });
+    /* LA DEFENSA NO PERSIGUE UN GESTO EN EL SITIO: quien finta o pivota no
+       se va a ningún lado, y su defensor se queda con él. Siguiendo el
+       amago, acababa la fase un metro más atrás y la siguiente arrancaba
+       desde ahí. */
+    const hayGestos = fase.movimientos.some((m) => m.tipo_movimiento === 'gesto_en_sitio');
+    const paraDefender = hayGestos
+      ? metaDeFase({ ...fase, movimientos: fase.movimientos.filter((m) => m.tipo_movimiento !== 'gesto_en_sitio') }, { jugadores, balones, escena, aro })
+      : r;
     const seguida = seguirDefensa({
       /* Las puertas de la fase, por si algún defensor está sobre una
          (§7.4.1): queda confinado a su carril. */
       puertas: puertasDe(((j.fases || [])[fase.indice] || {}).tramos, elementos.filter((e) => e.kind === 'cono')),
       pista, canasta: papelesFase.canasta || canasta, defensa: j.defensa, papeles: comoFuera(papelesFase),
-      jugadores, balones, reglas, meta: r.meta, inicio: escena,
+      jugadores, balones, reglas, meta: paraDefender.meta, inicio: escena,
       duracion_ms: fase.duracion_ms, tiros: fase.tiros,
     });
     for (const [id, s] of Object.entries(seguida)) {
@@ -623,6 +631,9 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
       elemento_id: de(t.corre_id || t.elemento_id),
       tipo_elemento: 'jugador',
       tipo_movimiento: accion.simbolo,
+      /* Qué gesto es: quien lo cuenta (el guion de Equipos) no puede
+         deducirlo de un camino que vuelve a su sitio. */
+      ...(accion.familia === 'gesto' ? { gesto: t.accion } : {}),
       path: t.trazo,
       ...cuando,
     });

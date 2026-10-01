@@ -54,6 +54,7 @@ const filasMod = await import('../js/pizarra/filas.js');
 const { Descripcion } = await import('../js/pizarra/paneles/descripcion.js');
 const { metrosEntre } = await import('../js/canvas/escala.js');
 const { ponerVariantesDelClub, variantesDe } = await import('../js/pizarra/repertorio.js');
+const seguirMod = await import('../js/pizarra/elementos.js');
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -1063,20 +1064,24 @@ test('LO QUE SE ELIGE LO HACEN TODOS: un gesto cada uno; un corte, al mismo punt
   const [c2, c3] = t.tramos.slice(2);
   eq([c2.elemento_id, c3.elemento_id, c3.accion], [a2.id, a3.id, 'corta']);
   eq([[c3.trazo[0].x, c3.trazo[0].y], [c3.trazo.at(-1).x, c3.trazo.at(-1).y]], [[0.5, 0.7], [0.8, 0.3]], 'desde su sitio, al mismo punto:');
-  /* En paralelo: copia el trazo desde donde está. */
-  t.setEnParalelo(true);
-  t.abrirAnilloDeGrupo();
-  const antes = [ficha(t, a2.id), ficha(t, a3.id)].map((e) => [e.x, e.y]);
-  corta(t, a2.id, { x: antes[0][0] - 0.1, y: antes[0][1] + 0.2 });
-  const p3 = t.tramos.at(-1);
-  eq(p3.elemento_id, a3.id);
-  ok(Math.abs(p3.trazo.at(-1).x - (antes[1][0] - 0.1)) < 1e-9 && Math.abs(p3.trazo.at(-1).y - (antes[1][1] + 0.2)) < 1e-9, `el mismo movimiento, desde su sitio: ${JSON.stringify(p3.trazo.at(-1))}`);
-  /* Un trazo de uno solo, después, no arrastra al grupo. */
-  seleccionar(t, a2.id);
-  t._tocarFicha(ficha(t, a2.id));
-  const n = t.tramos.length;
-  corta(t, a2.id, { x: 0.2, y: 0.2 });
-  eq(t.tramos.length, n + 1);
+  /* En paralelo: cada uno copia el trazo desde donde está. */
+  const s = tresAtacantes();
+  seleccionar(s.t, s.a2.id, s.a3.id);
+  s.t.setEnParalelo(true);
+  s.t.abrirAnilloDeGrupo();
+  corta(s.t, s.a2.id, { x: 0.6, y: 0.3 });     // A2 está en (0.7, 0.5): −0.1, −0.2
+  const p3 = s.t.tramos.at(-1);
+  eq(p3.elemento_id, s.a3.id);
+  ok(Math.abs(p3.trazo.at(-1).x - 0.4) < 1e-9 && Math.abs(p3.trazo.at(-1).y - 0.5) < 1e-9, `el mismo movimiento, desde su sitio (0.5, 0.7): ${JSON.stringify(p3.trazo.at(-1))}`);
+  /* Un anillo de grupo que se cierra sin elegir no deja al grupo puesto:
+     el trazo de uno solo, después, es solo suyo. */
+  s.t.abrirAnilloDeGrupo();
+  s.t.anillo.cerrar();
+  seleccionar(s.t, s.a2.id);
+  s.t._tocarFicha(ficha(s.t, s.a2.id));
+  const n = s.t.tramos.length;
+  corta(s.t, s.a2.id, { x: 0.2, y: 0.2 });
+  eq(s.t.tramos.length, n + 1);
 });
 
 test('SI NO HAY NADA QUE PUEDAN HACER TODOS, se dice; y quien no puede lo suyo, también', () => {
@@ -1099,6 +1104,11 @@ test('LOS ATAJOS (§4.7): la letra lanza la acción de la ficha seleccionada; N,
   eq([t.atajo('C'), t.anillo.abierto], [true, true], 'C, corta: pregunta el cómo y a dibujar:');
   t.cerrar();
   eq(t.atajo('z'), false, 'una letra que no es atajo no se come:');
+  corta(t, a2.id, { x: 0.6, y: 0.3 });
+  ok(t.repaso.corriendo, 'el repaso del corte está en marcha');
+  eq([t.atajo('z'), t.repaso.corriendo], [false, true], 'ni corta el repaso:');
+  t.cerrar();
+  t.repaso.parar();
   seleccionar(t, a1.id);
   eq([t.atajo('e'), t.anillo.abierto], [true, true], 'E, entra a canasta: pregunta el cómo');
   t._elegir('entra', { variante: 'bandeja' });
@@ -1444,6 +1454,66 @@ test('EL GESTO VA CON SU FICHA: al moverla, se lleva entero; y con un corte dela
   eq([g1.trazo[0].x, g1.trazo[0].y], [0.6, 0.6], 'la finta de antes del corte no se mueve:');
   eq([c.trazo.at(-1).x, c.trazo.at(-1).y], [0.9, 0.2], 'el corte acaba donde está ahora:');
   eq([[g2.trazo[0].x, g2.trazo[0].y], [g2.trazo[2].x, g2.trazo[2].y]], [[0.9, 0.2], [0.9, 0.2]], 'y la finta de después, con ella:');
+});
+
+test('QUIEN SOLO PASA O TIRA NO CAMBIA DE ARRANQUE AL ARRASTRARLO: su finta se queda con el pase', () => {
+  const { t, a1, a2, bal } = conAtaque();
+  elegir(t, a1.id, 'finta');
+  t.cerrar();
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('pasa'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), ficha(t, a2.id)), tipo: 'pass' });
+  t.cerrar();
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === a1.id ? { ...e, x: 0.2, y: 0.7 } : e)));
+  t._recolocadas([a1.id]);
+  const g = t.tramos[0].trazo;
+  eq([[g[0].x, g[0].y], [g[2].x, g[2].y], t.fases[0].entrada[a1.id]], [[0.3, 0.5], [0.3, 0.5], { x: 0.3, y: 0.5 }], 'el gesto sigue en el arranque, que no ha cambiado:');
+  ok(bal, 'balón');
+});
+
+test('RECIBE Y FINTA: mover al receptor estira el pase hasta él, y su finta va con él', () => {
+  const { t, a1, a2 } = conAtaque();
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('pasa'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), ficha(t, a2.id)), tipo: 'pass' });
+  t.cerrar();
+  elegir(t, a2.id, 'finta');
+  t.cerrar();
+  const balon = t.fichas.elementos.find((e) => e.kind === 'balon');
+  t.fichas._cambio(seguirMod.seguirAlPortador(t.fichas.elementos.map((e) => (e.id === a2.id ? { ...e, x: 0.8, y: 0.7 } : e)), 'entera'));
+  t._recolocadas([a2.id]);
+  const [pase, finta] = t.tramos;
+  const fin = pase.trazo.at(-1);
+  const b = ficha(t, balon.id);
+  ok(Math.abs(fin.x - b.x) < 1e-9 && Math.abs(fin.y - b.y) < 1e-9, `el pase acaba donde está ahora el balón: ${JSON.stringify(fin)} / ${JSON.stringify([b.x, b.y])}`);
+  eq([finta.trazo[0].x, finta.trazo[0].y], [0.8, 0.7], 'y la finta, con él:');
+});
+
+test('UN GESTO NO RODEA CONOS, y al borrar el bote de antes vuelve con su ficha', () => {
+  const { t, a1 } = conAtaque();
+  t.anadirFicha({ kind: 'cono' }, { x: 0.305, y: 0.43 });
+  t.cerrar();
+  elegir(t, a1.id, 'finta');
+  t.cerrar();
+  t.fichas._cambio(t.fichas.elementos.map((e) => ({ ...e })));
+  eq([t.tramos[0].trazo.length, 'sorteando' in t.tramos[0]], [3, false], 'con un cono delante sigue siendo ida y vuelta:');
+  /* Bota y finta: borrado el bote, la finta está donde está la ficha. */
+  const s = conAtaque();
+  s.t._trazoHecho({ elemento: ficha(s.t, s.a1.id), accion: s.t._accionDe('bota'), variante: null, trazo: nuevoTrazo(ficha(s.t, s.a1.id), { x: 0.5, y: 0.3 }), tipo: 'run' });
+  s.t.cerrar();
+  elegir(s.t, s.a1.id, 'finta');
+  s.t.cerrar();
+  ok(s.t.borrarTramo(s.t.tramos[0].id));
+  const g = s.t.tramos[0].trazo;
+  eq([[g[0].x, g[0].y], [g[2].x, g[2].y], [ficha(s.t, s.a1.id).x, ficha(s.t, s.a1.id).y]], [[0.3, 0.5], [0.3, 0.5], [0.3, 0.5]]);
+});
+
+test('LA DEFENSA NO PERSIGUE UNA FINTA: su defensor acaba la fase donde estaba, y el guion la llama por su nombre', () => {
+  const { t, a1, b1 } = conDefensa();
+  const antes = { x: ficha(t, b1.id).x, y: ficha(t, b1.id).y };
+  elegir(t, a1.id, 'finta');
+  t.cerrar();
+  t._cerrarFase();
+  const ahora = t.fases[1].entrada[b1.id];
+  ok(Math.abs(ahora.x - antes.x) < 1e-6 && Math.abs(ahora.y - antes.y) < 1e-6, `B1 sigue en su sitio: ${JSON.stringify([antes, ahora])}`);
+  const anim = compilarMod.compilar(t.jugada());
+  eq(anim.fases[0].movimientos.find((m) => !m.automatico).gesto, 'finta', 'lo compilado dice qué gesto es:');
 });
 
 test('EL GESTO SE COMPILA Y NO MUEVE A NADIE: el proyector lo enseña y la fase siguiente sale del mismo sitio', () => {

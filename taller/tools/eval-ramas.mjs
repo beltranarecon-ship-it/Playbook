@@ -315,6 +315,9 @@ test('BORRAR UNA FASE: lo de detrás sigue a lo de delante; no la única, ni una
   const u = borrarFase(lineal(), 'f4');
   eq([ids(u.fases), u.sigue], [['f1', 'f2', 'f3'], null]);
   eq(borrarFase([F('f1')], 'f1').motivo, 'una jugada tiene al menos una fase');
+  /* Aunque la siguiente no vaya la segunda en la lista (la dice reune). */
+  const d = borrarFase([F('f1'), F('f3', { reune: ['f2'] }), F('f2', { reune: ['f1'] })], 'f1');
+  eq([d.fases[0].id, caminoPrincipal(d.fases)], ['f2', ['f2', 'f3']], 'la primera es siempre la primera de la lista:');
   const f = abrirRama(lineal(), 'f2', { primera: 'a', nueva: 'b', crear }).fases;
   eq(borrarFase(f, 'f2').motivo, 'de esta fase salen ramas: quítalas antes');
   eq(borrarFase(f, 'nadie').motivo, 'esa fase no está');
