@@ -465,6 +465,25 @@
   border-radius: var(--r-sm); background: none; color: var(--color-text); font: inherit; cursor: pointer;
 }
 .pz-der__serie:hover { background: var(--surface-2); }
+/* Las colocaciones guardadas, en el panel izquierdo (§7.8). */
+.pz-coloc { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 8px; }
+.pz-coloc__fila { display: flex; flex-direction: column; gap: 4px; }
+.pz-coloc__acciones { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 6px; }
+.pz-coloc__b {
+  min-height: 28px; padding: 2px 8px; border: 1px solid var(--color-border); border-radius: var(--r-sm);
+  background: none; color: var(--color-text); font: inherit; cursor: pointer; text-align: left;
+}
+.pz-coloc__b:hover { background: var(--surface-2); }
+.pz-coloc__n { width: 100%; font-weight: 600; }
+.pz-coloc__fila.is-abierta .pz-coloc__n { background: var(--surface-2); }
+.pz-coloc__b--quitar { color: var(--color-danger, #b3261e); }
+.pz-coloc__b--ojo { border-color: var(--color-danger, #b3261e); color: var(--color-danger, #b3261e); font-weight: 600; }
+.pz-coloc__form { display: flex; flex-direction: column; gap: 4px; }
+.pz-coloc__nombre {
+  min-height: 30px; padding: 3px 6px; border: 1px solid var(--color-border); border-radius: var(--r-sm);
+  background: var(--color-bg); color: var(--color-text); font: inherit;
+}
+
 /* El botón «¿qué hacen los N?» junto a varios seleccionados (§3.2). */
 .pz-grupo .pz-nodo__b { width: auto; padding: 0 12px; border-radius: 22px; font-weight: 600; white-space: nowrap; }
 

@@ -42,6 +42,7 @@ import { guardarEjercicio, actualizarEjercicio, getEjercicio, nombresDeEjercicio
 import { Pizarra } from '../pizarra/pizarra.js';
 import { cargarVariantes, crearVariante } from '../supabase/variantes.js';
 import { cargarVideos, guardarVideo, borrarVideo } from '../supabase/videos.js';
+import { cargarPlantillas, crearPlantilla, borrarPlantilla } from '../supabase/plantillas.js';
 import { compilar, esDeLaPizarra } from '../pizarra/motor/compilar.js';
 import { jugadaDesdeAnimacion } from '../pizarra/motor/jugada.js';
 import { recuento } from '../pizarra/elementos.js';
@@ -152,7 +153,7 @@ export function render(root, { id = null, modo = 'nuevo', paso = 0 } = {}) {
        vídeos de las variantes (§4.3, §10.1). */
     pizarra = new Pizarra({
       pista: draft.tipo_pista, canasta: draft.canasta || 'norte', onCambio: scheduleSave,
-      datos: { cargarVariantes, crearVariante, cargarVideos, guardarVideo, borrarVideo },
+      datos: { cargarVariantes, crearVariante, cargarVideos, guardarVideo, borrarVideo, cargarPlantillas, crearPlantilla, borrarPlantilla },
     });
     return () => {
       if (jugada) { pizarra.cargar({ ...jugada, pista: draft.tipo_pista }); return; }

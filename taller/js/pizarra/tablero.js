@@ -56,6 +56,7 @@ import {
   deLaFila, puestosDeFila, orientacionHacia, normalizarFila,
 } from './filas.js';
 import { conRondas } from './rondas-fila.js';
+import { colocacionDe, ponerColocacion as ponerLaColocacion, plantillaDeFase as plantillaDeLaFase, papelesPorDefecto, tramosDePlantilla } from './plantillas.js';
 import {
   caminoPor, caminoHasta, caminoPrincipal, grafoDe, siguientesDe, arbolDe, nuevoIdDeFase,
   todosLosCaminos, tieneRamas, reunionesDe,
@@ -2013,6 +2014,85 @@ export class Tablero {
       fases: fases.map((f) => ({ id: f.id, duracion_ms: f.duracion_ms ?? null, pausa_post_ms: f.pausa_post_ms ?? null, tramos: f.tramos, defensa: f.defensa || {} })),
       defensa: this.defensa,
     };
+  }
+
+  /* ---- plantillas: colocaciones y fases guardadas (§7.8) ----- */
+
+  /** La colocación de ahora: la escena al empezar, sin lo dibujado. */
+  colocacion() { return colocacionDe(this.jugada().elementos); }
+
+  /**
+   * PONE UNA COLOCACIÓN guardada. `sustituir` empieza de nuevo con ella
+   * —y se lleva lo dibujado, como cualquier escena nueva—; `anadir` la
+   * suma a lo que hay, en la fase 1, que es donde se ponen las fichas.
+   * @returns cuántas fichas ha traído (0 si no se ha podido)
+   */
+  ponerColocacion(datos, modo = 'anadir') {
+    const pista = this.lienzo.vista.pistaKey;
+    if (modo === 'sustituir') {
+      const r = ponerLaColocacion([], datos, pista);
+      if (!r.puestas) { this.onNoPuede?.({ nombre: 'Poner la colocación' }, 'está vacía'); return 0; }
+      this.poner(r.elementos);
+      this.onEscena?.(this.fichas.elementos);
+      return r.puestas;
+    }
+    if (this.iFase !== 0) {
+      this.onNoPuede?.({ nombre: 'Añadir la colocación' }, 'las fichas se ponen en la fase 1, que es donde empieza la jugada');
+      return 0;
+    }
+    this.cerrar();
+    const r = ponerLaColocacion(this.fichas.elementos, datos, pista);
+    if (!r.puestas) { this.onNoPuede?.({ nombre: 'Añadir la colocación' }, 'está vacía'); return 0; }
+    this._conFichasNuevas(r.elementos);
+    return r.puestas;
+  }
+
+  /** La fase que se edita, como plantilla: { datos, avisos }. */
+  plantillaDeFase() {
+    return plantillaDeLaFase(this.fases[this.iFase], this.fichas.elementos, { entrada: this.entrada || {}, nombreDe: (e) => this.nombreDe(e) });
+  }
+
+  /** A qué ficha le toca cada papel de una fase guardada, de entrada. */
+  papelesDe(datos) {
+    return papelesPorDefecto(datos, this.fichas.elementos, (e) => this.nombreDe(e));
+  }
+
+  /**
+   * INSERTA UNA FASE GUARDADA con cada papel en su ficha (§7.8). Si la
+   * fase que se edita ya tiene algo dibujado, va en una fase nueva
+   * detrás; si está vacía, en ella.
+   * @returns { ok, avisos }
+   */
+  insertarPlantilla(datos, mapa) {
+    const pista = this.lienzo.vista.pistaKey;
+    this.cerrar();
+    this.repaso.parar();
+    /* Se comprueba ANTES de abrir una fase nueva: si no se puede, que no
+       quede una fase vacía de más. */
+    const prueba = tramosDePlantilla(datos, mapa, { entrada: this._dondeAcabaEstaFase(), posesion: {}, pista, nuevoId: () => 'x' });
+    if (prueba.motivo) { this.onNoPuede?.({ nombre: 'Insertar la fase' }, prueba.motivo); return { ok: false, avisos: [] }; }
+    if (this.tramos.length && !this.insertarFase('despues')) return { ok: false, avisos: [] };
+    const i = this.iFase;
+    const posesion = i === 0 ? (this.fases[0].posesion || {}) : posesionAlFinal(this.fases, i - 1, this.fases[0].posesion || {});
+    const r = tramosDePlantilla(datos, mapa, {
+      entrada: this.entrada || {}, posesion, pista,
+      nuevoId: () => `tr${siguiente++}`,
+      nombreDe: (id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id) || { id }),
+    });
+    if (r.motivo) { this.onNoPuede?.({ nombre: 'Insertar la fase' }, r.motivo); return { ok: false, avisos: [] }; }
+    this.tramos = r.tramos;
+    this._recalcularSiguientes();
+    this.irAFase(i);
+    this.onTramos?.(this.tramos);
+    return { ok: true, avisos: r.avisos };
+  }
+
+  /* Dónde está cada uno al acabar la fase que se edita: es donde
+     empezaría una fase nueva puesta detrás. */
+  _dondeAcabaEstaFase() {
+    const { fase } = this.faseEnCurso();
+    if (!this.tramos.length) return this.entrada || {};
+    return { ...(this.entrada || {}), ...posicionesFinales(fase, this.entrada, this._opcionesFase()), ...this._finDeLaDefensa(this.iFase) };
   }
 
   /* ---- insertar, duplicar, borrar y renombrar fases (§6.8) ---- */

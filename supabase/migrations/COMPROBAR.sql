@@ -147,7 +147,11 @@ WITH esperado(mig, trae, clase, obj) AS (
        variantes que se ofrecen son solo las de serie. Los vídeos de las
        variantes no dependen de ella: van en videos_accion (021). */
     ('044', 'las variantes técnicas del club', 'tabla',   'variantes'),
-    ('044', 'las variantes técnicas del club', 'funcion', 'variantes_guard')
+    ('044', 'las variantes técnicas del club', 'funcion', 'variantes_guard'),
+    /* Sin ésta, guardar una colocación o una fase como plantilla dice que
+       falta; lo demás de la Pizarra no depende de ella. */
+    ('045', 'las plantillas de la Pizarra', 'tabla',   'plantillas'),
+    ('045', 'las plantillas de la Pizarra', 'funcion', 'plantillas_guard')
 ),
 
 /* Cada clase se busca donde el catálogo de Postgres la guarda. Una

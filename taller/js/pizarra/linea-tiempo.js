@@ -44,10 +44,15 @@ export class LineaTiempo {
   /**
    * @param host     dónde se cuelga
    * @param tablero  de quien se lee todo; no se guarda copia de nada
+   * @param opciones las fases guardadas (§7.8): { plantillas: () => lista,
+   *   onGuardarFase(nombre), onInsertarFase(plantilla, mapa),
+   *   onQuitarPlantilla(plantilla) }
    */
-  constructor(host, tablero) {
+  constructor(host, tablero, opciones = {}) {
     this.host = host;
     this.tablero = tablero;
+    this.opciones = opciones || {};
+    this._plantilla = null;   // la fase guardada elegida para insertar
     /* Qué formulario está abierto: null, 'abrir', 'reunir', 'duplicar' o
        'borrar'. */
     this._formulario = null;
@@ -167,6 +172,12 @@ export class LineaTiempo {
     );
     if (t.iFase > 0) caja.append(accion('⧉ Duplicar', 'Copia esta fase como otra manera de seguir desde la anterior (una rama), para cambiarle algo', alternar('duplicar')));
     if (t.todasLasFases.length > 1) caja.append(accion('Borrar', 'Borra esta fase y lo dibujado en ella', alternar('borrar'), 'pz-ramas__b--quitar'));
+    /* Las fases guardadas (§7.8). */
+    if (this.opciones.onGuardarFase && (f.tramos || []).length) caja.append(accion('Guardar como plantilla', 'Guarda lo dibujado en esta fase, con un nombre, para usarlo en otras jugadas', alternar('guardar')));
+    const guardadas = this.opciones.plantillas ? this.opciones.plantillas() : [];
+    if (guardadas.length) caja.append(accion('Plantilla…', 'Inserta una fase guardada', alternar('plantilla')));
+    if (this._formulario === 'guardar') caja.append(this._formGuardarFase());
+    if (this._formulario === 'plantilla' && guardadas.length) caja.append(this._formPlantilla(guardadas));
 
     if (this._formulario === 'duplicar' && t.iFase > 0) caja.append(this._formDuplicar());
     if (this._formulario === 'borrar') {
@@ -177,6 +188,46 @@ export class LineaTiempo {
         accion('No', 'La deja como está', () => { this._formulario = null; this.refrescar(); })));
     }
     return caja;
+  }
+
+  /* Guardar la fase como plantilla: su nombre. */
+  _formGuardarFase() {
+    const nombre = h('input', { class: 'pz-ramas__nombre', type: 'text', maxlength: '60', placeholder: 'bloqueo directo', 'aria-label': 'Nombre de la plantilla' });
+    const form = h('form', { class: 'pz-ramas__form' }, h('label', { class: 'pz-ramas__campo' }, 'Se llama:', nombre),
+      h('button', { class: 'pz-ramas__b pz-ramas__b--si', type: 'submit' }, 'Guardar'));
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (await this.opciones.onGuardarFase(nombre.value)) { this._formulario = null; this.refrescar(); }
+    });
+    setTimeout(() => nombre.focus?.(), 0);
+    return form;
+  }
+
+  /* Insertar una fase guardada: cuál, y qué ficha hace cada papel. */
+  _formPlantilla(guardadas) {
+    const t = this.tablero;
+    const elegida = guardadas.find((p) => p.id === this._plantilla) || guardadas[0];
+    const cual = h('select', { class: 'pz-ramas__sel', 'aria-label': 'Fase guardada' },
+      ...guardadas.map((p) => h('option', { value: p.id, selected: p.id === elegida.id }, p.nombre)));
+    cual.addEventListener('change', () => { this._plantilla = cual.value; this.refrescar(); });
+    const jugadores = t.fichas.elementos.filter((e) => e.kind === 'jugador');
+    const deSerie = t.papelesDe(elegida.datos);
+    const papeles = (elegida.datos.papeles || []).map((p) => {
+      const sel = h('select', { class: 'pz-ramas__sel', 'aria-label': `Quién hace de ${p.nombre}` },
+        h('option', { value: '' }, '— elige —'),
+        ...jugadores.map((e) => h('option', { value: e.id, selected: deSerie[p.clave] === e.id }, t.nombreDe(e))));
+      return { clave: p.clave, sel, el: h('label', { class: 'pz-ramas__campo' }, `${p.nombre}:`, sel) };
+    });
+    const ok = h('button', { class: 'pz-ramas__b pz-ramas__b--si', type: 'submit' }, 'Insertar');
+    const quitar = h('button', { class: 'pz-ramas__b pz-ramas__b--quitar', type: 'button', title: 'La quita de las guardadas del club' }, 'Quitar');
+    quitar.addEventListener('click', () => this.opciones.onQuitarPlantilla?.(elegida));
+    const form = h('form', { class: 'pz-ramas__form' }, h('label', { class: 'pz-ramas__campo' }, 'Fase:', cual), ...papeles.map((p) => p.el), ok, quitar);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const mapa = Object.fromEntries(papeles.map((p) => [p.clave, p.sel.value || null]));
+      if (this.opciones.onInsertarFase?.(elegida, mapa)) { this._formulario = null; this.refrescar(); }
+    });
+    return form;
   }
 
   /* Duplicar es abrir otra rama con lo mismo: hacen falta sus nombres. */

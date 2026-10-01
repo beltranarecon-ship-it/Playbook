@@ -32,6 +32,7 @@ import { modeloAjustes } from './paneles/ajustes-modelo.js';
 import { recuento } from './elementos.js';
 import { ponerVariantesDelClub, variantesDelClub } from './repertorio.js';
 import { claveDeVideo, videoDeLoEscrito, validarVarianteNueva } from './variantes.js';
+import { nombreDePlantilla } from './plantillas.js';
 
 /* Los aros se llaman por su número, que es como los ve el entrenador
    sobre la pista (la misma convención que el resto del Taller). */
@@ -52,9 +53,11 @@ export class Pizarra {
    * @param canasta  el aro al que se ataca, si la pista tiene dos
    * @param onCambio () — algo de la jugada ha cambiado (para autoguardar)
    * @param datos    lo que habla con la base de datos (las variantes del
-   *   club y los vídeos, §4.3 y §10.1): { cargarVariantes, crearVariante,
-   *   cargarVideos, guardarVideo, borrarVideo }. Sin él, la Pizarra
-   *   funciona con las variantes de serie y sin vídeos.
+   *   club y los vídeos, §4.3 y §10.1; las plantillas, §7.8):
+   *   { cargarVariantes, crearVariante, cargarVideos, guardarVideo,
+   *   borrarVideo, cargarPlantillas, crearPlantilla, borrarPlantilla }.
+   *   Sin él, la Pizarra funciona con las variantes de serie, sin vídeos
+   *   y sin plantillas.
    */
   constructor({ pista = 'entera', canasta = 'norte', onCambio = null, datos = null } = {}) {
     this.onCambio = null;   // se pone al final: montar no es cambiar nada
@@ -64,6 +67,9 @@ export class Pizarra {
        pierde cuando llega. */
     this._videosTocados = new Map();   // clave -> vídeo, o null si se quitó
     this._variantesCreadas = [];
+    /* Las colocaciones y fases guardadas del club (§7.8). */
+    this.plantillas = [];
+    this._plantillasTocadas = new Map();   // id -> plantilla, o null si se quitó
     this._relojAviso = null;
     this._ayudaTablero = '';
 
@@ -71,6 +77,10 @@ export class Pizarra {
     this.panel = new PanelIzquierdo({
       onArmar: (f) => this._armar(f),
       onSoltar: (f, ev) => this._soltarDelPanel(f, ev),
+      /* Las colocaciones guardadas (§7.8). */
+      onGuardarColocacion: (nombre) => this.guardarPlantilla('colocacion', nombre),
+      onPonerColocacion: (p, modo) => this.ponerColocacion(p, modo),
+      onQuitarPlantilla: (p) => this.quitarPlantilla(p),
     });
 
     /* Antes que el Tablero: al montarse ya avisa de cambios, y el panel
@@ -151,7 +161,13 @@ export class Pizarra {
         this.panel.el,
         h('div', { class: 'pz-centro' }, this.lienzo.el, this.elAviso, tiempo),
         this.derecha.el));
-    this.linea = new LineaTiempo(tiempo, this.tablero);
+    this.linea = new LineaTiempo(tiempo, this.tablero, {
+      /* Las fases guardadas (§7.8). */
+      plantillas: () => this.plantillasDe('fase'),
+      onGuardarFase: (nombre) => this.guardarPlantilla('fase', nombre),
+      onInsertarFase: (p, mapa) => this.insertarFaseGuardada(p, mapa),
+      onQuitarPlantilla: (p) => this.quitarPlantilla(p),
+    });
     /* Y debajo, lo que pasa en la fase, en palabras (§9.1). */
     this.descripcion = new Descripcion(tiempo, this.tablero);
 
@@ -175,10 +191,16 @@ export class Pizarra {
      de serie y sin vídeos. Nunca falla (quien los carga no lanza). */
   async _cargarVariantesYVideos() {
     if (!this.datos) return;
-    const [variantes, videos] = await Promise.all([
-      this.datos.cargarVariantes ? this.datos.cargarVariantes().catch(() => []) : [],
+    const [variantes, videos, plantillas] = await Promise.all([
+      this.datos.cargarVariantes ? this.datos.cargarVariantes().catch(() => null) : null,
       this.datos.cargarVideos ? this.datos.cargarVideos().catch(() => ({})) : {},
+      this.datos.cargarPlantillas ? this.datos.cargarPlantillas().catch(() => null) : null,
     ]);
+    if (Array.isArray(plantillas)) {
+      const tocadas = this._plantillasTocadas || new Map();
+      this.plantillas = [...plantillas.filter((p) => !tocadas.has(p.id)), ...[...tocadas.values()].filter(Boolean)];
+      this._pintarPlantillas();
+    }
     /* `null` es «no se ha podido saber» (sin red, sin la tabla): se sigue
        con las que hubiera, en vez de quedarse sin ninguna. */
     if (Array.isArray(variantes)) ponerVariantesDelClub([...variantes, ...(this._variantesCreadas || [])]);
@@ -189,6 +211,86 @@ export class Pizarra {
     this.videos = todos;
     this.descripcion?.refrescar();
     this._refrescarAjustes();
+  }
+
+  /* ---- plantillas: colocaciones y fases guardadas (§7.8) ----- */
+
+  /** Las de un tipo, para la pista que hay delante: sus sitios son de esa. */
+  plantillasDe(tipo) {
+    const pista = this.lienzo.vista.pistaKey;
+    return (this.plantillas || []).filter((p) => p.tipo === tipo && p.pista === pista);
+  }
+
+  _pintarPlantillas() {
+    this.panel?.colocaciones?.(this.plantillasDe('colocacion'));
+    this.linea?.refrescar();
+  }
+
+  /**
+   * GUARDA la colocación de ahora o la fase que se edita, con un nombre,
+   * para todo el club.
+   * @returns la plantilla guardada, o null
+   */
+  async guardarPlantilla(tipo, nombre) {
+    if (this._guardandoPlantilla) return null;
+    const n = nombreDePlantilla(nombre);
+    const que = tipo === 'fase' ? 'La fase' : 'La colocación';
+    if (n.error) { this.avisar(`${que} no se ha guardado: ${n.error}.`); return null; }
+    let datos;
+    let avisos = [];
+    if (tipo === 'fase') {
+      const r = this.tablero.plantillaDeFase();
+      if (!r.datos.tramos.length) { this.avisar('La fase no se ha guardado: no tiene nada dibujado que se pueda llevar a otra jugada.'); return null; }
+      datos = r.datos;
+      avisos = r.avisos;
+    } else {
+      datos = this.tablero.colocacion();
+      if (!datos.elementos.length) { this.avisar('La colocación no se ha guardado: no hay ninguna ficha en la pista.'); return null; }
+    }
+    if (!this.datos?.crearPlantilla) { this.avisar('Aquí no se pueden guardar plantillas.'); return null; }
+    let creada;
+    this._guardandoPlantilla = true;
+    try {
+      creada = await this.datos.crearPlantilla({ tipo, nombre: n.nombre, pista: this.lienzo.vista.pistaKey, datos });
+    } catch (e) { this.avisar(`${que} no se ha guardado: ${e.message}`); return null; } finally { this._guardandoPlantilla = false; }
+    if (!creada) { this.avisar(`${que} no se ha guardado.`); return null; }
+    this.plantillas = [...this.plantillas, creada];
+    (this._plantillasTocadas ||= new Map()).set(creada.id, creada);
+    this._pintarPlantillas();
+    this.avisar([`«${creada.nombre}» guardada para todo el club.`, ...avisos].join(' '));
+    return creada;
+  }
+
+  /** Quita una plantilla del club (solo quien la guardó, o un administrador). */
+  async quitarPlantilla(plantilla) {
+    if (!plantilla || !this.datos?.borrarPlantilla) { this.avisar('Aquí no se pueden quitar plantillas.'); return false; }
+    let borrada;
+    try { borrada = await this.datos.borrarPlantilla(plantilla.id); } catch (e) { this.avisar(`«${plantilla.nombre}» no se ha quitado: ${e.message}`); return false; }
+    if (borrada === false) { this.avisar(`«${plantilla.nombre}» no se ha quitado: solo puede quitarla quien la guardó, o un administrador.`); return false; }
+    this.plantillas = this.plantillas.filter((p) => p.id !== plantilla.id);
+    (this._plantillasTocadas ||= new Map()).set(plantilla.id, null);
+    this._pintarPlantillas();
+    return true;
+  }
+
+  /** Pone una colocación guardada: `sustituir` o `anadir`. */
+  ponerColocacion(plantilla, modo = 'anadir') {
+    const n = this.tablero.ponerColocacion(plantilla.datos, modo);
+    if (!n) return false;
+    this.panel.recuento(recuento(this.tablero.fichas.elementos));
+    this.linea.refrescar();
+    this.descripcion.refrescar();
+    this._cambio();
+    return true;
+  }
+
+  /** Inserta una fase guardada con cada papel en su ficha. */
+  insertarFaseGuardada(plantilla, mapa) {
+    const r = this.tablero.insertarPlantilla(plantilla.datos, mapa);
+    if (!r.ok) return false;
+    if (r.avisos.length) this.avisar(r.avisos.join(' '));
+    this._cambio();
+    return true;
   }
 
   /**

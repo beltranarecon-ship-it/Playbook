@@ -1375,6 +1375,96 @@ await testA('UNA VARIANTE NUEVA: se crea para el club, con su vídeo, y se le po
   ok(/migración 044/.test(avisos.at(-1)), `sin la tabla, se dice qué falta: ${avisos.at(-1)}`);
 });
 
+console.log('\n· plantillas: colocaciones y fases guardadas (§7.8)');
+
+test('UNA COLOCACIÓN GUARDADA SE AÑADE A LO QUE HAY (en la fase 1) O LO SUSTITUYE TODO', () => {
+  const { t, a2, avisos } = conAtaque();
+  const datos = JSON.parse(JSON.stringify(t.colocacion()));
+  eq(datos.elementos.map((e) => e.kind), ['jugador', 'jugador', 'balon']);
+  corta(t, a2.id, { x: 0.7, y: 0.3 });
+  t.cerrar();
+  eq(t.ponerColocacion(datos, 'anadir'), 3, 'añadida:');
+  const jug = t.fichas.elementos.filter((e) => e.kind === 'jugador');
+  eq(jug.map((e) => t.nombreDe(e)), ['A1', 'A2', 'A3', 'A4']);
+  eq([t.fichas.elementos.filter((e) => e.kind === 'balon').length, t.tramos.length], [2, 1], 'con su balón, y lo dibujado sigue:');
+  ok(t.fases[0].entrada[jug[3].id], 'las nuevas tienen su arranque');
+  t._cerrarFase();
+  eq([t.ponerColocacion(datos, 'anadir'), avisos.at(-1)[1]], [0, 'Añadir la colocación'], 'en otra fase no se ponen fichas:');
+  eq(t.ponerColocacion(datos, 'sustituir'), 3, 'sustituir empieza de nuevo:');
+  eq([t.fichas.elementos.length, t.todasLasFases.length, t.tramos.length, t.iFase], [3, 1, 0, 0]);
+  eq(t.ponerColocacion({ elementos: [] }, 'sustituir'), 0, 'una vacía no borra nada:');
+  eq(t.fichas.elementos.length, 3);
+});
+
+test('UNA FASE GUARDADA SE INSERTA CON CADA PAPEL EN SU FICHA: en la fase vacía, o en una nueva detrás', () => {
+  const { t, a1, a2 } = conAtaque();
+  corta(t, a2.id, { x: 0.7, y: 0.3 });
+  t.cerrar();
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('pasa'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), ficha(t, a2.id)), tipo: 'pass' });
+  t.cerrar();
+  const { datos, avisos } = t.plantillaDeFase();
+  eq([datos.papeles.map((p) => p.nombre), datos.tramos.map((x) => x.accion), avisos], [['A2', 'A1'], ['corta', 'pasa'], []]);
+  /* Otra pizarra, con los mismos nombres en otros sitios. */
+  const o = montar();
+  reiniciarIds();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.2, 0.8);
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.8, 0.8);
+  l = anadir(l, { kind: 'balon' }, 0.23, 0.8);
+  const [b1, b2, bal] = l;
+  o.t.poner(asignarBalon(l, bal.id, b1.id, 'entera'));
+  const mapa = o.t.papelesDe(datos);
+  eq(mapa, { p1: b2.id, p2: b1.id }, 'cada papel, a quien se llama igual:');
+  eq(o.t.insertarPlantilla(datos, { p1: b2.id }).ok, false, 'sin decir todos los papeles, no:');
+  const r = o.t.insertarPlantilla(datos, mapa);
+  eq([r.ok, r.avisos, o.t.iFase, o.t.todasLasFases.length], [true, [], 0, 1], 'en la fase vacía, en ella:');
+  const [corte, pase] = o.t.tramos;
+  eq([[corte.trazo[0].x, corte.trazo[0].y], [corte.trazo.at(-1).x, corte.trazo.at(-1).y]], [[0.8, 0.8], [0.7, 0.3]]);
+  eq([pase.corre_id, pase.receptor_id, [pase.trazo.at(-1).x, pase.trazo.at(-1).y]], [bal.id, b2.id, [0.7, 0.3]]);
+  eq(ficha(o.t, bal.id).portador_id, b2.id, 'y el balón acaba en quien lo recibe:');
+  ok(/A1 pasa a A2/.test(o.t.frases()[0]), o.t.frases()[0]);
+  /* Con algo ya dibujado, va en una fase nueva detrás. */
+  const s = o.t.insertarPlantilla(datos, { p1: b1.id, p2: b2.id });
+  eq([s.ok, o.t.iFase, o.t.todasLasFases.length, o.t.tramos.map((x) => x.accion)], [true, 1, 2, ['corta', 'pasa']]);
+  eq(o.t.tramos[0].trazo[0], { ...o.t.tramos[0].trazo[0], x: 0.2, y: 0.8 }, 'cada uno desde donde le deja la fase anterior:');
+});
+
+await testA('LAS PLANTILLAS SE GUARDAN PARA EL CLUB (con datos de mentira): con nombre, solo las de esta pista, y se quitan', async () => {
+  const { t, p, avisos, a2 } = conAtaque();
+  const llamadas = [];
+  const paneles = [];
+  Object.assign(p, {
+    lienzo: t.lienzo, plantillas: [], derecha: { pintar() {} },
+    panel: { recuento() {}, colocaciones: (l) => paneles.push(l.map((x) => x.nombre)) },
+    datos: {
+      crearPlantilla: async (x) => { llamadas.push(['crear', x.tipo, x.nombre, x.pista]); return { ...x, id: `u${llamadas.length}` }; },
+      borrarPlantilla: async (id) => { llamadas.push(['borrar', id]); return id !== 'ajena'; },
+      cargarPlantillas: async () => [{ id: 'ajena', tipo: 'colocacion', nombre: 'De otro', pista: 'entera', datos: { elementos: [] } }, { id: 'm', tipo: 'colocacion', nombre: 'De media', pista: 'media', datos: { elementos: [] } }],
+    },
+  });
+  eq(await p.guardarPlantilla('colocacion', '  '), null);
+  ok(/ponle un nombre/.test(avisos.at(-1)), avisos.at(-1));
+  eq(await p.guardarPlantilla('fase', 'Vacía'), null, 'una fase sin dibujar no se guarda:');
+  const c = await p.guardarPlantilla('colocacion', ' Dos   arriba ');
+  eq([c && c.nombre, llamadas.at(-1)], ['Dos arriba', ['crear', 'colocacion', 'Dos arriba', 'entera']]);
+  corta(t, a2.id, { x: 0.7, y: 0.3 });
+  t.cerrar();
+  const f = await p.guardarPlantilla('fase', 'Corte al aro');
+  eq([f && f.tipo, p.plantillasDe('fase').map((x) => x.nombre), p.plantillasDe('colocacion').map((x) => x.nombre)], ['fase', ['Corte al aro'], ['Dos arriba']]);
+  /* Lo que llega de la base se suma a lo recién guardado; las de otra pista no se ofrecen. */
+  await p._cargarVariantesYVideos();
+  eq(p.plantillasDe('colocacion').map((x) => x.nombre).sort(), ['De otro', 'Dos arriba']);
+  eq(paneles.at(-1).slice().sort(), ['De otro', 'Dos arriba'], 'y el panel las enseña:');
+  /* Quitar: la propia sí; la de otro, la base no deja y se dice. */
+  ok(await p.quitarPlantilla(c));
+  eq(await p.quitarPlantilla(p.plantillas.find((x) => x.id === 'ajena')), false);
+  ok(/quien la guardó/.test(avisos.at(-1)), avisos.at(-1));
+  eq(p.plantillasDe('colocacion').map((x) => x.nombre), ['De otro']);
+  /* Y se pone desde la Pizarra. */
+  ok(p.ponerColocacion({ datos: t.colocacion() }, 'anadir'));
+  eq(t.fichas.elementos.filter((e) => e.kind === 'jugador').length, 4);
+});
+
 test('EL TIRADOR GIRA LA FILA: se coge al final de la cola y se imanta cada 15°', () => {
   const { t, cono } = conConoDeFila();
   t.hacerFila(cono.id, { n: 2, orientacion: 90 });

@@ -14,8 +14,9 @@
 
    Toca el DOM, así que no tiene banco propio: qué se crea y cómo se
    cuenta es de elementos.js, que sí lo tiene. Aquí solo queda el
-   pegamento. Zonas y «Traer» (equipo del club, colocaciones y fases
-   guardadas) llegan en sus capas (6 y 10).
+   pegamento. Debajo, las COLOCACIONES guardadas del club (§7.8): se
+   guarda la de ahora con un nombre y se pone cualquiera, sustituyendo lo
+   que hay o añadiéndose.
    ============================================================ */
 
 import { h } from '../../ui/dom.js';
@@ -53,10 +54,20 @@ export class PanelIzquierdo {
    *                 dejado de tener una pulsada
    * @param onSoltar (ficha, evento) — se ha arrastrado una ficha fuera
    *                 del panel; el evento dice dónde, en la pantalla
+   * @param onGuardarColocacion (nombre) — guardar la de ahora; devuelve
+   *                 (una promesa de) lo guardado, o null
+   * @param onPonerColocacion (plantilla, 'sustituir'|'anadir')
+   * @param onQuitarPlantilla (plantilla)
    */
-  constructor({ onArmar = null, onSoltar = null } = {}) {
+  constructor({ onArmar = null, onSoltar = null, onGuardarColocacion = null, onPonerColocacion = null, onQuitarPlantilla = null } = {}) {
     this.onArmar = onArmar;
     this.onSoltar = onSoltar;
+    this.onGuardarColocacion = onGuardarColocacion;
+    this.onPonerColocacion = onPonerColocacion;
+    this.onQuitarPlantilla = onQuitarPlantilla;
+    this._abierta = null;      // la colocación con sus botones a la vista
+    this._seguro = false;      // «Sustituir» pulsado una vez: falta confirmar
+    this._lista = [];
     this.armada = null;
     this._tragar = false;
 
@@ -80,7 +91,56 @@ export class PanelIzquierdo {
       lista,
       h('p', { class: 'pz-izq__nota' }, 'Arrástralas a la pista, o púlsalas y pincha donde van.'),
       h('h3', { class: 'pz-izq__titulo' }, 'En la pista'),
-      cuenta);
+      cuenta,
+      h('h3', { class: 'pz-izq__titulo' }, 'Colocaciones'),
+      this._hueco = h('div', { class: 'pz-coloc' }),
+      this._formGuardar());
+    this.colocaciones([]);
+  }
+
+  /* Guardar la colocación de ahora, con un nombre. */
+  _formGuardar() {
+    const nombre = h('input', { class: 'pz-coloc__nombre', type: 'text', maxlength: '60', placeholder: '1-4 alto', 'aria-label': 'Nombre de la colocación' });
+    const form = h('form', { class: 'pz-coloc__form' }, nombre,
+      h('button', { class: 'pz-coloc__b', type: 'submit', title: 'Guarda dónde está cada ficha, para todo el club' }, 'Guardar la de ahora'));
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const hecha = await this.onGuardarColocacion?.(nombre.value);
+      if (hecha) nombre.value = '';
+    });
+    return form;
+  }
+
+  /** Pinta las colocaciones guardadas (las de la pista que hay delante). */
+  colocaciones(lista = this._lista) {
+    this._lista = lista || [];
+    if (!this._lista.some((p) => p.id === this._abierta)) { this._abierta = null; this._seguro = false; }
+    if (!this._lista.length) {
+      this._hueco.replaceChildren(h('p', { class: 'pz-izq__nota' }, 'Todavía no hay ninguna guardada para esta pista.'));
+      return;
+    }
+    const boton = (texto, titulo, alPulsar, clase = '') => {
+      const b = h('button', { class: `pz-coloc__b ${clase}`.trim(), type: 'button', title: titulo }, texto);
+      b.addEventListener('click', alPulsar);
+      return b;
+    };
+    this._hueco.replaceChildren(...this._lista.map((p) => {
+      const abierta = p.id === this._abierta;
+      const fila = h('div', { class: 'pz-coloc__fila' + (abierta ? ' is-abierta' : '') },
+        boton(p.nombre, 'Ponerla en la pista', () => { this._abierta = abierta ? null : p.id; this._seguro = false; this.colocaciones(); }, 'pz-coloc__n'));
+      if (abierta) {
+        fila.append(h('div', { class: 'pz-coloc__acciones' },
+          boton('Añadir', 'La suma a las fichas que ya hay', () => { this._abierta = null; this.colocaciones(); this.onPonerColocacion?.(p, 'anadir'); }),
+          /* Sustituir se lleva lo dibujado: se pide dos veces. */
+          boton(this._seguro ? '¿Seguro? Se borra lo dibujado' : 'Sustituir todo', 'Empieza de nuevo con esta colocación', () => {
+            if (!this._seguro) { this._seguro = true; this.colocaciones(); return; }
+            this._abierta = null; this._seguro = false; this.colocaciones();
+            this.onPonerColocacion?.(p, 'sustituir');
+          }, this._seguro ? 'pz-coloc__b--ojo' : ''),
+          boton('Quitar', 'La quita de las guardadas del club', () => this.onQuitarPlantilla?.(p), 'pz-coloc__b--quitar')));
+      }
+      return fila;
+    }));
   }
 
   /** Deja una ficha pulsada para ponerla pinchando, o ninguna con `null`. */
