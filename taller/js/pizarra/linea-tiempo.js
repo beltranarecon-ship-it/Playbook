@@ -48,7 +48,8 @@ export class LineaTiempo {
   constructor(host, tablero) {
     this.host = host;
     this.tablero = tablero;
-    /* Qué formulario de ramas está abierto: null, 'abrir' o 'reunir'. */
+    /* Qué formulario está abierto: null, 'abrir', 'reunir', 'duplicar' o
+       'borrar'. */
     this._formulario = null;
     this.el = h('div', { class: 'pz-tiempo' });
     this.host.append(this.el);
@@ -67,6 +68,7 @@ export class LineaTiempo {
     this.el.replaceChildren(
       this._mandos(tiempos),
       this._tira(),
+      this._fase(),
       this._ramas(),
       this._carriles(fase, tiempos, rondas),
     );
@@ -118,8 +120,8 @@ export class LineaTiempo {
            abrir y todavía no tiene nada: se dice, en vez de dejar un
            hueco que parece un fallo. */
         title: vacia ? 'sin dibujar todavía' : `${f.tramos.length} tramos`,
-      }, `Fase ${t.numeroEnSuCamino(id)}`);
-      b.addEventListener('click', () => { t.irAFaseId(id); });
+      }, `Fase ${t.numeroEnSuCamino(id)}${f.nombre ? ` · ${f.nombre}` : ''}`);
+      b.addEventListener('click', () => { this._formulario = null; t.irAFaseId(id); });
       return b;
     };
     /* LAS RAMAS (§6.7), EN ÁRBOL (lo decidió el entrenador): tras la fase
@@ -139,6 +141,63 @@ export class LineaTiempo {
     mas.addEventListener('click', () => t.siguienteFase());
     tira.append(mas);
     return tira;
+  }
+
+  /* ---- la fase que se edita (§6.8) --------------------------- */
+
+  /* Su nombre, y lo que se le puede hacer: una fase antes o después,
+     duplicarla como otra rama, o borrarla. */
+  _fase() {
+    const t = this.tablero;
+    const f = t.fases[t.iFase];
+    if (!f) return h('div');
+    const caja = h('div', { class: 'pz-ramas pz-ramas--fase' });
+    const accion = (texto, titulo, alHacer, clase = '') => {
+      const b = h('button', { class: `pz-ramas__b ${clase}`.trim(), type: 'button', title: titulo }, texto);
+      b.addEventListener('click', alHacer);
+      return b;
+    };
+    const alternar = (cual) => () => { this._formulario = this._formulario === cual ? null : cual; this.refrescar(); };
+    const nombre = h('input', { class: 'pz-ramas__nombre', type: 'text', value: f.nombre || '', maxlength: '40', placeholder: 'sin nombre', 'aria-label': 'Nombre de la fase' });
+    nombre.addEventListener('change', () => t.renombrarFase(nombre.value));
+    caja.append(
+      h('label', { class: 'pz-ramas__campo' }, `Fase ${t.numeroDeFase}:`, nombre),
+      accion('＋ antes', 'Mete una fase vacía antes de esta', () => { this._formulario = null; t.insertarFase('antes'); }),
+      accion('＋ después', 'Mete una fase vacía después de esta', () => { this._formulario = null; t.insertarFase('despues'); }),
+    );
+    if (t.iFase > 0) caja.append(accion('⧉ Duplicar', 'Copia esta fase como otra manera de seguir desde la anterior (una rama), para cambiarle algo', alternar('duplicar')));
+    if (t.todasLasFases.length > 1) caja.append(accion('Borrar', 'Borra esta fase y lo dibujado en ella', alternar('borrar'), 'pz-ramas__b--quitar'));
+
+    if (this._formulario === 'duplicar' && t.iFase > 0) caja.append(this._formDuplicar());
+    if (this._formulario === 'borrar') {
+      const n = (f.tramos || []).length;
+      caja.append(h('div', { class: 'pz-ramas__form' },
+        h('span', null, `¿Borrar la fase ${t.numeroDeFase}${n ? ` y ${n === 1 ? 'su trazo' : `sus ${n} trazos`}` : ''}?`),
+        accion('Sí, borrarla', 'Borra la fase', () => { this._formulario = null; if (!t.borrarFase()) this.refrescar(); }, 'pz-ramas__b--quitar'),
+        accion('No', 'La deja como está', () => { this._formulario = null; this.refrescar(); })));
+    }
+    return caja;
+  }
+
+  /* Duplicar es abrir otra rama con lo mismo: hacen falta sus nombres. */
+  _formDuplicar() {
+    const t = this.tablero;
+    const anterior = t.fases[t.iFase - 1];
+    const yaEsCruce = t.siguientesDeFase(anterior.id).length > 1;
+    const campo = (texto, ejemplo) => {
+      const i = h('input', { class: 'pz-ramas__nombre', type: 'text', placeholder: ejemplo, 'aria-label': texto });
+      return { i, el: h('label', { class: 'pz-ramas__campo' }, texto, i) };
+    };
+    const primera = yaEsCruce ? null : campo('Esta fase:', 'si le dejan');
+    const nueva = campo('La copia:', 'si le niegan');
+    const ok = h('button', { class: 'pz-ramas__b pz-ramas__b--si', type: 'submit' }, 'Duplicar');
+    const form = h('form', { class: 'pz-ramas__form' }, primera ? primera.el : null, nueva.el, ok);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (t.duplicarFase({ primera: primera ? primera.i.value : '', nueva: nueva.i.value })) { this._formulario = null; this.refrescar(); }
+    });
+    setTimeout(() => (primera ? primera.i : nueva.i).focus?.(), 0);
+    return form;
   }
 
   /* ---- las ramas (§6.7) ------------------------------------- */

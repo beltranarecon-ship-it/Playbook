@@ -13,6 +13,7 @@
 import {
   MAX_RAMAS, MAX_CAMINOS, grafoDe, siguientesDe, esCruce, tieneRamas, caminoHasta, caminoPor, caminoPrincipal, todosLosCaminos,
   cuantosCaminos, reunionesDe, nuevoIdDeFase, abrirRama, renombrarRama, quitarRama, reunir, separar, insertarDetras, arbolDe,
+  insertarFase, borrarFase,
 } from '../js/pizarra/ramas.js';
 
 let pasan = 0, fallan = 0;
@@ -278,6 +279,60 @@ test('UNA RAMA QUE EMPIEZA EN UNA REUNIÓN YA DIBUJADA dice en el árbol por dó
   const a = arbolDe(f);
   eq(a.ramas[0].fases, ['f2', 'f5'], 'se dibuja donde se llega primero:');
   eq(a.ramas[1].ramas.map((r) => [r.nombre, r.fases, r.sigueEn ?? null]), [['b1', ['f4'], null], ['b2', [], 'f5']]);
+});
+
+console.log('· insertar y borrar fases (§6.8)');
+
+test('INSERTAR una fase antes o después, en una jugada sin ramas: sigue siendo una lista sin más', () => {
+  let f = insertarFase(lineal(), 'f2', F('n1'), 'despues').fases;
+  eq([ids(f), caminoPrincipal(f), tieneRamas(f)], [['f1', 'f2', 'n1', 'f3', 'f4'], ['f1', 'f2', 'n1', 'f3', 'f4'], false]);
+  f = insertarFase(f, 'f1', F('n0'), 'antes').fases;
+  eq([caminoPrincipal(f), tieneRamas(f), f[0].id], [['n0', 'f1', 'f2', 'n1', 'f3', 'f4'], false, 'n0'], 'antes de la primera, la nueva es la primera:');
+  eq(insertarFase(f, 'nadie', F('x')).motivo, 'esa fase no está');
+  eq(insertarFase(f, 'f1', F('f2')).motivo, 'la fase nueva necesita un nombre que no esté');
+});
+
+test('INSERTAR CON RAMAS: después de un cruce, la nueva es el cruce; antes de una rama o de una reunión, la empieza o reúne ella', () => {
+  let f = abrirRama(lineal(), 'f2', { primera: 'a', nueva: 'b', crear }).fases;   // f2 → f3 (a) → f4 | f5 (b)
+  f = reunir(f, 'f5', 'f4').fases;
+  const d = insertarFase(f, 'f2', F('n'), 'despues').fases;
+  eq(todosLosCaminos(d), [['f1', 'f2', 'n', 'f3', 'f4'], ['f1', 'f2', 'n', 'f5', 'f4']]);
+  eq([de(d, 'f3').rama_de, de(d, 'f5').rama_de, esCruce(d, 'f2')], ['n', 'n', false]);
+  const a = insertarFase(f, 'f5', F('n'), 'antes').fases;
+  eq(todosLosCaminos(a), [['f1', 'f2', 'f3', 'f4'], ['f1', 'f2', 'n', 'f5', 'f4']]);
+  eq([de(a, 'n').rama_de, de(a, 'n').rama_nombre, de(a, 'f5').rama_de], ['f2', 'b', null], 'la rama b empieza ahora en la nueva:');
+  const r = insertarFase(f, 'f4', F('n'), 'antes').fases;
+  eq(todosLosCaminos(r), [['f1', 'f2', 'f3', 'n', 'f4'], ['f1', 'f2', 'f5', 'n', 'f4']], 'antes de la reunión, reúne la nueva:');
+  const t = insertarFase(f, 'f5', F('n'), 'despues').fases;
+  eq(todosLosCaminos(t), [['f1', 'f2', 'f3', 'f4'], ['f1', 'f2', 'f5', 'n', 'f4']], 'después de la que se reunía, se reúne la nueva:');
+});
+
+test('BORRAR UNA FASE: lo de detrás sigue a lo de delante; no la única, ni una de la que salen ramas', () => {
+  const r = borrarFase(lineal(), 'f2');
+  eq([ids(r.fases), r.sigue, tieneRamas(r.fases)], [['f1', 'f3', 'f4'], 'f3', false]);
+  const p = borrarFase(lineal(), 'f1');
+  eq([ids(p.fases), p.sigue, caminoPrincipal(p.fases)], [['f2', 'f3', 'f4'], 'f2', ['f2', 'f3', 'f4']], 'la primera: la segunda pasa a serlo:');
+  const u = borrarFase(lineal(), 'f4');
+  eq([ids(u.fases), u.sigue], [['f1', 'f2', 'f3'], null]);
+  eq(borrarFase([F('f1')], 'f1').motivo, 'una jugada tiene al menos una fase');
+  const f = abrirRama(lineal(), 'f2', { primera: 'a', nueva: 'b', crear }).fases;
+  eq(borrarFase(f, 'f2').motivo, 'de esta fase salen ramas: quítalas antes');
+  eq(borrarFase(f, 'nadie').motivo, 'esa fase no está');
+});
+
+test('BORRAR CON RAMAS: la rama la empieza lo que venía detrás; si era lo único, la rama se va; y una reunión pasa a lo siguiente', () => {
+  let f = abrirRama(lineal(), 'f2', { primera: 'a', nueva: 'b', crear }).fases;   // f2 → f3 (a) → f4 | f5 (b)
+  const a = borrarFase(f, 'f3').fases;
+  eq(todosLosCaminos(a), [['f1', 'f2', 'f4'], ['f1', 'f2', 'f5']]);
+  eq([de(a, 'f4').rama_de, de(a, 'f4').rama_nombre], ['f2', 'a'], 'f4 empieza ahora la rama a:');
+  const b = borrarFase(f, 'f5').fases;
+  eq([todosLosCaminos(b), tieneRamas(b)], [[['f1', 'f2', 'f3', 'f4']], false], 'sin la b, la a deja de ser rama:');
+  /* La b se reúne con f4, y detrás de f4 va f6. */
+  f = insertarDetras(reunir(f, 'f5', 'f4').fases, 'f4', F('f6'));
+  const c = borrarFase(f, 'f4').fases;
+  eq(todosLosCaminos(c), [['f1', 'f2', 'f3', 'f6'], ['f1', 'f2', 'f5', 'f6']], 'la reunión pasa a f6:');
+  const d = borrarFase(f, 'f5').fases;
+  eq(todosLosCaminos(d), [['f1', 'f2', 'f3', 'f4', 'f6'], ['f1', 'f2', 'f4', 'f6']], 'borrada la b entera, el cruce sigue directo a la reunión:');
 });
 
 test(`COMO MUCHO ${MAX_CAMINOS} CAMINOS: no se abre ni se reúne lo que pasaría de ahí`, () => {

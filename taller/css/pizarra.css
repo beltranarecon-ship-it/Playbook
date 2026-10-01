@@ -465,6 +465,12 @@
   border-radius: var(--r-sm); background: none; color: var(--color-text); font: inherit; cursor: pointer;
 }
 .pz-der__serie:hover { background: var(--surface-2); }
+/* El botón «¿qué hacen los N?» junto a varios seleccionados (§3.2). */
+.pz-grupo .pz-nodo__b { width: auto; padding: 0 12px; border-radius: 22px; font-weight: 600; white-space: nowrap; }
+
+/* La fila de la fase que se edita (§6.8): va encima de la de las ramas. */
+.pz-ramas--fase { margin-bottom: 2px; }
+
 /* El trazo pinchado: su variante, su vídeo y «Nueva variante» (§4.3, §10.1). */
 .pz-der__campo .pz-der__texto {
   width: 100%; min-height: 32px; padding: 4px 6px; border: 1px solid var(--color-border);

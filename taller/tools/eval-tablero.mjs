@@ -1022,6 +1022,188 @@ test('CON RAMAS, EL AVISO DE LA DEFENSA MIRA TODOS LOS CAMINOS, y la cola sabe q
   eq([suyo.x, suyo.y], [antes.x, antes.y], 'quien ya ha salido en otra rama no vuelve a la cola:');
 });
 
+console.log('\n· varios a la vez y atajos (§3.2, §4.6, §4.7)');
+
+/* A1 con balón, A2 y A3 sin él. */
+function tresAtacantes() {
+  const m = conAtaque();
+  const a3 = m.t.anadirFicha({ kind: 'jugador', equipo: 'A' }, { x: 0.5, y: 0.7 });
+  m.t.cerrar();
+  m.avisos.length = 0;
+  return { ...m, a3 };
+}
+const seleccionar = (t, ...ids) => { t.fichas.seleccionar(new Set(ids)); };
+
+test('CON VARIOS SELECCIONADOS NO SE ABRE EL ANILLO DE UNO: se ofrece lo que pueden hacer todos', () => {
+  const { t, a1, a2, a3 } = tresAtacantes();
+  seleccionar(t, a2.id, a3.id);
+  t._tocarFicha(ficha(t, a2.id));
+  eq(t.anillo.abierto, false, 'tocar a uno del grupo no abre su anillo:');
+  eq(t.grupo().map((m) => m.id), [a2.id, a3.id]);
+  eq(t.accionesDelGrupo().map((o) => o.slug).includes('corta'), true);
+  ok(!t.accionesDelGrupo().some((o) => o.slug === 'bloquea'), 'lo de dos fichas no se dice a varios');
+  /* Con balón y sin él: solo lo que valga para los dos. */
+  seleccionar(t, a1.id, a2.id);
+  const comunes = t.accionesDelGrupo().map((o) => o.slug);
+  ok(comunes.includes('finta') && !comunes.includes('bota') && !comunes.includes('pasa'), `lo común a quien lleva balón y a quien no: ${comunes}`);
+  seleccionar(t, a2.id);
+  eq(t.grupo(), [], 'uno solo no es un grupo:');
+});
+
+test('LO QUE SE ELIGE LO HACEN TODOS: un gesto cada uno; un corte, al mismo punto o en paralelo', () => {
+  const { t, a2, a3 } = tresAtacantes();
+  seleccionar(t, a2.id, a3.id);
+  ok(t.abrirAnilloDeGrupo(), 'se abre el anillo común');
+  t._elegir('finta', {});
+  eq(t.tramos.map((x) => [x.elemento_id, x.accion, x.tipo]), [[a2.id, 'finta', 'gesto'], [a3.id, 'finta', 'gesto']]);
+  eq(t.anillo.abierto, false, 'y no se encadena el anillo de nadie:');
+  /* Un corte: se dibuja el del primero y el otro va al mismo punto. */
+  t.abrirAnilloDeGrupo();
+  corta(t, a2.id, { x: 0.8, y: 0.3 });
+  const [c2, c3] = t.tramos.slice(2);
+  eq([c2.elemento_id, c3.elemento_id, c3.accion], [a2.id, a3.id, 'corta']);
+  eq([[c3.trazo[0].x, c3.trazo[0].y], [c3.trazo.at(-1).x, c3.trazo.at(-1).y]], [[0.5, 0.7], [0.8, 0.3]], 'desde su sitio, al mismo punto:');
+  /* En paralelo: copia el trazo desde donde está. */
+  t.setEnParalelo(true);
+  t.abrirAnilloDeGrupo();
+  const antes = [ficha(t, a2.id), ficha(t, a3.id)].map((e) => [e.x, e.y]);
+  corta(t, a2.id, { x: antes[0][0] - 0.1, y: antes[0][1] + 0.2 });
+  const p3 = t.tramos.at(-1);
+  eq(p3.elemento_id, a3.id);
+  ok(Math.abs(p3.trazo.at(-1).x - (antes[1][0] - 0.1)) < 1e-9 && Math.abs(p3.trazo.at(-1).y - (antes[1][1] + 0.2)) < 1e-9, `el mismo movimiento, desde su sitio: ${JSON.stringify(p3.trazo.at(-1))}`);
+  /* Un trazo de uno solo, después, no arrastra al grupo. */
+  seleccionar(t, a2.id);
+  t._tocarFicha(ficha(t, a2.id));
+  const n = t.tramos.length;
+  corta(t, a2.id, { x: 0.2, y: 0.2 });
+  eq(t.tramos.length, n + 1);
+});
+
+test('SI NO HAY NADA QUE PUEDAN HACER TODOS, se dice; y quien no puede lo suyo, también', () => {
+  const { t, a1, a2, avisos } = conDefensa();
+  const b1 = t.fichas.elementos.find((e) => e.equipo === 'B');
+  seleccionar(t, a1.id, b1.id);
+  eq(t.abrirAnilloDeGrupo(), false);
+  ok(/no hay nada que puedan hacer todos/.test(avisos.at(-1)[2]), JSON.stringify(avisos.at(-1)));
+  ok(a2, 'a2');
+});
+
+test('LOS ATAJOS (§4.7): la letra lanza la acción de la ficha seleccionada; N, la fase siguiente', () => {
+  const { t, a1, a2, a3, avisos } = tresAtacantes();
+  seleccionar(t);
+  eq(t.atajo('c'), false, 'sin nadie seleccionado, nada:');
+  seleccionar(t, a2.id);
+  eq([t.atajo('f'), t.tramos.map((x) => x.accion)], [true, ['finta']], 'F, finta:');
+  t.cerrar();
+  eq([t.atajo('b'), avisos.at(-1)], [true, ['noPuede', 'Bota', 'no lleva balón']], 'B sin balón se dice:');
+  eq([t.atajo('C'), t.anillo.abierto], [true, true], 'C, corta: pregunta el cómo y a dibujar:');
+  t.cerrar();
+  eq(t.atajo('z'), false, 'una letra que no es atajo no se come:');
+  seleccionar(t, a1.id);
+  eq([t.atajo('e'), t.anillo.abierto], [true, true], 'E, entra a canasta: pregunta el cómo');
+  t._elegir('entra', { variante: 'bandeja' });
+  eq([t.tramos.at(-1).accion, t.tramos.at(-1).elemento_id], ['entra', a1.id], 'y se dibuja sola hasta el aro:');
+  t.cerrar();
+  /* Con varios, se lo dice a todos. */
+  seleccionar(t, a2.id, a3.id);
+  const n = t.tramos.length;
+  eq([t.atajo('f'), t.tramos.length - n], [true, 2]);
+  eq([t.atajo('x'), avisos.at(-1)[2]], [true, 'no lo pueden hacer todos los seleccionados']);
+  /* N cierra la fase. */
+  t.repaso.parar();
+  eq(t.atajo('n'), true);
+});
+
+console.log('\n· insertar, duplicar, borrar y renombrar fases (§6.8)');
+
+/* A2 corta en la fase 1 a (0.5, 0.35), en la 2 a (0.6, 0.2) y en la 3 a (0.6, 0.1). */
+function tresFases() {
+  const m = sinAtacante();
+  m.t._cerrarFase();
+  corta(m.t, m.a2.id, { x: 0.6, y: 0.2 });
+  m.t._cerrarFase();
+  corta(m.t, m.a2.id, { x: 0.6, y: 0.1 });
+  m.avisos.length = 0;
+  return m;
+}
+const saleDe = (t, id, quien) => { const p = t.faseDeId(id).tramos.find((x) => x.elemento_id === quien).trazo[0]; return [Number(p.x.toFixed(6)), Number(p.y.toFixed(6))]; };
+
+test('INSERTAR UNA FASE: vacía, donde se pide, y se va a ella; lo de detrás sigue saliendo de su sitio', () => {
+  const { t, a2 } = tresFases();
+  const [f1, f2, f3] = t.todasLasFases.map((f) => f.id);
+  t.irAFase(0);
+  ok(t.insertarFase('despues'), 'después de la 1');
+  const n = t.fases[t.iFase].id;
+  eq([t.fases.map((f) => f.id), t.iFase, t.tramos.length], [[f1, n, f2, f3], 1, 0]);
+  eq(t.faseDeId(n).entrada[a2.id], { x: 0.5, y: 0.35 }, 'empieza donde acaba la 1:');
+  eq(saleDe(t, f2, a2.id), [0.5, 0.35], 'y la 2 sigue saliendo de ahí:');
+  eq(t.todasLasFases.some((f) => f.rama_de != null || (f.reune || []).length), false, 'sin ramas ni enlaces: una lista sin más');
+  t.irAFase(0);
+  ok(t.insertarFase('antes'), 'antes de la primera');
+  const p = t.fases[0].id;
+  eq([t.iFase, t.todasLasFases[0].id === p, t.fases.length], [0, true, 5]);
+  eq(t.fases[0].entrada[a2.id], { x: 0.45, y: 0.6 }, 'la nueva primera guarda dónde empieza la jugada:');
+  eq(t.jugada().elementos.find((e) => e.id === a2.id).y, 0.6, 'y la escena al empezar es la misma:');
+  eq(saleDe(t, f1, a2.id), [0.45, 0.6], 'la que era la primera sale igual:');
+});
+
+test('BORRAR UNA FASE: lo de detrás se reancla a lo de delante; la primera deja su arranque a la siguiente', () => {
+  const { t, a2, avisos } = tresFases();
+  const [f1, f2, f3] = t.todasLasFases.map((f) => f.id);
+  t.irAFase(1);
+  ok(t.borrarFase(), 'la de en medio');
+  eq([t.fases.map((f) => f.id), t.iFase], [[f1, f3], 1], 'se queda en la que la seguía:');
+  eq(saleDe(t, f3, a2.id), [0.5, 0.35], 'que ahora sale de donde acaba la 1:');
+  t.irAFase(0);
+  ok(t.borrarFase(), 'la primera');
+  eq([t.fases.map((f) => f.id), t.todasLasFases[0].id], [[f3], f3]);
+  eq(saleDe(t, f3, a2.id), [0.45, 0.6], 'la que queda sale de donde empezaba la jugada:');
+  eq(t.fases[0].entrada[a2.id], { x: 0.45, y: 0.6 });
+  ok('posesion' in t.fases[0], 'y guarda de quién es cada balón al empezar');
+  eq([t.borrarFase(), avisos.at(-1)], [false, ['noPuede', 'Borrar la fase', 'una jugada tiene al menos una fase']], 'la única no se borra:');
+  ok(f2, 'f2');
+});
+
+test('DUPLICAR UNA FASE la copia como otra rama desde la anterior, con sus trazos; la primera no se puede', () => {
+  const { t, a2, avisos } = tresFases();
+  const [f1, f2, f3] = t.todasLasFases.map((f) => f.id);
+  t.irAFase(1);
+  eq(t.duplicarFase({ primera: '', nueva: 'la copia' }), false, 'cada rama necesita su nombre:');
+  ok(t.duplicarFase({ primera: 'la de siempre', nueva: 'la copia' }), 'se duplica');
+  const copia = t.fases[t.iFase];
+  eq([t.fases.map((f) => f.id), copia.rama_de, copia.rama_nombre], [[f1, copia.id], f1, 'la copia'], 'se está en la copia, que es una rama de la fase 1:');
+  eq([t.faseDeId(f2).rama_nombre, t.todasLasFases.find((f) => f.id === f3).rama_de], ['la de siempre', null]);
+  const [o, c] = [t.faseDeId(f2).tramos[0], copia.tramos[0]];
+  ok(o.id !== c.id && JSON.stringify(o.trazo) === JSON.stringify(c.trazo) && c.trazo !== o.trazo, 'el mismo trazo, con otro nombre y sin compartirlo');
+  corta(t, a2.id, { x: 0.9, y: 0.4 });
+  eq(t.faseDeId(f2).tramos.length, 1, 'cambiar la copia no toca la original:');
+  t.irAFase(0);
+  eq([t.duplicarFase({ primera: 'a', nueva: 'b' }), avisos.at(-1)[1]], [false, 'Duplicar'], 'la primera no tiene anterior:');
+});
+
+test('PONERLE NOMBRE A UNA FASE: se guarda con la jugada; vacío lo quita', () => {
+  const { t } = tresFases();
+  ok(t.renombrarFase('  Bloqueo   directo '), 'se pone');
+  eq(t.jugada().fases[2].nombre, 'Bloqueo directo');
+  eq(t.renombrarFase('Bloqueo directo'), false, 'el mismo no es un cambio:');
+  ok(t.renombrarFase(''));
+  eq(t.jugada().fases[2].nombre, null);
+});
+
+test('BORRAR UNA FASE CON RAMAS: no la del cruce; y borrar lo único de una rama deja la otra como lo que sigue', () => {
+  const { t, a2, avisos } = tresFases();
+  const [f1, f2] = t.todasLasFases.map((f) => f.id);
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' });
+  corta(t, a2.id, { x: 0.8, y: 0.3 });
+  const b = t.fases[t.iFase].id;
+  t.irAFase(0);
+  eq([t.borrarFase(), avisos.at(-1)[2]], [false, 'de esta fase salen ramas: quítalas antes']);
+  t.irAFaseId(b);
+  ok(t.borrarFase(), 'la rama b, aunque tenga algo dibujado');
+  eq([t.todasLasFases.some((f) => f.rama_de != null), t.fases.map((f) => f.id).slice(0, 2), t.iFase], [false, [f1, f2], 0], 'ya no hay ramas, y se queda en el cruce:');
+});
+
 test('REABRIR UNA JUGADA CON RAMAS: se abre por el camino principal y cada rama sale de su sitio', () => {
   const { t, a2 } = sinAtacante();
   t._cerrarFase();

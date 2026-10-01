@@ -60,6 +60,7 @@ import {
   caminoPor, caminoHasta, caminoPrincipal, grafoDe, siguientesDe, arbolDe, nuevoIdDeFase,
   todosLosCaminos, tieneRamas, reunionesDe,
   abrirRama as abrirLaRama, quitarRama as quitarLaRama, reunir as reunirFases, separar as separarFases,
+  insertarFase as insertarLaFase, borrarFase as borrarLaFase,
   renombrarRama as renombrarLaRama,
 } from './ramas.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
@@ -79,6 +80,11 @@ import {
 } from './fases.js';
 
 let siguiente = 1;
+
+/** Los atajos de teclado (§4.7): la letra y la acción que lanza. */
+export const ATAJOS = Object.freeze({
+  b: 'bota', p: 'pasa', t: 'tira', c: 'corta', e: 'entra', r: 'recoge', d: 'defiende', x: 'bloquea', f: 'finta',
+});
 
 export class Tablero {
   /**
@@ -190,18 +196,20 @@ export class Tablero {
          se dibuja (§8.7): se avisa solo cuando cambia. */
       const sel = [...this.fichas.seleccion].join(',');
       if (sel !== this._ultimaSeleccion) { this._ultimaSeleccion = sel; this.onSeleccion?.([...this.fichas.seleccion]); }
+      /* Con varios seleccionados, el botón «¿qué hacen los N?» (§3.2). */
+      this._pintarGrupo();
     };
     this._donde = new Map();
 
     this.anillo = new Anillo(lienzo.el, {
       onElegir: (slug, datos) => this._elegir(slug, datos),
-      onCerrar: () => this._pintarAyuda(),
+      onCerrar: () => { this._pintarGrupo(); this._pintarAyuda(); },
     });
 
     this.dibujo = new Dibujo(lienzo, {
       ...comun,
       onTrazo: (t) => this._trazoHecho(t),
-      onCancelar: () => { this._enCurso = null; this._pintarAyuda(); },
+      onCancelar: () => { this._enCurso = null; this._grupo = null; this._pintarGrupo(); this._pintarAyuda(); },
       onCambio: () => this._pintarAyuda(),
     });
 
@@ -260,6 +268,11 @@ export class Tablero {
     /* Los botones «Entra / Falla» de un tiro que se corrige van junto al
        aro, y el aro se mueve con el zoom: se recolocan en cada pintada. */
     this._quitarCapaDesenlace = lienzo.capa('desenlace-sitio', ({ vista }) => this._colocarDesenlace(vista), { tipo: 'pantalla', orden: 31 });
+    /* Y el botón «¿qué hacen los N?» va junto al grupo seleccionado (§3.2). */
+    this._grupo = null;          // { resto: [ids], paralelo } mientras se le dice algo a varios
+    this._enParalelo = false;    // ¿copian el trazo trasladado, o van al mismo punto?
+    this._botonGrupo = null;
+    this._quitarCapaGrupo = lienzo.capa('grupo-sitio', ({ vista }) => this._colocarGrupo(vista), { tipo: 'pantalla', orden: 32 });
 
     /* `Esc` con el anillo abierto no lo escuchaba nadie: Dibujo y Nodos
        solo atienden la tecla cuando les toca a ellos, y el Anillo no ata
@@ -276,7 +289,13 @@ export class Tablero {
         && !this.dibujo.dibujando && !this.nodos.editando && !this.companero.eligiendo && this.fichas.seleccion.size) {
         ev.preventDefault();
         this.quitarSeleccion();
+        return;
       }
+      /* LOS ATAJOS (§4.7): con una ficha seleccionada, la letra lanza la
+         acción sin abrir el anillo; N abre la fase siguiente. Sin Ctrl ni
+         Alt, que son de otros (deshacer, el menú del navegador). */
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      if (this.atajo(ev.key)) ev.preventDefault();
     };
     lienzo.el.addEventListener('keydown', this._onTecla);
   }
@@ -1979,6 +1998,122 @@ export class Tablero {
     };
   }
 
+  /* ---- insertar, duplicar, borrar y renombrar fases (§6.8) ---- */
+
+  /* La primera fase guarda la escena al empezar —dónde está cada uno y de
+     quién es cada balón—: si otra pasa a ser la primera, se la queda. */
+  _conLaEscenaEn(fases, raizVieja) {
+    if (!fases.length || fases[0].id === raizVieja.id) return fases;
+    return fases.map((f, i) => {
+      if (i === 0) return { ...f, entrada: raizVieja.entrada || {}, posesion: raizVieja.posesion || {} };
+      if (f.id !== raizVieja.id) return f;
+      const { posesion: _ya, ...resto } = f;
+      return resto;
+    });
+  }
+
+  /* Los trazos de la primera fase, desde donde empieza la jugada. */
+  _reanclarLaPrimera() {
+    const raiz = this._todas[0];
+    let papeles = null;
+    try { papeles = papelesDeJugada(this._jugadaDe([raiz])); } catch { papeles = null; }
+    const r = recalcular([{ ...raiz, carriles: carrilesDesde(raiz.tramos) }], raiz.entrada || {}, this.lienzo.vista.pistaKey, {
+      canasta: this.canasta,
+      canastaDe: (i) => ((papeles && papeles.fases[i]) || {}).canasta,
+    });
+    const tramos = r.fases[0].carriles.flatMap((c) => c.tramos).sort((a, b) => a.orden - b.orden);
+    this._todas = this._todas.map((f, i) => (i === 0 ? { ...f, tramos } : f));
+  }
+
+  /**
+   * INSERTA UNA FASE VACÍA antes o después de la que se edita, y se va a
+   * ella para dibujarla. Lo de detrás sale de donde quede lo nuevo.
+   * @param donde 'despues' | 'antes'
+   */
+  insertarFase(donde = 'despues') {
+    this.cerrar();
+    this.repaso.parar();
+    const i = this.iFase;
+    const raiz = this._todas[0];
+    const nueva = { ...nuevaFase(nuevoIdDeFase(this._todas)), tramos: [], entrada: {} };
+    const r = insertarLaFase(this._todas, this.fases[i].id, nueva, donde === 'antes' ? 'antes' : 'despues');
+    if (r.motivo) { this.onNoPuede?.({ nombre: 'Insertar una fase' }, r.motivo); return false; }
+    this._todas = this._conLaEscenaEn(r.fases, raiz);
+    const k = donde === 'antes' ? i : i + 1;
+    this._camino = [...this._camino.slice(0, k), nueva.id, ...this._camino.slice(k)];
+    this._huerfanos = this._recalcularArbol(null);
+    this.irAFase(k);
+    return true;
+  }
+
+  /**
+   * BORRA LA FASE que se edita, con lo dibujado en ella. Lo de detrás pasa
+   * a seguir a lo de delante y se reancla; si era la primera, la siguiente
+   * arranca de donde empezaba la jugada.
+   */
+  borrarFase() {
+    this.cerrar();
+    this.repaso.parar();
+    const i = this.iFase;
+    const raiz = this._todas[0];
+    const id = this.fases[i].id;
+    const r = borrarLaFase(this._todas, id);
+    if (r.motivo) { this.onNoPuede?.({ nombre: 'Borrar la fase' }, r.motivo); return false; }
+    this._todas = this._conLaEscenaEn(r.fases, raiz);
+    if (this._todas[0].id !== raiz.id) this._reanclarLaPrimera();
+    this._camino = this._camino.filter((x) => x !== id);
+    /* Al sitio de la borrada: lo que la seguía, o la anterior si era la
+       última; y el camino, por donde siga desde ahí. */
+    this.iFase = Math.max(0, Math.min(i, this._camino.length - 1));
+    this._seguirDesdeAqui();
+    this._huerfanos = this._recalcularArbol(null);
+    this.irAFase(this.iFase);
+    return true;
+  }
+
+  /**
+   * DUPLICA LA FASE que se edita COMO OTRA RAMA (lo decidió el entrenador,
+   * 2026-10-01): otra manera de seguir desde la fase anterior, con lo mismo
+   * dibujado, para cambiarle algo. Detrás tal cual no valdría: sus trazos
+   * saldrían de donde ya no hay nadie.
+   */
+  duplicarFase({ primera = '', nueva = '' } = {}) {
+    const i = this.iFase;
+    if (i === 0) { this.onNoPuede?.({ nombre: 'Duplicar' }, 'la primera fase no tiene una anterior de la que salir otra vez'); return false; }
+    this.cerrar();
+    this.repaso.parar();
+    const x = this.fases[i];
+    const anterior = this.fases[i - 1].id;
+    const r = abrirLaRama(this._todas, anterior, {
+      primera, nueva,
+      crear: (id) => ({
+        ...nuevaFase(id),
+        duracion_ms: x.duracion_ms ?? null,
+        pausa_post_ms: x.pausa_post_ms ?? null,
+        tramos: (x.tramos || []).map((t) => ({ ...t, id: `tr${siguiente++}`, trazo: t.trazo.map((n) => ({ ...n })) })),
+        defensa: JSON.parse(JSON.stringify(x.defensa || {})),
+        texto: x.texto ?? null,
+        entrada: { ...(x.entrada || {}) },
+      }),
+    });
+    if (r.motivo) { this.onNoPuede?.({ nombre: 'Duplicar' }, r.motivo); return false; }
+    this._todas = r.fases;
+    this._camino = [...this._camino.slice(0, i), r.nuevas[r.nuevas.length - 1]];
+    this._huerfanos = this._recalcularArbol(anterior);
+    this.irAFase(i);
+    return true;
+  }
+
+  /** Pone nombre a la fase que se edita («bloqueo directo»); vacío lo quita. */
+  renombrarFase(nombre) {
+    const limpio = typeof nombre === 'string' && nombre.trim() ? nombre.trim().replace(/\s+/g, ' ').slice(0, 40) : null;
+    const f = this.fases[this.iFase];
+    if ((f.nombre ?? null) === limpio) return false;
+    this.fases = this.fases.map((x, k) => (k === this.iFase ? { ...x, nombre: limpio } : x));
+    this._avisarDeFases();
+    return true;
+  }
+
   /* ---- las ramas (§6.7) ------------------------------------ */
 
   /** Ir a una fase de cualquier rama: el camino pasa a ser el suyo. Si
@@ -2087,7 +2222,177 @@ export class Tablero {
     this.nodos.soltar();
     this._enCurso = null;
     this._editando = null;
+    this._grupo = null;
+    this._pintarGrupo();
     this._pintarAyuda();
+  }
+
+  /* ---- varios a la vez (§3.2, §4.6) -------------------------- */
+
+  /** Los jugadores seleccionados, si son varios: a los que se les puede
+   *  decir lo mismo de una vez. */
+  grupo() {
+    const sel = this.fichas.seleccion;
+    const g = this.fichas.elementos.filter((e) => e.kind === 'jugador' && sel.has(e.id));
+    return g.length > 1 ? g : [];
+  }
+
+  /** Lo que pueden hacer TODOS los del grupo: lo del anillo del primero
+   *  que también salga para los demás. Lo de dos fichas —bloquear,
+   *  defender a alguien— no: hay que señalar a quién, de uno en uno. */
+  accionesDelGrupo(miembros = this.grupo()) {
+    if (!miembros.length) return [];
+    const estados = miembros.map((m) => estadoDe(this.estadoDe(m)));
+    return anilloDe(estados[0]).filter((o) => o.accion
+      && !necesita(o.accion).companero
+      && estados.every((e) => saleEn(o.accion, e))
+      && miembros.every((m) => !this._porQueNo(o.accion, m)));
+  }
+
+  /**
+   * «¿QUÉ HACEN LOS N?»: abre un anillo común, y lo que se elija se aplica
+   * a todos (§4.6). Con destino, se dibuja el del primero y los demás van
+   * al mismo punto —o, en paralelo, copian el trazo desde su sitio—.
+   */
+  abrirAnilloDeGrupo() {
+    const miembros = this.grupo();
+    if (miembros.length < 2) return false;
+    const comunes = this.accionesDelGrupo(miembros);
+    if (!comunes.length) {
+      this.onNoPuede?.({ nombre: `Los ${miembros.length} a la vez` }, 'no hay nada que puedan hacer todos (lo de dos jugadores se dice de uno en uno)');
+      return false;
+    }
+    this.nodos.soltar();
+    const centro = {
+      x: miembros.reduce((s, m) => s + m.x, 0) / miembros.length,
+      y: miembros.reduce((s, m) => s + m.y, 0) / miembros.length,
+    };
+    this._grupo = { resto: miembros.slice(1).map((m) => m.id), paralelo: this._enParalelo };
+    this._abrirAnillo(miembros[0], centro, { opciones: comunes, centro: `Los ${miembros.length}`, conMas: false });
+    this._pintarGrupo();
+    return true;
+  }
+
+  /** Cómo siguen los demás al que se dibuja: al mismo punto, o en paralelo. */
+  setEnParalelo(on) {
+    this._enParalelo = !!on;
+    this._pintarGrupo();
+  }
+
+  /* Los demás del grupo hacen lo mismo que el primero. */
+  _losDemasDelGrupo(grupo, { accion, variante, tipo, dibujado, fin, desenlace }) {
+    const pista = this.lienzo.vista.pistaKey;
+    const sin = [];
+    for (const id of grupo.resto) {
+      const m = this.fichas.elementos.find((e) => e.id === id);
+      if (!m) continue;
+      if (this._porQueNo(accion, m)) { sin.push(m); continue; }
+      const aqui = { x: m.x, y: m.y };
+      let trazo, balon = null;
+      if (tipo === 'gesto') {
+        trazo = trazoDeGesto(accion, m, { pista, canasta: this.canastaEnCurso });
+      } else if (tieneDestinoPropio(accion)) {
+        const d = destinoDe(accion, m, { pista, canasta: this.canastaEnCurso, elementos: this.fichas.elementos });
+        if (!d.punto) { sin.push(m); continue; }
+        trazo = nuevoTrazo(aqui, d.punto);
+        balon = d.balon || null;
+      } else {
+        trazo = grupo.paralelo ? trasladar(dibujado, aqui) : nuevoTrazo(aqui, { x: fin.x, y: fin.y });
+      }
+      this._trazoHecho({ elemento: m, accion, variante, trazo, tipo, balon, desenlace, enGrupo: true });
+    }
+    if (sin.length) {
+      const quienes = sin.map((m) => this.nombreDe(m)).join(', ');
+      this.onNoPuede?.(accion, `${quienes} no ${sin.length > 1 ? 'pueden' : 'puede'}`);
+    }
+  }
+
+  /* El botón «¿qué hacen los N?», junto al grupo. Solo con varios
+     jugadores seleccionados y nada más entre manos. */
+  _pintarGrupo() {
+    const miembros = this.grupo();
+    const toca = miembros.length > 1 && !this.anillo.abierto && !this.dibujo.dibujando
+      && !this.nodos.editando && !this.companero.eligiendo;
+    if (!toca) {
+      this._botonGrupo?.capa.remove();
+      this._botonGrupo = null;
+      return;
+    }
+    const clave = `${miembros.length}|${this._enParalelo}`;
+    if (!this._botonGrupo || this._botonGrupo.clave !== clave) {
+      this._botonGrupo?.capa.remove();
+      const boton = (texto, titulo, alPulsar, extra = {}) => {
+        const b = h('button', { class: 'pz-nodo__b', type: 'button', title: titulo, ...extra }, texto);
+        b.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+        b.addEventListener('click', (ev) => { ev.stopPropagation(); alPulsar(); });
+        return b;
+      };
+      const capa = h('div', { class: 'pz-nodo pz-grupo' }, h('div', { class: 'pz-nodo__caja' },
+        boton(`¿Qué hacen los ${miembros.length}?`, 'Lo que elijas lo hacen todos a la vez', () => this.abrirAnilloDeGrupo()),
+        boton(this._enParalelo ? '⇉ en paralelo' : '⇶ al mismo punto',
+          this._enParalelo ? 'Cada uno copia el trazo desde su sitio. Pulsa para que vayan al mismo punto' : 'Todos van al mismo punto. Pulsa para que cada uno copie el trazo desde su sitio',
+          () => this.setEnParalelo(!this._enParalelo), { 'aria-pressed': this._enParalelo ? 'true' : 'false' })));
+      this.lienzo.el.append(capa);
+      this._botonGrupo = { capa, clave };
+    }
+    this._colocarGrupo(this.lienzo.vista);
+  }
+
+  _colocarGrupo(vista) {
+    if (!this._botonGrupo || !vista || !vista.vw) return;
+    const miembros = this.grupo();
+    if (!miembros.length) return;
+    const px = miembros.map((m) => vista.toPx(m.x, m.y));
+    const x = px.reduce((s, p) => s + p[0], 0) / px.length;
+    const y = Math.min(...px.map((p) => p[1]));
+    const limitar = (v, min, max) => (v < min ? min : v > max ? max : v);
+    const caja = this._botonGrupo.capa.firstChild;
+    caja.style.left = `${limitar(x, 130, Math.max(130, vista.vw - 130))}px`;
+    caja.style.top = `${limitar(y - 48, 26, Math.max(26, vista.vh - 26))}px`;
+  }
+
+  /* ---- los atajos (§4.7) ------------------------------------- */
+
+  /**
+   * Una letra con una ficha seleccionada lanza su acción sin abrir el
+   * anillo (con varias, se la dice a todas); N abre la fase siguiente.
+   * @returns si la tecla era un atajo y se ha atendido
+   */
+  atajo(tecla) {
+    const k = String(tecla || '').toLowerCase();
+    if (this.dibujo.dibujando || this.nodos.editando || this.companero.eligiendo) return false;
+    if (k !== 'n' && !ATAJOS[k]) return false;
+    /* Un repaso a medias se corta, como con cualquier otra cosa que se haga. */
+    this.repaso.parar();
+    if (k === 'n') { this.siguienteFase(); return true; }
+    const slug = ATAJOS[k];
+    const accion = this._accionDe(slug);
+    const jugadores = this.fichas.elementos.filter((e) => e.kind === 'jugador' && this.fichas.seleccion.has(e.id));
+    if (!accion || !jugadores.length) return false;
+    if (jugadores.length > 1) {
+      if (!this.accionesDelGrupo(jugadores).some((o) => o.slug === slug)) {
+        this.onNoPuede?.(accion, 'no lo pueden hacer todos los seleccionados');
+        return true;
+      }
+      const centro = { x: jugadores.reduce((s, m) => s + m.x, 0) / jugadores.length, y: jugadores.reduce((s, m) => s + m.y, 0) / jugadores.length };
+      this._grupo = { resto: jugadores.slice(1).map((m) => m.id), paralelo: this._enParalelo };
+      this._ancla = { elemento: jugadores[0], en: centro, estado: estadoDe(this.estadoDe(jugadores[0])) };
+      this._pintarGrupo();
+      this._elegir(slug, {});
+      return true;
+    }
+    const elemento = jugadores[0];
+    const estado = estadoDe(this.estadoDe(elemento));
+    this._grupo = null;
+    this.nodos.soltar();
+    if (!saleEn(accion, estado)) {
+      this.onNoPuede?.(accion, estado === 'defensor' ? 'está defendiendo' : estado === 'sinBalon' ? 'no lleva balón' : 'ahora no es cosa suya');
+      return true;
+    }
+    this._conDedo = false;
+    this._ancla = { elemento, en: elemento, estado };
+    this._elegir(slug, {});
+    return true;
   }
 
   /* ---- el bucle ---------------------------------------------- */
@@ -2102,6 +2407,10 @@ export class Tablero {
        primer momento, no a partir del primer gesto. */
     this._conDedo = tipoPuntero === 'touch';
     this.nodos.soltar();
+    this._grupo = null;
+    /* Con varios seleccionados no se abre el anillo de uno (§3.2): sale
+       el botón «¿qué hacen los N?» junto al grupo. */
+    if (this.grupo().length) { this.anillo.cerrar(); this._pintarGrupo(); this._pintarAyuda(); return; }
     this._abrirAnillo(elemento, elemento);
   }
 
@@ -2407,8 +2716,13 @@ export class Tablero {
    * «conBalón» la próxima vez que se la toque. Si termina en el suelo,
    * es un pase a un sitio y el balón se queda ahí.
    */
-  _trazoHecho({ elemento, accion, variante, trazo: dibujado, tipo, balon = null, desenlace = null, companero = null, defensor = null }) {
+  _trazoHecho({ elemento, accion, variante, trazo: dibujado, tipo, balon = null, desenlace = null, companero = null, defensor = null, enGrupo = false }) {
     const pista = this.lienzo.vista.pistaKey;
+    /* Si se le está diciendo a varios (§4.6), este es el del primero: los
+       demás lo hacen detrás. Ni repaso ni anillo: se ve el resultado. */
+    const grupo = enGrupo ? null : this._grupo;
+    this._grupo = null;
+    const callado = enGrupo || !!grupo;
     /* LOS CONOS DEL CAMINO (§7.4). Un trazo que pasa junto a un cono lo
        rodea, y lo que se guarda es la intención —qué cono y por qué
        lado—, no la curva: por eso mover el cono la rehace.
@@ -2497,6 +2811,17 @@ export class Tablero {
     /* Ya está todo en su sitio final (§5.4); el repaso solo pinta por el
        camino a quien viaja, mientras dura. */
     this.fichas._cambio(lista);
+    if (callado) {
+      if (grupo) this._losDemasDelGrupo(grupo, { accion, variante, tipo, dibujado, fin, desenlace });
+      if (enGrupo) return;
+      this._recalcularSiguientes();
+      this.onTramos?.(this.tramos);
+      this.anillo.cerrar();
+      this._pintarGrupo();
+      this._pintarAyuda();
+      this.lienzo.pintar();
+      return;
+    }
     if (tirando && corre !== elemento) {
       /* Un tiro se repasa entero: al aro, y el balón hasta donde cae. */
       const d = duracionRepaso(trazo, pista, ritmo) * 1000;
@@ -2702,6 +3027,7 @@ export class Tablero {
     if (this.companero.eligiendo) return this.companero.ayuda();
     if (this.nodos.editando) return (this._desenlace ? '<b>Entra</b> o <b>Falla</b>, junto al aro, cambia el tiro · ' : '') + this.nodos.ayuda();
     if (this.anillo.abierto) return 'Elige qué hace esta ficha · pincha en la pista para saltarte el «cómo» · <b>Esc</b> cierra';
+    if (this.grupo().length) return `Varios seleccionados: pulsa <b>¿Qué hacen los ${this.grupo().length}?</b> para decirles lo mismo a todos · arrástralos para moverlos juntos · <b>Supr</b> los quita`;
     if (this.fichas.seleccion.size) return 'Arrástrala para colocarla · tócala para ver qué puede hacer · <b>Supr</b> la quita · <b>Mayús</b> la pega a un sitio de la pista';
     return 'Arrastra una ficha del panel a la pista, o toca una de la pista para ver lo que puede hacer · pincha un trazo para corregirlo';
   }

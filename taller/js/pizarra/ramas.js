@@ -389,6 +389,88 @@ export function separar(fases, desde, hasta) {
   return { fases: sinEnlacesDeMas(salida) };
 }
 
+/* ── Insertar y borrar fases (§6.8) ────────────────────────────
+   Con los enlaces escritos del todo —cada fase dice de cuáles viene— el
+   orden de la lista deja de importar mientras se cambia, y al final se
+   quita lo que el orden ya dice (`sinEnlacesDeMas`). Así una jugada sin
+   ramas sigue siendo una lista sin más. */
+
+/* Cada fase, con todas las que llegan a ella escritas en `reune`. */
+function explicitar(lista) {
+  const g = grafoDe(lista);
+  return lista.map((f, i) => ({ ...f, reune: i === 0 ? [] : [...(g.antes.get(f.id) || [])] }));
+}
+
+/**
+ * INSERTA UNA FASE antes o después de otra (§6.8). Después de un cruce,
+ * la nueva pasa a ser el cruce: las ramas salen de ella. Antes de una
+ * rama o de una reunión, es la nueva la que empieza la rama o reúne.
+ * Antes de la primera, la nueva pasa a ser la primera.
+ *
+ * @param donde 'despues' | 'antes'
+ * @returns { fases } o { motivo }
+ */
+export function insertarFase(fases, id, fase, donde = 'despues') {
+  const lista = (fases || []).filter((f) => f && f.id != null);
+  const i = lista.findIndex((f) => f.id === id);
+  if (i < 0) return { motivo: 'esa fase no está' };
+  if (!fase || fase.id == null || lista.some((f) => f.id === fase.id)) return { motivo: 'la fase nueva necesita un nombre que no esté' };
+  const todas = explicitar(lista);
+  const x = todas[i];
+  let salida;
+  if (donde === 'antes') {
+    const nueva = { ...fase, rama_de: x.rama_de ?? null, rama_nombre: x.rama_nombre ?? null, reune: [...x.reune] };
+    const vieja = { ...x, rama_de: null, rama_nombre: null, reune: [nueva.id] };
+    salida = [...todas.slice(0, i), nueva, vieja, ...todas.slice(i + 1)];
+  } else {
+    const nueva = { ...fase, rama_de: null, rama_nombre: null, reune: [id] };
+    const resto = todas.map((f) => (f.id === id ? f : {
+      ...f,
+      reune: f.reune.map((r) => (r === id ? nueva.id : r)),
+      rama_de: f.rama_de === id ? nueva.id : f.rama_de,
+    }));
+    salida = [...resto.slice(0, i + 1), nueva, ...resto.slice(i + 1)];
+  }
+  return { fases: sinEnlacesDeMas(salida) };
+}
+
+/**
+ * BORRA UNA FASE (§6.8), con lo dibujado en ella. Lo que venía detrás
+ * pasa a seguir a lo que había delante; si empezaba una rama, la empieza
+ * lo que venía detrás, y si era lo único de la rama, la rama se va. No
+ * se borra una fase de la que salen ramas (antes hay que quitarlas), ni
+ * la única que hay.
+ *
+ * @returns { fases, sigue } — `sigue`, la fase que ocupa su sitio (o null)
+ */
+export function borrarFase(fases, id) {
+  const lista = (fases || []).filter((f) => f && f.id != null);
+  const g = grafoDe(lista);
+  if (!g.porId.has(id)) return { motivo: 'esa fase no está' };
+  if (lista.length < 2) return { motivo: 'una jugada tiene al menos una fase' };
+  const sale = g.despues.get(id) || [];
+  if (sale.length > 1) return { motivo: 'de esta fase salen ramas: quítalas antes' };
+  const todas = explicitar(lista);
+  const x = todas.find((f) => f.id === id);
+  const sigue = sale[0] ?? null;
+  let salida = todas.filter((f) => f.id !== id).map((f) => {
+    if (f.id !== sigue) return f;
+    const reune = [...new Set(f.reune.flatMap((r) => (r === id ? x.reune : [r])))];
+    /* Hereda la rama que empezaba la borrada. */
+    const rama = x.rama_de != null && f.rama_de == null ? { rama_de: x.rama_de, rama_nombre: x.rama_nombre } : {};
+    return { ...f, ...rama, reune };
+  });
+  /* Era la primera: la que seguía pasa a serlo, y va la primera. */
+  if (lista[0].id === id) {
+    const k = salida.findIndex((f) => f.id === sigue);
+    const primera = { ...salida[k], rama_de: null, rama_nombre: null, reune: [] };
+    salida = [primera, ...salida.slice(0, k), ...salida.slice(k + 1)];
+  }
+  /* Era lo único de una rama: el cruce se queda con una de menos. */
+  if (sigue == null && x.rama_de != null) salida = unaSolaNoEsRama(salida, x.rama_de);
+  return { fases: sinEnlacesDeMas(salida), sigue };
+}
+
 /**
  * DÓNDE PONER UNA FASE NUEVA que sigue a `id` sin ser rama: justo detrás
  * de ella en la lista, para que el orden lo diga.
