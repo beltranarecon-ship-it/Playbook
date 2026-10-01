@@ -59,6 +59,17 @@ export const NUMEROS = [
 const opcion = (valor, nombre) => ({ valor, nombre });
 
 /**
+ * ¿ES EL MISMO PANEL que había —el del mismo trazo y el mismo vídeo—, o
+ * es otro? Lo abierto y lo escrito a medias solo se reponen en el mismo:
+ * si no, el enlace pegado para un pase acabaría guardado en un bote.
+ */
+export function mismoPanel(antes, modelo) {
+  if (!antes || !modelo || antes.tipo !== modelo.tipo) return false;
+  if (modelo.tipo !== 'tramo') return true;
+  return antes.id === modelo.id && (antes.video || {}).clave === (modelo.video || {}).clave;
+}
+
+/**
  * UN TRAZO PINCHADO (§2.4, pestaña «Trazo»): quién y qué, su variante
  * técnica, el vídeo de esa variante —sin elegir, el de la de siempre— y
  * si se le pueden añadir variantes. El vídeo cuelga de la variante
@@ -68,8 +79,15 @@ export function modeloTramo(tramo, { elementos = [], nombreDe = (e) => e.id, vid
   const quien = (elementos || []).find((e) => e && e.id === tramo.elemento_id);
   const accion = tramo.accion;
   const nombreAccion = NOMBRE_DE.get(accion) || accion;
-  const vs = variantesDe(accion);
-  const efectiva = varianteDe(accion, tramo.variante) || vs[0] || null;
+  let vs = variantesDe(accion);
+  /* Una variante del club que no se ha cargado (sin red, o borrada) no se
+     enseña como «la de siempre»: sale con el nombre que el tramo lleva
+     consigo, y su vídeo sigue siendo el suyo. */
+  const conocida = varianteDe(accion, tramo.variante);
+  if (!conocida && tramo.variante && vs.length) {
+    vs = [...vs, { slug: tramo.variante, nombre: tramo.variante_nombre || tramo.variante, descripcion: '', delClub: true }];
+  }
+  const efectiva = conocida || (tramo.variante ? vs.find((v) => v.slug === tramo.variante) : null) || vs[0] || null;
   const clave = efectiva ? claveDeVideo(accion, efectiva.slug) : claveDeVideo(accion);
   const video = clave ? normalizarVideo((videos || {})[clave]) : null;
   return {

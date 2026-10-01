@@ -24,7 +24,7 @@
    tienen variantes de serie: son las que abren el anillo exterior.
    ============================================================ */
 
-import { VARIANTES, variantesDe, varianteDe, variantePorDefecto } from './repertorio.js';
+import { VARIANTES, variantesDe, varianteDe, variantePorDefecto, tieneVariantes } from './repertorio.js';
 import { CATALOGO_SISTEMA } from '../ia/acciones.js';
 import { leerVideo, normalizarVideo, validarVideo, segundosDe, seIncrusta } from '../ia/video.js';
 
@@ -52,15 +52,23 @@ export function claveDeVideo(accion, variante = null) {
   return SLUG_VIDEO.test(k) ? k : null;
 }
 
-/** Un slug para una variante nueva a partir de su nombre, que no esté
- *  ya en esa acción («Por detrás» → `por_detras`). */
-export function slugDeVariante(nombre, accion) {
-  let base = String(nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const corta = (s, n) => s.slice(0, n).replace(/_+$/, '');
+
+/* El nombre sin tildes, signos ni mayúsculas: lo que hace que dos nombres
+   sean «el mismo» («Por detrás», «por-detras»). */
+function slugBase(nombre) {
+  let base = String(nombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   if (!base) return null;
   if (!/^[a-z]/.test(base)) base = `v_${base}`;
-  const corta = (s, n) => s.slice(0, n).replace(/_+$/, '');
-  base = corta(base, MAX_SLUG_VARIANTE);
+  return corta(base, MAX_SLUG_VARIANTE);
+}
+
+/** Un slug para una variante nueva a partir de su nombre, que no esté
+ *  ya en esa acción («Por detrás» → `por_detras`). */
+export function slugDeVariante(nombre, accion) {
+  const base = slugBase(nombre);
+  if (!base) return null;
   const usados = new Set(variantesDe(accion).map((v) => v.slug));
   let s = base;
   for (let n = 2; usados.has(s); n++) s = `${corta(base, MAX_SLUG_VARIANTE - String(n).length - 1)}_${n}`;
@@ -76,7 +84,7 @@ export function normalizarVarianteDelClub(fila) {
   const accion = String(fila.accion || '');
   const slug = String(fila.slug || '');
   const nombre = String(fila.nombre || '').trim();
-  if (!VARIANTES[accion] || !SLUG_VARIANTE.test(slug) || !nombre) return null;
+  if (!Object.hasOwn(VARIANTES, accion) || !SLUG_VARIANTE.test(slug) || !nombre) return null;
   if (VARIANTES[accion].some((v) => v.slug === slug)) return null;
   return { id: fila.id ?? null, accion, slug, nombre, descripcion: String(fila.descripcion || '').trim() };
 }
@@ -113,11 +121,16 @@ export function videoDeLoEscrito({ enlace = '', desde = '', hasta = '' } = {}) {
 export function validarVarianteNueva({ accion, nombre = '', descripcion = '', enlace = '', desde = '', hasta = '' } = {}) {
   const errores = [];
   const n = String(nombre || '').trim().replace(/\s+/g, ' ');
-  if (!VARIANTES[accion]) errores.push('esa acción no tiene variantes');
+  const conVariantes = tieneVariantes(accion);
+  if (!conVariantes) errores.push('esa acción no tiene variantes');
   if (!n) errores.push('la variante necesita un nombre');
   else if (n.length > MAX_NOMBRE_VARIANTE) errores.push(`el nombre es demasiado largo (${MAX_NOMBRE_VARIANTE} letras como mucho)`);
-  else if (VARIANTES[accion] && variantesDe(accion).some((v) => v.nombre.toLocaleLowerCase('es') === n.toLocaleLowerCase('es'))) {
-    errores.push(`«${n}» ya está`);
+  else if (conVariantes) {
+    /* La misma con otra tilde, otro signo u otras mayúsculas es la misma:
+       dos casi iguales en el anillo repartirían los ejercicios y los vídeos. */
+    const base = slugBase(n);
+    const igual = base && variantesDe(accion).find((v) => v.slug === base || slugBase(v.nombre) === base);
+    if (igual) errores.push(`«${igual.nombre}» ya está`);
   }
   const { video, error } = videoDeLoEscrito({ enlace, desde, hasta });
   if (error) errores.push(error);
@@ -134,7 +147,7 @@ export function validarVarianteNueva({ accion, nombre = '', descripcion = '', en
 /** «Pasa · Picado»: cómo se titula el vídeo de una variante. */
 export function tituloDeVariante(accion, variante, nombre = null) {
   const a = nombreAccion.get(accion) || accion;
-  const v = nombre || varianteDe(accion, variante)?.nombre || variante;
+  const v = varianteDe(accion, variante)?.nombre || nombre || variante;
   return v ? `${a} · ${v}` : a;
 }
 

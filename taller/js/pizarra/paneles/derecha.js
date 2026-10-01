@@ -14,6 +14,7 @@
    ============================================================ */
 
 import { h, mount } from '../../ui/dom.js';
+import { mismoPanel } from './ajustes-modelo.js';
 
 const ANCHO_PLEGADO_BAJO = 1100;
 
@@ -86,14 +87,17 @@ export class PanelDerecho {
     const clave = JSON.stringify(modelo);
     if (clave === this._clave) return;
     this._clave = clave;
+    /* Lo abierto y lo escrito a medias solo se reponen si el panel es el
+       mismo que había (ajustes-modelo.js#mismoPanel). */
+    const mismo = mismoPanel(this._modelo, modelo);
     this._modelo = modelo;
-    const abierto = !!this._cuerpo.querySelector('details[open]');
+    const abierto = mismo && !!this._cuerpo.querySelector('details[open]');
     const foco = document.activeElement;
-    const etiqueta = foco && this._cuerpo.contains(foco) ? foco.getAttribute('aria-label') : null;
+    const etiqueta = mismo && foco && this._cuerpo.contains(foco) ? foco.getAttribute('aria-label') : null;
     /* Lo escrito a medias en las casillas de texto (el enlace de un
        vídeo, el nombre de una variante) tampoco se pierde. */
-    const escrito = new Map([...this._cuerpo.querySelectorAll('input[type="text"][aria-label], textarea[aria-label]')]
-      .filter((x) => x.value).map((x) => [x.getAttribute('aria-label'), x.value]));
+    const escrito = new Map(mismo ? [...this._cuerpo.querySelectorAll('input[type="text"][aria-label], textarea[aria-label]')]
+      .filter((x) => x.value).map((x) => [x.getAttribute('aria-label'), x.value]) : []);
     mount(this._cuerpo, ...this._contenido(modelo));
     const det = this._cuerpo.querySelector('details');
     if (abierto && det) det.open = true;
@@ -102,6 +106,11 @@ export class PanelDerecho {
       if (x && !x.value) { x.value = v; x.closest('details')?.setAttribute('open', ''); }
     }
     if (etiqueta) this._cuerpo.querySelector(`[aria-label="${etiqueta}"]`)?.focus?.();
+  }
+
+  /** Vacía las casillas de texto: lo escrito ya se ha guardado. */
+  limpiarEscrito() {
+    for (const x of this._cuerpo.querySelectorAll('input[type="text"], textarea')) x.value = '';
   }
 
   _contenido(m) {
@@ -202,7 +211,7 @@ export class PanelDerecho {
         h('div', { class: 'pz-der__tramo' }, this._campo('Desde', desde), this._campo('Hasta', hasta)),
         h('button', {
           class: 'pz-der__serie', type: 'button',
-          onClick: () => this.onNuevaVariante?.(m.accion, { nombre: nombre.value, descripcion: descripcion.value, enlace: enlace.value, desde: desde.value, hasta: hasta.value }),
+          onClick: () => this.onNuevaVariante?.(m.accion, { nombre: nombre.value, descripcion: descripcion.value, enlace: enlace.value, desde: desde.value, hasta: hasta.value }, m.id),
         }, 'Crear la variante')));
     }
     return partes;

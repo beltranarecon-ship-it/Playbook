@@ -322,5 +322,14 @@ test('SIN NADA DIBUJADO NO HAY FRASE, y nada revienta', () => {
   eq([unir([]), unir(['a']), unir(['a', 'b']), unir(['a', 'b', 'c'])], ['', 'a', 'a y b', 'a, b y c']);
 });
 
+test('UN GESTO EN EL SITIO se dice sin destino: «finta y bota», «para»', () => {
+  const el = [jugador('j1', 'A', '1', A.base), balon('b1', 'j1', A.base)];
+  const ida = { x: A.base.x, y: A.base.y - 0.05 };
+  const gesto = (accion) => ({ ...tr('j1', 'j1', accion, A.base, A.base), tipo: 'gesto', trazo: [N(A.base), N(ida), N(A.base)] });
+  const f = frasesDeJugada(jugada(el, [[gesto('finta'), tr('j1', 'j1', 'bota', A.base, A.codo_der)], [gesto('para')], [gesto('protege')], [gesto('cambia_de_mano')], [gesto('pivota')]]));
+  ok(/^A1 finta y bota hasta el codo derecho/.test(f[0]), f[0]);
+  eq(f.slice(1), ['A1 para.', 'A1 protege el balón.', 'A1 cambia de mano.', 'A1 pivota.']);
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 if (fallan) process.exit(1);

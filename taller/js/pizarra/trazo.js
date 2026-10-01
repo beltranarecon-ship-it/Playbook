@@ -120,8 +120,25 @@ export function desdePuntos(puntos) {
  */
 export function nodosFijos(tipo, n) {
   const fijos = new Set([0]);
-  if (tipo === 'pass' && n > 1) fijos.add(n - 1);
+  /* Y el final de un GESTO en el sitio: acaba donde empezó, que es lo
+     que lo hace un gesto y no un desplazamiento. */
+  if ((tipo === 'pass' || tipo === 'gesto') && n > 1) fijos.add(n - 1);
   return fijos;
+}
+
+/** Un gesto en el sitio (§4.4): sale hasta la punta y vuelve. */
+export function trazoDeIdaYVuelta(desde, punta) {
+  return [nodo(desde), nodo(punta), nodo(desde)];
+}
+
+/** El trazo entero a otro sitio, sin deformarlo: empieza en `origen`.
+ *  Es como se mueve un gesto en el sitio, que va con su ficha. */
+export function trasladar(trazo, origen) {
+  if (!trazo || !trazo.length || !origen) return trazo;
+  const dx = origen.x - trazo[0].x;
+  const dy = origen.y - trazo[0].y;
+  if (dx === 0 && dy === 0) return trazo;
+  return trazo.map((n) => desplazar(n, dx, dy));
 }
 
 /** Mueve un nodo, y sus manejadores con él: si se quedaran quietos, la
@@ -174,6 +191,8 @@ export function alternarCurva(trazo, i, minimo = 0.02) {
  *  no es un trazo, y los fijos no se tocan. */
 export function borrarNodo(trazo, i, tipo = 'run') {
   if (trazo.length <= 2) return trazo;
+  /* Un gesto sin su punta serían dos nodos en el mismo sitio. */
+  if (tipo === 'gesto' && trazo.length <= 3) return trazo;
   if (nodosFijos(tipo, trazo.length).has(i)) return trazo;
   return trazo.filter((_, k) => k !== i);
 }

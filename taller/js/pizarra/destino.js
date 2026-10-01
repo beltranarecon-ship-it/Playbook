@@ -36,6 +36,8 @@
 
 import { posicionesDe } from '../canvas/anclas.js';
 import { finalDeFila } from './filas.js';
+import { trazoDeIdaYVuelta } from './trazo.js';
+import { radioMetros } from './elementos.js';
 import { puntoADistanciaDe, metrosEntre, escalaDe } from '../canvas/escala.js';
 import { limitesCancha } from '../canvas/medidas.js';
 import { FAMILIAS } from '../ia/acciones.js';
@@ -159,6 +161,37 @@ export function trasElTiro({ pista = 'entera', canasta = 'norte', desde = null, 
  * ¿Esta acción es un bloqueo? Lo dice la relación que dibuja, en el
  * catálogo, y no su nombre: un bloqueo que cree el club vale igual.
  */
+/* ── Los gestos en el sitio (§4.4) ─────────────────────────── */
+
+/** ¿Es un gesto en el sitio? Lo dice su familia en el catálogo. */
+export const esGesto = (accion) => !!accion && accion.familia === 'gesto';
+
+/**
+ * EL TRAZO DE UN GESTO EN EL SITIO —finta, pivote, cambio de mano,
+ * proteger, parada—: sale hacia el aro lo que diga su `amplitud` y
+ * vuelve. No se pregunta nada: se dibuja hecho sobre la ficha, y si la
+ * dirección no gusta se pincha y se mueve su punta.
+ *
+ * La amplitud va en METROS y se cuenta desde el BORDE de la ficha: así
+ * el gesto mide lo mismo en las cuatro pistas y la ficha no lo tapa.
+ */
+export function trazoDeGesto(accion, elemento, { pista = 'entera', canasta = 'norte' } = {}) {
+  const p = (accion && accion.parametros) || {};
+  const amplitud = Number.isFinite(p.amplitud) ? p.amplitud : FAMILIAS.gesto.parametros.amplitud.porDefecto;
+  const metros = radioMetros('jugador') + Math.max(0.1, amplitud);
+  const desde = { x: elemento.x, y: elemento.y };
+  const e = escalaDe(pista);
+  const aro = (posicionesDe(pista, canasta === 'sur' ? 'sur' : 'norte') || {}).aro;
+  let mx = aro ? (aro[0] - desde.x) * e.x : 0;
+  let my = aro ? (aro[1] - desde.y) * e.y : 0;
+  let largo = Math.hypot(mx, my);
+  /* Debajo del aro no hay «hacia el aro»: hacia el centro de la pista. */
+  if (!(largo > 0.05)) { mx = (0.5 - desde.x) * e.x; my = (0.5 - desde.y) * e.y; largo = Math.hypot(mx, my); }
+  if (!(largo > 0)) { mx = 0; my = 1; largo = 1; }
+  const punta = { x: desde.x + ((mx / largo) * metros) / e.x, y: desde.y + ((my / largo) * metros) / e.y };
+  return trazoDeIdaYVuelta(desde, punta);
+}
+
 export const esAccionDeBloqueo = (accion) => !!accion && accion.familia === 'entre_dos'
   && !!accion.parametros && accion.parametros.simbolo_relacion === 'bloqueo';
 

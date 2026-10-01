@@ -37,11 +37,11 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 6 · Conos y elementos | ✅ cerrada en la rama `pizarra-v3` (pasos 6.0 a 6.7; los equipos del club, para más adelante) | `1633407` |
 | 7 · Texto y voz | ✅ cerrada en la rama `pizarra-v3` (pasos 7.0 a 7.3, y los arreglos de su revisión) | ver «Capa 7» |
 | 8 · Ramas | ✅ cerrada en la rama `pizarra-v3` (pasos 8.1 a 8.3, y los arreglos de su revisión) | ver «Capa 8» |
-| 9 · Variantes y vídeo | en curso en la rama `pizarra-v3` (pasos 9.1 a 9.3 hechos; falta la revisión) | ver «Capa 9» |
+| 9 · Variantes y vídeo | ✅ cerrada en la rama `pizarra-v3` (pasos 9.1 a 9.4, y los arreglos de su revisión). **La migración 044 está sin aplicar** | ver «Capa 9» |
 | 10 · Plantillas y remate | pendiente | — |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **73 en verde, 1781
+`pizarra-v3`, subida, y **no en `main`**. Bancos: **73 en verde, 1795
 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
@@ -384,7 +384,8 @@ del bloqueo) y `eval-acciones` si cambian las mecánicas.
 |---|---|---|
 | 9.1 | Lo puro (`pizarra/variantes.js`, banco `eval-variantes.mjs`): el vídeo cuelga de la variante (§10.1) con la clave `accion__variante` en `videos_accion`; las variantes del club se añaden detrás de las de serie (`repertorio.js`); qué vídeo enseña cada fase; lo que se escribe en el panel; el clip de la columna (`ia/video.js`). La frase dice una variante del club por su nombre y el compilador pone el nombre en `variantes` | ✅ |
 | 9.2 | La migración **044** (`variantes`: la ve todo el club, edita quien la creó; reserva las de serie) y su cliente `supabase/variantes.js`. **Sin aplicar**: la aplica el entrenador en Supabase; hasta entonces «Nueva variante» dice que falta | ✅ |
-| 9.3 | La pestaña del trazo en el panel derecho (§2.4): al pinchar un trazo, su variante (se cambia sin tocar la geometría), el vídeo de esa variante (poner, cambiar, quitar) y «Nueva variante» (nombre, descripción y vídeo). El proyector enseña el vídeo en una columna (§10.2) y la ficha, los de las variantes del ejercicio | ✅ (73 bancos, 1781 pruebas; probado en el arnés y su proyector, sin guardar nada) |
+| 9.3 | La pestaña del trazo en el panel derecho (§2.4): al pinchar un trazo, su variante (se cambia sin tocar la geometría), el vídeo de esa variante (poner, cambiar, quitar) y «Nueva variante» (nombre, descripción y vídeo). El proyector enseña el vídeo en una columna (§10.2) y la ficha, los de las variantes del ejercicio | ✅ |
+| 9.4 | Los gestos en el sitio (§4.4): finta, pivote, cambio de mano, proteger y parada se aplican al momento sobre la ficha —un trazo que sale y vuelve—, salen en la frase y se compilan; la ficha no se mueve | ✅ (73 bancos, 1795 pruebas; 54 mutantes, los 54 muertos; probado en el arnés y su proyector, sin guardar nada) |
 
 **Decidido por el entrenador (2026-09-30):**
 
@@ -420,6 +421,46 @@ del bloqueo) y `eval-acciones` si cambian las mecánicas.
   pinchado.
 - **Los botones de vídeo de la cabecera del proyector** son ahora los de
   ESTE ejercicio (antes, todo el catálogo con vídeo).
+- **El tramo lleva consigo el nombre de su variante del club**
+  (`variante_nombre`): la frase, el nombre compilado y el panel no
+  dependen de que se hayan cargado las del club (al guardar desde el
+  paso 0 sin abrir la Pizarra, o sin red). Sin elegir variante, la fase
+  compilada dice la de siempre (`de_siempre: true`).
+- **Dos variantes que solo cambian en una tilde, un signo o las
+  mayúsculas son la misma**: «ya está».
+- **Lo que no deja la base de datos se dice**: quitar o cambiar el vídeo
+  que puso otro («solo puede… quien lo puso, o un administrador»).
+- **Lo escrito a medias en el panel** se conserva al repintar solo si es
+  el mismo trazo y el mismo vídeo, y se vacía al guardar.
+- **En vertical o en pantallas estrechas**, la columna del proyector va
+  debajo de la pista.
+
+**Decidido por el entrenador (2026-10-01):** los gestos en el sitio se
+hacen ahora, en la capa 9 (el plan del §14 no los ponía en ninguna).
+
+**Los gestos en el sitio (detalles, sin preguntar):**
+
+- **Su trazo sale hacia el aro y vuelve**: lo que dice la `amplitud` del
+  catálogo, en metros y contada desde el borde de la ficha (así mide lo
+  mismo en las cuatro pistas y la ficha no lo tapa). Debajo del aro, hacia
+  el centro de la pista. La punta de la flecha va en lo más lejos del
+  amago. La dirección se cambia pinchándolo y moviendo su punta; su
+  principio y su final no se mueven.
+- **Dura lo que tarda en recorrerse** a su ritmo (entre medio segundo y
+  uno), como cualquier trazo, y se puede cambiar su variante… si la
+  tuviera: los gestos no tienen variantes de serie.
+- **Van con su ficha**: al moverla en la fase 1 se llevan enteros (y si
+  antes hay un corte, se estira el corte); al cambiar una fase anterior,
+  igual. Quien solo tiene gestos sigue pudiendo cambiar de arranque.
+- **Los que son del balón** (cambiar de mano, proteger) solo se ofrecen a
+  quien lo lleva: lo dice el catálogo (`parametros.balon: 'con'`).
+- **En la frase**, sin destino: «A1 finta y bota hasta el codo derecho»,
+  «A1 para».
+
+**La revisión adversarial de la capa 9** (el límite de uso cortó al
+revisor del proyector y a 17 escépticos): 5 hallazgos confirmados y 16
+sin verificar, comprobados a mano; todos eran defectos (varios, el mismo
+visto dos veces) y están arreglados, con su prueba.
 
 ## Capa 8, paso a paso
 
@@ -775,9 +816,10 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
-**Hoy (2026-09-30): la capa 9, variantes y vídeo** (§14: anillo
-exterior, catálogo de variantes, columna de vídeo en el proyector §10.2).
-Las capas 6, 7 y 8 están cerradas. Lo que viene después de
+**Hoy (2026-10-01): la capa 10, plantillas y remate** (§14: colocaciones
+y fases guardadas, selección múltiple, atajos, limpieza del motor antiguo,
+aviso en los ejercicios viejos). Las capas 6 a 9 están cerradas; **la
+migración 044 hay que aplicarla en Supabase** para poder crear variantes. Lo que viene después de
 esta línea es el siguiente paso de la capa 4, que ya está hecho; se deja
 como historia.
 
@@ -927,7 +969,8 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
 - **Cobertura que se ha ido con el motor viejo** y que la Pizarra tendrá
   que volver a vigilar cuando haga esas cosas: las invariantes de los
   gestos (que acaben donde empezaron, que el trazo no quede tapado por la
-  ficha, la amplitud igual en las cuatro pistas) → capa 9; las rondas
+  ficha, la amplitud igual en las cuatro pistas) → hecho en la capa 9
+  (`eval-destino`, `eval-trazo`, `eval-fases`); las rondas
   con cadencia y la fusión de sus acciones → capa 6; qué desplegables
   declara cada acción → capa 7.
 - Comentarios que todavía nombran el motor viejo: la cabecera de
@@ -963,9 +1006,16 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
   que se quiere (ataca la fila); pero si en una fila espera alguien del otro
   equipo con balón, nadie defendería. Decidirlo con el entrenador al hacer
   las filas (lo señaló la revisión de la 5.3).
-- «⋯ más» ofrece «Cambia de mano» y «Protege el balón» a quien no lleva
-  balón: el catálogo no dice qué gestos necesitan balón. Decidir cómo se
-  marca cuando los gestos en el sitio se puedan dibujar.
+- ~~«⋯ más» ofrece «Cambia de mano» y «Protege el balón» a quien no lleva
+  balón.~~ Arreglado en la capa 9: el catálogo lo dice
+  (`parametros.balon: 'con'`).
+- **Capa 9:** el anillo exterior no tiene «＋ nueva variante» (el §4.3 la
+  pone en «⋯ más»): se crea desde el panel del trazo.
+- **Capa 9:** los gestos en el sitio no tienen variantes de serie (finta
+  de tiro, de salida…); se pueden añadir a `VARIANTES` cuando el
+  entrenador diga cuáles, y entonces el club podrá añadir las suyas.
+- **Capa 9:** las variantes del club no se pueden renombrar ni borrar
+  desde la app (sí en Supabase); el tramo guarda el nombre que tenía.
 - Una vez, en una prueba automatizada, apareció un aviso de «Defiende» que
   nadie eligió. No se ha podido reproducir; se comprobó que las 12 casillas
   de los anillos disparan exactamente su acción.

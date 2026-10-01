@@ -304,5 +304,14 @@ test('sin estado y sin acción no rompe: se queda como estaba', () => {
   eq(trasAccion(undefined, de('pasa')), { llevaBalon: false, esDefensor: false });
 });
 
+test('LOS GESTOS QUE SON DEL BALÓN no se ofrecen a quien no lo lleva; la finta y el pivote, sí', () => {
+  const de = (slug) => CATALOGO_SISTEMA.find((a) => a.slug === slug);
+  eq(['finta', 'pivota', 'para', 'cambia_de_mano', 'protege'].map((s) => saleEn(de(s), 'sinBalon')), [true, true, true, false, false]);
+  eq(['finta', 'pivota', 'para', 'cambia_de_mano', 'protege'].map((s) => saleEn(de(s), 'conBalon')), [true, true, true, true, true]);
+  const mas = resto('sinBalon').map((a) => a.slug);
+  ok(!mas.includes('protege') && !mas.includes('cambia_de_mano'), `el «⋯ más» sin balón: ${mas}`);
+  ok(CATALOGO_SISTEMA.filter((a) => a.familia === 'gesto').every((a) => !saleEn(a, 'defensor')), 'y a un defensor, ninguno');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

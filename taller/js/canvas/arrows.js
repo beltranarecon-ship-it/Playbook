@@ -52,16 +52,34 @@ const STYLE = {
   /* El gesto va y vuelve al mismo sitio, así que su trazo se cruza
      consigo mismo: fino y sin discontinuo para que las dos patas se
      distingan, y punta hueca porque no llega a ningún sitio nuevo. */
-  gesto: { w: 2.6, dash: [],    color: COLORS.arrowRun,  alpha: 0.85, head: 'hollow' },
+  gesto: { w: 3,   dash: [],    color: COLORS.arrowRun,  alpha: 1,    head: 'hollow' },
   bloqueo: { w: 3.5, dash: [8, 5], color: COLORS.arrowRun, alpha: 0.65, head: null },
 };
+
+/** El índice del punto más lejano del primero: la punta de un trazo que
+ *  va y vuelve. */
+export function puntaDe(pts) {
+  let k = 0, lejos = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const d = Math.hypot(pts[i].x - pts[0].x, pts[i].y - pts[0].y);
+    if (d > lejos) { lejos = d; k = i; }
+  }
+  return k;
+}
 
 export function drawArrow(ctx, pts, type, scale = 1, { color = null } = {}) {
   if (!pts || pts.length < 2) return;
   /* `color` pinta la flecha de otro color sin tocar su estilo: es como
      se marca en rojo un trazo forzado por fuera de una puerta. */
   const s = color ? { ...(STYLE[type] || STYLE.run), color } : (STYLE[type] || STYLE.run);
-  const last = pts[pts.length - 1], prev = pts[pts.length - 2];
+  let last = pts[pts.length - 1], prev = pts[pts.length - 2];
+  /* UN GESTO EN EL SITIO va y vuelve: su final cae debajo de la ficha, y
+     una punta ahí no se vería nunca. Va en la punta del amago —el punto
+     más lejano de donde sale—, que es lo que dice hacia dónde se hace. */
+  if (type === 'gesto') {
+    const k = puntaDe(pts);
+    if (k > 0) { last = pts[k]; prev = pts[k - 1]; }
+  }
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.lineCap = type === 'cut' || type === 'bloqueo' ? 'butt' : 'round';

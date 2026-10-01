@@ -49,7 +49,7 @@
    y en el proyector no se veía.
    ============================================================ */
 
-import { duracionDe, longitudMetros, reanclar, fraccionMasCercana } from './trazo.js';
+import { duracionDe, longitudMetros, reanclar, trasladar, fraccionMasCercana } from './trazo.js';
 import { tiempoDeRecorrido } from '../canvas/instante.js';
 import { trasElTiro } from './destino.js';
 
@@ -354,7 +354,9 @@ export function reanclarFase(fase, entrada = {}, pista = 'entera') {
     let pos = entrada[c.elemento];
     const tramos = c.tramos.map((t) => {
       if (!pos) return { ...t, huerfano: true };
-      const trazo = reanclar(t.trazo, pos, pista);
+      /* Un gesto en el sitio va entero con su ficha: estirándolo dejaría
+         de acabar donde empieza. */
+      const trazo = t.tipo === 'gesto' ? trasladar(t.trazo, pos) : reanclar(t.trazo, pos, pista);
       /* Solo avanza el cursor si esta ficha ha recorrido el trazo. */
       if (t.corre_id === c.elemento && trazo.length) {
         const fin = trazo[trazo.length - 1];

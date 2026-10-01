@@ -126,6 +126,8 @@ export const FAMILIAS = {
       amplitud: { tipo: 'metros', porDefecto: 0.8 },
       hacia: { tipo: 'referencia', admite: ['aro', 'jugador', 'posicion', 'punto'], requerido: false },
       simbolo_gesto: { tipo: 'opcion', valores: ['ninguno', 'amago', 'giro', 'salto'], porDefecto: 'ninguno' },
+      // ¿se hace con el balón en las manos? (cambiar de mano, protegerlo)
+      balon: { tipo: 'opcion', valores: ['da_igual', 'con'], porDefecto: 'da_igual' },
     },
   },
 
@@ -369,7 +371,7 @@ export const CATALOGO_SISTEMA = [
     slug: 'cambia_de_mano', nombre: 'Cambia de mano', familia: 'gesto', tag: 'cambio de mano',
     sinonimos: ['cambio de mano', 'cambio', 'cruza', 'entre las piernas', 'por la espalda'],
     descripcion: 'Pasa el balón de una mano a la otra en el sitio.',
-    parametros: { duracion_ms: 600, amplitud: 0.7, hacia: null, simbolo_gesto: 'amago' },
+    parametros: { duracion_ms: 600, amplitud: 0.7, hacia: null, simbolo_gesto: 'amago', balon: 'con' },
     pide: [],
     simbolo: 'gesto_en_sitio',
   }),
@@ -377,7 +379,7 @@ export const CATALOGO_SISTEMA = [
     slug: 'protege', nombre: 'Protege el balón', familia: 'gesto', tag: 'bote de protección',
     sinonimos: ['protege', 'proteger', 'de espaldas', 'aguanta el balón', 'bote de protección'],
     descripcion: 'Se pone de espaldas y aguanta el balón lejos del defensor, sin avanzar.',
-    parametros: { duracion_ms: 900, amplitud: 0.5, hacia: null, simbolo_gesto: 'giro' },
+    parametros: { duracion_ms: 900, amplitud: 0.5, hacia: null, simbolo_gesto: 'giro', balon: 'con' },
     pide: [],
     simbolo: 'gesto_en_sitio',
   }),

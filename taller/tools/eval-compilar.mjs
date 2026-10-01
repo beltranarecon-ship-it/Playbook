@@ -885,6 +885,19 @@ test('CON MÁS DE 64 CAMINOS SE DICE: solo se reproducen los primeros', () => {
   ok(anim.warnings.some((w) => /más de 64 caminos/.test(w)), anim.warnings.join(' | '));
 });
 
+test('LAS VARIANTES DE UNA FASE: la elegida y, sin elegir, la de siempre; con el nombre que lleve el tramo', () => {
+  const { l, a1, a2, bal } = escena();
+  const a = compilar(jugadaCon(l, [{ id: 'f1', tramos: [
+    { ...tramo(a1.id, P(0.3, 0.8), P(0.7, 0.8), { accion: 'pasa', tipo: 'pass', corre_id: bal.id, receptor_id: a2.id, variante: 'por_detras' }), variante_nombre: 'Por detrás' },
+    tramo(a2.id, P(0.7, 0.8), P(0.3, 0.8), { accion: 'pasa', tipo: 'pass', corre_id: bal.id, receptor_id: a1.id }),
+  ] }]));
+  eq(a.fases[0].variantes, [
+    { accion: 'pasa', variante: 'por_detras', nombre: 'Por detrás' },
+    { accion: 'pasa', variante: 'recto', nombre: 'Recto', de_siempre: true },
+  ], 'una del club sin cargar lleva su nombre, y el pase sin variante es el recto:');
+  ok(/pasa por detrás a A2/.test(a.fases[0].frase), a.fases[0].frase);
+});
+
 test('FASE A FASE, EL CRUCE TAMBIÉN PREGUNTA; volver atrás lo quita, y lo que para al elegir se queda parado', () => {
   const anim = compilar(conRamas().jugada);
   const raf = globalThis.requestAnimationFrame;

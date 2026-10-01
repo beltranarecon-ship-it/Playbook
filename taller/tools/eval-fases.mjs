@@ -30,7 +30,7 @@ import {
   tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS,
 } from '../js/pizarra/fases.js';
 import { trasElTiro } from '../js/pizarra/destino.js';
-import { duracionDe, longitudMetros, nuevoTrazo, fraccionMasCercana } from '../js/pizarra/trazo.js';
+import { duracionDe, longitudMetros, nuevoTrazo, fraccionMasCercana, trazoDeIdaYVuelta } from '../js/pizarra/trazo.js';
 import { muestreador, tiempoDeRecorrido } from '../js/canvas/instante.js';
 import { easeInOut } from '../js/canvas/geometry.js';
 import { metrosEntre } from '../js/canvas/escala.js';
@@ -392,6 +392,16 @@ test('AL CAMBIAR UNA FASE, LAS SIGUIENTES SE ESTIRAN DESDE EL SITIO NUEVO', () =
   eq([t.trazo[0].x, t.trazo[0].y], [0.3, 0.7], 'arranca donde está ahora:');
   eq([t.trazo[1].x, t.trazo[1].y], [0.9, 0.1], 'y EL DESTINO SE QUEDA QUIETO:');
   eq(t.huerfano, false);
+});
+
+test('UN GESTO EN EL SITIO VA ENTERO CON SU FICHA: no se estira, y lo de detrás sale del mismo sitio', () => {
+  const gesto = { ...tramo('A1', P(0.5, 0.5), P(0.5, 0.5)), accion: 'finta', tipo: 'gesto', trazo: trazoDeIdaYVuelta(P(0.5, 0.5), P(0.5, 0.4)) };
+  const corte = tramo('A1', P(0.5, 0.5), P(0.9, 0.1));
+  const r = reanclarFase(conCarriles([gesto, corte]), { A1: P(0.3, 0.7) }, 'entera');
+  const [g, c] = r.carriles[0].tramos;
+  eq(g.trazo.map((n) => [Number(n.x.toFixed(6)), Number(n.y.toFixed(6))]), [[0.3, 0.7], [0.3, 0.6], [0.3, 0.7]], 'acaba donde empieza, en el sitio nuevo:');
+  eq([c.trazo[0].x, c.trazo[0].y], [0.3, 0.7], 'y el corte de después sale de ahí:');
+  eq(posicionesFinales(conCarriles([gesto]), { A1: P(0.5, 0.5) }).A1, { x: 0.5, y: 0.5 }, 'tras el gesto, la ficha sigue en su sitio:');
 });
 
 test('EL ORIGEN LO PONE QUIEN ACTÚA, NO QUIEN VIAJA', () => {

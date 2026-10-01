@@ -60,6 +60,10 @@ export class Pizarra {
     this.onCambio = null;   // se pone al final: montar no es cambiar nada
     this.datos = datos;
     this.videos = {};
+    /* Lo guardado desde aquí antes de que llegue la carga de fondo: no se
+       pierde cuando llega. */
+    this._videosTocados = new Map();   // clave -> vídeo, o null si se quitó
+    this._variantesCreadas = [];
     this._relojAviso = null;
     this._ayudaTablero = '';
 
@@ -94,7 +98,7 @@ export class Pizarra {
       onVariante: (tramo, variante) => { if (this.tablero.cambiarVariante(tramo, variante)) this._cambio(); },
       onVideo: (clave, escrito) => this.guardarVideo(clave, escrito),
       onQuitarVideo: (clave) => this.quitarVideo(clave),
-      onNuevaVariante: (accion, escrito) => this.nuevaVariante(accion, escrito),
+      onNuevaVariante: (accion, escrito, tramo) => this.nuevaVariante(accion, escrito, tramo),
     });
 
     const aros = Object.keys(this.lienzo.vista.pista?.baskets || {});
@@ -175,8 +179,14 @@ export class Pizarra {
       this.datos.cargarVariantes ? this.datos.cargarVariantes().catch(() => []) : [],
       this.datos.cargarVideos ? this.datos.cargarVideos().catch(() => ({})) : {},
     ]);
-    ponerVariantesDelClub(variantes);
-    this.videos = videos || {};
+    /* `null` es «no se ha podido saber» (sin red, sin la tabla): se sigue
+       con las que hubiera, en vez de quedarse sin ninguna. */
+    if (Array.isArray(variantes)) ponerVariantesDelClub([...variantes, ...(this._variantesCreadas || [])]);
+    const todos = { ...(videos || {}) };
+    for (const [clave, video] of this._videosTocados || []) {
+      if (video) todos[clave] = video; else delete todos[clave];
+    }
+    this.videos = todos;
     this.descripcion?.refrescar();
     this._refrescarAjustes();
   }
@@ -191,7 +201,8 @@ export class Pizarra {
     if (error || !video) { this.avisar(`El vídeo no se ha guardado: ${error || 'pega antes su enlace'}.`); return false; }
     if (!this.datos?.guardarVideo) { this.avisar('Aquí no se pueden guardar vídeos.'); return false; }
     try { await this.datos.guardarVideo(clave, video); } catch (e) { this.avisar(`El vídeo no se ha guardado: ${e.message}`); return false; }
-    this.videos = { ...this.videos, [clave]: video };
+    this._ponerVideo(clave, video);
+    this.derecha?.limpiarEscrito?.();
     this._refrescarAjustes();
     this.avisar('Vídeo guardado: sale en todos los ejercicios que usan esta variante.');
     return true;
@@ -200,32 +211,48 @@ export class Pizarra {
   /** Quita el vídeo de una variante. */
   async quitarVideo(clave) {
     if (!this.datos?.borrarVideo) { this.avisar('Aquí no se pueden quitar vídeos.'); return false; }
-    try { await this.datos.borrarVideo(clave); } catch (e) { this.avisar(`El vídeo no se ha quitado: ${e.message}`); return false; }
-    const { [clave]: _fuera, ...resto } = this.videos;
-    this.videos = resto;
+    let borrado;
+    try { borrado = await this.datos.borrarVideo(clave); } catch (e) { this.avisar(`El vídeo no se ha quitado: ${e.message}`); return false; }
+    /* La base de datos no da error si no deja borrarlo: dice que no ha
+       borrado nada. */
+    if (borrado === false) { this.avisar('El vídeo no se ha quitado: solo puede quitarlo quien lo puso, o un administrador.'); return false; }
+    this._ponerVideo(clave, null);
     this._refrescarAjustes();
     return true;
   }
 
+  /* Apunta un vídeo puesto (o quitado, con null) desde aquí. */
+  _ponerVideo(clave, video) {
+    const { [clave]: _fuera, ...resto } = this.videos;
+    this.videos = video ? { ...resto, [clave]: video } : resto;
+    (this._videosTocados ||= new Map()).set(clave, video);
+  }
+
   /**
    * CREA UNA VARIANTE DEL CLUB (§4.3) —y su vídeo, si se ha pegado— y se
-   * la pone al trazo pinchado si es de esa acción.
+   * la pone al trazo desde el que se creó (el pinchado, si no se dice).
    * @returns la variante creada, o null
    */
-  async nuevaVariante(accion, escrito) {
+  async nuevaVariante(accion, escrito, tramo = (this.tablero.tramoEditado || {}).id) {
+    /* Un segundo clic mientras se crea no la crea dos veces. */
+    if (this._creando) return null;
     const r = validarVarianteNueva({ accion, ...escrito });
     if (!r.ok) { this.avisar(`La variante no se ha creado: ${r.errores.join('; ')}.`); return null; }
     if (!this.datos?.crearVariante) { this.avisar('Aquí no se pueden crear variantes.'); return null; }
     let creada;
-    try { creada = (await this.datos.crearVariante(r.variante)) || r.variante; } catch (e) { this.avisar(`La variante no se ha creado: ${e.message}`); return null; }
+    this._creando = true;
+    try { creada = (await this.datos.crearVariante(r.variante)) || r.variante; } catch (e) { this.avisar(`La variante no se ha creado: ${e.message}`); return null; } finally { this._creando = false; }
+    (this._variantesCreadas ||= []).push(creada);
     ponerVariantesDelClub([...variantesDelClub(), creada]);
     let aviso = `«${creada.nombre}» ya sale en el anillo, para todo el club.`;
     if (r.video) {
       const clave = claveDeVideo(accion, creada.slug);
-      try { await this.datos.guardarVideo(clave, r.video); this.videos = { ...this.videos, [clave]: r.video }; } catch (e) { aviso += ` Su vídeo no se ha guardado: ${e.message}`; }
+      try { await this.datos.guardarVideo(clave, r.video); this._ponerVideo(clave, r.video); } catch (e) { aviso += ` Su vídeo no se ha guardado: ${e.message}`; }
     }
-    const t = this.tablero.tramoEditado;
-    if (t && t.accion === accion) this.tablero.cambiarVariante(t.id, creada.slug);
+    /* Al trazo desde el que se pidió, aunque mientras tanto se haya
+       pinchado otro; si ya no está en la fase que se ve, a ninguno. */
+    if (tramo) this.tablero.cambiarVariante(tramo, creada.slug);
+    this.derecha?.limpiarEscrito?.();
     this.descripcion?.refrescar();
     this._cambio();
     this.avisar(aviso);

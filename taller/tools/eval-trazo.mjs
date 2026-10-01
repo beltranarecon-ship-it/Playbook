@@ -25,10 +25,11 @@ import {
   nuevoTrazo, desdePuntos, nodosFijos, moverNodo, insertarEn,
   curvar, enderezar, alternarCurva, esCurvo, borrarNodo,
   longitudMetros, rotulo, duracionDe, suavizar,
-  RADIO_NODO, nodoEn, segmentoEn, reanclar, fraccionMasCercana, cortarTrazo,
+  RADIO_NODO, nodoEn, segmentoEn, reanclar, fraccionMasCercana, cortarTrazo, trazoDeIdaYVuelta, trasladar,
 } from '../js/pizarra/trazo.js';
 import { flattenPath, manejadoresTangentes } from '../js/canvas/geometry.js';
 import { tipoFlecha } from '../js/pizarra/dibujo.js';
+import { puntaDe } from '../js/canvas/arrows.js';
 import { marcoDe } from '../js/canvas/medidas.js';
 
 let pasan = 0, fallan = 0;
@@ -498,6 +499,22 @@ test('UN TRAZO CURVO SE CORTA POR EL CAMINO DE VERDAD, no por la cuerda', () => 
   const t = curvar(nuevoTrazo({ x: 0.2, y: 0.4 }, { x: 0.8, y: 0.4 }), 1, 0.15);
   const largo = longitudMetros(t, 'entera');
   aprox(longitudMetros(cortarTrazo(t, 0.5, 'entera'), 'entera'), largo / 2, 1e-3);
+});
+
+test('UN GESTO EN EL SITIO: ni su principio ni su final se arrastran, su punta no se borra, y se lleva entero', () => {
+  const g = trazoDeIdaYVuelta({ x: 0.3, y: 0.6 }, { x: 0.3, y: 0.5 });
+  eq([...nodosFijos('gesto', g.length)], [0, 2]);
+  eq(borrarNodo(g, 1, 'gesto').length, 3, 'sin su punta serían dos nodos en el mismo sitio:');
+  const conOtro = insertarEn(g, 0, { x: 0.32, y: 0.55 });
+  eq(borrarNodo(conOtro, 1, 'gesto').length, 3, 'uno de más sí se quita:');
+  const t = trasladar(g, { x: 0.5, y: 0.7 });
+  eq(t.map((n) => [n.x, Number(n.y.toFixed(6))]), [[0.5, 0.7], [0.5, 0.6], [0.5, 0.7]], 'entero, sin deformarse:');
+  ok(trasladar(g, { x: 0.3, y: 0.6 }) === g, 'y si ya está ahí, el mismo');
+  eq(tipoFlecha({ simbolo: 'gesto_en_sitio' }), 'gesto');
+  /* La punta de la flecha va en lo más lejos del amago, no en su final,
+     que cae debajo de la ficha. */
+  eq(puntaDe([{ x: 0, y: 0 }, { x: 0, y: -5 }, { x: 0, y: -10 }, { x: 0, y: -5 }, { x: 0, y: 0 }]), 2);
+  eq(puntaDe([{ x: 0, y: 0 }, { x: 0, y: 0 }]), 0, 'sin recorrido, ninguna:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

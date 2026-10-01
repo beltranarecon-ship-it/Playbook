@@ -18,15 +18,21 @@ const COLS = 'id, accion, slug, nombre, descripcion';
  * Las variantes del club, saneadas.
  *
  * Nunca lanza: sin sesión, sin la tabla (la 044 sin aplicar) o sin red
- * devuelve [] y la Pizarra ofrece las de serie, como siempre.
+ * devuelve null —«no se sabe», que no es lo mismo que «no hay
+ * ninguna»— y la Pizarra sigue con las que tuviera.
  */
 export async function cargarVariantes() {
   try {
     const { data, error } = await supabase.from('variantes').select(COLS).order('nombre');
-    if (error) return [];
-    return (data || []).map(normalizarVarianteDelClub).filter(Boolean);
+    if (error) return null;
+    const salida = [];
+    /* Una fila rota no se lleva por delante a las demás. */
+    for (const fila of data || []) {
+      try { const v = normalizarVarianteDelClub(fila); if (v) salida.push(v); } catch { /* fuera */ }
+    }
+    return salida;
   } catch {
-    return [];
+    return null;
   }
 }
 

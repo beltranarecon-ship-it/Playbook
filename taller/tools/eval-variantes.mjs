@@ -45,7 +45,7 @@ test('LA CLAVE DEL VÍDEO: la acción, o la acción y su variante con dos guione
 });
 
 test('QUÉ VÍDEO ENSEÑA UNA FASE: la variante elegida, la de siempre, y si no la acción', () => {
-  const videos = { pasa__picado: YT('aaaaaaaaaaa', 3, 9), bota__normal: YT('bbbbbbbbbbb'), corta: YT('ccccccccccc'), tira__gancho: { tipo: 'tiktok', url: 'https://www.tiktok.com/@x/video/1' } };
+  const videos = { pasa__picado: YT('aaaaaaaaaaa', 3, 9), pasa__recto: YT('eeeeeeeeeee'), bota__normal: YT('bbbbbbbbbbb'), corta: YT('ccccccccccc'), tira__gancho: { tipo: 'tiktok', url: 'https://www.tiktok.com/@x/video/1' } };
   const f = (acciones, variantes = []) => ({ acciones, variantes });
   eq(videoDeFase(f(['pasa', 'bota'], [{ accion: 'pasa', variante: 'picado', nombre: 'Picado' }]), { videos }), { clave: 'pasa__picado', video: YT('aaaaaaaaaaa', 3, 9), titulo: 'Pasa · Picado' });
   eq(videoDeFase(f(['pasa', 'bota'], [{ accion: 'pasa', variante: 'beisbol' }]), { videos }).clave, 'bota__normal', 'sin vídeo de la elegida, la de siempre de otra acción de la fase:');
@@ -110,7 +110,13 @@ test('UNA VARIANTE NUEVA: nombre obligatorio y que no esté, solo en acciones co
   eq(r.variante, { accion: 'pasa', slug: 'por_detras', nombre: 'Por detrás', descripcion: 'A la espalda.' });
   eq(r.video, YT('dQw4w9WgXcQ', null, 6));
   eq(validarVarianteNueva({ accion: 'pasa', nombre: '' }).errores, ['la variante necesita un nombre']);
-  eq(validarVarianteNueva({ accion: 'pasa', nombre: 'picado' }).errores, ['«picado» ya está'], 'la misma que una de serie, no:');
+  eq(validarVarianteNueva({ accion: 'pasa', nombre: 'picado' }).errores, ['«Picado» ya está'], 'la misma que una de serie, no:');
+  eq(validarVarianteNueva({ accion: 'pasa', nombre: 'Béisbol' }).errores, ['«De béisbol» ya está'], 'ni con otro nombre para el mismo slug:');
+  ponerVariantesDelClub([{ accion: 'pasa', slug: 'por_detras', nombre: 'Por detrás' }]);
+  eq(validarVarianteNueva({ accion: 'pasa', nombre: 'por-detras' }).errores, ['«Por detrás» ya está'], 'ni la misma con otra tilde u otro signo:');
+  ponerVariantesDelClub([]);
+  ok(validarVarianteNueva({ accion: 'pasa', nombre: 'Constructor' }).ok, 'un nombre que es también una palabra del lenguaje vale');
+  eq(validarVarianteNueva({ accion: 'constructor', nombre: 'X' }).errores, ['esa acción no tiene variantes']);
   eq(validarVarianteNueva({ accion: 'recoge', nombre: 'A dos manos' }).errores, ['esa acción no tiene variantes']);
   eq(validarVarianteNueva({ accion: 'pasa', nombre: 'x'.repeat(41) }).errores, ['el nombre es demasiado largo (40 letras como mucho)']);
   eq(validarVarianteNueva({ accion: 'pasa', nombre: '¡¡!!' }).errores, ['el nombre necesita alguna letra']);
@@ -154,6 +160,27 @@ test('LA FILA DE LA TABLA SE SANEA: sin nombre, de una acción sin variantes o p
     normalizarVarianteDelClub({ accion: 'tira', slug: 'x', nombre: '  ' }),
     normalizarVarianteDelClub(null),
   ], [null, null, null, null, null]);
+});
+
+test('UNA PALABRA DEL LENGUAJE NO ES UNA ACCIÓN NI UNA VARIANTE: «constructor» no rompe nada', () => {
+  eq(normalizarVarianteDelClub({ accion: 'constructor', slug: 'x', nombre: 'X' }), null);
+  ponerVariantesDelClub([{ accion: 'constructor', slug: 'x', nombre: 'X' }, { accion: 'pasa', slug: 'constructor', nombre: 'Constructor' }]);
+  eq([variantesDe('constructor'), tieneVariantes('constructor'), variantesDelClub().length], [[], false, 1]);
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal' });
+  const j = {
+    version: 3, pista: 'entera', canasta: 'norte',
+    elementos: [
+      { id: 'jugador_1', kind: 'jugador', equipo: 'A', label: '1', x: 0.3, y: 0.6, en_juego: true },
+      { id: 'jugador_2', kind: 'jugador', equipo: 'A', label: '2', x: 0.7, y: 0.6, en_juego: true },
+      { id: 'balon_3', kind: 'balon', x: 0.33, y: 0.6, portador_id: 'jugador_1' },
+    ],
+    fases: [{ id: 'f1', tramos: [{ id: 'tr1', elemento_id: 'jugador_1', corre_id: 'balon_3', receptor_id: 'jugador_2', accion: 'pasa', variante: 'constructor', tipo: 'pass', trazo: [N(0.3, 0.6), N(0.7, 0.6)] }] }],
+  };
+  ok(/^A1 pasa constructor a A2/.test(frasesDeJugada(j)[0]), frasesDeJugada(j)[0]);
+  /* Sin cargar las del club, el tramo dice la suya con el nombre que lleva. */
+  ponerVariantesDelClub([]);
+  j.fases[0].tramos[0] = { ...j.fases[0].tramos[0], variante: 'por_detras', variante_nombre: 'Por detrás' };
+  ok(/^A1 pasa por detrás a A2/.test(frasesDeJugada(j)[0]), `con el nombre que lleva el tramo: ${frasesDeJugada(j)[0]}`);
 });
 
 test('LA FRASE DICE UNA VARIANTE DEL CLUB POR SU NOMBRE', () => {

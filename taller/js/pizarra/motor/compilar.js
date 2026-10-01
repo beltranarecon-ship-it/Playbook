@@ -52,7 +52,7 @@ import { posicionesDe } from '../../canvas/anclas.js';
 import { conRondas } from '../rondas-fila.js';
 import { frasesDeJugada } from './frase.js';
 import { tieneRamas, todosLosCaminos, grafoDe, cuantosCaminos, MAX_CAMINOS } from '../ramas.js';
-import { varianteDe } from '../repertorio.js';
+import { varianteDe, variantePorDefecto } from '../repertorio.js';
 
 export const VERSION_JUGADA = 3;
 
@@ -486,11 +486,15 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
     const modo = accion.parametros && accion.parametros.modo;
 
     if (!acciones.includes(t.accion)) acciones.push(t.accion);
-    if (t.variante && !variantes.some((v) => v.accion === t.accion && v.variante === t.variante)) {
-      /* Con su nombre: la columna del proyector lo titula así (§10.2), y
-         una variante del club no la conoce quien no la ha cargado. */
-      variantes.push({ accion: t.accion, variante: t.variante, nombre: (varianteDe(t.accion, t.variante) || {}).nombre || null });
-    }
+    /* LA VARIANTE DE CADA TRAMO (§11.2), con su nombre: la columna del
+       proyector lo titula así (§10.2), y una variante del club no la
+       conoce quien no la ha cargado —por eso el tramo lleva el suyo—. Sin
+       elegir, es la de siempre de esa acción, y se dice. */
+    const deSiempre = t.variante ? null : variantePorDefecto(t.accion);
+    const suya = t.variante
+      ? { accion: t.accion, variante: t.variante, nombre: (varianteDe(t.accion, t.variante) || {}).nombre || t.variante_nombre || null }
+      : deSiempre ? { accion: t.accion, variante: deSiempre.slug, nombre: deSiempre.nombre, de_siempre: true } : null;
+    if (suya && !variantes.some((v) => v.accion === suya.accion && v.variante === suya.variante)) variantes.push(suya);
 
     if (accion.familia === 'balon' && modo === 'pase') {
       /* El que pasa no se mueve: lo que viaja es el balón. */

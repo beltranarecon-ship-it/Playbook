@@ -45,9 +45,9 @@ import { Repaso, VELOCIDAD_REPASO, duracionRepaso } from './repaso.js';
 import { drawArrow, drawBloqueo } from '../canvas/arrows.js';
 import { flattenPath } from '../canvas/geometry.js';
 import {
-  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, varianteDe, necesita, ICONOS, porQueNoCompanero, saleEn,
+  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, varianteDe, versionDeVariantes, necesita, ICONOS, porQueNoCompanero, saleEn,
 } from './repertorio.js';
-import { segmentoEn, moverNodo, nuevoTrazo, RADIO_NODO } from './trazo.js';
+import { segmentoEn, moverNodo, nuevoTrazo, trasladar, RADIO_NODO } from './trazo.js';
 import {
   interpretarConos, sorteandoDe, volverASortear, intencionDe, otroLado, respectoAlTrazo, cruceConPuerta, puertasDe,
 } from './conos.js';
@@ -64,7 +64,7 @@ import {
 } from './ramas.js';
 import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
 import { acierto, alPinchar } from './seleccion.js';
-import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo } from './destino.js';
+import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo, esGesto, trazoDeGesto } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
 import { compilar } from './motor/compilar.js';
 import { frasesDeJugada } from './motor/frase.js';
@@ -326,7 +326,10 @@ export class Tablero {
    */
   _recolocadas(ids) {
     if (this.iFase !== 0 || !ids || !ids.length) return;
-    const participa = new Set(this.tramos.flatMap((t) => [t.elemento_id, t.corre_id, t.balon_id]).filter(Boolean));
+    /* Un gesto en el sitio no cuenta: se hace donde esté la ficha, así que
+       quien solo tiene gestos sigue pudiendo cambiar de arranque. */
+    const participa = new Set(this.tramos.filter((t) => t.tipo !== 'gesto')
+      .flatMap((t) => [t.elemento_id, t.corre_id, t.balon_id]).filter(Boolean));
     const movidas = new Set(ids);
     const entrada = { ...this.fases[0].entrada };
     const posesion = { ...(this.fases[0].posesion || {}) };
@@ -769,7 +772,19 @@ export class Tablero {
     for (const e of elementos || []) {
       const antes = this._donde.get(e.id);
       if (!antes || (antes.x === e.x && antes.y === e.y)) continue;
-      const mios = tramos.filter((t) => t.corre_id === e.id);
+      const todos = tramos.filter((t) => t.corre_id === e.id);
+      if (!todos.length) continue;
+      /* LOS GESTOS EN EL SITIO VAN CON LA FICHA: se hacen donde esté. Lo
+         que se estira es su último DESPLAZAMIENTO, y los gestos de después
+         —o todos, si no se ha desplazado— se llevan enteros. */
+      const mios = todos.filter((t) => t.tipo !== 'gesto');
+      const desde = mios.length ? tramos.indexOf(mios[mios.length - 1]) : -1;
+      const gestos = new Set(todos.filter((t) => t.tipo === 'gesto' && tramos.indexOf(t) > desde).map((t) => t.id));
+      if (gestos.size) {
+        tramos = tramos.map((t) => (gestos.has(t.id) ? { ...t, trazo: trasladar(t.trazo, { x: e.x, y: e.y }) } : t));
+        toco = true;
+        if (this._editando && gestos.has(this._editando.id)) this.nodos.refrescar(tramos.find((t) => t.id === this._editando.id).trazo);
+      }
       if (!mios.length) continue;
       const ultimo = mios[mios.length - 1];
       /* UN BALÓN QUE LLEVA ALGUIEN NO ESTIRA SU PASE si ese alguien ya ha
@@ -1616,7 +1631,9 @@ export class Tablero {
    */
   frases() {
     const j = this.jugadaDelCamino();
-    const clave = JSON.stringify([j.pista, j.canasta, j.elementos, j.defensa, j.fases.map((f) => [f.tramos, f.defensa])]);
+    /* Con las variantes del club que haya puestas: llegan de fondo, y la
+       frase las nombra (§4.3). */
+    const clave = JSON.stringify([versionDeVariantes(), j.pista, j.canasta, j.elementos, j.defensa, j.fases.map((f) => [f.tramos, f.defensa])]);
     if (this._frasesCache && this._frasesCache.clave === clave) return this._frasesCache.valor;
     let valor = [];
     try { valor = frasesDeJugada(j); } catch { valor = []; }
@@ -2069,10 +2086,8 @@ export class Tablero {
     this.companero.cancelar();
     this.nodos.soltar();
     this._enCurso = null;
-    const editaba = !!this._editando;
     this._editando = null;
     this._pintarAyuda();
-    if (editaba) this.onEditando?.(null);
   }
 
   /* ---- el bucle ---------------------------------------------- */
@@ -2249,6 +2264,18 @@ export class Tablero {
       return;
     }
 
+    /* UN GESTO EN EL SITIO (§4.4) —finta, pivote, parada…— se aplica al
+       momento sobre la ficha: su trazo sale y vuelve, y la ficha no se
+       mueve. */
+    if (esGesto(accion)) {
+      this._trazoHecho({
+        elemento, accion, variante,
+        trazo: trazoDeGesto(accion, elemento, { pista: this.lienzo.vista.pistaKey, canasta: this.canastaEnCurso }),
+        tipo: 'gesto',
+      });
+      return;
+    }
+
     if (!pide.destino) { this.onSinSoporte?.(accion); this._pintarAyuda(); return; }
     this._enCurso = { elemento, accion, variante };
     this.dibujo.empezar({ elemento, accion, variante, conDedo: this._conDedo });
@@ -2355,6 +2382,10 @@ export class Tablero {
     if (accion.familia === 'balon' && modo !== 'recoge' && !this._balonDe(elemento)) {
       return 'no lleva balón';
     }
+    /* Los gestos que son del balón (cambiarlo de mano, protegerlo). */
+    if (accion.familia === 'gesto' && accion.parametros && accion.parametros.balon === 'con' && !this._balonDe(elemento)) {
+      return 'no lleva balón';
+    }
     return null;
   }
 
@@ -2384,8 +2415,10 @@ export class Tablero {
 
        Solo el camino de quien CORRE: un pase vuela, y un cono no le hace
        nada. */
-    const trazo = tipo === 'pass' ? dibujado : this._sorteando(dibujado).trazo;
-    const sorteando = tipo === 'pass' ? [] : sorteandoDe(this._sorteando(dibujado).lecturas);
+    /* Ni un gesto en el sitio: no va a ningún lado. */
+    const sinConos = tipo === 'pass' || tipo === 'gesto';
+    const trazo = sinConos ? dibujado : this._sorteando(dibujado).trazo;
+    const sorteando = sinConos ? [] : sorteandoDe(this._sorteando(dibujado).lecturas);
     const fin = trazo[trazo.length - 1];
     const ritmo = ritmoDe(accion);
     /* «Recoge» es familia balón pero NO vuela el balón: el que va es el
@@ -2445,6 +2478,9 @@ export class Tablero {
       })(),
       accion: accion.slug,
       variante,
+      /* Una variante del club lleva su nombre consigo: quien abra o compile
+         la jugada sin haberlas cargado la sigue diciendo (§4.3). */
+      ...((varianteDe(accion.slug, variante) || {}).delClub ? { variante_nombre: varianteDe(accion.slug, variante).nombre } : {}),
       trazo, tipo, ritmo,
       // si entra o falla: solo los tiros, y es lo que dice dónde cae el balón
       ...(tirando ? { desenlace: desenlace === 'falla' ? 'falla' : 'entra' } : {}),
@@ -2534,9 +2570,14 @@ export class Tablero {
    */
   cambiarVariante(id, variante) {
     const t = this.tramos.find((x) => x.id === id);
-    if (!t || !varianteDe(t.accion, variante)) return false;
+    const v = t && varianteDe(t.accion, variante);
+    if (!v) return false;
     if (t.variante === variante) return false;
-    this.tramos = this.tramos.map((x) => (x.id === id ? { ...x, variante } : x));
+    this.tramos = this.tramos.map((x) => {
+      if (x.id !== id) return x;
+      const { variante_nombre: _antes, ...resto } = x;
+      return v.delClub ? { ...resto, variante, variante_nombre: v.nombre } : { ...resto, variante };
+    });
     if (this._editando && this._editando.id === id) this._editando = this.tramos.find((x) => x.id === id);
     this.onTramos?.(this.tramos);
     return true;
@@ -2554,10 +2595,15 @@ export class Tablero {
        un pase se mueve el balón. Los tramos de en medio no mueven a
        nadie: eso es recolocar la fase entera, y es de la capa 3. */
     const mio = this._editando;
-    const ultimo = [...this.tramos].reverse().find((t) => t.corre_id === mio.corre_id);
+    /* Los gestos en el sitio de después no cuentan: van con la ficha. */
+    const ultimo = [...this.tramos].reverse().find((t) => t.corre_id === mio.corre_id && (t.tipo !== 'gesto' || t.id === id));
     if (ultimo && ultimo.id === id) {
       const fin = trazo[trazo.length - 1];
       const pista = this.lienzo.vista.pistaKey;
+      const k = this.tramos.findIndex((t) => t.id === id);
+      if (this.tramos.some((t, n) => n > k && t.corre_id === mio.corre_id && t.tipo === 'gesto')) {
+        this.tramos = this.tramos.map((t, n) => (n > k && t.corre_id === mio.corre_id && t.tipo === 'gesto' ? { ...t, trazo: trasladar(t.trazo, { x: fin.x, y: fin.y }) } : t));
+      }
       let lista = mover(this.fichas.elementos, { [mio.corre_id]: { x: fin.x, y: fin.y } });
 
       /* SI ES UN PASE, EL RECEPTOR SE VUELVE A CALCULAR. Moviendo solo

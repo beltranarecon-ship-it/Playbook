@@ -15,8 +15,9 @@
 import {
   tieneDestinoPropio, destinoDe, METROS_FINALIZACION, METROS_RECOGIDA, trasElTiro, METROS_REBOTE, METROS_CAIDA,
   esAccionDeBloqueo, defensorSupuesto, sitioDelBloqueo, frenteDelBloqueo,
-  METROS_BLOQUEO, METROS_PAR_CON_BALON, METROS_PAR_SIN_BALON,
+  METROS_BLOQUEO, METROS_PAR_CON_BALON, METROS_PAR_SIN_BALON, esGesto, trazoDeGesto,
 } from '../js/pizarra/destino.js';
+import { radioMetros } from '../js/pizarra/elementos.js';
 import { limitesCancha } from '../js/canvas/medidas.js';
 import { CATALOGO_SISTEMA } from '../js/ia/acciones.js';
 import { posicionesDe } from '../js/canvas/anclas.js';
@@ -318,6 +319,44 @@ test('LA BARRA MIRA HACIA DONDE LLEGA: un punto justo delante del final', () => 
   ok(f.x < 0.6 && Math.abs(f.y - 0.5) < 1e-9, `hacia la izquierda, que es por donde iba: ${JSON.stringify(f)}`);
   eq(frenteDelBloqueo([N(0.5, 0.5), N(0.5, 0.5)]), null, 'si no se ha movido, no tiene frente:');
   eq(frenteDelBloqueo(null), null);
+});
+
+console.log('\n· los gestos en el sitio (§4.4)');
+
+const GESTOS = CATALOGO_SISTEMA.filter(esGesto);
+
+test('UN GESTO EN EL SITIO SALE Y VUELVE: acaba donde empezó, en las cuatro pistas', () => {
+  eq(GESTOS.map((a) => a.slug), ['finta', 'pivota', 'cambia_de_mano', 'protege', 'para']);
+  for (const pista of ['entera', 'entera_fiba', 'media', 'media_fiba']) {
+    for (const a of GESTOS) {
+      const t = trazoDeGesto(a, jugador, { pista, canasta: 'norte' });
+      eq(t.length, 3, `${a.slug} en ${pista}: ida y vuelta`);
+      eq([[t[0].x, t[0].y], [t[2].x, t[2].y]], [[jugador.x, jugador.y], [jugador.x, jugador.y]], `${a.slug} en ${pista}: sale de la ficha y vuelve a ella`);
+    }
+  }
+});
+
+test('LA AMPLITUD ES LA DEL CATÁLOGO, EN METROS Y POR FUERA DE LA FICHA: igual en las cuatro pistas y sin que la ficha la tape', () => {
+  for (const pista of ['entera', 'entera_fiba', 'media', 'media_fiba']) {
+    for (const a of GESTOS) {
+      const t = trazoDeGesto(a, jugador, { pista, canasta: 'norte' });
+      aprox(metrosEntre(pista, t[0], t[1]), radioMetros('jugador') + a.parametros.amplitud, 1e-6, `${a.slug} en ${pista}`);
+    }
+  }
+});
+
+test('EL GESTO SALE HACIA EL ARO; y debajo del aro, hacia el centro de la pista', () => {
+  const aro = posicionesDe('entera', 'norte').aro;
+  const t = trazoDeGesto(de('finta'), jugador, { pista: 'entera', canasta: 'norte' });
+  ok(metrosEntre('entera', t[1], aro) < metrosEntre('entera', t[0], aro), 'la punta queda más cerca del aro');
+  const sur = trazoDeGesto(de('finta'), jugador, { pista: 'entera', canasta: 'sur' });
+  ok(sur[1].y > jugador.y && t[1].y < jugador.y, 'y atacando a la otra canasta, hacia la otra');
+  const debajo = { id: 'j2', kind: 'jugador', x: aro[0], y: aro[1] };
+  const d = trazoDeGesto(de('finta'), debajo, { pista: 'entera', canasta: 'norte' });
+  ok(metrosEntre('entera', d[0], d[1]) > 1 && d[1].y > debajo.y, `sin dirección al aro, hacia el centro: ${JSON.stringify(d[1])}`);
+  const aroSur = posicionesDe('entera', 'sur').aro;
+  const dSur = trazoDeGesto(de('finta'), { id: 'j3', kind: 'jugador', x: aroSur[0], y: aroSur[1] }, { pista: 'entera', canasta: 'sur' });
+  ok(dSur[1].y < aroSur[1], `y bajo el otro aro, hacia arriba, no fuera de la pista: ${JSON.stringify(dSur[1])}`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

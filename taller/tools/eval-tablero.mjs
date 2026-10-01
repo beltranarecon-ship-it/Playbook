@@ -1104,6 +1104,63 @@ await testA('EL VÍDEO DE UNA VARIANTE SE COMPRUEBA, SE GUARDA PARA EL CLUB Y SE
   ok(/sin red/.test(avisos.at(-1)), 'si falla, se dice por qué');
 });
 
+await testA('LO QUE LLEGA TARDE NO PISA LO RECIÉN GUARDADO; y lo que la base no deja quitar, se dice', async () => {
+  const { t, p, avisos } = sinAtacante();
+  const llamadas = [];
+  p.derecha = { pintar() {} };
+  let soltar;
+  const lento = new Promise((ok) => { soltar = ok; });
+  p.datos = { ...datosDeMentira(llamadas), cargarVariantes: () => lento.then(() => []), cargarVideos: () => lento.then(() => ({ corta__en_v: { tipo: 'youtube', id: 'aaaaaaaaaaa', desde: null, hasta: null } })) };
+  p.videos = {};
+  const carga = p._cargarVariantesYVideos();
+  t._editar(t.tramos[0]);
+  ok(await p.guardarVideo('corta__recto', { enlace: 'https://youtu.be/dQw4w9WgXcQ' }));
+  ok(await p.nuevaVariante('corta', { nombre: 'Flash' }));
+  soltar();
+  await carga;
+  eq(Object.keys(p.videos).sort(), ['corta__en_v', 'corta__recto'], 'lo guardado sigue, con lo que ha llegado:');
+  ok(variantesDe('corta').some((v) => v.slug === 'flash'), 'y la variante recién creada también');
+  ok(/flash/.test(t.frases()[0]), `la frase la nombra en cuanto está: ${t.frases()[0]}`);
+  eq(t.tramos[0].variante_nombre, 'Flash', 'y el tramo lleva su nombre consigo:');
+  /* Sin red, «no se sabe»: se sigue con las que había (aunque las cargara
+     otra Pizarra antes). */
+  ponerVariantesDelClub([{ accion: 'corta', slug: 'flash', nombre: 'Flash' }, { accion: 'corta', slug: 'zeta', nombre: 'Zeta' }]);
+  p.datos = { ...p.datos, cargarVariantes: async () => null, cargarVideos: async () => ({}) };
+  await p._cargarVariantesYVideos();
+  ok(variantesDe('corta').some((v) => v.slug === 'zeta'), 'si la carga falla, no se queda sin ninguna');
+  /* Un trazo guardado sin el nombre de su variante la dice en cuanto llega. */
+  const otro = sinAtacante();
+  ponerVariantesDelClub([]);
+  otro.t.tramos = otro.t.tramos.map((x) => ({ ...x, variante: 'flash' }));
+  ok(!/flash/.test(otro.t.frases()[0]), 'sin cargarla, no se nombra');
+  ponerVariantesDelClub([{ accion: 'corta', slug: 'flash', nombre: 'Flash' }]);
+  ok(/flash/.test(otro.t.frases()[0]), `y al llegar, la frase se rehace sin tocar el dibujo: ${otro.t.frases()[0]}`);
+  eq([await p.guardarVideo('corta__en_v', { enlace: '   ' }), llamadas.filter((x) => x[0] === 'video').length], [false, 1], 'sin enlace no se guarda nada:');
+  /* La base de datos no borra lo que puso otro, y no da error. */
+  p.datos = { ...p.datos, borrarVideo: async () => false };
+  eq(await p.quitarVideo('corta__recto'), false);
+  ok('corta__recto' in p.videos && /quien lo puso/.test(avisos.at(-1)), `sigue ahí y se dice por qué: ${avisos.at(-1)}`);
+  t.cambiarVariante(t.tramos[0].id, 'en_v');
+  ok(!('variante_nombre' in t.tramos[0]), 'una de serie no lleva nombre');
+});
+
+await testA('LA VARIANTE NUEVA VA AL TRAZO DESDE EL QUE SE PIDIÓ, y un doble clic no la crea dos veces', async () => {
+  const { t, p } = sinAtacante();
+  corta(t, t.fichas.elementos[0].id, { x: 0.2, y: 0.3 });   // otro corte, de A1
+  const [tr1, tr2] = t.tramos;
+  const llamadas = [];
+  p.derecha = { pintar() {} };
+  p.datos = datosDeMentira(llamadas);
+  p.videos = {};
+  t._editar(tr1);
+  const primera = p.nuevaVariante('corta', { nombre: 'Flash' }, tr1.id);
+  const segunda = p.nuevaVariante('corta', { nombre: 'Flash' }, tr1.id);
+  t._editar(tr2);                                            // mientras viaja, se pincha otro
+  eq([!!(await primera), await segunda], [true, null]);
+  eq(llamadas.filter((x) => x[0] === 'variante').length, 1, 'una sola vez:');
+  eq(t.tramos.map((x) => x.variante), ['flash', null], 'al trazo desde el que se pidió, no al pinchado ahora:');
+});
+
 await testA('UNA VARIANTE NUEVA: se crea para el club, con su vídeo, y se le pone al trazo pinchado', async () => {
   const { t, p, avisos } = sinAtacante();
   const llamadas = [];
@@ -1167,6 +1224,59 @@ function conDefensa() {
   return { ...m, b1, b2 };
 }
 const elegir = (t, id, slug) => { t._tocarFicha(ficha(t, id)); t._elegir(slug, {}); };
+
+console.log('\n· los gestos en el sitio (§4.4)');
+
+test('UNA FINTA SE APLICA AL MOMENTO: un trazo que sale y vuelve, y la ficha no se mueve', () => {
+  const { t, a1, a2, avisos } = conAtaque();
+  elegir(t, a1.id, 'finta');
+  eq(avisos, [], 'ya se puede dibujar:');
+  const g = t.tramos[0];
+  eq([g.accion, g.tipo, g.corre_id, g.trazo.length], ['finta', 'gesto', a1.id, 3]);
+  eq([[g.trazo[0].x, g.trazo[0].y], [g.trazo[2].x, g.trazo[2].y]], [[0.3, 0.5], [0.3, 0.5]]);
+  eq([ficha(t, a1.id).x, ficha(t, a1.id).y], [0.3, 0.5], 'la ficha, en su sitio:');
+  eq(t.estadoDe(ficha(t, a1.id)).llevaBalon, true, 'y con su balón:');
+  ok(/^A1 finta/.test(t.frases()[0]), t.frases()[0]);
+  /* Los que son del balón, solo con él. */
+  elegir(t, a2.id, 'cambia_de_mano');
+  eq(avisos.at(-1), ['noPuede', 'Cambia de mano', 'no lleva balón']);
+  elegir(t, a2.id, 'finta');
+  eq(t.tramos.length, 2, 'la finta sin balón, sí:');
+});
+
+test('EL GESTO VA CON SU FICHA: al moverla, se lleva entero; y con un corte delante, se estira el corte', () => {
+  const { t, a2 } = conAtaque();
+  elegir(t, a2.id, 'finta');
+  /* Solo con gestos, moverla en la fase 1 es cambiar su arranque. */
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === a2.id ? { ...e, x: 0.6, y: 0.6 } : e)));
+  t._recolocadas([a2.id]);
+  const g = t.tramos[0].trazo;
+  eq([[g[0].x, g[0].y], [g[2].x, g[2].y]], [[0.6, 0.6], [0.6, 0.6]], 'el gesto, entero, al sitio nuevo:');
+  eq(t.fases[0].entrada[a2.id], { x: 0.6, y: 0.6 }, 'que es su arranque:');
+  /* Corta y después finta: al moverla se estira el corte y la finta va detrás. */
+  corta(t, a2.id, { x: 0.8, y: 0.3 });
+  elegir(t, a2.id, 'finta');
+  t.cerrar();
+  t.fichas._cambio(t.fichas.elementos.map((e) => (e.id === a2.id ? { ...e, x: 0.9, y: 0.2 } : e)));
+  const [g1, c, g2] = t.tramos;
+  eq([g1.trazo[0].x, g1.trazo[0].y], [0.6, 0.6], 'la finta de antes del corte no se mueve:');
+  eq([c.trazo.at(-1).x, c.trazo.at(-1).y], [0.9, 0.2], 'el corte acaba donde está ahora:');
+  eq([[g2.trazo[0].x, g2.trazo[0].y], [g2.trazo[2].x, g2.trazo[2].y]], [[0.9, 0.2], [0.9, 0.2]], 'y la finta de después, con ella:');
+});
+
+test('EL GESTO SE COMPILA Y NO MUEVE A NADIE: el proyector lo enseña y la fase siguiente sale del mismo sitio', () => {
+  const { t, a1 } = conAtaque();
+  elegir(t, a1.id, 'pivota');
+  t.cerrar();
+  t._cerrarFase();
+  eq(t.fases[1].entrada[a1.id], { x: 0.3, y: 0.5 }, 'tras el gesto sigue donde estaba:');
+  const anim = compilarMod.compilar(t.jugada());
+  const m = anim.fases[0].movimientos.find((x) => !x.automatico);
+  eq([m.tipo_movimiento, m.path.length], ['gesto_en_sitio', 3]);
+  eq(anim.fases[0].acciones, ['pivota']);
+  eq(anim.warnings, []);
+  ok(anim.fases[0].duracion_ms >= 300 && anim.fases[0].duracion_ms <= 1500, `dura lo que un gesto: ${anim.fases[0].duracion_ms} ms`);
+});
 
 test('DECLARAR DESDE EL ANILLO: se guarda en la fase y no dibuja ningún tramo', () => {
   const { t, b1 } = conDefensa();

@@ -9,7 +9,7 @@
    números de serie frente a los cambiados.
    ============================================================ */
 
-import { modeloAjustes, NUMEROS } from '../js/pizarra/paneles/ajustes-modelo.js';
+import { modeloAjustes, NUMEROS, mismoPanel } from '../js/pizarra/paneles/ajustes-modelo.js';
 import { ponerVariantesDelClub } from '../js/pizarra/repertorio.js';
 import { papelesDeJugada, PARAMETROS, REGLAS } from '../js/pizarra/motor/defensa.js';
 
@@ -227,6 +227,14 @@ test('UN TRAZO PINCHADO: su variante, el vídeo de esa variante y «Nueva varian
     eq(m.video, { clave: 'pasa__recto', de: 'Pasa · Recto', actual: { tipo: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3', tramo: 'del 0:03 al 0:09' } });
     const n = modeloAjustes({ elementos: el, tramo: { ...t, variante: 'por_detras' }, videos });
     eq([n.variante.valor, n.descripcion, n.video.clave, n.video.actual, n.nuevaVariante], ['por_detras', 'A la espalda.', 'pasa__por_detras', null, true]);
+    /* Una del club que no se ha cargado no se enseña como la de siempre. */
+    ponerVariantesDelClub([]);
+    const s = modeloAjustes({ elementos: el, tramo: { ...t, variante: 'por_detras', variante_nombre: 'Por detrás' }, videos });
+    eq([s.variante.valor, s.variante.opciones.at(-1), s.video.clave, s.video.de], ['por_detras', { valor: 'por_detras', nombre: 'Por detrás · del club' }, 'pasa__por_detras', 'Pasa · Por detrás']);
+    eq(modeloAjustes({ elementos: el, tramo: { ...t, variante: 'rara' }, videos }).variante.valor, 'rara', 'ni una que no se conoce de nada:');
+    /* Lo escrito a medias solo se repone en el mismo panel. */
+    eq([mismoPanel(m, m), mismoPanel(m, n), mismoPanel(m, { ...m, id: 'tr2' }), mismoPanel(m, { tipo: 'ejercicio' }), mismoPanel({ tipo: 'ejercicio' }, { tipo: 'ejercicio' }), mismoPanel(null, m)],
+      [true, false, false, false, true, false], 'otro trazo, otra variante u otro panel no son el mismo:');
     const r = modeloAjustes({ elementos: el, tramo: { ...t, accion: 'recoge' }, videos: { recoge: videos.pasa__recto } });
     eq([r.variante, r.video.clave, !!r.video.actual, r.nuevaVariante], [null, 'recoge', true, false], 'sin variantes, el vídeo es el de la acción y no se añaden:');
   } finally { ponerVariantesDelClub([]); }

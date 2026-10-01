@@ -88,10 +88,12 @@ export function nombreEnFrase(e) {
 
 /* Una variante del club (§4.3) se dice por su nombre: «pasa por detrás». */
 const variante = (t) => {
-  const dicha = (COMO_SE_DICE[t.accion] || {})[t.variante];
-  if (dicha != null) return dicha;
-  const delClub = varianteDe(t.accion, t.variante);
-  return delClub ? ` ${delClub.nombre.toLocaleLowerCase('es')}` : '';
+  const tabla = Object.hasOwn(COMO_SE_DICE, t.accion) ? COMO_SE_DICE[t.accion] : null;
+  if (tabla && typeof t.variante === 'string' && Object.hasOwn(tabla, t.variante)) return tabla[t.variante];
+  /* Si no se han cargado las del club, el nombre que el tramo lleva
+     consigo (`variante_nombre`): la frase no depende de la red. */
+  const nombre = (varianteDe(t.accion, t.variante) || {}).nombre || (t.variante && typeof t.variante_nombre === 'string' ? t.variante_nombre : '');
+  return nombre ? ` ${nombre.toLocaleLowerCase('es')}` : '';
 };
 
 /* Una fase o un tramo roto no deja sin frase a toda la jugada. */
@@ -278,6 +280,8 @@ function clausula(t, { anterior, cortes, fases, i, porId, pista, canasta, nombre
     }
     default: {
       const nombreAccion = accion ? accion.nombre.toLowerCase() : String(t.accion || 'se mueve');
+      /* Un gesto en el sitio no va a ningún sitio: «finta», «para». */
+      if (accion && accion.familia === 'gesto') return solo(`${nombreAccion}${v}`);
       const para = t.companero_id ? ` con ${nombre(t.companero_id)}` : '';
       return solo(`${nombreAccion}${v}${para}${destino ? ` hacia ${destino}` : ''}${sorteo}`);
     }

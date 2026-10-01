@@ -269,6 +269,16 @@
   background: transparent; cursor: pointer;
 }
 .proy-columna__tocar:focus-visible { outline: 2px solid #F97316; outline-offset: 2px; }
+/* En vertical o en pantallas estrechas no cabe al lado: va debajo de la
+   pista, que cede sitio. */
+@media (orientation: portrait), (max-width: 700px) {
+  .proyector.con-columna .proy-columna {
+    position: relative; right: auto; top: auto; transform: none;
+    width: min(92vw, 440px); margin-top: 12px;
+  }
+  .proyector.con-columna .proyector__stage { padding-right: 0; }
+  .proyector.con-columna.proyector--full .court { width: min(97vw, calc(58vh * var(--court-aspect, 1.5))); }
+}
 
 /* ---- El cartel de rama en el proyector (ESPEC-PIZARRA-v3 §6.7) ----
    Sobre la pista, grande: se lee desde el fondo de la pista y se toca

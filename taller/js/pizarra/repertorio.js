@@ -163,6 +163,8 @@ export function saleEn(accion, estado) {
   if (estado === 'sinBalon') {
     if (accion.familia === 'balon' && (p.modo === 'pase' || p.modo === 'tiro')) return false;
     if (accion.simbolo === 'carrera_con_balon') return false;
+    /* Y los gestos que son del balón: cambiarlo de mano, protegerlo. */
+    if (accion.familia === 'gesto' && p.balon === 'con') return false;
   }
   return true;
 }
@@ -236,6 +238,10 @@ export const VARIANTES = {
    quien las carga —la Pizarra al abrirse— y desde ese momento las ven el
    anillo, la frase y el panel del trazo. */
 let delClub = [];
+let version = 0;
+/* Las de serie de una acción, o null: sin mirar lo que un objeto hereda
+   («constructor» no es una acción con variantes). */
+const deSerie = (accion) => (typeof accion === 'string' && Object.hasOwn(VARIANTES, accion) ? VARIANTES[accion] : null);
 
 /** Pone las variantes del club: [{ accion, slug, nombre, descripcion }].
  *  Lo que no vale (sin nombre, de una acción sin variantes, o que pisa
@@ -243,10 +249,11 @@ let delClub = [];
 export function ponerVariantesDelClub(lista = []) {
   const vistas = new Set();
   delClub = [];
+  version++;
   for (const v of Array.isArray(lista) ? lista : []) {
-    if (!v || !VARIANTES[v.accion] || typeof v.slug !== 'string' || !v.slug) continue;
+    if (!v || !deSerie(v.accion) || typeof v.slug !== 'string' || !v.slug) continue;
     if (typeof v.nombre !== 'string' || !v.nombre.trim()) continue;
-    if (VARIANTES[v.accion].some((s) => s.slug === v.slug) || vistas.has(`${v.accion}/${v.slug}`)) continue;
+    if (deSerie(v.accion).some((s) => s.slug === v.slug) || vistas.has(`${v.accion}/${v.slug}`)) continue;
     vistas.add(`${v.accion}/${v.slug}`);
     delClub.push({ accion: v.accion, slug: v.slug, nombre: v.nombre.trim(), tag: null, descripcion: v.descripcion || '', video: null, delClub: true });
   }
@@ -254,10 +261,13 @@ export function ponerVariantesDelClub(lista = []) {
 
 /** Las variantes del club que hay puestas. */
 export const variantesDelClub = () => [...delClub];
+/** Cambia cada vez que se ponen: quien recuerda algo que depende de
+ *  ellas (la frase) sabe así que tiene que volver a calcularlo. */
+export const versionDeVariantes = () => version;
 
 /** Las variantes de una acción —las de serie y detrás las del club—, o
  *  lista vacía si no tiene. */
-export const variantesDe = (slug) => (VARIANTES[slug] ? [...VARIANTES[slug], ...delClub.filter((v) => v.accion === slug)] : []);
+export const variantesDe = (slug) => (deSerie(slug) ? [...deSerie(slug), ...delClub.filter((v) => v.accion === slug)] : []);
 export const tieneVariantes = (slug) => variantesDe(slug).length > 0;
 /** Una variante de una acción, de serie o del club; null si no está. */
 export const varianteDe = (accion, slug) => (slug == null ? null : variantesDe(accion).find((v) => v.slug === slug) || null);
