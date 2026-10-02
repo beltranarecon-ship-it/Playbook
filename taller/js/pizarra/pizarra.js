@@ -205,10 +205,18 @@ export class Pizarra {
          se dibuja o se corrige un trazo, no: ahí las teclas son de eso. */
       const t = this.tablero;
       if (t.dibujo.dibujando || t.nodos.editando || t.companero.eligiendo) return;
-      if (ev.key === ' ') { ev.preventDefault(); this.ver(); }
-      else if (k === 'g') { ev.preventDefault(); t.verFantasma(!t.fantasma); }
+      if (ev.key === ' ') { ev.preventDefault(); if (!ev.repeat) this.ver(); }
+      else if (k === 'g') { ev.preventDefault(); if (!ev.repeat) t.verFantasma(!t.fantasma); }
     };
     this.el.addEventListener('keydown', this._onTecla);
+    /* Con el foco en la pista, Espacio es primero del Lienzo —su mano de
+       desplazar (§3.1)— y aquí arriba llega ya atendido: es él quien
+       avisa de que ha sido un toque, sin arrastrar nada. */
+    this.lienzo.onEspacio = () => {
+      const t = this.tablero;
+      if (t.dibujo.dibujando || t.nodos.editando || t.companero.eligiendo) return;
+      this.ver();
+    };
 
     this.tablero.poner([]);
     this.panel.recuento(recuento([]));

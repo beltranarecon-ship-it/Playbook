@@ -1124,6 +1124,147 @@ test('LOS ATAJOS (§4.7): la letra lanza la acción de la ficha seleccionada; N,
   eq(t.atajo('n'), true);
 });
 
+const pasaA = (t, id, hasta) => t._trazoHecho({ elemento: ficha(t, id), accion: t._accionDe('pasa'), variante: null, trazo: nuevoTrazo(ficha(t, id), hasta), tipo: 'pass' });
+const balonDe = (t, id) => (t.fichas.elementos.find((e) => e.kind === 'balon' && e.portador_id === id) || {}).id || null;
+
+test('DICHO A VARIOS DEFENSORES, SE LES DECLARA A TODOS (§4.6), y el grupo no se queda puesto', () => {
+  const { t, b1, b2, avisos } = conDefensa();
+  seleccionar(t, b1.id, b2.id);
+  eq(t.accionesDelGrupo().map((o) => o.slug), ['sobrepasado', 'cierra_rebote'], 'lo que no pide señalar a nadie:');
+  ok(t.abrirAnilloDeGrupo());
+  t._elegir('cierra_rebote', {});
+  const suyo = { accion: 'cierra_rebote', objetivo_id: null };
+  eq(t.declaradas(), { [b1.id]: suyo, [b2.id]: suyo }, 'los dos, no solo el primero:');
+  eq([t._grupo, avisos, t.anillo.abierto, !!t._botonGrupo], [null, [], false, true], 'sin avisos, y el botón del grupo vuelve:');
+  /* Y lo que no se puede no deja al grupo esperando un trazo. */
+  const s = tresAtacantes();
+  seleccionar(s.t, s.a2.id, s.a3.id);
+  s.t.abrirAnilloDeGrupo();
+  s.t._elegir('recoge', {});           // no hay ningún balón suelto
+  eq([s.t._grupo, s.avisos.length], [null, 1], 'se dice y se suelta:');
+});
+
+test('«PASA» DICHO A VARIOS: cada balón a alguien distinto; dos a las mismas manos, no, y se dice', () => {
+  /* A1 y A2 con balón; A3 y A4 sin él. */
+  const dos = () => {
+    const m = conAtaque();
+    m.t.anadirFicha({ kind: 'balon' }, { x: 0.7, y: 0.5 });
+    const a3 = m.t.anadirFicha({ kind: 'jugador', equipo: 'A' }, { x: 0.3, y: 0.2 });
+    const a4 = m.t.anadirFicha({ kind: 'jugador', equipo: 'A' }, { x: 0.7, y: 0.2 });
+    m.t.cerrar();
+    m.avisos.length = 0;
+    return { ...m, a3, a4 };
+  };
+  /* Al mismo punto, y el punto es A3: el balón de A2 no cabe. */
+  const { t, a1, a2, a3, avisos } = dos();
+  ok(balonDe(t, a1.id) && balonDe(t, a2.id), 'los dos llevan balón');
+  const [b1, b2] = [balonDe(t, a1.id), balonDe(t, a2.id)];
+  seleccionar(t, a1.id, a2.id);
+  t.abrirAnilloDeGrupo();
+  pasaA(t, a1.id, ficha(t, a3.id));
+  eq(t.tramos.map((x) => [x.elemento_id, x.accion, x.receptor_id]), [[a1.id, 'pasa', a3.id]], 'solo pasa el primero:');
+  eq([balonDe(t, a3.id), balonDe(t, a2.id)], [b1, b2], 'cada balón, en unas manos:');
+  ok(/A2 no puede \(A3 ya tiene un balón\)/.test(avisos.at(-1)[2]), JSON.stringify(avisos));
+  /* Y lo que se ve es lo que se guarda: al volver a la fase, igual. */
+  t.irAFase(0);
+  eq([balonDe(t, a3.id), balonDe(t, a2.id)], [b1, b2], 'también al volver a entrar:');
+  /* El punto es uno del grupo: ese recibe, y no pasa el suyo a la vez. */
+  const g = dos();
+  seleccionar(g.t, g.a1.id, g.a2.id);
+  g.t.abrirAnilloDeGrupo();
+  pasaA(g.t, g.a1.id, ficha(g.t, g.a2.id));
+  eq(g.t.tramos.map((x) => [x.elemento_id, x.receptor_id]), [[g.a1.id, g.a2.id]], 'ni un pase de longitud cero sobre sí mismo:');
+  ok(/A2 no puede \(recibe el balón de un compañero\)/.test(g.avisos.at(-1)[2]), JSON.stringify(g.avisos));
+  /* En paralelo, cada uno al suyo: los dos pasan. */
+  const p = dos();
+  seleccionar(p.t, p.a1.id, p.a2.id);
+  p.t.setEnParalelo(true);
+  p.t.abrirAnilloDeGrupo();
+  pasaA(p.t, p.a1.id, ficha(p.t, p.a3.id));
+  eq(p.t.tramos.map((x) => [x.elemento_id, x.receptor_id]), [[p.a1.id, p.a3.id], [p.a2.id, p.a4.id]]);
+  eq(p.avisos, []);
+  /* A un sitio (nadie debajo), los dos balones van allí. */
+  const f = dos();
+  seleccionar(f.t, f.a1.id, f.a2.id);
+  f.t.abrirAnilloDeGrupo();
+  pasaA(f.t, f.a1.id, { x: 0.5, y: 0.35 });
+  eq([f.t.tramos.length, f.avisos], [2, []]);
+});
+
+test('CORTAR EL REPASO DE «SIGUIENTE FASE» ES SEGUIR CORRIGIENDO: la fase no se cierra, ni entonces ni después', () => {
+  const acabar = (t) => { t.repaso.activo = null; t.repaso.onFin(); };
+  const { t, a2, a3 } = tresAtacantes();
+  corta(t, a2.id, { x: 0.6, y: 0.3 });
+  t.cerrar();
+  t.repaso.parar();
+  /* Una letra que no va a hacer nada no corta el repaso. */
+  seleccionar(t);
+  eq([t.atajo('n'), t.repaso.corriendo, t._cerrarFaseAlAcabar], [true, true, true]);
+  eq([t.atajo('c'), t.repaso.corriendo, t._cerrarFaseAlAcabar], [false, true, true], 'sin nadie seleccionado, C no es nada:');
+  /* Si se deja acabar, se cierra. */
+  acabar(t);
+  eq([t.iFase, t.fases.length, t._cerrarFaseAlAcabar], [1, 2, false]);
+  /* Con alguien seleccionado, N y enseguida F: la finta corta el repaso
+     y la fase sigue abierta; al acabar el de la finta no se cierra sola. */
+  const s = tresAtacantes();
+  corta(s.t, s.a2.id, { x: 0.6, y: 0.3 });
+  s.t.cerrar();
+  seleccionar(s.t, s.a3.id);
+  s.t.atajo('n');
+  ok(s.t._cerrarFaseAlAcabar, 'esperando a que acabe el repaso');
+  s.t.atajo('f');
+  eq([s.t._cerrarFaseAlAcabar, s.t.tramos.map((x) => x.accion)], [false, ['corta', 'finta']]);
+  acabar(s.t);
+  eq([s.t.iFase, s.t.fases.length], [0, 1], 'sigue en la fase 1:');
+  /* Lo mismo con cualquier otra cosa que lo corte: cambiar de fase,
+     poner una escena, insertar una fase. */
+  s.t.cerrar();
+  s.t.siguienteFase();
+  s.t.irAFase(0);
+  eq(s.t._cerrarFaseAlAcabar, false);
+  s.t.siguienteFase();
+  s.t.insertarFase('despues');
+  eq(s.t._cerrarFaseAlAcabar, false);
+  ok(a3, 'a3');
+});
+
+test('EL BOTÓN DEL GRUPO NO ESTÁ MIENTRAS SE ELIGE EL «CÓMO» NI MIENTRAS SE DIBUJA, tampoco por el atajo', () => {
+  const { t, a2, a3 } = tresAtacantes();
+  seleccionar(t, a2.id, a3.id);
+  ok(t._botonGrupo, 'con dos seleccionados, el botón está');
+  eq([t.atajo('c'), t.anillo.abierto, t._botonGrupo], [true, true, null], 'C: se pregunta el cómo, sin botón:');
+  t._elegir('corta', { variante: variantesDe('corta')[0].slug });
+  eq([t.dibujo.dibujando, t._botonGrupo], [true, null], 'ni al dibujar:');
+  eq(t.abrirAnilloDeGrupo(), false, 'en mitad de un trazo no se abre otro anillo:');
+  /* «En paralelo» cambiado con algo ya en marcha vale para eso mismo. */
+  t.setEnParalelo(true);
+  eq(t._grupo.paralelo, true);
+  corta(t, a2.id, { x: 0.6, y: 0.3 });   // A2 está en (0.7, 0.5): −0.1, −0.2
+  const suyo = t.tramos.at(-1);
+  ok(suyo.elemento_id === a3.id && Math.abs(suyo.trazo.at(-1).x - 0.4) < 1e-9, `A3 copia el trazo: ${JSON.stringify(suyo.trazo.at(-1))}`);
+});
+
+test('TRAS LO DICHO A VARIOS, EL FOCO VUELVE AL LIENZO: las teclas siguen llegando', () => {
+  const { t, a2, a3 } = tresAtacantes();
+  let focos = 0;
+  t.lienzo.el.focus = () => { focos++; };
+  seleccionar(t, a2.id, a3.id);
+  t.abrirAnilloDeGrupo();
+  focos = 0;
+  t._elegir('finta', {});
+  eq(focos, 1, 'tras el gesto de los dos:');
+  t.setEnParalelo(true);
+  eq(focos, 2, 'y tras cambiar a «en paralelo», que rehace el botón pulsado:');
+  /* Lo declarado a un defensor también cierra el anillo con el botón dentro. */
+  const d = conDefensa();
+  let otros = 0;
+  d.t.lienzo.el.focus = () => { otros++; };
+  d.t._tocarFicha(ficha(d.t, d.b1.id));
+  otros = 0;
+  d.t._elegir('cierra_rebote', {});
+  eq(otros, 1);
+});
+
 console.log('\n· insertar, duplicar, borrar y renombrar fases (§6.8)');
 
 /* A2 corta en la fase 1 a (0.5, 0.35), en la 2 a (0.6, 0.2) y en la 3 a (0.6, 0.1). */

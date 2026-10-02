@@ -76,6 +76,8 @@ export class Lienzo {
     /** Aviso de que el encuadre ha cambiado: lo escucha la barra que
      *  enseña el porcentaje, y quien guarde el encuadre. */
     this.onEncuadre = null;
+    /* () — un toque de Espacio que no llegó a desplazar nada (§2.2). */
+    this.onEspacio = null;
 
     this.vista.onResize = () => { this._reponerSiSePuede(); this.pintar(); };
     this.vista.onEncuadre = () => { this.pintar(); this._apuntarPronto(); this.onEncuadre?.(this.zoom()); };
@@ -430,13 +432,19 @@ export class Lienzo {
        propósito: la barra espaciadora es también el atajo de
        reproducir (§2.2), y un atajo global aquí se lo robaría desde
        cualquier parte de la pantalla. `_espacioUsado` guarda si el
-       espacio llegó a mover algo, para poder decidir más adelante —
-       cuando exista la barra de herramientas— si esta pulsación era
-       para desplazar o para reproducir. */
+       espacio llegó a mover algo: al soltarlo se sabe si esta pulsación
+       era para desplazar (§3.1) o para reproducir (§2.2), y si era lo
+       segundo se avisa con `onEspacio`.
+
+       Las repeticiones de la tecla mantenida también se quedan aquí:
+       dejándolas subir, quien reproduce con Espacio lo hacía una vez por
+       repetición mientras se arrastraba la pista. */
     this._onKeyDown = (ev) => {
-      if (ev.code === 'Space' && !this._espacio) {
-        this._espacio = true; this._espacioUsado = false;
-        el.classList.add('is-mano');
+      if (ev.code === 'Space') {
+        if (!this._espacio) {
+          this._espacio = true; this._espacioUsado = false;
+          el.classList.add('is-mano');
+        }
         ev.preventDefault();          // si no, la página hace scroll
         return;
       }
@@ -455,8 +463,10 @@ export class Lienzo {
     };
     this._onKeyUp = (ev) => {
       if (ev.code !== 'Space') return;
+      const era = this._espacio;
       this._espacio = false;
       el.classList.remove('is-mano');
+      if (era && !this._espacioUsado) this.onEspacio?.();
     };
     el.addEventListener('keydown', this._onKeyDown);
     el.addEventListener('keyup', this._onKeyUp);
