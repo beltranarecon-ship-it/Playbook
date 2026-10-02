@@ -1704,6 +1704,124 @@ test('UNA FASE GUARDADA SE INSERTA CON CADA PAPEL EN SU FICHA: en la fase vacía
   eq(o.t.tramos[0].trazo[0], { ...o.t.tramos[0].trazo[0], x: 0.2, y: 0.8 }, 'cada uno desde donde le deja la fase anterior:');
 });
 
+test('UNA COLOCACIÓN AÑADIDA CUENTA COMO PUESTA A MANO: poner después otra ficha no la descoloca', () => {
+  /* A1 con balón, A2 y dos defensores colocados A MANO, lejos de su par. */
+  const o = conAtaque();
+  const b1 = o.t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.5, y: 0.5 });
+  const b2 = o.t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.5, y: 0.5 });
+  o.t.cerrar();
+  o.t.fichas._cambio(o.t.fichas.elementos.map((e) => (e.id === b1.id ? { ...e, x: 0.9, y: 0.9 } : e.id === b2.id ? { ...e, x: 0.1, y: 0.9 } : e)));
+  o.t._recolocadas([b1.id, b2.id]);
+  const datos = JSON.parse(JSON.stringify(o.t.colocacion()));
+  const defensores = (t) => t.fichas.elementos.filter((e) => e.equipo === 'B').map((e) => [e.x, e.y]);
+  for (const modo of ['anadir', 'sustituir']) {
+    reiniciarIds();
+    const { t } = montar();
+    t.poner([]);
+    ok(t.ponerColocacion(datos, modo) > 0);
+    eq(defensores(t), [[0.9, 0.9], [0.1, 0.9]], `${modo}: donde se guardaron:`);
+    t.anadirFicha({ kind: 'jugador', equipo: 'A' }, { x: 0.8, y: 0.5 });
+    eq(defensores(t), [[0.9, 0.9], [0.1, 0.9]], `${modo}: y siguen ahí al poner otra ficha:`);
+    eq(Object.entries(t.jugada().elementos.filter((e) => e.equipo === 'B').map((e) => [e.x, e.y])).length, 2);
+  }
+});
+
+test('CAMBIAR «ATACA A» CAMBIA EL ARO CON EL QUE SE TRABAJA YA, aunque los papeles se hubieran calculado antes', () => {
+  const { t, a1 } = conAtaque();
+  eq([t.papeles().fases[0].canasta, t.canastaEnCurso], ['norte', 'norte']);
+  t.setCanasta('sur');
+  eq([t.canastaEnCurso, t.fichas.canasta, t.dibujo.canasta], ['sur', 'sur', 'sur']);
+  t._tocarFicha(ficha(t, a1.id));
+  t._elegir('entra', { variante: 'bandeja' });
+  ok(t.tramos[0].trazo.at(-1).y > 0.5, `«entra» va al aro sur: ${JSON.stringify(t.tramos[0].trazo.at(-1))}`);
+});
+
+test('AL SUSTITUIR LA ESCENA, el botón del grupo de antes no se queda huérfano', () => {
+  const { t, a1, a2 } = conAtaque();
+  const datos = JSON.parse(JSON.stringify(t.colocacion()));
+  seleccionar(t, a1.id, a2.id);
+  ok(t._botonGrupo, 'con dos seleccionados, el botón está');
+  ok(t.ponerColocacion(datos, 'sustituir') > 0);
+  eq([t.grupo().length, t._botonGrupo], [0, null], 'las fichas son otras: ni grupo ni botón:');
+});
+
+test('UNA FASE GUARDADA CON UN BLOQUEO Y UN TIRO: el bloqueo, junto al compañero de ahora; el tiro, al aro que se ataca', () => {
+  /* Se guarda: A2 bloquea para A1, y A1 tira. */
+  const { t, a1, a2 } = conAtaque();
+  t._tocarFicha(ficha(t, a2.id));
+  t._elegir('bloquea', { variante: 'directo' });
+  t._companeroElegido(ficha(t, a1.id), { elemento: ficha(t, a2.id), accion: t._accionDe('bloquea'), variante: 'directo' });
+  t.cerrar();
+  t._tocarFicha(ficha(t, a1.id));
+  t._elegir('tira', { variante: 'suspension', desenlace: 'entra' });
+  t.cerrar();
+  const { datos } = t.plantillaDeFase();
+  eq(datos.tramos.map((x) => [x.accion, x.tipo]), [['bloquea', 'bloqueo'], ['tira', 'pass']]);
+  /* Otra pizarra: los mismos, en otro sitio y atacando al otro aro. */
+  reiniciarIds();
+  const o = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.25, 0.35);
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.45, 0.5);
+  l = anadir(l, { kind: 'balon' }, 0.28, 0.35);
+  const [n1, n2, bal] = l;
+  o.t.poner(asignarBalon(l, bal.id, n1.id, 'entera'));
+  o.t.setCanasta('sur');
+  const r = o.t.insertarPlantilla(datos, o.t.papelesDe(datos));
+  eq([r.ok, r.avisos], [true, []]);
+  const [bloqueo, tiro] = o.t.tramos;
+  /* Como si se dibujara aquí a mano. */
+  const m = montar();
+  m.t.poner(asignarBalon(l, bal.id, n1.id, 'entera'));
+  m.t.setCanasta('sur');
+  m.t._tocarFicha(ficha(m.t, n2.id));
+  m.t._elegir('bloquea', { variante: 'directo' });
+  m.t._companeroElegido(ficha(m.t, n1.id), { elemento: ficha(m.t, n2.id), accion: m.t._accionDe('bloquea'), variante: 'directo' });
+  m.t.cerrar();
+  m.t._tocarFicha(ficha(m.t, n1.id));
+  m.t._elegir('tira', { variante: 'suspension', desenlace: 'entra' });
+  m.t.cerrar();
+  eq([bloqueo.trazo.at(-1).x, bloqueo.trazo.at(-1).y], [m.t.tramos[0].trazo.at(-1).x, m.t.tramos[0].trazo.at(-1).y], 'el bloqueo, donde se pondría a mano:');
+  ok(metrosEntre('entera', bloqueo.trazo.at(-1), ficha(o.t, n1.id)) < 3, 'cerca de su compañero');
+  eq([tiro.trazo.at(-1).x, tiro.trazo.at(-1).y], [m.t.tramos[1].trazo.at(-1).x, m.t.tramos[1].trazo.at(-1).y], 'y el tiro, al aro sur:');
+  ok(tiro.trazo.at(-1).y > 0.5, `al sur: ${JSON.stringify(tiro.trazo.at(-1))}`);
+  eq(compilarMod.compilar(o.t.jugada()).warnings, []);
+});
+
+test('SI DE LA FASE GUARDADA NO SE PUEDE PONER NADA, no queda una fase vacía de más ni se da por insertada', () => {
+  const { t, a1, a2 } = conAtaque();
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('pasa'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), ficha(t, a2.id)), tipo: 'pass' });
+  t.cerrar();
+  const { datos } = t.plantillaDeFase();        // un solo pase: p1 pasa a p2
+  /* A1 tiene el balón; se le dice que pase a quien no lo lleva. */
+  const o = tresAtacantes();
+  corta(o.t, o.a2.id, { x: 0.6, y: 0.3 });
+  o.t.cerrar(); o.t.repaso.parar(); o.t._cerrarFase();
+  corta(o.t, o.a3.id, { x: 0.4, y: 0.3 });
+  o.t.cerrar(); o.t.repaso.parar();
+  o.t.irAFase(0);
+  o.avisos.length = 0;
+  const antes = o.t.todasLasFases.map((f) => [f.id, f.tramos.length]);
+  const r = o.t.insertarPlantilla(datos, { p1: o.a3.id, p2: o.a2.id });
+  eq([r.ok, o.t.todasLasFases.map((f) => [f.id, f.tramos.length]), o.t.iFase], [false, antes, 0], 'todo como estaba:');
+  ok(/No lleva balón/.test(r.avisos[0]) && /no se puede hacer nada/.test(o.avisos.at(-1)[2]), JSON.stringify([r.avisos, o.avisos]));
+  /* Con quien sí lo lleva, entra en una fase nueva detrás. */
+  const s = o.t.insertarPlantilla(datos, { p1: o.a1.id, p2: o.a2.id });
+  eq([s.ok, o.t.todasLasFases.length, o.t.iFase, o.t.tramos.map((x) => x.accion)], [true, 3, 1, ['pasa']]);
+});
+
+test('UN BOTE GUARDADO NO SE LE PONE A QUIEN NO LLEVA BALÓN', () => {
+  const { t, a1 } = conAtaque();
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('bota'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), { x: 0.4, y: 0.3 }), tipo: 'run' });
+  t.cerrar();
+  const { datos } = t.plantillaDeFase();
+  eq(datos.tramos.map((x) => [x.accion, x.con_balon]), [['bota', true]]);
+  const o = conAtaque();
+  const r = o.t.insertarPlantilla(datos, { p1: o.a2.id });     // A2 no lleva balón
+  eq([r.ok, o.t.tramos.length], [false, 0]);
+  eq(o.t.insertarPlantilla(datos, { p1: o.a1.id }).ok, true);
+});
+
 await testA('LAS PLANTILLAS SE GUARDAN PARA EL CLUB (con datos de mentira): con nombre, solo las de esta pista, y se quitan', async () => {
   const { t, p, avisos, a2 } = conAtaque();
   const llamadas = [];

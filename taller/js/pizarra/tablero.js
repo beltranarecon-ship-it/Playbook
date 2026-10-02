@@ -340,6 +340,8 @@ export class Tablero {
     this._recordarDonde(elementos);
     this._avisarDeFases();
     this.onTramos?.(this.tramos);
+    /* Con otras fichas, el grupo de antes ya no está: ni su botón. */
+    this._pintarGrupo();
     this._pintarAyuda();
   }
 
@@ -629,7 +631,10 @@ export class Tablero {
   papeles() {
     const entrada = this.fases[0].entrada || {};
     const clave = JSON.stringify([
-      this.lienzo.vista.pistaKey, this.defensa, this.fases.length, this.fases[0].posesion || {},
+      /* La canasta, también: de ella sale a qué aro ataca cada fase. Sin
+         ella, tras cambiar «Ataca a» se seguía trabajando con el aro de
+         antes —«entra», los tiros, la defensa— hasta tocar otra cosa. */
+      this.lienzo.vista.pistaKey, this.canasta, this.defensa, this.fases.length, this.fases[0].posesion || {},
       /* Lo declarado cambia los pares (§8.5), así que la respuesta de
          antes ya no vale. Y lo que mueve el balón cambia quién ataca en
          la fase siguiente (§8.6): pases, tiros y recogidas. */
@@ -2063,15 +2068,48 @@ export class Tablero {
       return 0;
     }
     this.cerrar();
+    const habia = new Set(this.fichas.elementos.map((e) => e.id));
     const r = ponerLaColocacion(this.fichas.elementos, datos, pista);
     if (!r.puestas) { this.onNoPuede?.({ nombre: 'Añadir la colocación' }, 'está vacía'); return 0; }
+    /* LO GUARDADO CUENTA COMO PUESTO A MANO, igual que al sustituir o al
+       reabrir: sin esto, la siguiente ficha que se pusiera recolocaba a
+       los defensores de la colocación, y dejaba de ser la guardada. */
+    for (const e of r.elementos) if (e.kind === 'jugador' && !habia.has(e.id)) this._aMano.add(e.id);
     this._conFichasNuevas(r.elementos);
     return r.puestas;
   }
 
   /** La fase que se edita, como plantilla: { datos, avisos }. */
   plantillaDeFase() {
-    return plantillaDeLaFase(this.fases[this.iFase], this.fichas.elementos, { entrada: this.entrada || {}, nombreDe: (e) => this.nombreDe(e) });
+    return plantillaDeLaFase(this.fases[this.iFase], this.fichas.elementos, {
+      entrada: this.entrada || {},
+      nombreDe: (e) => this.nombreDe(e),
+      /* Lo que solo se ofrece a quien lleva balón (botar, entrar…). */
+      conBalon: (t) => { const a = this._accionDe(t.accion); return !!a && saleEn(a, 'conBalon') && !saleEn(a, 'sinBalon'); },
+    });
+  }
+
+  /* A dónde va, en la escena de ahora, lo que tiene su sitio: un bloqueo,
+     junto al compañero; una entrada o un tiro, al aro que se ataca. */
+  _destinoDePlantilla({ accion: slug, tipo, id, desde, companero }) {
+    const lista = this.fichas.elementos;
+    const pista = this.lienzo.vista.pistaKey;
+    const accion = this._accionDe(slug);
+    const ficha = lista.find((e) => e.id === id);
+    if (!accion || !ficha) return null;
+    if (tipo === 'bloqueo') {
+      const suyo = companero ? lista.find((e) => e.id === companero.id) : null;
+      if (!suyo) return null;
+      const { pares } = this.papelesDeFase();
+      const defensorId = Object.keys(pares).find((d) => pares[d] === suyo.id) || null;
+      return sitioDelBloqueo({
+        pista, canasta: this.canastaEnCurso, desde, companero: { ...suyo, ...companero.en },
+        conBalon: llevaBalon(lista, suyo.id),
+        defensor: defensorId ? (lista.find((e) => e.id === defensorId) || null) : null,
+      });
+    }
+    if (!tieneDestinoPropio(accion)) return null;
+    return destinoDe(accion, { ...ficha, ...desde }, { pista, canasta: this.canastaEnCurso, elementos: lista }).punto || null;
   }
 
   /** A qué ficha le toca cada papel de una fase guardada, de entrada. */
@@ -2089,17 +2127,30 @@ export class Tablero {
     const pista = this.lienzo.vista.pistaKey;
     this.cerrar();
     this.repaso.parar();
-    /* Se comprueba ANTES de abrir una fase nueva: si no se puede, que no
-       quede una fase vacía de más. */
-    const prueba = tramosDePlantilla(datos, mapa, { entrada: this._dondeAcabaEstaFase(), posesion: {}, pista, nuevoId: () => 'x' });
+    const nombreDe = (id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id) || { id });
+    const alEmpezar = this.fases[0].posesion || {};
+    /* Se comprueba ANTES de abrir una fase nueva, y con el balón donde va
+       a estar: si no se puede poner nada, que no quede una fase vacía de
+       más ni se dé por insertada. */
+    const detras = this.tramos.length > 0;
+    const prueba = tramosDePlantilla(datos, mapa, {
+      entrada: this._dondeAcabaEstaFase(), pista, nuevoId: () => 'x', nombreDe,
+      posesion: detras ? posesionAlFinal(this.fases, this.iFase, alEmpezar)
+        : this.iFase === 0 ? alEmpezar : posesionAlFinal(this.fases, this.iFase - 1, alEmpezar),
+    });
     if (prueba.motivo) { this.onNoPuede?.({ nombre: 'Insertar la fase' }, prueba.motivo); return { ok: false, avisos: [] }; }
-    if (this.tramos.length && !this.insertarFase('despues')) return { ok: false, avisos: [] };
+    if (!prueba.tramos.length) {
+      this.onNoPuede?.({ nombre: 'Insertar la fase' }, 'aquí no se puede hacer nada de lo que tiene');
+      return { ok: false, avisos: prueba.avisos };
+    }
+    if (detras && !this.insertarFase('despues')) return { ok: false, avisos: [] };
     const i = this.iFase;
-    const posesion = i === 0 ? (this.fases[0].posesion || {}) : posesionAlFinal(this.fases, i - 1, this.fases[0].posesion || {});
+    const posesion = i === 0 ? alEmpezar : posesionAlFinal(this.fases, i - 1, alEmpezar);
     const r = tramosDePlantilla(datos, mapa, {
       entrada: this.entrada || {}, posesion, pista,
       nuevoId: () => `tr${siguiente++}`,
-      nombreDe: (id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id) || { id }),
+      nombreDe,
+      destino: (x) => this._destinoDePlantilla(x),
     });
     if (r.motivo) { this.onNoPuede?.({ nombre: 'Insertar la fase' }, r.motivo); return { ok: false, avisos: [] }; }
     this.tramos = r.tramos;
@@ -2140,7 +2191,8 @@ export class Tablero {
       canasta: this.canasta,
       canastaDe: (i) => ((papeles && papeles.fases[i]) || {}).canasta,
     });
-    const tramos = r.fases[0].carriles.flatMap((c) => c.tramos).sort((a, b) => a.orden - b.orden);
+    const tramos = r.fases[0].carriles.flatMap((c) => c.tramos).sort((a, b) => a.orden - b.orden)
+      .map(({ orden, huerfano, ...t }) => t);
     this._todas = this._todas.map((f, i) => (i === 0 ? { ...f, tramos } : f));
   }
 
