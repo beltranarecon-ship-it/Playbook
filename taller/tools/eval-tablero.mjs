@@ -1554,6 +1554,78 @@ test('DESHACER VUELVE A COMO ESTABA, fase incluida; REHACER lo repone; y lo nuev
   eq(p.historial.stack.length, n);
 });
 
+/* A1 bota, tira y falla; B1, que defendía, coge el rebote en la fase 3. */
+function reboteDelDefensor() {
+  reiniciarIds();
+  const m = montar();
+  const { t } = m;
+  t.poner([]);
+  const a1 = t.anadirFicha({ kind: 'jugador', equipo: 'A' }, { x: 0.3, y: 0.6 });
+  t.anadirFicha({ kind: 'balon' }, { x: 0.3, y: 0.6 });
+  const b1 = t.anadirFicha({ kind: 'jugador', equipo: 'B' }, { x: 0.5, y: 0.4 });
+  t.cerrar();
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('bota'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), { x: 0.6, y: 0.3 }), tipo: 'run' });
+  t.cerrar(); t.repaso.parar(); t._cerrarFase();
+  t._tocarFicha(ficha(t, a1.id));
+  t._elegir('tira', { variante: 'suspension', desenlace: 'falla' });
+  t.cerrar(); t.repaso.parar(); t._cerrarFase();
+  t._tocarFicha(ficha(t, b1.id));
+  t._elegir('recoge', {});
+  t.cerrar(); t.repaso.parar();
+  m.avisos.length = 0;
+  return { ...m, a1, b1 };
+}
+const copia = (x) => JSON.parse(JSON.stringify(x));
+
+test('EL TRAZO DE QUIEN VENÍA DEFENDIENDO SALE DE DONDE LE DEJÓ LA DEFENSA, y reabrir no lo mueve', () => {
+  const { t, b1, avisos } = reboteDelDefensor();
+  eq(avisos, []);
+  const antes = copia(t.jugada());
+  const suyo = antes.fases[2].tramos[0];
+  const alEmpezar = antes.elementos.find((e) => e.id === b1.id);
+  eq([suyo.elemento_id, suyo.accion], [b1.id, 'recoge']);
+  ok(metrosEntre('entera', suyo.trazo[0], alEmpezar) > 1, 'la defensa le ha movido antes de ir a por el rebote');
+  /* Reabierta: la misma, punto por punto. */
+  const o = montar();
+  ok(o.t.cargar(antes).ok);
+  eq(copia(o.t.jugada()), antes, 'la jugada reabierta es la guardada:');
+  /* Y en el proyector no da un salto entre la fase 2 y la 3. */
+  const anim = compilarMod.compilar(o.t.jugada());
+  const acaba = anim.fases[1].movimientos.find((x) => x.automatico && x.elemento_id === 'B1').muestras.at(-1);
+  const empieza = anim.fases[2].movimientos.find((x) => !x.automatico && x.elemento_id === 'B1').path[0];
+  ok(metrosEntre('entera', acaba, empieza) < 0.01, `acaba la 2 en ${JSON.stringify(acaba)} y empieza la 3 en ${JSON.stringify(empieza)}`);
+});
+
+test('DESHACER NO CAMBIA LO QUE NADIE HA TOCADO: tras deshacer un nombre, la jugada es la de antes de ponerlo', () => {
+  const { t, p } = reboteDelDefensor();
+  Object.assign(p, { derecha: { pintar() {} } });
+  p._montarHistorial();
+  const antes = copia(t.jugada());
+  ok(t.renombrarFase('El rebote'));
+  p._apuntar();
+  ok(p.deshacer());
+  eq(copia(t.jugada()), antes);
+  ok(p.rehacer());
+  eq(copia(t.jugada()).fases[2].tramos, antes.fases[2].tramos, 'ni al rehacerlo:');
+});
+
+test('AL CORREGIR UNA FASE ANTERIOR, el trazo del ex defensor sale de donde le deja AHORA la defensa', () => {
+  const { t, a1, b1 } = reboteDelDefensor();
+  const antes = copia(t.jugada()).fases[2].tramos[0].trazo[0];
+  t.irAFase(0);
+  /* A1 bota hasta otro sitio: la defensa le sigue hasta otro sitio. */
+  t.borrarTramo(t.tramos[0].id);
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('bota'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), { x: 0.4, y: 0.25 }), tipo: 'run' });
+  t.cerrar(); t.repaso.parar();
+  const j = copia(t.jugada());
+  const ahora = j.fases[2].tramos[0].trazo[0];
+  ok(metrosEntre('entera', antes, ahora) > 0.3, `se ha reanclado: ${JSON.stringify(antes)} → ${JSON.stringify(ahora)}`);
+  const anim = compilarMod.compilar(j);
+  const acaba = anim.fases[1].movimientos.find((x) => x.automatico && x.elemento_id === 'B1').muestras.at(-1);
+  ok(metrosEntre('entera', acaba, ahora) < 0.01, `a donde acaba la fase 2: ${JSON.stringify(acaba)} / ${JSON.stringify(ahora)}`);
+  ok(b1, 'b1');
+});
+
 test('REABRIR UNA JUGADA EMPIEZA EL HISTORIAL: no se deshace hasta antes de abrirla; y el fantasma se enciende y se apaga', () => {
   const { t, p } = sinAtacante();
   Object.assign(p, { derecha: { pintar() {} } });

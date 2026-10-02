@@ -384,9 +384,11 @@ export function reanclarFase(fase, entrada = {}, pista = 'entera') {
  *
  * @param fases    todas, en orden
  * @param entrada  dónde está cada ficha al empezar la PRIMERA
+ * @param alAcabar (i, reancladas) → { [ficha]: { x, y } } — dónde acaba la
+ *                 fase `i` quien se ha movido SIN TRAZO (ver abajo)
  * @returns { fases, entradas, huerfanos }
  */
-export function recalcular(fases, entrada = {}, pista = 'entera', { canasta = 'norte', canastaDe = null } = {}) {
+export function recalcular(fases, entrada = {}, pista = 'entera', { canasta = 'norte', canastaDe = null, alAcabar = null } = {}) {
   const salida = [];
   const entradas = [];
   const huerfanos = [];
@@ -401,6 +403,14 @@ export function recalcular(fases, entrada = {}, pista = 'entera', { canasta = 'n
     /* CADA FASE ATACA A SU ARO (§8.6): tras un robo o una canasta se
        ataca al contrario, y de eso depende dónde cae un tiro. */
     actual = posicionesFinales(reanclada, actual, { pista, canasta: (canastaDe && canastaDe(i)) || canasta });
+    /* QUIEN SE HA MOVIDO SIN TRAZO —la defensa, que sigue sola (§8.4)—
+       acaba donde le deja ese seguimiento, no donde empezó. Aquí no se
+       sabe: lo dice quien compila (`alAcabarConDefensa`), con lo ya
+       reanclado hasta esta fase. Sin esto, el trazo que un defensor tiene
+       más adelante —después de robar, o de un rebote— se reanclaba a su
+       sitio del principio cada vez que se recalculaba: al reabrir, al
+       deshacer, al tocar una fase anterior. */
+    if (alAcabar && i < fases.length - 1) actual = { ...actual, ...(alAcabar(i, salida) || {}) };
   });
   return { fases: salida, entradas, huerfanos };
 }

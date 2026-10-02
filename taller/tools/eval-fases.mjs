@@ -496,6 +496,25 @@ test('recalcular no muta lo que recibe', () => {
   eq(f1, copia, 'la fase original ha cambiado:');
 });
 
+test('QUIEN SE MUEVE SIN TRAZO —la defensa— llega a la fase siguiente donde se le dice (`alAcabar`)', () => {
+  /* B1 no tiene trazo en la 1 (le lleva el seguimiento) y en la 2 bota. */
+  const f1 = conCarriles([tramo('A1', P(0.2, 0.9), P(0.5, 0.5))]);
+  const f2 = conCarriles([tramo('B1', P(0.6, 0.4), P(0.9, 0.9))]);
+  const fases = [{ ...f1, id: 'f1' }, { ...f2, id: 'f2' }];
+  const entrada = { A1: P(0.2, 0.9), B1: P(0.5, 0.3) };
+  const llamadas = [];
+  const alAcabar = (i, hechas) => { llamadas.push([i, hechas.map((f) => f.id)]); return { B1: P(0.6, 0.4) }; };
+  const r = recalcular(fases, entrada, 'entera', { alAcabar });
+  eq(r.entradas[1].B1, P(0.6, 0.4), 'empieza la 2 donde le dejó la defensa:');
+  const t2 = r.fases[1].carriles[0].tramos[0];
+  eq([t2.trazo[0].x, t2.trazo[0].y, t2.trazo[1].x, t2.trazo[1].y], [0.6, 0.4, 0.9, 0.9], 'y su trazo sale de ahí, no de su sitio del principio:');
+  eq(llamadas, [[0, ['f1']]], 'se pregunta al acabar cada fase menos la última, con lo reanclado hasta ella:');
+  /* Sin él, como siempre: desde donde estaba. */
+  const s = recalcular(fases, entrada, 'entera');
+  eq(s.entradas[1].B1, P(0.5, 0.3));
+  eq(recalcular(fases, entrada, 'entera', { alAcabar: () => null }).entradas[1].B1, P(0.5, 0.3), 'y si no dice nada, tampoco rompe:');
+});
+
 test('sin fases ni entrada, no rompe', () => {
   eq(recalcular([], {}, 'entera'), { fases: [], entradas: [], huerfanos: [] });
   eq(recalcular(null, {}, 'entera').fases, []);

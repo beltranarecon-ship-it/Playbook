@@ -68,7 +68,7 @@ import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, s
 import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo, esGesto, trazoDeGesto } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
-import { compilar } from './motor/compilar.js';
+import { compilar, alAcabarConDefensa, nombreEnLaAnimacion } from './motor/compilar.js';
 import { frasesDeJugada } from './motor/frase.js';
 import {
   defensaPorDefecto, papelesDeJugada, tramosQueNoEncajan, normalizarDefensa, colocar, explicarRegla, REGLAS,
@@ -1768,7 +1768,7 @@ export class Tablero {
        fichas: se deshace el cambio con su misma cuenta. */
     const ficha = new Map();
     for (const e of this.fichas.elementos) {
-      if (e.kind === 'jugador') ficha.set(`${e.equipo || 'A'}${e.label || '0'}`, e.id);
+      if (e.kind === 'jugador') ficha.set(nombreEnLaAnimacion(e), e.id);
     }
     const porFase = {};
     for (const f of (anim.fases || [])) {
@@ -1958,6 +1958,9 @@ export class Tablero {
     const raiz = this._todas[0];
     const huerfanos = [];
     const escena = elementos || this.fichas.elementos;
+    /* Dónde deja la defensa a cada uno al acabar cada fase (§8.4): se
+       compila el principio de cada camino una vez por recálculo. */
+    const memo = new Map();
     for (const id of cuales) {
       const camino = this._caminoDeTrabajo(id);
       if (camino.length < 2) continue;
@@ -1967,6 +1970,7 @@ export class Tablero {
       const r = recalcular(camino.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) })), raiz.entrada || {}, pista, {
         canasta: this.canasta,
         canastaDe: (i) => ((papeles && papeles.fases[i]) || {}).canasta,
+        alAcabar: alAcabarConDefensa(jugada, memo),
       });
       const k = camino.length - 1;
       for (const c of r.fases[k].carriles) {
@@ -1976,8 +1980,11 @@ export class Tablero {
         ...f,
         entrada: r.entradas[k] || f.entrada,
         /* Los carriles vuelven a lista plana: es como se editan, y así
-           solo hay una forma de guardar un tramo. */
-        tramos: r.fases[k].carriles.flatMap((c) => c.tramos).sort((a, b) => a.orden - b.orden),
+           solo hay una forma de guardar un tramo. Sin las dos marcas que
+           son de la cuenta y no del tramo: quedándose, una jugada reabierta
+           ya no era igual que la guardada. */
+        tramos: r.fases[k].carriles.flatMap((c) => c.tramos).sort((a, b) => a.orden - b.orden)
+          .map(({ orden, huerfano, ...t }) => t),
       }));
     }
     return huerfanos;

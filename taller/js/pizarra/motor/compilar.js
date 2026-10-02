@@ -116,7 +116,9 @@ function compilarConRamas(j) {
     /* Un cruce se compila aunque esté vacío: es donde se para y pregunta. */
     mantener: new Set([...grafoDe(j.fases).despues].filter(([, sale]) => sale.length > 1).map(([id]) => id)),
   };
-  const deCamino = (camino) => compilarCamino({ ...j, fases: reanclarCamino(j, camino.map((id) => porId.get(id))) }, opciones);
+  /* Lo que deja la defensa en cada principio de camino, una vez. */
+  const memo = new Map();
+  const deCamino = (camino) => compilarCamino({ ...j, fases: reanclarCamino(j, camino.map((id) => porId.get(id)), memo) }, opciones);
   const principal = deCamino(caminos[0]);
   const warnings = new Set(principal.warnings);
   if (cuantosCaminos(j.fases) > caminos.length) warnings.add(`La jugada tiene más de ${MAX_CAMINOS} caminos distintos: solo se reproducen los ${MAX_CAMINOS} primeros.`);
@@ -191,10 +193,74 @@ function compilarConRamas(j) {
   };
 }
 
+/* CÓMO SE LLAMA UNA FICHA EN LA ANIMACIÓN. Quien espera en una fila no
+   lleva dorsal (§7.1): si sale, se le nombra por su ficha para que no se
+   llame igual que otro, y en la pista va sin número, como en la Pizarra. */
+const sinNumero = (e) => e.kind === 'jugador' && e.fila_de && (e.label == null || e.label === '');
+export function nombreEnLaAnimacion(e) {
+  if (e.kind !== 'jugador') return e.id;
+  return sinNumero(e) ? `${e.equipo || 'A'}_${e.id}` : `${e.equipo || 'A'}${e.label || '0'}`;
+}
+
+/**
+ * DÓNDE DEJA A CADA DEFENSOR EL SEGUIMIENTO (§8.4) de la ÚLTIMA fase de
+ * esta jugada (sin ramas), por ficha: { [id]: { x, y } }.
+ *
+ * Es la misma cuenta que reproduce el proyector —se compila y se mira
+ * dónde acaba lo automático—, así que la Pizarra y la animación no
+ * pueden decir dos cosas distintas.
+ */
+export function finDeLaDefensa(jugada) {
+  const j = jugada || {};
+  const fases = j.fases || [];
+  const elementos = (j.elementos || []).filter(Boolean);
+  /* Sin dos equipos en la pista no hay defensa que se mueva. */
+  if (!fases.length || new Set(elementos.filter((e) => e.kind === 'jugador').map((e) => e.equipo || 'A')).size < 2) return {};
+  let anim = null;
+  try { anim = compilarCamino(j); } catch { return {}; }
+  const fase = anim.fases.find((f) => f.indice === fases.length - 1);
+  if (!fase) return {};
+  const ficha = new Map(elementos.filter((e) => e.kind === 'jugador').map((e) => [nombreEnLaAnimacion(e), e.id]));
+  const fin = {};
+  for (const m of fase.movimientos || []) {
+    if (!m.automatico || !Array.isArray(m.muestras) || m.muestras.length < 2) continue;
+    const id = ficha.get(m.elemento_id);
+    const u = m.muestras[m.muestras.length - 1];
+    if (id) fin[id] = { x: u.x, y: u.y };
+  }
+  return fin;
+}
+
+/**
+ * Lo que `recalcular` (fases.js) no puede saber solo: dónde acaba cada
+ * fase quien se ha movido sin trazo. Devuelve su `alAcabar`, o `null` si
+ * en esta jugada nadie defiende.
+ *
+ * @param jugada  la del camino que se recalcula; de ella se usa la escena
+ *                del principio y lo que no son fases
+ * @param memo    para no compilar dos veces el mismo principio de camino
+ *                dentro de un mismo recálculo
+ */
+export function alAcabarConDefensa(jugada, memo = new Map()) {
+  const j = jugada || {};
+  const elementos = (j.elementos || []).filter(Boolean);
+  if (new Set(elementos.filter((e) => e.kind === 'jugador').map((e) => e.equipo || 'A')).size < 2) return null;
+  const plana = (f) => ({
+    id: f.id, duracion_ms: f.duracion_ms ?? null, pausa_post_ms: f.pausa_post_ms ?? null, defensa: f.defensa || {},
+    tramos: (f.carriles || []).flatMap((c) => c.tramos).sort((a, z) => a.orden - z.orden).map(({ orden, huerfano, ...t }) => t),
+  });
+  return (i, reancladas) => {
+    const hasta = reancladas.slice(0, i + 1);
+    const clave = hasta.map((f) => f.id).join('>');
+    if (!memo.has(clave)) memo.set(clave, finDeLaDefensa({ ...j, elementos, fases: hasta.map(plana) }));
+    return memo.get(clave);
+  };
+}
+
 /* Por otro camino, cada uno sale de donde le deja lo anterior: los trazos
    de una reunión se dibujaron desde la primera rama, y se reanclan
    (§5.5) a donde deja esta, conservando su destino. */
-function reanclarCamino(j, fases) {
+function reanclarCamino(j, fases, memo) {
   const pista = j.pista || 'entera';
   const canasta = j.canasta || 'norte';
   const entrada = Object.fromEntries((j.elementos || []).filter(Boolean).map((e) => [e.id, { x: e.x, y: e.y }]));
@@ -202,6 +268,7 @@ function reanclarCamino(j, fases) {
   try { papeles = papelesDeJugada({ ...j, pista, fases, elementos: (j.elementos || []).filter(Boolean) }); } catch { papeles = null; }
   const r = recalcular(fases.map((f) => ({ ...f, carriles: carrilesDesde((f && f.tramos) || []) })), entrada, pista, {
     canasta, canastaDe: (i) => ((papeles && papeles.fases[i]) || {}).canasta,
+    alAcabar: alAcabarConDefensa({ ...j, pista, canasta }, memo),
   });
   return fases.map((f, i) => ({
     ...f,
@@ -240,15 +307,9 @@ function compilarCamino(jugada, { conTramosEn = null, mantener = null } = {}) {
   try { frases = frasesDeJugada({ ...dibujada, pista, canasta }); } catch { frases = []; }
   const conRondasEn = new Set(Object.values(conLasRondas.rondas).map((r) => r.fila));
 
-  /* ── los nombres ──
-     Quien espera en una fila no lleva dorsal (§7.1): si sale, se le
-     nombra por su ficha para que no se llame igual que otro, y en la
-     pista va sin número, como en la Pizarra. */
+  /* ── los nombres ── */
   const nombre = new Map();
-  const sinNumero = (e) => e.kind === 'jugador' && e.fila_de && (e.label == null || e.label === '');
-  for (const e of elementos) {
-    nombre.set(e.id, e.kind !== 'jugador' ? e.id : sinNumero(e) ? `${e.equipo || 'A'}_${e.id}` : `${e.equipo || 'A'}${e.label || '0'}`);
-  }
+  for (const e of elementos) nombre.set(e.id, nombreEnLaAnimacion(e));
   const de = (id) => (id == null ? null : (nombre.get(id) ?? null));
 
   /* ── la escena ── */
