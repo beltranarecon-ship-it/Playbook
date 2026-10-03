@@ -334,6 +334,26 @@ export function duracionDeCarril(carril, tiempos) {
   return Math.max(...carril.tramos.map((t) => (tiempos.tramos[t.id] || {}).fin_ms || 0));
 }
 
+/**
+ * Las marcas de la regla de tiempo que va encima de los carriles: un
+ * segundo, dos, cinco… el paso más corto con el que no salen más de
+ * `maximas`, para que en un panel estrecho las cifras no se pisen.
+ *
+ * Siempre sale el cero, y nunca una marca más allá de la duración.
+ * @returns { paso_ms, marcas: [{ ms, texto }] }
+ */
+export function marcasDeTiempo(duracion_ms, { maximas = 6 } = {}) {
+  const PASOS = [500, 1000, 2000, 5000, 10000, 15000, 30000, 60000, 120000, 300000];
+  const total = Number.isFinite(duracion_ms) && duracion_ms > 0 ? duracion_ms : 0;
+  const paso = PASOS.find((p) => total / p <= maximas) || PASOS[PASOS.length - 1];
+  const marcas = [];
+  for (let ms = 0; ms <= total + 1e-6; ms += paso) {
+    const s = ms / 1000;
+    marcas.push({ ms, texto: `${Number.isInteger(s) ? s : s.toFixed(1).replace('.', ',')} s` });
+  }
+  return { paso_ms: paso, marcas };
+}
+
 /* ── Volver atrás y arrastrar a las siguientes (§6.5) ──── */
 
 /**

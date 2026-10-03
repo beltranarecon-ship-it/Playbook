@@ -1,23 +1,24 @@
 /* ============================================================
-   eval-anillo.mjs — banco Node de la geometría del anillo de la
-   Pizarra (taller/js/pizarra/anillo.js). Sin red, sin DOM.
+   eval-anillo.mjs — banco Node de la geometría del menú de acciones de
+   la Pizarra (taller/js/pizarra/anillo.js). Sin red, sin DOM.
 
      node taller/tools/eval-anillo.mjs
 
-   Una sola cosa importa aquí, y todo lo demás es consecuencia: NINGUNA
-   casilla puede quedarse fuera de la ventana. En una pizarra media
-   colocación está pegada a la línea de fondo o a la banda, así que un
-   anillo repartido en 360° alrededor de la ficha se sale casi siempre.
-   Y una casilla fuera de pantalla no se pulsa; una a medias se lee
-   cortada.
+   Dos cosas importan aquí, y todo lo demás es consecuencia:
+
+     · que la tarjeta ENTRE entera en la ventana: en una pizarra media
+       colocación está pegada a la línea de fondo o a la banda, y una
+       tarjeta que se sale no se pulsa y una a medias se lee cortada;
+     · que NO TAPE la ficha de la que habla, que es lo que el menú
+       circular de antes no garantizaba (las casillas se pisaban entre
+       sí y con la ficha).
 
    Este banco recorre la ventana entera —esquinas, bordes, centro— y en
-   cada punto exige que las seis casillas entren enteras.
+   cada punto exige las dos.
    ============================================================ */
 
 import {
-  RADIO_INTERIOR, RADIO_EXTERIOR, RADIO_MIN, RADIO_MAX, APERTURA,
-  radioDe, repartir, posicionMas,
+  HUECO, MARGEN, RADIO_ESQUINA, MIN_PARA_BUSCAR, colocarTarjeta,
 } from '../js/pizarra/anillo.js';
 
 let pasan = 0, fallan = 0;
@@ -34,158 +35,143 @@ const aprox = (real, esp, tol = 1e-6, msg = '') => {
   if (!(Math.abs(real - esp) <= tol)) throw new Error(`${msg} esperado≈${esp} real=${real}`);
 };
 
-const CAJA = { ancho: 110, alto: 34, margen: 8 };
-const cabe = (p, vw, vh) => p.x >= CAJA.ancho / 2 + CAJA.margen - 1e-9
-  && p.x <= vw - CAJA.ancho / 2 - CAJA.margen + 1e-9
-  && p.y >= CAJA.alto / 2 + CAJA.margen - 1e-9
-  && p.y <= vh - CAJA.alto / 2 - CAJA.margen + 1e-9;
+const EPS = 1e-9;
+/** ¿Cabe la tarjeta colocada dentro de la ventana, con su margen? */
+const dentro = (s, ancho, alto, vw, vh) => s.left >= MARGEN - EPS && s.top >= MARGEN - EPS
+  && s.left + ancho <= vw - MARGEN + EPS && s.top + alto <= vh - MARGEN + EPS;
+/** ¿Tapa la tarjeta el círculo de la ficha? (radio generoso: una ficha
+ *  con mucho zoom mide unos 20 px de radio) */
+const tapa = (s, ancho, alto, cx, cy, radio = 20) => {
+  const x = Math.max(s.left, Math.min(cx, s.left + ancho));
+  const y = Math.max(s.top, Math.min(cy, s.top + alto));
+  return Math.hypot(cx - x, cy - y) < radio;
+};
 
-/* ── 1. El radio ─────────────────────────────────────────── */
+/* ── 1. El lado ──────────────────────────────────────────── */
 
-test('el radio sale del lado MENOR de la ventana', () => {
-  // en un móvil en vertical, sacarlo del alto pondría las casillas
-  // fuera por los lados
-  const alto = radioDe(400, 900);
-  const ancho = radioDe(900, 400);
-  eq(alto, ancho, 'la misma ventana girada tiene que dar el mismo radio:');
+test('con sitio, la tarjeta sale a la derecha de la ficha', () => {
+  const s = colocarTarjeta({ cx: 200, cy: 300, vw: 900, vh: 600, ancho: 300, alto: 260 });
+  eq(s.lado, 'derecha');
+  aprox(s.left, 200 + HUECO, 1e-9, 'a HUECO del centro de la ficha:');
 });
 
-test('el radio tiene suelo y techo', () => {
-  eq(radioDe(200, 200), RADIO_MIN, 'en una ventana diminuta no puede ser ridículo:');
-  eq(radioDe(4000, 4000), RADIO_MAX, 'ni desmesurado en una enorme:');
-  const medio = radioDe(800, 600);
-  ok(medio > RADIO_MIN && medio < RADIO_MAX, `en una normal debería estar entre los topes: ${medio}`);
+test('y va centrada en vertical con la ficha', () => {
+  const s = colocarTarjeta({ cx: 200, cy: 300, vw: 900, vh: 600, ancho: 300, alto: 260 });
+  aprox(s.top + 130, 300, 1e-9, 'el centro de la tarjeta, a la altura de la ficha:');
 });
 
-test('el anillo exterior es más grande que el interior', () => {
-  ok(radioDe(1200, 900, RADIO_EXTERIOR) > radioDe(1200, 900, RADIO_INTERIOR),
-    'las variantes van por fuera de las acciones');
+test('sin sitio a la derecha, pasa a la izquierda', () => {
+  const s = colocarTarjeta({ cx: 780, cy: 300, vw: 900, vh: 600, ancho: 300, alto: 260 });
+  eq(s.lado, 'izquierda');
+  aprox(s.left + 300, 780 - HUECO, 1e-9, 'su borde derecho, a HUECO de la ficha:');
 });
 
-/* ── 2. Lo único que importa: que quepan ─────────────────── */
-
-test('con la ficha en el centro, el anillo se reparte entero', () => {
-  const vw = 900, vh = 600;
-  const ps = repartir(6, { cx: vw / 2, cy: vh / 2, vw, vh, radio: radioDe(vw, vh), ...CAJA });
-  eq(ps.length, 6);
-  for (const p of ps) ok(cabe(p, vw, vh), `se sale: ${JSON.stringify(p)}`);
-  // y es un reparto regular: seis ángulos separados 60°
-  const dif = ((ps[1].angulo - ps[0].angulo) * 180) / Math.PI;
-  aprox(dif, 60, 1e-9, 'reparto regular:');
+test('en una ventana estrecha, baja o sube en vez de ir a un lado', () => {
+  // 340 de ancho: ni a la derecha ni a la izquierda cabe una tarjeta de 300
+  const abajo = colocarTarjeta({ cx: 170, cy: 100, vw: 340, vh: 700, ancho: 300, alto: 260 });
+  eq(abajo.lado, 'abajo');
+  const arriba = colocarTarjeta({ cx: 170, cy: 640, vw: 340, vh: 700, ancho: 300, alto: 260 });
+  eq(arriba.lado, 'arriba');
 });
 
-test('EN LAS CUATRO ESQUINAS no se sale ni una casilla', () => {
-  const vw = 820, vh = 560;
-  const radio = radioDe(vw, vh);
-  for (const [cx, cy] of [[10, 10], [vw - 10, 10], [10, vh - 10], [vw - 10, vh - 10]]) {
-    const ps = repartir(6, { cx, cy, vw, vh, radio, ...CAJA });
-    for (const p of ps) ok(cabe(p, vw, vh), `esquina ${cx},${cy} se sale: ${JSON.stringify(p)}`);
+test('si no cabe en ningún lado, se queda el lado con más sitio y se recorta', () => {
+  const s = colocarTarjeta({ cx: 150, cy: 150, vw: 320, vh: 300, ancho: 300, alto: 280 });
+  ok(['derecha', 'izquierda', 'abajo', 'arriba'].includes(s.lado), `lado desconocido: ${s.lado}`);
+  ok(Number.isFinite(s.left) && Number.isFinite(s.top) && Number.isFinite(s.flecha), 'posición rota');
+  ok(s.left >= MARGEN - EPS && s.top >= MARGEN - EPS, 'no se sale por arriba ni por la izquierda');
+});
+
+/* ── 2. Lo único que importa: que quepa y que no tape ───── */
+
+test('recorriendo TODA la ventana, la tarjeta entra entera y no tapa la ficha', () => {
+  const vw = 820, vh = 560, ancho = 300, alto = 260;
+  let malas = 0, total = 0, tapadas = 0;
+  for (let cx = 0; cx <= vw; cx += 10) {
+    for (let cy = 0; cy <= vh; cy += 10) {
+      const s = colocarTarjeta({ cx, cy, vw, vh, ancho, alto });
+      total++;
+      if (!dentro(s, ancho, alto, vw, vh)) malas++;
+      if (tapa(s, ancho, alto, cx, cy)) tapadas++;
+    }
   }
+  eq(malas, 0, `${malas} tarjetas fuera de ${total} probadas:`);
+  eq(tapadas, 0, `${tapadas} tarjetas tapan la ficha de ${total} probadas:`);
 });
 
-test('recorriendo TODA la ventana, nunca se sale nada', () => {
-  const vw = 820, vh = 560;
-  const radio = radioDe(vw, vh);
-  let malas = 0, total = 0;
+test('también la tarjeta alta de «más», con la lista desplegada', () => {
+  const vw = 900, vh = 640, ancho = 300, alto = 420;
   for (let cx = 0; cx <= vw; cx += 20) {
     for (let cy = 0; cy <= vh; cy += 20) {
-      for (const p of repartir(6, { cx, cy, vw, vh, radio, ...CAJA })) {
-        total++;
-        if (!cabe(p, vw, vh)) malas++;
-      }
-    }
-  }
-  eq(malas, 0, `${malas} casillas fuera de ${total} probadas:`);
-});
-
-test('también con el anillo exterior, que es mayor y se sale antes', () => {
-  const vw = 700, vh = 500;
-  const radio = radioDe(vw, vh, RADIO_EXTERIOR);
-  for (let cx = 0; cx <= vw; cx += 25) {
-    for (let cy = 0; cy <= vh; cy += 25) {
-      for (const p of repartir(6, { cx, cy, vw, vh, radio, ...CAJA })) {
-        ok(cabe(p, vw, vh), `exterior en ${cx},${cy} se sale`);
-      }
+      const s = colocarTarjeta({ cx, cy, vw, vh, ancho, alto });
+      ok(dentro(s, ancho, alto, vw, vh), `«más» en ${cx},${cy} se sale: ${JSON.stringify(s)}`);
+      ok(!tapa(s, ancho, alto, cx, cy), `«más» en ${cx},${cy} tapa la ficha`);
     }
   }
 });
 
-test('y en una ventana estrecha de móvil', () => {
-  const vw = 380, vh = 700;
-  const radio = radioDe(vw, vh);
+test('y en una ventana de móvil', () => {
+  const vw = 380, vh = 700, ancho = 300, alto = 260;
   for (let cx = 0; cx <= vw; cx += 20) {
-    for (let cy = 0; cy <= vh; cy += 40) {
-      for (const p of repartir(6, { cx, cy, vw, vh, radio, ...CAJA })) {
-        ok(cabe(p, vw, vh), `móvil en ${cx},${cy} se sale`);
-      }
+    for (let cy = 0; cy <= vh; cy += 20) {
+      const s = colocarTarjeta({ cx, cy, vw, vh, ancho, alto });
+      ok(dentro(s, ancho, alto, vw, vh), `móvil en ${cx},${cy} se sale: ${JSON.stringify(s)}`);
+      ok(!tapa(s, ancho, alto, cx, cy), `móvil en ${cx},${cy} tapa la ficha`);
     }
   }
 });
 
-/* ── 3. El volcado ───────────────────────────────────────── */
-
-test('pegado al borde derecho, las casillas se vuelcan hacia la izquierda', () => {
-  const vw = 800, vh = 600;
-  const ps = repartir(6, { cx: vw - 20, cy: vh / 2, vw, vh, radio: radioDe(vw, vh), ...CAJA });
-  for (const p of ps) ok(p.x < vw - 20, 'ninguna puede quedar a la derecha de la ficha');
+test('el margen se respeta contra los cuatro bordes', () => {
+  const vw = 820, vh = 560, ancho = 300, alto = 260;
+  for (const [cx, cy] of [[0, 0], [vw, 0], [0, vh], [vw, vh], [vw / 2, 0], [vw / 2, vh]]) {
+    const s = colocarTarjeta({ cx, cy, vw, vh, ancho, alto });
+    ok(dentro(s, ancho, alto, vw, vh), `en ${cx},${cy} no deja margen: ${JSON.stringify(s)}`);
+  }
 });
 
-test('pegado al borde izquierdo, hacia la derecha', () => {
-  const vw = 800, vh = 600;
-  const ps = repartir(6, { cx: 20, cy: vh / 2, vw, vh, radio: radioDe(vw, vh), ...CAJA });
-  for (const p of ps) ok(p.x > 20, 'ninguna puede quedar a la izquierda de la ficha');
+/* ── 3. La flecha ────────────────────────────────────────── */
+
+test('la flecha apunta a la ficha cuando la tarjeta no se ha recortado', () => {
+  const s = colocarTarjeta({ cx: 200, cy: 300, vw: 900, vh: 600, ancho: 300, alto: 260 });
+  aprox(s.top + s.flecha, 300, 1e-9, 'la punta, a la altura de la ficha:');
+  const abajo = colocarTarjeta({ cx: 170, cy: 100, vw: 340, vh: 700, ancho: 300, alto: 260 });
+  eq(abajo.lado, 'abajo');
+  aprox(abajo.left + abajo.flecha, 170, 1e-9, 'la punta, a la altura de la ficha:');
 });
 
-test('el arco abre lo acordado y sigue centrado en la ficha', () => {
-  const vw = 800, vh = 600;
-  const radio = radioDe(vw, vh);
-  const ps = repartir(6, { cx: vw - 15, cy: vh / 2, vw, vh, radio, ...CAJA });
-  const grados = ((ps[5].angulo - ps[0].angulo) * 180) / Math.PI;
-  aprox(Math.abs(grados), APERTURA, 1e-9, 'la apertura del arco:');
+test('la flecha nunca cae sobre una esquina redondeada', () => {
+  const vw = 820, vh = 560, ancho = 300, alto = 260;
+  for (let cx = 0; cx <= vw; cx += 20) {
+    for (let cy = 0; cy <= vh; cy += 20) {
+      const s = colocarTarjeta({ cx, cy, vw, vh, ancho, alto });
+      const largo = s.lado === 'derecha' || s.lado === 'izquierda' ? alto : ancho;
+      ok(s.flecha >= RADIO_ESQUINA - EPS && s.flecha <= largo - RADIO_ESQUINA + EPS,
+        `flecha fuera del borde recto en ${cx},${cy}: ${s.flecha}`);
+    }
+  }
 });
 
-test('el anillo aplastado no es un capricho: las casillas son anchas y bajas', () => {
-  const vw = 900, vh = 600, radio = 120;
-  const ps = repartir(4, { cx: 450, cy: 300, vw, vh, radio, ...CAJA });
-  const dx = Math.max(...ps.map((p) => Math.abs(p.x - 450)));
-  const dy = Math.max(...ps.map((p) => Math.abs(p.y - 300)));
-  ok(dy < dx, 'tiene que abrirse más a lo ancho que a lo alto');
+test('con la ficha en una esquina la flecha se queda en el borde, no se pierde', () => {
+  const s = colocarTarjeta({ cx: 5, cy: 5, vw: 820, vh: 560, ancho: 300, alto: 260 });
+  eq(s.lado, 'derecha');
+  aprox(s.flecha, RADIO_ESQUINA, 1e-9, 'tan cerca de la punta como se puede:');
 });
 
 /* ── 4. Casos raros ──────────────────────────────────────── */
 
-test('con una sola casilla sale una sola casilla', () => {
-  const ps = repartir(1, { cx: 400, cy: 300, vw: 800, vh: 600, radio: 100, ...CAJA });
-  eq(ps.length, 1);
+test('sin medidas no se rompe', () => {
+  const s = colocarTarjeta();
+  // la tarjeta no tiene tamaño ni ventana: lo que importa es no lanzar
+  ok(typeof s === 'object', 'devuelve algo');
 });
 
-test('sin casillas no devuelve nada, en vez de romperse', () => {
-  eq(repartir(0, { cx: 400, cy: 300, vw: 800, vh: 600, radio: 100 }), []);
-  eq(repartir(-3, { cx: 400, cy: 300, vw: 800, vh: 600, radio: 100 }), []);
+test('en una ventana más pequeña que la tarjeta no se cuelga', () => {
+  const s = colocarTarjeta({ cx: 30, cy: 20, vw: 60, vh: 40, ancho: 300, alto: 260 });
+  ok(Number.isFinite(s.left) && Number.isFinite(s.top), 'posición rota');
 });
 
-test('en una ventana más pequeña que una casilla no se cuelga', () => {
-  const ps = repartir(6, { cx: 30, cy: 20, vw: 60, vh: 40, radio: 80, ...CAJA });
-  eq(ps.length, 6);
-  for (const p of ps) ok(Number.isFinite(p.x) && Number.isFinite(p.y), 'posición rota');
-});
-
-/* ── 5. La pastilla de «⋯ más» ───────────────────────────── */
-
-test('«más» va debajo del anillo, y arriba si abajo no cabe', () => {
-  const vw = 800, vh = 600, radio = 120;
-  const centro = posicionMas({ cx: 400, cy: 200, vw, vh, radio });
-  ok(centro.y > 200, 'con sitio abajo, va abajo');
-  const bajo = posicionMas({ cx: 400, cy: vh - 20, vw, vh, radio });
-  ok(bajo.y < vh - 20, 'pegado al fondo, se pasa arriba');
-});
-
-test('«más» nunca se sale de la ventana', () => {
-  const vw = 400, vh = 300, radio = 100;
-  for (const [cx, cy] of [[0, 0], [vw, 0], [0, vh], [vw, vh], [vw / 2, vh / 2]]) {
-    const p = posicionMas({ cx, cy, vw, vh, radio });
-    ok(p.x >= 0 && p.x <= vw && p.y >= 0 && p.y <= vh, `se sale en ${cx},${cy}: ${JSON.stringify(p)}`);
-  }
+test('con muy pocas acciones no hay buscador, y con muchas sí', () => {
+  ok(MIN_PARA_BUSCAR > 6, 'seis acciones caben a la vista: no hace falta buscar');
+  ok(MIN_PARA_BUSCAR <= 12, 'una lista larga sí lo necesita');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

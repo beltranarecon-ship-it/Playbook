@@ -3,6 +3,17 @@
    Los colores y las medidas salen de tokens.css; aquí solo hay
    estructura. Se carga DESPUÉS de canvas.css: la pista sigue siendo
    la misma vista, con su `.court--encuadre`.
+
+   El reparto de la pantalla, de fuera adentro:
+
+     · la barra de arriba (herramientas y ayuda);
+     · el panel de las fichas, a la izquierda;
+     · la pista, con una tira de una sola fila debajo;
+     · el panel de la derecha, con sus pestañas.
+
+   Los dos paneles se ensanchan arrastrando su borde: su ancho es una
+   variable CSS de `.pz-pantalla` (`--pz-izq`, `--pz-der`) que pone
+   pizarra/divisor.js.
    ============================================================ */
 
 /* ---- El hueco ---------------------------------------------
@@ -56,11 +67,534 @@
   background: transparent;
 }
 
-/* ---- El anillo de acciones (§4) ----------------------------
-   Flota sobre la pizarra, así que va en píxeles de PANTALLA y no
-   escala con el zoom: el texto de una casilla mide lo que mide, y el
-   dedo también. Dónde cae cada una lo decide pizarra/anillo.js, que es
-   geometría pura y tiene banco. */
+/* ---- La pantalla (§2.1) -------------------------------------
+   Barra arriba, panel de fichas a la izquierda, y la pista con la tira
+   de abajo ocupando lo que sobra. Los `min-*: 0` son los mismos del
+   hueco del lienzo: sin ellos, el canvas y su caja se realimentan y la
+   pista crece sin parar.
+
+   Lo que se define aquí como variable lo comparten los paneles, el
+   menú de acciones y la tira, para que sean una sola familia. */
+.pz-pantalla {
+  /* Los separadores finos, más suaves que el celeste de la app, que es
+     el color de los bordes de las tarjetas grandes. */
+  --pz-borde: #D6E3EC;
+  --pz-suave: #F2F6F9;
+  --pz-hover: #E6EFF5;
+  /* El color de cada FAMILIA de acciones: en el menú, para reconocer
+     una acción sin leerla. Naranja el balón, azul el movimiento, verde
+     el contacto con el rival y gris los gestos. */
+  --fam-mov: #006F94;   --fam-mov-fondo: #DCEFF6;
+  --fam-bal: #C2410C;   --fam-bal-fondo: #FDE6D6;
+  --fam-con: #047857;   --fam-con-fondo: #D8F1E5;
+  --fam-ges: #475569;   --fam-ges-fondo: #E6EAF0;
+
+  display: flex; flex-direction: column;
+  height: 100%; min-height: 0; min-width: 0;
+  background: var(--color-bg);
+  font-family: var(--font-body);
+}
+/* Mientras se arrastra un borde, ni se selecciona texto ni el cursor
+   cambia al pasar por encima de otras cosas. */
+.pz-pantalla.is-redimensionando { cursor: col-resize; user-select: none; }
+
+.pz-cuerpo { flex: 1 1 auto; display: flex; min-height: 0; min-width: 0; background: var(--color-surface); }
+.pz-centro { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.pz-centro__tiempo { flex: 0 0 auto; display: flex; flex-direction: column; }
+.pz-lienzo.is-colocando { cursor: copy; }
+
+/* Las familias de acciones: lo que pinta cada casilla, fila y marca del
+   menú. `--f` es el color fuerte y `--fb` el de su fondo. Una acción del
+   club hereda la de su familia. */
+.pz-pantalla [data-fam] { --f: var(--color-accent); --fb: var(--fam-mov-fondo); }
+.pz-pantalla [data-fam="desplazamiento"] { --f: var(--fam-mov); --fb: var(--fam-mov-fondo); }
+.pz-pantalla [data-fam="balon"] { --f: var(--fam-bal); --fb: var(--fam-bal-fondo); }
+.pz-pantalla [data-fam="entre_dos"] { --f: var(--fam-con); --fb: var(--fam-con-fondo); }
+.pz-pantalla [data-fam="gesto"] { --f: var(--fam-ges); --fb: var(--fam-ges-fondo); }
+
+/* Un dibujo de iconos.js: hereda el color y no recibe clics. */
+.pz-ico { flex: 0 0 auto; display: block; pointer-events: none; }
+
+/* ---- La barra de arriba (§2.2) ------------------------------
+   Herramientas a la izquierda, agrupadas por lo que hacen, y la ayuda a
+   la derecha. Densidad alta y sin sombra (§2.7): es parte del mueble, no
+   algo que flota. Se llama `pz-arriba` porque `pz-barra` ya son las
+   barras de los carriles. */
+.pz-arriba {
+  flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp-3);
+  min-height: 50px; padding: 6px 12px;
+  background: var(--color-surface); border-bottom: 1px solid var(--pz-borde);
+  font-size: var(--fs-300);
+}
+.pz-arriba__herramientas { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+.pz-arriba__grupo { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-md); background: var(--pz-suave); }
+.pz-arriba__b {
+  display: inline-grid; place-items: center; min-width: 34px; height: 34px; padding: 0 7px;
+  border: 0; border-radius: var(--r-sm); background: transparent; color: var(--color-text);
+  font: inherit; cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.pz-arriba__b:hover:not(:disabled) { background: var(--color-surface); box-shadow: var(--sh-1); }
+.pz-arriba__b:disabled { opacity: .35; cursor: default; }
+.pz-arriba__b:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+/* El fantasma, encendido: se ve de un vistazo si está. */
+.pz-arriba__b.is-activo { background: var(--color-accent); color: #fff; }
+.pz-arriba__b.is-activo:hover:not(:disabled) { background: var(--color-accent-hover); box-shadow: none; }
+/* Reproducir lleva texto, y es el único botón con borde: es el que más
+   se busca con la vista. */
+.pz-arriba__b--texto {
+  display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px 0 11px;
+  border: 1.5px solid var(--color-accent); border-radius: var(--r-md); color: var(--color-accent); font-weight: 600;
+}
+.pz-arriba__b--texto:hover:not(:disabled) { background: var(--accent-tint); box-shadow: none; }
+.pz-arriba__canasta { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-muted); }
+.pz-arriba__canasta select {
+  height: 34px; padding: 0 8px; font: inherit; color: var(--color-text);
+  border: 1px solid var(--pz-borde); border-radius: var(--r-sm); background: var(--color-surface);
+}
+.pz-arriba__ayuda {
+  flex: 1 1 auto; min-width: 0; text-align: right;
+  color: var(--color-text-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pz-arriba__ayuda b { color: var(--color-text); font-weight: 600; }
+
+/* ---- Los bordes que se arrastran (§2.1) ---------------------
+   Una zona de 8 px que no ocupa sitio (los márgenes negativos la montan
+   sobre el borde de los dos lados) y que dibuja una línea fina que se
+   ensancha al pasar el ratón. */
+.pz-divisor {
+  position: relative; z-index: 6; flex: 0 0 8px; margin: 0 -4px;
+  cursor: col-resize; touch-action: none; outline: none;
+}
+.pz-divisor[hidden] { display: none; }
+.pz-divisor::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; transform: translateX(-50%);
+  background: transparent; transition: width var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.pz-divisor:hover::before, .pz-divisor:focus-visible::before, .pz-divisor.is-arrastrando::before {
+  width: 3px; background: var(--color-accent);
+}
+
+/* ---- Lo que comparten las cabeceras de los paneles ---------- */
+.pz-izq__cabecera, .pz-der__cabecera { flex: 0 0 auto; display: flex; align-items: center; border-bottom: 1px solid var(--pz-borde); }
+
+/* ---- El panel de las fichas (§2.3) -------------------------- */
+.pz-izq {
+  flex: 0 0 var(--pz-izq, 224px); max-width: 38%; display: flex; flex-direction: column; min-height: 0;
+  background: var(--color-surface); border-right: 1px solid var(--pz-borde);
+  font-size: var(--fs-300);
+}
+.pz-izq.is-plegado { flex-basis: 52px; max-width: none; }
+.pz-izq__cabecera { height: 44px; padding: 0 6px 0 14px; }
+.pz-izq__pestana { flex: 1 1 auto; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text); }
+.pz-izq__plegar, .pz-der__plegar {
+  flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px;
+  border: 0; border-radius: var(--r-sm); background: none; color: var(--color-text-muted); cursor: pointer;
+}
+.pz-izq__plegar:hover, .pz-der__plegar:hover { background: var(--pz-suave); color: var(--color-text); }
+.pz-izq__plegar:focus-visible, .pz-der__plegar:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.pz-izq__cuerpo { flex: 1 1 auto; overflow: auto; padding: 2px 12px 16px; }
+.pz-izq__titulo {
+  margin: 16px 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--color-text-muted);
+}
+.pz-izq__titulo:first-child { margin-top: 10px; }
+
+/* Las fichas, en cuadrícula de dos: la muestra grande arriba y el nombre
+   debajo. Se arrastran a la pista o se pulsan y luego se pincha. */
+.pz-izq__rejilla { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pz-izq__ficha {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
+  min-height: 68px; padding: 9px 4px 8px;
+  border: 1px solid var(--pz-borde); border-radius: var(--r-md);
+  background: var(--color-surface); color: var(--color-text);
+  font: inherit; font-size: 12.5px; line-height: 1.15; text-align: center;
+  cursor: grab; user-select: none;
+  /* Sin esto, arrastrar con el dedo desplaza el panel en vez de sacar la ficha. */
+  touch-action: none;
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.pz-izq__ficha:hover { background: var(--pz-suave); border-color: #B7D0DF; }
+.pz-izq__ficha:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.pz-izq__ficha.is-armada {
+  border-color: var(--color-accent); background: rgba(0,111,148,.10); font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(0,111,148,.18);
+}
+.pz-izq__ficha.is-arrastrando { opacity: .5; }
+.pz-izq__nota { margin: 10px 0 0; color: var(--color-text-muted); line-height: 1.4; }
+
+/* Las muestras imitan al símbolo de la pista, en grande. */
+.pz-muestra {
+  flex: 0 0 auto; display: inline-block; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--c, var(--color-text-muted));
+  box-shadow: inset 0 0 0 2.5px rgba(255,255,255,.8), 0 0 0 1px rgba(0,25,56,.25);
+}
+.pz-muestra--balon, .pz-muestra--pelota { width: 16px; height: 16px; margin: 5px; box-shadow: 0 0 0 1px rgba(0,25,56,.25); }
+.pz-muestra--cono {
+  width: 0; height: 0; margin: 2px 1px; border-radius: 0; background: none; box-shadow: none;
+  border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid var(--c);
+}
+.pz-muestra--escalera {
+  width: 24px; height: 10px; margin: 8px 0; border-radius: 1px;
+  background: repeating-linear-gradient(90deg, var(--c) 0 2px, transparent 2px 6px);
+  box-shadow: inset 0 0 0 1.5px var(--c);
+}
+
+/* El recuento en vivo: cuatro cifras grandes, que se leen de reojo. */
+.pz-recuento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.pz-recuento__dato { display: flex; flex-direction: column-reverse; gap: 1px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--pz-suave); }
+.pz-recuento dt { font-size: 11px; color: var(--color-text-muted); }
+.pz-recuento dd { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+/* Plegado, el panel es una tira de iconos: las fichas se siguen
+   pudiendo sacar; lo que se esconde es el texto. */
+.pz-izq.is-plegado .pz-izq__cabecera { justify-content: center; padding: 0; }
+.pz-izq.is-plegado .pz-izq__pestana,
+.pz-izq.is-plegado .pz-izq__titulo,
+.pz-izq.is-plegado .pz-izq__nota,
+.pz-izq.is-plegado .pz-recuento,
+.pz-izq.is-plegado .pz-coloc,
+.pz-izq.is-plegado .pz-coloc__form { display: none; }
+.pz-izq.is-plegado .pz-izq__cuerpo { padding: 6px 7px; }
+.pz-izq.is-plegado .pz-izq__rejilla { grid-template-columns: minmax(0, 1fr); margin-bottom: 8px; }
+.pz-izq.is-plegado .pz-izq__ficha { min-height: 40px; padding: 6px; }
+.pz-izq.is-plegado .pz-izq__ficha > span:last-child { display: none; }
+
+/* Las colocaciones guardadas, en el panel izquierdo (§7.8). */
+.pz-coloc { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 8px; }
+.pz-coloc__fila { display: flex; flex-direction: column; gap: 4px; }
+.pz-coloc__acciones { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 6px; }
+.pz-coloc__b {
+  min-height: 32px; padding: 3px 10px; border: 1px solid var(--pz-borde); border-radius: var(--r-sm);
+  background: var(--color-surface); color: var(--color-text); font: inherit; cursor: pointer; text-align: left;
+}
+.pz-coloc__b:hover { background: var(--pz-suave); }
+.pz-coloc__n { width: 100%; font-weight: 600; }
+.pz-coloc__fila.is-abierta .pz-coloc__n { background: var(--pz-suave); }
+.pz-coloc__b--quitar { color: var(--color-danger, #b3261e); }
+.pz-coloc__b--ojo { border-color: var(--color-danger, #b3261e); color: var(--color-danger, #b3261e); font-weight: 600; }
+.pz-coloc__form { display: flex; flex-direction: column; gap: 6px; }
+.pz-coloc__nombre {
+  min-height: 34px; padding: 3px 10px; border: 1px solid var(--pz-borde); border-radius: var(--r-sm);
+  background: var(--color-surface); color: var(--color-text); font: inherit;
+}
+.pz-coloc__nombre:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(0,111,148,.15); }
+
+/* ---- El panel derecho: Ajustes · Fases · Texto (§2.4) -------
+   Como el izquierdo: parte del mueble, sin tarjetas ni sombras (§2.7).
+   Plegado queda en una tira con las tres pestañas como iconos. */
+.pz-der {
+  flex: 0 0 var(--pz-der, 340px); max-width: 46%; display: flex; flex-direction: column; min-height: 0;
+  background: var(--color-surface); border-left: 1px solid var(--pz-borde);
+  font-size: var(--fs-300);
+}
+.pz-der.is-plegado { flex-basis: 52px; max-width: none; }
+.pz-der__cabecera { align-items: stretch; }
+.pz-der__pestanas { flex: 1 1 auto; min-width: 0; display: flex; }
+.pz-der__pestana {
+  position: relative; flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 7px;
+  height: 44px; margin-bottom: -1px; padding: 0 8px;
+  border: 0; border-bottom: 2px solid transparent; background: none; color: var(--color-text-muted);
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.pz-der__pestana:hover { color: var(--color-text); background: var(--pz-suave); }
+.pz-der__pestana:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.pz-der__pestana.is-activa { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+/* El punto de «Ajustes»: lo seleccionado tiene los suyos y no se están mirando. */
+.pz-der__punto {
+  display: none; position: absolute; top: 9px; right: 10px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--color-ball); box-shadow: 0 0 0 2px var(--color-surface);
+}
+.pz-der__pestana.tiene-aviso .pz-der__punto { display: block; }
+.pz-der__plegar { align-self: center; margin: 0 6px 0 2px; }
+.pz-der__cuerpo { flex: 1 1 auto; overflow: auto; padding: 14px 16px 24px; }
+.pz-der__cuerpo[hidden] { display: none; }
+.pz-der__cuerpo--texto { display: flex; flex-direction: column; }
+
+.pz-der.is-plegado .pz-der__cabecera { flex-direction: column-reverse; align-items: center; }
+.pz-der.is-plegado .pz-der__pestanas { flex: 0 0 auto; flex-direction: column; width: 100%; }
+.pz-der.is-plegado .pz-der__pestana { flex: 0 0 auto; height: 44px; margin: 0; border-bottom: 0; border-left: 2px solid transparent; }
+.pz-der.is-plegado .pz-der__pestana.is-activa { border-left-color: var(--color-accent); }
+.pz-der.is-plegado .pz-der__pestana-texto { display: none; }
+.pz-der.is-plegado .pz-der__plegar { margin: 6px 0 4px; }
+.pz-der.is-plegado .pz-der__punto { top: 7px; right: 12px; }
+.pz-der.is-plegado .pz-der__cuerpo { display: none; }
+
+/* Lo de Ajustes. */
+.pz-der__titulo { margin: 2px 0 6px; font-size: var(--fs-400); font-weight: 700; color: var(--color-text); }
+.pz-der__nota { margin: 6px 0; color: var(--color-text-muted); line-height: 1.4; }
+.pz-der__porque {
+  margin: 10px 0; padding: 8px 10px; border-left: 3px solid var(--color-accent); border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: rgba(0,111,148,.08); line-height: 1.4;
+}
+.pz-der__campo { display: flex; flex-direction: column; gap: 4px; margin: 12px 0; }
+.pz-der__campo > span { color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
+.pz-der__campo select, .pz-der__numero input, .pz-der__campo .pz-der__texto,
+.pz-ramas__nombre, .pz-ramas__sel {
+  width: 100%; min-height: 34px; padding: 3px 10px; border: 1px solid var(--pz-borde);
+  border-radius: var(--r-sm); background: var(--color-surface); color: var(--color-text); font: inherit;
+}
+.pz-der__campo select:focus, .pz-der__numero input:focus, .pz-der__campo .pz-der__texto:focus,
+.pz-ramas__nombre:focus, .pz-ramas__sel:focus {
+  outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(0,111,148,.15);
+}
+.pz-der__mas { margin: 14px 0 4px; }
+.pz-der__mas > summary { cursor: pointer; font-weight: 600; color: var(--color-text); padding: 6px 0; }
+.pz-der__numeros { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.pz-der__numero { display: grid; grid-template-columns: 1fr 96px; align-items: center; gap: 8px; }
+.pz-der__numero > span:first-child { color: var(--color-text-muted); line-height: 1.25; }
+.pz-der__unidad { display: flex; align-items: center; gap: 4px; color: var(--color-text-muted); }
+.pz-der__numero input { min-height: 32px; text-align: right; }
+.pz-der__numero input.is-cambiado { border-color: var(--color-accent); font-weight: 600; }
+.pz-der__serie {
+  margin-top: 10px; min-height: 34px; padding: 3px 12px; border: 1px solid var(--pz-borde);
+  border-radius: var(--r-sm); background: var(--color-surface); color: var(--color-text); font: inherit; font-weight: 600; cursor: pointer;
+}
+.pz-der__serie:hover { background: var(--pz-suave); }
+/* El trazo pinchado: su variante, su vídeo y «Nueva variante» (§4.3, §10.1). */
+.pz-der__campo .pz-der__texto { resize: vertical; }
+.pz-der__video { margin: 14px 0 4px; padding-top: 10px; border-top: 1px solid var(--pz-borde); }
+.pz-der__sub { margin: 2px 0 4px; font-size: var(--fs-300); font-weight: 700; color: var(--color-text); }
+.pz-der__tramo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pz-der__tramo .pz-der__campo { margin: 2px 0; }
+.pz-der__botones { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---- Los botones del panel de fases y de sus formularios ---- */
+.pz-boton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 0 14px;
+  border: 1px solid var(--pz-borde); border-radius: var(--r-sm); background: var(--color-surface); color: var(--color-text);
+  font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.pz-boton:hover { background: var(--pz-suave); }
+.pz-boton:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.pz-boton--primario { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+.pz-boton--primario:hover { background: var(--color-accent-hover); }
+.pz-boton--suave { border-color: transparent; background: transparent; color: var(--color-text-muted); }
+.pz-boton--suave:hover { background: var(--pz-hover); color: var(--color-text); }
+.pz-boton--peligro { background: var(--color-danger); border-color: var(--color-danger); color: #fff; }
+.pz-boton--peligro:hover { background: #b91c1c; }
+.pz-boton--peligro-suave { border-color: transparent; background: transparent; color: var(--color-danger); }
+.pz-boton--peligro-suave:hover { background: #fdecec; }
+
+/* ---- La pestaña «Fases» (§2.4, §6) ---------------------------- */
+.pz-fases { display: flex; flex-direction: column; gap: 16px; }
+.pz-fases__cab { display: flex; flex-direction: column; gap: 8px; }
+.pz-fases__fila { display: flex; align-items: center; gap: 8px; }
+.pz-fases__num {
+  flex: 0 0 auto; padding: 5px 11px; border-radius: var(--r-pill);
+  background: var(--color-accent); color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.pz-fases__nombre {
+  flex: 1 1 auto; min-width: 0; height: 34px; padding: 0 10px;
+  border: 1px solid transparent; border-radius: var(--r-sm); background: var(--pz-suave);
+  color: var(--color-text); font: inherit; font-weight: 600;
+}
+.pz-fases__nombre::placeholder { color: var(--color-text-muted); font-weight: 400; }
+.pz-fases__nombre:hover { border-color: var(--pz-borde); }
+.pz-fases__nombre:focus { outline: none; border-color: var(--color-accent); background: var(--color-surface); box-shadow: 0 0 0 3px rgba(0,111,148,.15); }
+.pz-fases__datos { margin: 0; color: var(--color-text-muted); font-size: 12px; }
+.pz-fases__rama { display: flex; align-items: center; gap: 8px; }
+.pz-fases__rama > span { flex: 0 0 auto; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
+.pz-fases__titulo { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-muted); }
+
+/* El menú «⋯» de la fase. */
+.pz-menu { position: relative; flex: 0 0 auto; }
+.pz-fases__mas {
+  display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: var(--r-sm);
+  background: none; color: var(--color-text-muted); cursor: pointer;
+}
+.pz-fases__mas:hover, .pz-fases__mas.is-abierto { background: var(--pz-hover); color: var(--color-text); }
+.pz-fases__mas:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.pz-menu__lista {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 260px; padding: 6px;
+  border: 1px solid var(--pz-borde); border-radius: var(--r-md); background: var(--color-surface); box-shadow: var(--sh-pop);
+}
+.pz-menu__grupo { margin: 8px 10px 2px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-muted); }
+.pz-menu__grupo:first-child { margin-top: 4px; }
+.pz-menu__item {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 6px 10px;
+  border: 0; border-radius: var(--r-sm); background: none; color: var(--color-text); font: inherit; text-align: left; cursor: pointer;
+}
+.pz-menu__item:hover, .pz-menu__item:focus-visible { background: var(--pz-suave); outline: none; }
+.pz-menu__item .pz-ico { color: var(--color-text-muted); }
+.pz-menu__item.is-peligro, .pz-menu__item.is-peligro .pz-ico { color: var(--color-danger); }
+.pz-menu__item.is-peligro:hover { background: #fdecec; }
+
+/* Un formulario abierto desde el menú: debajo de la cabecera, con su
+   «Cancelar». */
+.pz-fases__form { padding: 12px; border-radius: var(--r-md); background: var(--pz-suave); }
+.pz-fases__form h4 { margin: 0 0 4px; font-size: var(--fs-400); font-weight: 700; }
+.pz-fases__form p { margin: 0 0 10px; color: var(--color-text-muted); line-height: 1.4; }
+.pz-fases__form form p { margin: 0; color: var(--color-text); font-weight: 600; }
+.pz-ramas__form { display: flex; flex-direction: column; gap: 10px; }
+.pz-ramas__campo { display: flex; flex-direction: column; gap: 4px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
+.pz-fases__acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 2px; }
+
+/* LAS RAMAS EN ÁRBOL (§6.7): tras el cruce, una debajo de otra, con su
+   nombre. Sin ramas es la fila de siempre. */
+.pz-tira__tramo, .pz-tira__rama, .pz-tira__cruce { display: flex; align-items: center; gap: 6px; }
+.pz-tira__cruce { align-items: flex-start; }
+.pz-tira__ramas { display: flex; flex-direction: column; gap: 4px; padding-left: 8px; border-left: 2px solid var(--pz-borde); }
+.pz-tira__nombre { color: var(--color-text-muted); font-style: italic; white-space: nowrap; }
+.pz-tira__sigue { color: var(--color-text-muted); white-space: nowrap; }
+
+/* Los carriles: una fila por ficha, una barra por tramo, sobre una regla
+   de tiempo con su cuadrícula. */
+.pz-tiempo__carriles { display: flex; flex-direction: column; gap: 5px; }
+.pz-tiempo__nada { margin: 2px 0; padding: 14px 12px; border-radius: var(--r-md); background: var(--pz-suave); color: var(--color-text-muted); line-height: 1.4; }
+
+.pz-carril { display: flex; align-items: center; gap: 8px; }
+.pz-carril__quien {
+  flex: 0 0 34px; text-align: right; font-size: 12px; font-weight: 700;
+  color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pz-carril__pista {
+  position: relative; flex: 1 1 auto; height: 24px; border-radius: 5px; background-color: var(--pz-suave);
+  /* Una línea por cada marca de la regla, para leer cuándo arranca
+     cada barra sin tener que tirar la vista hacia arriba. */
+  background-image: linear-gradient(to right, rgba(0,25,56,.10) 1px, transparent 1px);
+  background-size: var(--paso, 25%) 100%;
+}
+.pz-carril__dur { flex: 0 0 44px; color: var(--color-text-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.pz-carril--regla { margin-bottom: -1px; }
+.pz-carril--regla .pz-carril__pista { height: 16px; background: none; }
+.pz-regla__marca {
+  position: absolute; top: 0; transform: translateX(-50%); color: var(--color-text-muted);
+  font-size: 10.5px; line-height: 16px; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pz-regla__marca:first-child { transform: none; }
+
+.pz-barra {
+  position: absolute; top: 3px; bottom: 3px; min-width: 6px;
+  display: flex; align-items: center;
+  padding: 0 7px;
+  border-radius: 4px;
+  background: var(--color-accent); color: #fff;
+  font-size: 11px; font-weight: 600; line-height: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: grab; touch-action: none; user-select: none;
+}
+.pz-barra:active { cursor: grabbing; }
+/* Un arranque puesto a mano deja de recalcularse (§6.3), y eso hay que
+   verlo: si no, no habría manera de saber cuáles siguen la corriente. En
+   naranja, con rayas. */
+.pz-barra.is-manual {
+  background-color: var(--color-ball);
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.22) 0 4px, transparent 4px 8px);
+}
+
+/* Lo que se mueve solo —la defensa del §8.4— va en gris y no se puede
+   arrastrar: está para saber que ocupa la fase, no para tocarlo. */
+.pz-carril--auto .pz-carril__quien,
+.pz-carril--auto .pz-carril__dur { opacity: .75; }
+.pz-barra--auto {
+  background: #DCE4EB;
+  color: #52627A;
+  cursor: default;
+}
+.pz-barra--auto:active { cursor: default; }
+/* Lo que ha DICHO el entrenador (§8.5) no es lo que saldría solo: se ve
+   con el celeste de la selección, sin llegar al azul de lo dibujado. */
+.pz-barra--auto.is-dicha { background: var(--accent-soft); color: var(--color-text); }
+/* Lo que repite cada uno de una fila por rondas (§7.4.2): en gris, con un
+   filo de lo dibujado para que se vea de dónde sale. */
+.pz-barra--auto.is-ronda { box-shadow: inset 0 0 0 1px var(--color-accent); }
+
+.pz-leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0 42px; color: var(--color-text-muted); font-size: 11.5px; }
+.pz-leyenda__dato::before {
+  content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 3px;
+  vertical-align: -1px; background: var(--color-accent);
+}
+.pz-leyenda__dato--manual::before { background: var(--color-ball); }
+.pz-leyenda__dato--auto::before { background: #DCE4EB; box-shadow: inset 0 0 0 1px #B9C6D3; }
+
+/* ---- La pestaña «Texto» (§9.1) ------------------------------
+   La frase de la fase, que se lee de un vistazo y se puede reescribir
+   (§9.2). Ocupa el alto de la pestaña. */
+.pz-desc {
+  flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; min-height: 0;
+  font-family: var(--font-body); font-size: var(--fs-300);
+}
+.pz-desc__cabeza { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; color: var(--color-text-muted); }
+.pz-desc__fase { font-size: var(--fs-400); font-weight: 700; color: var(--color-text); }
+.pz-desc__volver {
+  margin-left: auto; padding: 0; border: 0; background: none;
+  color: var(--color-accent); font: inherit; font-weight: 600; cursor: pointer;
+}
+.pz-desc__volver[hidden] { display: none; }
+.pz-desc__texto {
+  flex: 1 1 auto; width: 100%; min-height: 180px; resize: none; box-sizing: border-box;
+  padding: 10px 12px; border: 1px solid var(--pz-borde); border-radius: var(--r-md);
+  background: var(--color-surface); color: var(--color-text); font: inherit; font-size: var(--fs-400); line-height: 1.5;
+}
+.pz-desc__texto:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(0,111,148,.15); }
+
+/* ---- La línea de tiempo (§2.5) ------------------------------
+   Una tira de una sola fila bajo la pista: los mandos, las fases y
+   «Siguiente fase». Va en píxeles de pantalla y no sabe nada del zoom de
+   la pista: es interfaz, no dibujo. */
+.pz-tiempo {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 14px;
+  min-height: 56px; padding: 8px 12px;
+  background: var(--color-surface); border-top: 1px solid var(--pz-borde);
+  font-family: var(--font-body); font-size: var(--fs-300);
+}
+.pz-tiempo__mandos { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.pz-tiempo__mando {
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 13px 0 11px;
+  border: 1px solid var(--pz-borde); border-radius: var(--r-pill);
+  background: var(--color-surface); color: var(--color-text); font: inherit; font-weight: 600; cursor: pointer;
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.pz-tiempo__mando:hover:not(:disabled) { border-color: var(--color-accent); color: var(--color-accent); background: var(--accent-tint); }
+.pz-tiempo__mando:disabled { opacity: .4; cursor: not-allowed; }
+.pz-tiempo__mando:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.pz-tiempo__mando--primario { border-color: var(--color-accent); color: var(--color-accent); }
+.pz-tiempo__dur {
+  margin-left: 6px; padding-left: 14px; border-left: 1px solid var(--pz-borde);
+  color: var(--color-text); font-size: var(--fs-400); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* La tira de fases. Se desborda a lo ancho en vez de apretarse: con
+   ocho fases, unas pastillas de dos milímetros no se pulsan. Con ramas
+   crece a lo alto hasta un tope y se desplaza. */
+.pz-tiempo__fases {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px;
+  max-height: 132px; overflow: auto; padding: 2px; scrollbar-width: thin;
+}
+.pz-fase {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px;
+  min-height: 32px; padding: 0 14px;
+  border: 1px solid var(--pz-borde); border-radius: var(--r-pill);
+  background: var(--color-surface); color: var(--color-text);
+  font: inherit; cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.pz-fase:hover { border-color: var(--color-accent); }
+.pz-fase:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.pz-fase.is-activa { background: var(--color-accent); border-color: var(--color-accent); color: #fff; font-weight: 600; }
+/* Una fase abierta y sin dibujar se ve a medio tono: está, pero todavía
+   no tiene nada, y eso no es lo mismo que un hueco. */
+.pz-fase.is-vacia:not(.is-activa) { color: var(--color-text-muted); border-style: dashed; }
+/* Las fases del camino que se está viendo, con ramas (§6.7). */
+.pz-fase.is-camino { border-color: var(--color-accent); }
+/* «Siguiente fase»: lo que más se pulsa mientras se dibuja, y por eso lo
+   único relleno de la tira, y fuera del desplazamiento. */
+.pz-fase--mas {
+  min-height: 38px; padding: 0 14px 0 18px; background: var(--color-accent); border-color: var(--color-accent);
+  color: #fff; font-weight: 600; box-shadow: var(--sh-1);
+}
+.pz-fase--mas:hover:not(:disabled) { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
+.pz-fase--mas:disabled { background: var(--pz-suave); border-color: var(--pz-borde); color: var(--color-text-muted); box-shadow: none; cursor: not-allowed; }
+
+/* ---- El menú de acciones de la ficha (§4) -------------------
+   Una tarjeta anclada junto a la ficha, con una flecha que la señala.
+   Flota sobre la pizarra, así que va en píxeles de PANTALLA y no escala
+   con el zoom: el texto de una casilla mide lo que mide, y el dedo
+   también. Dónde cae lo decide pizarra/anillo.js, que es geometría pura
+   y tiene banco. */
 .pz-anillo { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
 
 /* El velo transparente es lo que convierte «pinchar fuera» en un
@@ -68,83 +602,152 @@
    acordarse de soltarlo después. */
 .pz-anillo__velo { position: absolute; inset: 0; pointer-events: auto; }
 
-.pz-anillo__caja,
-.pz-anillo__centro,
-.pz-anillo__mas {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
+.pz-tarjeta {
+  position: absolute; display: flex; flex-direction: column;
+  width: 306px; max-width: calc(100% - 16px); padding: 10px;
+  border-radius: 16px; background: #fff; color: var(--color-text);
   font-family: var(--font-body);
-}
-
-.pz-anillo__caja {
   pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  /* 34 px de alto y el aire de los lados salen de la geometría que
-     prueba el banco: si cambian aquí, hay que cambiarlos allí o el
-     anillo empezará a salirse por los bordes. */
-  min-height: 34px;
-  padding: 0 13px 0 10px;
-  border: 0;
-  border-radius: var(--r-pill);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: var(--fs-400);
-  font-weight: 600;
-  box-shadow: var(--sh-pop);
-  cursor: pointer;
-  transition: background .13s, color .13s, transform .13s;
+  /* La sombra va en `filter` y no en `box-shadow` para que la flecha, que
+     es un pedazo de la propia tarjeta, la lleve también. */
+  filter: drop-shadow(0 14px 28px rgba(0,25,56,.26)) drop-shadow(0 2px 6px rgba(0,25,56,.14));
+  animation: pz-tarjeta-entra .14s var(--ease-out);
 }
-.pz-anillo__caja em { font-style: normal; font-size: 15px; opacity: .7; }
-.pz-anillo__caja:hover { background: var(--color-accent); color: #fff; transform: translate(-50%, -50%) scale(1.05); }
-.pz-anillo__caja:hover em { opacity: 1; }
-.pz-anillo__caja:focus-visible { outline: 2px solid var(--color-ball); outline-offset: 2px; }
+.pz-tarjeta--exterior { width: 292px; }
+.pz-tarjeta--desenlace { width: 300px; }
 
+/* La flecha: un cuadrado girado, medio metido en el borde que mira a la
+   ficha. Adónde apunta lo dice `--flecha`, que pone anillo.js. */
+.pz-tarjeta::before {
+  content: ''; position: absolute; width: 14px; height: 14px; border-radius: 3px; background: #fff; transform: rotate(45deg);
+}
+.pz-tarjeta[data-lado="derecha"]::before { left: -6px; top: calc(var(--flecha, 40px) - 7px); }
+.pz-tarjeta[data-lado="izquierda"]::before { right: -6px; top: calc(var(--flecha, 40px) - 7px); }
+.pz-tarjeta[data-lado="abajo"]::before { top: -6px; left: calc(var(--flecha, 40px) - 7px); }
+.pz-tarjeta[data-lado="arriba"]::before { bottom: -6px; left: calc(var(--flecha, 40px) - 7px); }
+
+@keyframes pz-tarjeta-entra {
+  from { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 0)) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+.pz-tarjeta[data-lado="derecha"] { --dx: -8px; }
+.pz-tarjeta[data-lado="izquierda"] { --dx: 8px; }
+.pz-tarjeta[data-lado="abajo"] { --dy: -8px; }
+.pz-tarjeta[data-lado="arriba"] { --dy: 8px; }
+
+/* La cabecera: de quién es el menú y cómo está. */
+.pz-tarjeta__cab {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px; padding: 2px 2px 10px; border-bottom: 1px solid var(--pz-borde);
+}
+/* La ficha, como se ve en la pista: su color y su dorsal. */
+.pz-tarjeta__ficha {
+  flex: 0 0 auto; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--c, #888); color: #fff; font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  box-shadow: inset 0 0 0 2.5px #fff, 0 0 0 1px rgba(0,25,56,.28);
+}
+/* Y cuando el título es una acción, su dibujo en el color de su familia. */
+.pz-tarjeta__marca {
+  flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px;
+  background: var(--fb); color: var(--f);
+}
+.pz-tarjeta__tit { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.pz-tarjeta__tit b { font-size: 14.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pz-tarjeta__tit small { color: var(--color-text-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pz-tarjeta__x {
+  flex: 0 0 auto; display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 8px;
+  background: none; color: var(--color-text-muted); cursor: pointer;
+}
+.pz-tarjeta__x:hover { background: var(--pz-hover); color: var(--color-text); }
+
+/* Las acciones, en cuadrícula de tres por dos: nunca se pisan. */
+.pz-tarjeta__rejilla { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pz-casilla {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 7px;
+  min-height: 88px; padding: 11px 4px 8px; border: 0; border-radius: 12px;
+  background: var(--pz-suave); color: var(--color-text);
+  font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.15; text-align: center; cursor: pointer;
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.pz-casilla:hover:not(:disabled) { background: var(--fb); box-shadow: inset 0 0 0 1.5px var(--f); transform: translateY(-1px); }
+.pz-casilla:active:not(:disabled) { transform: scale(.97); }
+.pz-casilla:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.pz-casilla__ico {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px;
+  background: var(--fb); color: var(--f);
+}
+.pz-casilla__nombre { padding: 0 2px; }
+/* La letra que la lanza desde el teclado (§4.7). */
+.pz-casilla kbd, .pz-fila kbd {
+  padding: 0 5px; border-radius: 4px; background: #fff; color: var(--color-text-muted);
+  font: 600 10.5px/17px var(--font-mono);
+}
+.pz-casilla kbd { position: absolute; top: 5px; right: 5px; }
 /* Lo que todavía no existe se ve apagado, con su motivo en el título.
    Apagado enseña el plan; escondido lo convierte en un olvido. */
-.pz-anillo__caja.is-pendiente {
-  background: var(--surface-2);
-  color: var(--color-text-muted);
-  box-shadow: var(--sh-1);
-  cursor: not-allowed;
-  opacity: .7;
-}
-.pz-anillo__caja.is-pendiente:hover { background: var(--surface-2); color: var(--color-text-muted); transform: translate(-50%, -50%); }
+.pz-casilla.is-pendiente { opacity: .5; cursor: not-allowed; }
 
-.pz-anillo__centro {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--sp-2);
-  padding: 7px 15px;
-  border-radius: var(--r-pill);
-  background: var(--color-accent);
-  color: #fff;
-  font-size: var(--fs-400);
-  box-shadow: var(--sh-pop);
+/* «Más acciones», debajo, como un enlace. */
+.pz-tarjeta__mas {
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; min-height: 36px;
+  border: 0; border-radius: 10px; background: none; color: var(--color-accent); font: inherit; font-weight: 600; cursor: pointer;
 }
-.pz-anillo__centro b { font-weight: 700; }
-.pz-anillo__centro small { opacity: .82; font-size: var(--fs-300); }
+.pz-tarjeta__mas:hover { background: var(--accent-tint); }
+.pz-tarjeta__mas:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 
-.pz-anillo__mas {
-  pointer-events: auto;
-  min-height: 30px;
-  padding: 0 13px;
-  border: 0;
-  border-radius: var(--r-pill);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: var(--fs-300);
-  box-shadow: var(--sh-2);
-  cursor: pointer;
+/* «Más acciones»: el catálogo en lista, con buscador si es larga. */
+.pz-tarjeta__busqueda {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px; height: 38px; margin-bottom: 8px; padding: 0 10px;
+  border-radius: 10px; background: var(--pz-suave); color: var(--color-text-muted);
 }
-.pz-anillo__mas:hover { color: var(--color-accent); }
+.pz-tarjeta__busqueda:focus-within { box-shadow: 0 0 0 2px var(--color-accent); background: #fff; }
+.pz-tarjeta__buscar { flex: 1 1 auto; min-width: 0; height: 100%; border: 0; background: none; color: var(--color-text); font: inherit; outline: none; }
+.pz-tarjeta__lista { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 2px; margin: 0 -4px; padding: 0 4px; overflow-y: auto; touch-action: pan-y; }
+.pz-tarjeta__nada { margin: 8px 4px 4px; color: var(--color-text-muted); font-size: 12.5px; }
+.pz-fila {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 4px 8px;
+  border: 0; border-radius: 10px; background: none; color: var(--color-text);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.pz-fila[hidden] { display: none; }
+.pz-fila:hover:not(:disabled) { background: var(--pz-suave); }
+.pz-fila:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.pz-fila__ico { flex: 0 0 auto; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--fb); color: var(--f); }
+.pz-fila__nombre { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+.pz-fila:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Las variantes técnicas (§4.3): pastillas en dos columnas. */
+.pz-tarjeta__variantes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pz-variante {
+  min-height: 42px; padding: 6px 10px; border: 0; border-radius: 10px; background: var(--pz-suave); color: var(--color-text);
+  font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.15; text-align: center; cursor: pointer;
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.pz-variante:hover { background: rgba(0,111,148,.10); box-shadow: inset 0 0 0 1.5px var(--color-accent); }
+.pz-variante:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+
+/* «¿Entra o falla?» (§4.4): dos botones grandes. */
+.pz-tarjeta__desenlace { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pz-desen {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 54px; border: 0; border-radius: 12px;
+  font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.pz-desen:active { transform: scale(.97); }
+.pz-desen:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.pz-desen--entra { background: var(--fam-con-fondo); color: var(--fam-con); }
+.pz-desen--entra:hover { background: var(--fam-con); color: #fff; }
+.pz-desen--falla { background: #FBE4E4; color: #B91C1C; }
+.pz-desen--falla:hover { background: var(--color-danger); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pz-tarjeta { animation: none; }
+}
 
 /* ---- Los botoncitos del dedo, junto a un nodo (§5.2) -------
    Con ratón no salen: ahí el doble clic curva y Supr borra, que es más
    rápido. Con el dedo no hay ninguna de las dos cosas, así que tocar un
-   nodo saca estos dos. Van en píxeles de PANTALLA como el anillo: el
+   nodo saca estos dos. Van en píxeles de PANTALLA como el menú: el
    dedo mide lo que mide a cualquier zoom. */
 .pz-nodo { position: absolute; inset: 0; z-index: 22; pointer-events: none; }
 
@@ -175,339 +778,14 @@
 .pz-nodo__b:hover { background: var(--color-accent); color: #fff; }
 .pz-nodo__b:focus-visible { outline: 2px solid var(--color-ball); outline-offset: 2px; }
 
-/* ---- La línea de tiempo (§2.5) -----------------------------
-   La tira de abajo: los mandos, las fases y los carriles de la fase
-   activa. Va en píxeles de pantalla y no sabe nada del zoom de la
-   pista: es interfaz, no dibujo. */
-.pz-tiempo {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 12px;
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-  font-family: var(--font-body);
-  font-size: var(--fs-300);
-}
-
-.pz-tiempo__mandos { display: flex; align-items: center; gap: 6px; }
-.pz-tiempo__mando {
-  /* 44 px: los mandos se pulsan con el dedo en la tablet igual que con
-     el ratón en el ordenador (§2.6). */
-  width: 44px; height: 34px;
-  display: grid; place-items: center;
-  border: 1px solid var(--color-border); border-radius: var(--r-2);
-  background: var(--color-surface); color: var(--color-text);
-  font-size: 15px; cursor: pointer;
-}
-.pz-tiempo__mando:hover:not(:disabled) { border-color: var(--color-accent); color: var(--color-accent); }
-.pz-tiempo__mando:disabled { opacity: .4; cursor: not-allowed; }
-.pz-tiempo__dur { margin-left: 4px; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
-
-/* La tira de fases. Se desborda a lo ancho en vez de apretarse: con
-   ocho fases, unas pastillas de dos milímetros no se pulsan. */
-.pz-tiempo__fases {
-  display: flex; align-items: center; gap: 6px;
-  overflow-x: auto; padding-bottom: 2px;
-}
-.pz-fase {
-  flex: 0 0 auto;
-  min-height: 30px; padding: 0 12px;
-  border: 1px solid var(--color-border); border-radius: var(--r-pill);
-  background: var(--color-surface); color: var(--color-text);
-  font: inherit; cursor: pointer; white-space: nowrap;
-}
-.pz-fase:hover { border-color: var(--color-accent); }
-.pz-fase.is-activa { background: var(--color-accent); border-color: var(--color-accent); color: #fff; font-weight: 600; }
-/* Una fase abierta y sin dibujar se ve a medio tono: está, pero todavía
-   no tiene nada, y eso no es lo mismo que un hueco. */
-.pz-fase.is-vacia:not(.is-activa) { color: var(--color-text-muted); border-style: dashed; }
-.pz-fase--mas { margin-left: auto; font-weight: 600; color: var(--color-accent); border-color: var(--color-accent); }
-/* Las fases del camino que se está viendo, con ramas (§6.7). */
-.pz-fase.is-camino { border-color: var(--color-accent); }
-
-/* LAS RAMAS EN ÁRBOL (§6.7): tras el cruce, una debajo de otra, con su
-   nombre. Sin ramas es la fila de siempre. */
-.pz-tira__tramo, .pz-tira__rama, .pz-tira__cruce { display: flex; align-items: center; gap: 6px; }
-.pz-tira__cruce { align-items: flex-start; }
-.pz-tira__ramas { display: flex; flex-direction: column; gap: 4px; padding-left: 8px; border-left: 2px solid var(--color-border); }
-.pz-tira__nombre { color: var(--color-text-muted); font-style: italic; white-space: nowrap; }
-.pz-tira__sigue { color: var(--color-text-muted); white-space: nowrap; }
-.pz-ramas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.pz-ramas__b {
-  min-height: 28px; padding: 0 10px; border: 1px solid var(--color-border); border-radius: var(--r-pill);
-  background: var(--color-surface); color: var(--color-text); font: inherit; cursor: pointer;
-}
-.pz-ramas__b:hover { border-color: var(--color-accent); }
-.pz-ramas__b--si { border-color: var(--color-accent); color: var(--color-accent); font-weight: 600; }
-.pz-ramas__b--quitar { color: var(--color-text-muted); }
-.pz-ramas__form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.pz-ramas__campo { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-muted); }
-.pz-ramas__nombre, .pz-ramas__sel {
-  min-height: 28px; padding: 0 8px; border: 1px solid var(--color-border); border-radius: var(--r-sm);
-  background: var(--color-surface); color: var(--color-text); font: inherit;
-}
-.pz-ramas__nombre { width: 12em; }
-.pz-fase--mas:disabled { color: var(--color-text-muted); border-color: var(--color-border); cursor: not-allowed; }
-
-/* Los carriles: una fila por ficha, una barra por tramo. */
-.pz-tiempo__carriles { display: flex; flex-direction: column; gap: 4px; }
-.pz-tiempo__nada { margin: 2px 0; color: var(--color-text-muted); }
-
-.pz-carril { display: flex; align-items: center; gap: 8px; }
-.pz-carril__quien {
-  flex: 0 0 42px; text-align: right; font-weight: 600;
-  color: var(--color-text-muted); white-space: nowrap; overflow: hidden;
-}
-.pz-carril__pista {
-  position: relative; flex: 1 1 auto; height: 20px;
-  background: var(--surface-2); border-radius: var(--r-1);
-}
-.pz-carril__dur { flex: 0 0 46px; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
-
-.pz-barra {
-  position: absolute; top: 2px; bottom: 2px;
-  display: flex; align-items: center;
-  padding: 0 6px;
-  border-radius: var(--r-1);
-  background: var(--color-accent); color: #fff;
-  font-size: var(--fs-200); line-height: 1;
-  white-space: nowrap; overflow: hidden;
-  cursor: grab; touch-action: none; user-select: none;
-}
-.pz-barra:active { cursor: grabbing; }
-/* Un arranque puesto a mano deja de recalcularse (§6.3), y eso hay que
-   verlo: si no, no habría manera de saber cuáles siguen la corriente. */
-.pz-barra.is-manual { background: var(--color-ball); box-shadow: inset 0 0 0 2px var(--color-ink, #0b2330); }
-
-/* Lo que se mueve solo —la defensa del §8.4— va en gris y no se puede
-   arrastrar: está para saber que ocupa la fase, no para tocarlo. */
-.pz-carril--auto .pz-carril__quien,
-.pz-carril--auto .pz-carril__dur { opacity: 0.7; }
-.pz-barra--auto {
-  background: var(--color-border);
-  color: var(--color-text-muted);
-  box-shadow: inset 0 0 0 1px var(--color-border);
-  cursor: default;
-}
-.pz-barra--auto:active { cursor: default; }
-/* Lo que ha DICHO el entrenador (§8.5) no es lo que saldría solo: se ve
-   con el celeste de la selección, sin llegar al azul de lo dibujado. */
-.pz-barra--auto.is-dicha { background: var(--accent-soft); color: var(--color-text); }
-/* Lo que repite cada uno de una fila por rondas (§7.4.2): en gris, con un
-   filo de lo dibujado para que se vea de dónde sale. */
-.pz-barra--auto.is-ronda { box-shadow: inset 0 0 0 1px var(--color-accent); }
-
-/* La frase de la fase (§9.1), debajo de la línea de tiempo: se lee de
-   un vistazo y se puede reescribir (§9.2). */
-.pz-desc {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 0 12px 8px;
-  background: var(--color-surface);
-  font-family: var(--font-body); font-size: var(--fs-300);
-}
-.pz-desc__cabeza { display: flex; align-items: baseline; gap: 6px; color: var(--color-text-muted); }
-.pz-desc__fase { font-weight: 600; color: var(--color-text); }
-.pz-desc__volver {
-  margin-left: auto; padding: 0; border: 0; background: none;
-  color: var(--color-accent); font: inherit; cursor: pointer;
-}
-.pz-desc__volver[hidden] { display: none; }
-.pz-desc__texto {
-  width: 100%; min-height: 2.8em; resize: vertical; box-sizing: border-box;
-  padding: 6px 8px; border: 1px solid var(--color-border); border-radius: var(--r-sm);
-  background: var(--color-surface); color: var(--color-text); font: inherit; line-height: 1.35;
-}
-
-/* ---- La pantalla (§2.1) -------------------------------------
-   Barra arriba, panel de fichas a la izquierda, y la pista con la línea
-   de tiempo debajo ocupando lo que sobra. Los `min-*: 0` son los mismos
-   del hueco del lienzo: sin ellos, el canvas y su caja se realimentan y
-   la pista crece sin parar. */
-.pz-pantalla {
-  display: flex; flex-direction: column;
-  height: 100%; min-height: 0; min-width: 0;
-  background: var(--color-bg);
-  font-family: var(--font-body);
-}
-.pz-cuerpo { flex: 1 1 auto; display: flex; min-height: 0; min-width: 0; }
-.pz-centro { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.pz-centro__tiempo { flex: 0 0 auto; display: flex; flex-direction: column; }
-.pz-lienzo.is-colocando { cursor: copy; }
-
-/* ---- La barra de arriba (§2.2) ------------------------------
-   Herramientas a la izquierda y la ayuda a la derecha. Densidad alta y
-   sin sombra (§2.7): es parte del mueble, no algo que flota. Se llama
-   `pz-arriba` porque `pz-barra` ya son las barras de los carriles. */
-.pz-arriba {
-  flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp-3);
-  min-height: 44px; padding: 4px 10px;
-  background: var(--color-surface); border-bottom: 1px solid var(--color-border);
-  font-size: var(--fs-300);
-}
-.pz-arriba__herramientas { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
-.pz-arriba__b {
-  min-width: 34px; height: 34px; padding: 0 8px;
-  border: 1px solid var(--color-border); border-radius: var(--r-sm);
-  background: var(--color-surface); color: var(--color-text);
-  font: inherit; font-size: 16px; line-height: 1; cursor: pointer;
-}
-.pz-arriba__b:hover { border-color: var(--color-accent); color: var(--color-accent); }
-.pz-arriba__b:disabled { opacity: 0.4; cursor: default; }
-.pz-arriba__b:disabled:hover { border-color: var(--color-border); color: var(--color-text); }
-.pz-arriba__b:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
-.pz-arriba__sep { align-self: stretch; width: 1px; margin: 4px; background: var(--color-border); }
-.pz-arriba__canasta { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-muted); }
-.pz-arriba__canasta select {
-  height: 34px; padding: 0 6px; font: inherit; color: var(--color-text);
-  border: 1px solid var(--color-border); border-radius: var(--r-sm); background: var(--color-surface);
-}
-.pz-arriba__ayuda {
-  flex: 1 1 auto; min-width: 0; text-align: right;
-  color: var(--color-text-muted);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.pz-arriba__ayuda b { color: var(--color-text); font-weight: 600; }
-
-/* ---- El panel de las fichas (§2.3) -------------------------- */
-.pz-izq {
-  flex: 0 0 220px; overflow: auto; padding: 8px 10px;
-  background: var(--color-surface); border-right: 1px solid var(--color-border);
-  font-size: var(--fs-300);
-}
-.pz-izq__titulo {
-  margin: 6px 0; font-size: 11px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--color-text-muted);
-}
-.pz-izq__fichas { display: flex; flex-direction: column; gap: 2px; }
-.pz-izq__ficha {
-  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 4px 8px;
-  border: 1px solid transparent; border-radius: var(--r-sm);
-  background: none; color: var(--color-text); font: inherit; text-align: left;
-  cursor: grab; user-select: none;
-  /* Sin esto, arrastrar con el dedo desplaza el panel en vez de sacar la ficha. */
-  touch-action: none;
-}
-.pz-izq__ficha:hover { background: var(--surface-2); }
-.pz-izq__ficha:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
-.pz-izq__ficha.is-armada { border-color: var(--color-accent); background: rgba(0,111,148,.10); font-weight: 600; }
-.pz-izq__ficha.is-arrastrando { opacity: .5; }
-.pz-izq__nota { margin: 6px 0 12px; color: var(--color-text-muted); line-height: 1.35; }
-
-/* Las muestras imitan al símbolo de la pista, en pequeño. */
-.pz-muestra {
-  flex: 0 0 auto; display: inline-block; width: 18px; height: 18px; border-radius: 50%;
-  background: var(--c, var(--color-text-muted));
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.75), 0 0 0 1px rgba(0,25,56,.25);
-}
-.pz-muestra--balon, .pz-muestra--pelota { width: 13px; height: 13px; margin: 0 2.5px; box-shadow: 0 0 0 1px rgba(0,25,56,.25); }
-.pz-muestra--cono {
-  width: 0; height: 0; margin: 0 1px; border-radius: 0; background: none; box-shadow: none;
-  border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 16px solid var(--c);
-}
-.pz-muestra--escalera {
-  width: 18px; height: 8px; margin: 5px 0; border-radius: 1px;
-  background: repeating-linear-gradient(90deg, var(--c) 0 2px, transparent 2px 5px);
-  box-shadow: inset 0 0 0 1.5px var(--c);
-}
-
-.pz-recuento { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; margin: 0; }
-.pz-recuento dt { color: var(--color-text-muted); }
-.pz-recuento dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-
-/* ---- El panel derecho: la pestaña «Ajustes» (§2.4) ----------
-   Como el izquierdo: parte del mueble, sin tarjetas ni sombras (§2.7).
-   Plegado queda en una tira con el botón para abrirlo. */
-.pz-der {
-  flex: 0 0 250px; display: flex; flex-direction: column; min-height: 0;
-  background: var(--color-surface); border-left: 1px solid var(--color-border);
-  font-size: var(--fs-300);
-}
-.pz-der.is-plegado { flex-basis: 36px; }
-.pz-der.is-plegado .pz-der__cuerpo, .pz-der.is-plegado .pz-der__pestana { display: none; }
-.pz-der__cabecera {
-  flex: 0 0 32px; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 10px;
-  border-bottom: 1px solid var(--color-border);
-}
-.pz-der.is-plegado .pz-der__cabecera { padding: 0 3px; justify-content: center; }
-.pz-der__pestana {
-  flex: 1 1 auto; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--color-text);
-}
-.pz-der__plegar {
-  flex: 0 0 auto; width: 28px; height: 28px; border: 1px solid transparent; border-radius: var(--r-sm);
-  background: none; color: var(--color-text-muted); font: inherit; font-size: 16px; cursor: pointer;
-}
-.pz-der__plegar:hover { background: var(--surface-2); color: var(--color-text); }
-.pz-der__plegar:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
-.pz-der__cuerpo { flex: 1 1 auto; overflow: auto; padding: 8px 10px; }
-.pz-der__titulo { margin: 4px 0 6px; font-size: var(--fs-300); font-weight: 700; color: var(--color-text); }
-.pz-der__nota { margin: 6px 0; color: var(--color-text-muted); line-height: 1.35; }
-.pz-der__porque {
-  margin: 8px 0; padding: 6px 8px; border-left: 3px solid var(--color-accent);
-  background: rgba(0,111,148,.08); line-height: 1.35;
-}
-.pz-der__campo { display: flex; flex-direction: column; gap: 3px; margin: 8px 0; }
-.pz-der__campo > span { color: var(--color-text-muted); font-weight: 600; }
-.pz-der__campo select, .pz-der__numero input {
-  width: 100%; min-height: 32px; padding: 3px 6px; border: 1px solid var(--color-border);
-  border-radius: var(--r-sm); background: var(--color-bg); color: var(--color-text); font: inherit;
-}
-.pz-der__mas { margin: 10px 0 4px; }
-.pz-der__mas > summary { cursor: pointer; font-weight: 600; color: var(--color-text); padding: 4px 0; }
-.pz-der__numeros { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
-.pz-der__numero { display: grid; grid-template-columns: 1fr 84px; align-items: center; gap: 6px; }
-.pz-der__numero > span:first-child { color: var(--color-text-muted); line-height: 1.25; }
-.pz-der__unidad { display: flex; align-items: center; gap: 3px; color: var(--color-text-muted); }
-.pz-der__numero input { min-height: 28px; text-align: right; }
-.pz-der__numero input.is-cambiado { border-color: var(--color-accent); font-weight: 600; }
-.pz-der__serie {
-  margin-top: 8px; min-height: 30px; padding: 3px 10px; border: 1px solid var(--color-border);
-  border-radius: var(--r-sm); background: none; color: var(--color-text); font: inherit; cursor: pointer;
-}
-.pz-der__serie:hover { background: var(--surface-2); }
-/* Las colocaciones guardadas, en el panel izquierdo (§7.8). */
-.pz-coloc { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 8px; }
-.pz-coloc__fila { display: flex; flex-direction: column; gap: 4px; }
-.pz-coloc__acciones { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 6px; }
-.pz-coloc__b {
-  min-height: 28px; padding: 2px 8px; border: 1px solid var(--color-border); border-radius: var(--r-sm);
-  background: none; color: var(--color-text); font: inherit; cursor: pointer; text-align: left;
-}
-.pz-coloc__b:hover { background: var(--surface-2); }
-.pz-coloc__n { width: 100%; font-weight: 600; }
-.pz-coloc__fila.is-abierta .pz-coloc__n { background: var(--surface-2); }
-.pz-coloc__b--quitar { color: var(--color-danger, #b3261e); }
-.pz-coloc__b--ojo { border-color: var(--color-danger, #b3261e); color: var(--color-danger, #b3261e); font-weight: 600; }
-.pz-coloc__form { display: flex; flex-direction: column; gap: 4px; }
-.pz-coloc__nombre {
-  min-height: 30px; padding: 3px 6px; border: 1px solid var(--color-border); border-radius: var(--r-sm);
-  background: var(--color-bg); color: var(--color-text); font: inherit;
-}
-
 /* El botón «¿qué hacen los N?» junto a varios seleccionados (§3.2). */
 .pz-grupo .pz-nodo__b { width: auto; padding: 0 12px; border-radius: 22px; font-weight: 600; white-space: nowrap; }
-
-/* La fila de la fase que se edita (§6.8): va encima de la de las ramas. */
-.pz-ramas--fase { margin-bottom: 2px; }
-
-/* El trazo pinchado: su variante, su vídeo y «Nueva variante» (§4.3, §10.1). */
-.pz-der__campo .pz-der__texto {
-  width: 100%; min-height: 32px; padding: 4px 6px; border: 1px solid var(--color-border);
-  border-radius: var(--r-sm); background: var(--color-bg); color: var(--color-text); font: inherit; resize: vertical;
-}
-.pz-der__video { margin: 12px 0 4px; padding-top: 8px; border-top: 1px solid var(--color-border); }
-.pz-der__sub { margin: 2px 0 4px; font-size: var(--fs-200); font-weight: 700; color: var(--color-text); }
-.pz-der__tramo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pz-der__tramo .pz-der__campo { margin: 2px 0; }
-.pz-der__botones { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* La ficha que se arrastra desde el panel. Flota de verdad, así que
    aquí sí hay sombra (§2.7). */
 .pz-fantasma {
   position: fixed; z-index: 1000; pointer-events: none;
-  display: grid; place-items: center; width: 32px; height: 32px;
+  display: grid; place-items: center; width: 36px; height: 36px;
   transform: translate(-50%, -50%); border-radius: 50%;
   background: var(--color-surface); box-shadow: 0 4px 12px rgba(0,25,56,.25);
 }
@@ -528,3 +806,31 @@
    botoncitos de nodo, con texto: más anchos, y el que vale, marcado. */
 .pz-desenlace .pz-nodo__b { width: auto; min-width: 72px; padding: 0 12px; border-radius: 22px; font-weight: 600; }
 .pz-nodo__b.is-activo { background: var(--color-accent); color: #fff; }
+
+/* ---- Pantallas estrechas ------------------------------------
+   Con menos sitio, la ayuda de arriba y los rótulos de los botones
+   ceden: los iconos se entienden solos, y la pista manda. */
+@media (max-width: 1100px) {
+  .pz-arriba__ayuda { display: none; }
+  .pz-arriba__b--texto span { display: none; }
+  .pz-arriba__b--texto { padding: 0 9px; }
+}
+@media (max-width: 760px) {
+  .pz-tiempo { gap: 8px; padding: 8px; }
+  .pz-tiempo__mando span { display: none; }
+  .pz-tiempo__mando { padding: 0 11px; }
+  .pz-tiempo__dur { margin-left: 2px; padding-left: 8px; }
+  /* La barra de herramientas se desplaza de lado en vez de esconder lo
+     que no cabe. */
+  .pz-arriba { overflow-x: auto; scrollbar-width: none; }
+  .pz-arriba::-webkit-scrollbar { display: none; }
+}
+@media (max-width: 560px) {
+  /* En el móvil las fases bajan a su propia fila: con los mandos y
+     «Siguiente fase» al lado no les queda ancho. */
+  .pz-tiempo { flex-wrap: wrap; }
+  .pz-tiempo__mandos { order: 1; }
+  .pz-fase--mas { order: 2; margin-left: auto; padding: 0 12px; }
+  .pz-fase--mas span { display: none; }
+  .pz-tiempo__fases { order: 3; flex: 1 1 100%; }
+}

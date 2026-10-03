@@ -88,6 +88,9 @@ export const ATAJOS = Object.freeze({
   b: 'bota', p: 'pasa', t: 'tira', c: 'corta', e: 'entra', r: 'recoge', d: 'defiende', x: 'bloquea', f: 'finta',
 });
 
+/** Al revés: la letra que lanza cada acción, para enseñarla en su casilla del menú. */
+const ATAJO_DE = Object.freeze(Object.fromEntries(Object.entries(ATAJOS).map(([letra, slug]) => [slug, letra.toUpperCase()])));
+
 export class Tablero {
   /**
    * @param onTramos      (tramos) — se ha dibujado, cambiado o borrado uno
@@ -2510,7 +2513,10 @@ export class Tablero {
       y: miembros.reduce((s, m) => s + m.y, 0) / miembros.length,
     };
     this._grupo = { resto: miembros.slice(1).map((m) => m.id), paralelo: this._enParalelo };
-    this._abrirAnillo(miembros[0], centro, { opciones: comunes, centro: `Los ${miembros.length}`, conMas: false });
+    this._abrirAnillo(miembros[0], centro, {
+      opciones: comunes, centro: `Los ${miembros.length}`, conMas: false,
+      quien: { detalle: 'Lo que elijas lo hacen todos a la vez' },
+    });
     this._pintarGrupo();
     return true;
   }
@@ -2694,15 +2700,32 @@ export class Tablero {
     this.cerrar();
   }
 
+  /** De quién es el menú de acciones: su nombre, cómo está y su color (para la cabecera de la tarjeta). */
+  _quienDe(elemento, estado) {
+    const nombre = this.nombreDe(elemento);
+    const quien = {
+      nombre: elemento.kind === 'jugador' && !nombre.startsWith('el ') ? `Jugador ${nombre}` : nombre.charAt(0).toUpperCase() + nombre.slice(1),
+      detalle: { conBalon: 'Con balón', sinBalon: 'Sin balón', defensor: 'Defendiendo' }[estado] || '',
+    };
+    if (elemento.kind === 'jugador' && COLORS[elemento.equipo]) {
+      quien.color = COLORS[elemento.equipo];
+      quien.numero = numeroDe(elemento) || '';
+    }
+    return quien;
+  }
+
   _abrirAnillo(elemento, en, {
-    opciones = null, nivel = 'interior', centro = null, accion = null, conMas = null, variante = null,
+    opciones = null, nivel = 'interior', centro = null, accion = null, conMas = null, variante = null, lista = false, quien = undefined,
   } = {}) {
     const estado = estadoDe(this.estadoDe(elemento));
-    const lista = opciones || anilloDe(estado);
+    const casillas = opciones || anilloDe(estado);
     const [cx, cy] = this.lienzo.vista.toPx(en.x, en.y);
     this._ancla = { elemento, en, estado };
     this.anillo.abrir({
-      cx, cy, opciones: lista, nivel, centro, accion, variante,
+      cx, cy, nivel, centro, accion, variante, lista,
+      /* Cada acción enseña la letra que la lanza sin abrir el menú (§4.7). */
+      opciones: nivel === 'interior' ? casillas.map((o) => (ATAJO_DE[o.slug] ? { ...o, atajo: ATAJO_DE[o.slug] } : o)) : casillas,
+      quien: quien === undefined ? this._quienDe(elemento, estado) : quien,
       conMas: conMas === null ? resto(estado).length > 0 : conMas,
     });
     /* Y el foco vuelve al lienzo, como hacen Dibujo y Nodos al entrar.
@@ -2729,8 +2752,9 @@ export class Tablero {
         opciones: resto(estado).map((a) => ({
           slug: a.slug, nombre: a.nombre, icono: ICONOS[a.slug] || '•',
           descripcion: a.descripcion, accion: a,
+          atajo: ATAJO_DE[a.slug] || null,
         })),
-        centro: 'Más acciones',
+        lista: true,
         conMas: false,
       });
       return;
@@ -2762,6 +2786,7 @@ export class Tablero {
         nivel: 'exterior',
         centro: accion.nombre,
         accion: slug,
+        quien: { icono: slug, familia: accion.familia },
       });
       return;
     }
@@ -2778,6 +2803,7 @@ export class Tablero {
           { slug: 'falla', nombre: 'Falla', icono: '✗', descripcion: 'Falla: el balón rebota y queda suelto' },
         ],
         nivel: 'desenlace', centro: `${accion.nombre}: ¿entra?`, accion: slug, variante, conMas: false,
+        quien: { icono: slug, familia: accion.familia },
       });
       return;
     }

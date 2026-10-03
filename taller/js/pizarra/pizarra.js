@@ -11,11 +11,14 @@
    el panel no conoce la pista. Aquí se cablean.
 
    ── LO QUE TODAVÍA NO ESTÁ, Y DÓNDE LLEGA ───────────────────
-   El panel derecho tiene de momento la pestaña «Ajustes», y solo con lo
-   de la defensa (capa 5). Sus otras pestañas, los paneles
-   redimensionables, las zonas y «Traer», deshacer y rehacer: capas 6, 7
-   y 10. La canasta, que en el §2.4 vive en «Ajustes del ejercicio», va de
-   momento en la barra de arriba.
+   Las zonas y «Traer». La canasta, que en el §2.4 vive en «Ajustes del
+   ejercicio», va de momento en la barra de arriba.
+
+   ── EL REPARTO ──────────────────────────────────────────────
+   La pista manda: lo que va debajo de ella es una tira de una sola fila
+   (la línea de tiempo) y todo lo demás —ajustes, fases con sus carriles,
+   y el texto de la fase— está en las pestañas del panel derecho. Los dos
+   paneles se pliegan y se ensanchan arrastrando su borde (§2.1).
 
    Toca el DOM, así que no tiene banco propio. Se prueba en
    dev/pizarra.html y dentro del asistente.
@@ -26,14 +29,27 @@ import { Lienzo } from './lienzo.js';
 import { Tablero } from './tablero.js';
 import { LineaTiempo } from './linea-tiempo.js';
 import { Descripcion } from './paneles/descripcion.js';
+import { PanelFases } from './paneles/fases.js';
 import { PanelIzquierdo } from './paneles/izquierda.js';
 import { PanelDerecho } from './paneles/derecha.js';
+import { Divisor } from './divisor.js';
+import { icono } from './iconos.js';
 import { modeloAjustes } from './paneles/ajustes-modelo.js';
 import { recuento } from './elementos.js';
 import { History } from '../history.js';
 import { ponerVariantesDelClub, variantesDelClub } from './repertorio.js';
 import { claveDeVideo, videoDeLoEscrito, validarVarianteNueva } from './variantes.js';
 import { nombreDePlantilla } from './plantillas.js';
+
+/** Lo que mide cada panel, en píxeles: lo menos que puede ser, lo más y
+ *  con lo que empieza (§2.1). Se ensanchan arrastrando su borde. */
+const ANCHOS = {
+  izq: { min: 168, max: 340, defecto: 224 },
+  der: { min: 280, max: 560, defecto: 340 },
+};
+
+/** Lo que ocupa cada borde que se arrastra a un lado de la pista. */
+const GROSOR_DIVISOR = 8;
 
 /* Los aros se llaman por su número, que es como los ve el entrenador
    sobre la pista (la misma convención que el resto del Taller). */
@@ -97,6 +113,7 @@ export class Pizarra {
       onGuardarColocacion: (nombre) => this.guardarPlantilla('colocacion', nombre),
       onPonerColocacion: (p, modo) => this.ponerColocacion(p, modo),
       onQuitarPlantilla: (p) => this.quitarPlantilla(p),
+      onPlegar: (plegado) => this._plegado('izq', plegado),
     });
 
     /* Antes que el Tablero: al montarse ya avisa de cambios, y el panel
@@ -125,15 +142,16 @@ export class Pizarra {
       onVideo: (clave, escrito) => this.guardarVideo(clave, escrito),
       onQuitarVideo: (clave) => this.quitarVideo(clave),
       onNuevaVariante: (accion, escrito, tramo) => this.nuevaVariante(accion, escrito, tramo),
+      onPlegar: (plegado) => this._plegado('der', plegado),
     });
 
     const aros = Object.keys(this.lienzo.vista.pista?.baskets || {});
     this.tablero = new Tablero(this.lienzo, {
       canasta: aros.includes(canasta) ? canasta : (aros[0] || 'norte'),
       onAyuda: (t) => { this._ayudaTablero = t || ''; this._pintarAyuda(); },
-      onTramos: () => { this.linea?.refrescar(); this.descripcion?.refrescar(); this._cambio(); },
+      onTramos: () => { this._refrescarTiempo(); this.descripcion?.refrescar(); this._cambio(); },
       onFases: (fases, enCurso, huerfanos) => {
-        this.linea?.refrescar();
+        this._refrescarTiempo();
         this.descripcion?.refrescar();
         if (huerfanos && huerfanos.length) {
           const n = huerfanos.length;
@@ -151,48 +169,69 @@ export class Pizarra {
 
     /* ---- la barra de arriba (§2.2) ---- */
     this.elAyuda = h('span', { class: 'pz-arriba__ayuda', 'aria-live': 'polite' });
-    const boton = (texto, titulo, alHacer) => h('button', {
-      class: 'pz-arriba__b', type: 'button', title: titulo, 'aria-label': titulo, onClick: alHacer,
-    }, texto);
+    const boton = (dibujo, titulo, alHacer, texto = null) => h('button', {
+      class: 'pz-arriba__b' + (texto ? ' pz-arriba__b--texto' : ''), type: 'button', title: titulo, 'aria-label': titulo, onClick: alHacer,
+    }, icono(dibujo, { size: 18 }), texto ? h('span', null, texto) : null);
+    const grupo = (...botones) => h('div', { class: 'pz-arriba__grupo' }, ...botones);
     /* Deshacer y rehacer (§2.2). */
-    this._bDeshacer = boton('↶', 'Deshacer (Ctrl+Z)', () => this.deshacer());
-    this._bRehacer = boton('↷', 'Rehacer (Ctrl+Mayús+Z)', () => this.rehacer());
+    this._bDeshacer = boton('deshacer', 'Deshacer (Ctrl+Z)', () => this.deshacer());
+    this._bRehacer = boton('rehacer', 'Rehacer (Ctrl+Mayús+Z)', () => this.rehacer());
+    this._bFantasma = boton('fantasma', 'Ver u ocultar el fantasma de la fase anterior (G)', () => this._alternarFantasma());
     const herramientas = h('div', { class: 'pz-arriba__herramientas' },
-      this._bDeshacer, this._bRehacer,
-      h('span', { class: 'pz-arriba__sep' }),
-      boton('−', 'Alejar (−)', () => this.lienzo.alejar()),
-      boton('+', 'Acercar (+)', () => this.lienzo.acercar()),
-      boton('⛶', 'Encajar la pista (0)', () => this.lienzo.encajar()),
-      h('span', { class: 'pz-arriba__sep' }),
-      boton('▶', 'Ver la jugada desde el principio (Espacio)', () => this.ver()),
-      boton('👻', 'Ver u ocultar el fantasma de la fase anterior (G)', () => this.tablero.verFantasma(!this.tablero.fantasma)));
+      grupo(this._bDeshacer, this._bRehacer),
+      grupo(
+        boton('alejar', 'Alejar (−)', () => this.lienzo.alejar()),
+        boton('acercar', 'Acercar (+)', () => this.lienzo.acercar()),
+        boton('encajar', 'Encajar la pista (0)', () => this.lienzo.encajar())),
+      grupo(this._bFantasma),
+      boton('reproducir', 'Ver la jugada desde el principio (Espacio)', () => this.ver(), 'Reproducir'));
+    this._pintarFantasma();
     /* Solo con dos aros hay nada que elegir: en media pista sobra. */
     if (aros.length > 1) {
       const sel = h('select', { 'aria-label': 'Canasta a la que se ataca' },
         ...aros.map((k) => h('option', { value: k, selected: k === this.tablero.canasta }, NOMBRE_CANASTA[k] || k)));
       /* La frase nombra las zonas respecto al aro que se ataca (§9.1). */
       sel.addEventListener('change', () => { this.tablero.setCanasta(sel.value); this.descripcion?.refrescar(); this._cambio(); });
-      herramientas.append(h('span', { class: 'pz-arriba__sep' }), h('label', { class: 'pz-arriba__canasta' }, 'Ataca a', sel));
+      herramientas.append(h('label', { class: 'pz-arriba__canasta' }, 'Ataca a', sel));
     }
 
     this.elAviso = h('div', { class: 'pz-aviso', role: 'status' });
     this.elAviso.hidden = true;
     const tiempo = h('div', { class: 'pz-centro__tiempo' });
+    /* La pantalla se monta vacía y se llena después: los bordes que se
+       arrastran guardan sus anchos en una variable CSS de ELLA, y por
+       tanto la necesitan antes de poder crearse. */
+    const cuerpo = h('div', { class: 'pz-cuerpo' });
     this.el = h('div', { class: 'pz-pantalla' },
       h('div', { class: 'pz-arriba' }, herramientas, this.elAyuda),
-      h('div', { class: 'pz-cuerpo' },
-        this.panel.el,
-        h('div', { class: 'pz-centro' }, this.lienzo.el, this.elAviso, tiempo),
-        this.derecha.el));
-    this.linea = new LineaTiempo(tiempo, this.tablero, {
+      cuerpo);
+    const dePanel = (lado, panel, otro) => new Divisor({
+      pantalla: this.el, lado, panel: panel.el, limites: ANCHOS[lado],
+      otro: () => otro.el.offsetWidth + 2 * GROSOR_DIVISOR,
+      onAncho: () => this._medirSiCuelga(),
+      etiqueta: lado === 'izq' ? 'Ancho del panel de fichas' : 'Ancho del panel derecho',
+    });
+    this._divisores = { izq: dePanel('izq', this.panel, this.derecha), der: dePanel('der', this.derecha, this.panel) };
+    this._plegado('izq', this.panel.plegado);
+    this._plegado('der', this.derecha.plegado);
+    cuerpo.append(
+      this.panel.el, this._divisores.izq.el,
+      h('div', { class: 'pz-centro' }, this.lienzo.el, this.elAviso, tiempo),
+      this._divisores.der.el, this.derecha.el);
+
+    /* La tira de abajo, solo con lo de cada momento. Lo de la fase —sus
+       carriles y lo que se le puede hacer— y la frase, en el panel de la
+       derecha (§2.4). */
+    this.linea = new LineaTiempo(tiempo, this.tablero);
+    this.panelFases = new PanelFases(this.derecha.huecoDe('fases'), this.tablero, {
       /* Las fases guardadas (§7.8). */
       plantillas: () => this.plantillasDe('fase'),
       onGuardarFase: (nombre) => this.guardarPlantilla('fase', nombre),
       onInsertarFase: (p, mapa) => this.insertarFaseGuardada(p, mapa),
       onQuitarPlantilla: (p) => this.quitarPlantilla(p),
     });
-    /* Y debajo, lo que pasa en la fase, en palabras (§9.1). */
-    this.descripcion = new Descripcion(tiempo, this.tablero);
+    /* La frase de lo que pasa en la fase, en palabras (§9.1). */
+    this.descripcion = new Descripcion(this.derecha.huecoDe('texto'), this.tablero);
 
     /* Con una ficha pulsada en el panel, pinchar la pista la pone. Va por
        delante de todo —dibujar incluido— porque mientras hay una
@@ -252,7 +291,7 @@ export class Pizarra {
 
   _pintarPlantillas() {
     this.panel?.colocaciones?.(this.plantillasDe('colocacion'));
-    this.linea?.refrescar();
+    this._refrescarTiempo();
   }
 
   /**
@@ -307,7 +346,7 @@ export class Pizarra {
     const n = this.tablero.ponerColocacion(plantilla.datos, modo);
     if (!n) return false;
     this.panel.recuento(recuento(this.tablero.fichas.elementos));
-    this.linea.refrescar();
+    this._refrescarTiempo();
     this.descripcion.refrescar();
     this._cambio();
     return true;
@@ -375,7 +414,7 @@ export class Pizarra {
     try { creada = (await this.datos.crearVariante(r.variante)) || r.variante; } catch (e) { this.avisar(`La variante no se ha creado: ${e.message}`); return null; } finally { this._creando = false; }
     (this._variantesCreadas ||= []).push(creada);
     ponerVariantesDelClub([...variantesDelClub(), creada]);
-    let aviso = `«${creada.nombre}» ya sale en el anillo, para todo el club.`;
+    let aviso = `«${creada.nombre}» ya sale en el menú de acciones, para todo el club.`;
     if (r.video) {
       const clave = claveDeVideo(accion, creada.slug);
       try { await this.datos.guardarVideo(clave, r.video); this._ponerVideo(clave, r.video); } catch (e) { aviso += ` Su vídeo no se ha guardado: ${e.message}`; }
@@ -394,7 +433,7 @@ export class Pizarra {
    *  por lo mismo que `Lienzo.medir`. */
   medir() {
     this.lienzo.medir();
-    this.linea.refrescar();
+    this._refrescarTiempo();
     this.descripcion.refrescar();
   }
 
@@ -415,7 +454,7 @@ export class Pizarra {
        decir lo mismo, o enseñaría un aro y se atacaría el otro. */
     this._sincronizarCanasta();
     this.panel.recuento(recuento(this.tablero.fichas.elementos));
-    this.linea.refrescar();
+    this._refrescarTiempo();
     this.descripcion.refrescar();
     this._refrescarAjustes();
     /* Los avisos de la carga y el de la defensa, JUNTOS: al abrir ya se ha
@@ -466,7 +505,7 @@ export class Pizarra {
       if (foto.fase) t.irAFaseId(foto.fase);
       this._sincronizarCanasta();
       this.panel.recuento(recuento(t.fichas.elementos));
-      this.linea?.refrescar();
+      this._refrescarTiempo();
       this.descripcion?.refrescar();
       this._vigilarPapeles();
       this._refrescarAjustes();
@@ -539,7 +578,7 @@ export class Pizarra {
     if (t.dibujo.dibujando || t.nodos.editando || t.companero.eligiendo) return;
     /* Mantener la tecla pulsada no repite: una pulsación, una vez. */
     if (ev.key === ' ') { ev.preventDefault(); if (!ev.repeat) this.ver(); }
-    else if (k === 'g') { ev.preventDefault(); if (!ev.repeat) t.verFantasma(!t.fantasma); }
+    else if (k === 'g') { ev.preventDefault(); if (!ev.repeat) this._alternarFantasma(); }
   }
 
   /* El Espacio suelto, sin haber movido la pista, reproduce. */
@@ -557,6 +596,40 @@ export class Pizarra {
 
   /** Cuántos hay de cada cosa, para los requisitos del paso 3. */
   recuento() { return recuento(this.tablero.fichas.elementos); }
+
+  /** Los dos paneles se pliegan solos y a mano: con uno plegado, su borde
+   *  no tiene nada que arrastrar. */
+  _plegado(lado, plegado) {
+    const d = this._divisores && this._divisores[lado];
+    if (d) d.el.hidden = !!plegado;
+    this._medirSiCuelga();
+  }
+
+  /** Vuelve a medir la pista cuando cambia el espacio que le dejan los
+   *  paneles. Antes de estar en el DOM no hay nada que medir: sale 0×0. */
+  _medirSiCuelga() {
+    if (this.el && this.el.isConnected) this.lienzo.medir();
+  }
+
+  /** Lo de debajo de la pista que depende de las fases: la tira y la
+   *  pestaña «Fases». */
+  _refrescarTiempo() {
+    this.linea?.refrescar();
+    this.panelFases?.refrescar();
+  }
+
+  /** El fantasma de la fase anterior (§2.2), y el botón que dice si está. */
+  _alternarFantasma() {
+    this.tablero.verFantasma(!this.tablero.fantasma);
+    this._pintarFantasma();
+  }
+
+  _pintarFantasma() {
+    if (!this._bFantasma) return;
+    const on = !!this.tablero.fantasma;
+    this._bFantasma.classList.toggle('is-activo', on);
+    this._bFantasma.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
 
   /** El ▶ de la barra: la jugada entera si hay varias fases, y si no la única. */
   ver() {
@@ -690,7 +763,9 @@ export class Pizarra {
     this._quitarGesto?.();
     this.el.removeEventListener('keydown', this._onTecla);
     this.linea.destroy();
+    this.panelFases.destroy();
     this.descripcion.destroy();
+    for (const d of Object.values(this._divisores || {})) d.destroy();
     this.tablero.destroy();
     this.lienzo.destroy();
     this.el.remove();

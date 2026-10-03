@@ -21,6 +21,10 @@
 
 import { h } from '../../ui/dom.js';
 import { COLORS } from '../../canvas/colors.js';
+import { icono } from '../iconos.js';
+
+/** Por debajo de este ancho de ventana el panel empieza plegado (§2.6). */
+const ANCHO_PLEGADO_BAJO = 1100;
 
 /** Lo que se puede sacar a la pista, en el orden del §2.3. */
 export const FICHAS = [
@@ -42,10 +46,10 @@ const UMBRAL_PX = 6;
 /* Las zonas no están porque todavía no se pueden poner (capa 6): una
    fila que siempre dice cero solo hace dudar. */
 const RECUENTO = [
-  ['jugadores', 'Jugadores en juego'],
-  ['balones', 'Balones'],
-  ['conos', 'Conos'],
-  ['material', 'Material'],
+  ['jugadores', 'Jugadores', 'Jugadores en juego'],
+  ['balones', 'Balones', 'Balones'],
+  ['conos', 'Conos', 'Conos'],
+  ['material', 'Material', 'Material (escaleras y pelotas)'],
 ];
 
 export class PanelIzquierdo {
@@ -58,8 +62,10 @@ export class PanelIzquierdo {
    *                 (una promesa de) lo guardado, o null
    * @param onPonerColocacion (plantilla, 'sustituir'|'anadir')
    * @param onQuitarPlantilla (plantilla)
+   * @param onPlegar (plegado) — el panel se ha plegado o desplegado
    */
-  constructor({ onArmar = null, onSoltar = null, onGuardarColocacion = null, onPonerColocacion = null, onQuitarPlantilla = null } = {}) {
+  constructor({ onArmar = null, onSoltar = null, onGuardarColocacion = null, onPonerColocacion = null, onQuitarPlantilla = null, onPlegar = null } = {}) {
+    this.onPlegar = onPlegar;
     this.onArmar = onArmar;
     this.onSoltar = onSoltar;
     this.onGuardarColocacion = onGuardarColocacion;
@@ -71,31 +77,56 @@ export class PanelIzquierdo {
     this.armada = null;
     this._tragar = false;
 
+    /* Los jugadores y el material, cada uno en su cuadrícula: lo primero
+       que se busca es de qué equipo es el jugador, y lo segundo es otra
+       cosa. */
     this._botones = new Map();
-    const lista = h('div', { class: 'pz-izq__fichas' });
+    const jugadores = h('div', { class: 'pz-izq__rejilla' });
+    const material = h('div', { class: 'pz-izq__rejilla' });
     for (const f of FICHAS) {
       const b = this._boton(f);
       this._botones.set(f, b);
-      lista.append(b);
+      (f.kind === 'jugador' ? jugadores : material).append(b);
     }
 
     this._cifras = {};
     const cuenta = h('dl', { class: 'pz-recuento' });
-    for (const [clave, texto] of RECUENTO) {
+    for (const [clave, texto, largo] of RECUENTO) {
       this._cifras[clave] = h('dd', null, '0');
-      cuenta.append(h('dt', null, texto), this._cifras[clave]);
+      cuenta.append(h('div', { class: 'pz-recuento__dato', title: largo }, h('dt', null, texto), this._cifras[clave]));
     }
 
+    this._plegar = h('button', { class: 'pz-izq__plegar', type: 'button', onClick: () => this.plegar(!this.plegado) });
     this.el = h('aside', { class: 'pz-izq', 'aria-label': 'Fichas' },
-      h('h3', { class: 'pz-izq__titulo' }, 'Fichas'),
-      lista,
-      h('p', { class: 'pz-izq__nota' }, 'Arrástralas a la pista, o púlsalas y pincha donde van.'),
-      h('h3', { class: 'pz-izq__titulo' }, 'En la pista'),
-      cuenta,
-      h('h3', { class: 'pz-izq__titulo' }, 'Colocaciones'),
-      this._hueco = h('div', { class: 'pz-coloc' }),
-      this._formGuardar());
+      h('div', { class: 'pz-izq__cabecera' },
+        h('span', { class: 'pz-izq__pestana' }, 'Fichas'),
+        this._plegar),
+      h('div', { class: 'pz-izq__cuerpo' },
+        h('h3', { class: 'pz-izq__titulo' }, 'Jugadores'),
+        jugadores,
+        h('h3', { class: 'pz-izq__titulo' }, 'Material'),
+        material,
+        h('p', { class: 'pz-izq__nota' }, 'Arrástralas a la pista, o púlsalas y pincha donde van.'),
+        h('h3', { class: 'pz-izq__titulo' }, 'En la pista'),
+        cuenta,
+        h('h3', { class: 'pz-izq__titulo' }, 'Colocaciones'),
+        this._hueco = h('div', { class: 'pz-coloc' }),
+        this._formGuardar()));
+    const ancho = typeof window !== 'undefined' ? window.innerWidth : 0;
+    this.plegar(ancho > 0 && ancho < ANCHO_PLEGADO_BAJO);
     this.colocaciones([]);
+  }
+
+  /** Pliega el panel a una tira de iconos, o lo despliega. Plegado, las
+   *  fichas se siguen pudiendo sacar: lo que se esconde es el texto. */
+  plegar(on) {
+    this.plegado = !!on;
+    this.el.classList.toggle('is-plegado', this.plegado);
+    this._plegar.replaceChildren(icono(this.plegado ? 'derecha' : 'izquierda', { size: 16 }));
+    this._plegar.title = this.plegado ? 'Abrir el panel de fichas' : 'Plegar el panel';
+    this._plegar.setAttribute('aria-label', this._plegar.title);
+    this._plegar.setAttribute('aria-expanded', this.plegado ? 'false' : 'true');
+    this.onPlegar?.(this.plegado);
   }
 
   /* Guardar la colocación de ahora, con un nombre. */

@@ -1,139 +1,120 @@
 /* ============================================================
-   pizarra/anillo.js — el menú que sale alrededor de la ficha (§4).
+   pizarra/anillo.js — el menú de acciones que sale junto a la ficha (§4).
 
-   La GEOMETRÍA es pura y la prueba en Node
-   taller/tools/eval-anillo.mjs; el DOM va encima, en la clase de
-   abajo.
+   Sigue llamándose «anillo» por lo que fue: seis casillas repartidas en
+   círculo alrededor de la ficha. Ahora es una TARJETA anclada junto a
+   ella, con las casillas en cuadrícula. El círculo tenía un fallo que
+   no se arreglaba con geometría: las casillas son anchas y de ancho
+   desigual («Vuelve a la fila» mide el doble que «Corta»), así que, por
+   bien repartidas que estuvieran, se pisaban entre sí y con la ficha,
+   y cuanto más cerca del borde, peor. Una cuadrícula no se pisa nunca.
 
-   ── EL PROBLEMA QUE RESUELVE LA PARTE PURA ──────────────────
-   Un anillo repartido en 360° alrededor de una ficha se sale de la
-   pantalla en cuanto la ficha está cerca de un borde — y en una
-   pizarra media colocación está pegada a la línea de fondo o a la
-   banda. Las casillas que se salen no se pueden pulsar, y las que se
-   quedan a medias se leen cortadas.
-
-   Así que el anillo se VUELCA: cuando no cabe entero, las casillas se
-   reparten en un arco que mira hacia donde hay sitio, o sea hacia el
-   centro de la ventana. Sigue siendo un anillo, sigue estando
-   alrededor de la ficha, y entra siempre.
+   La GEOMETRÍA —en qué lado de la ficha cabe la tarjeta y adónde apunta
+   su flecha— es pura y la prueba en Node taller/tools/eval-anillo.mjs;
+   el DOM va encima, en la clase de abajo.
 
    ── POR QUÉ EN PÍXELES DE PANTALLA ──────────────────────────
    Todo lo de aquí va en píxeles de la ventana y NO escala con el zoom.
    Un menú que se hiciera enorme al acercar sería absurdo: el texto de
    una casilla mide lo que mide, y el dedo también.
+
+   ── LOS CUATRO ASPECTOS ─────────────────────────────────────
+   La misma tarjeta sirve para los cuatro momentos de §4, y lo único que
+   cambia es lo que lleva dentro:
+     · interior   las acciones de la ficha, en cuadrícula de 3×2
+     · lista      «⋯ más»: el catálogo entero, en lista (con buscador si es larga)
+     · exterior   las variantes técnicas de la acción elegida (§4.3)
+     · desenlace  «¿entra o falla?» de un tiro (§4.4)
    ============================================================ */
 
 import { h } from '../ui/dom.js';
+import { icono, nombreDeIcono } from './iconos.js';
+import { normalizarNombre } from '../ia/acciones.js';
 
-/** Radio del anillo, como fracción del lado MENOR de la ventana. Del
- *  lado menor y no del ancho: en un móvil en vertical, un radio sacado
- *  del alto pondría las casillas fuera por los lados. */
-export const RADIO_INTERIOR = 0.19;
-export const RADIO_EXTERIOR = 0.27;
+/** Del centro de la ficha al borde de la tarjeta: lo que hace falta
+ *  para no taparla, con la flecha incluida. */
+export const HUECO = 34;
+/** Aire mínimo contra el borde de la ventana. */
+export const MARGEN = 8;
+/** Lo más cerca de una esquina de la tarjeta a lo que puede ir la flecha:
+ *  una flecha en la esquina redondeada se vería rota. */
+export const RADIO_ESQUINA = 22;
+/** Cuántas acciones ha de haber para que «más» lleve buscador. */
+export const MIN_PARA_BUSCAR = 9;
 
-/** Y sus topes en píxeles, para que no sea ridículo en una ventana
- *  pequeña ni desmesurado en una grande. */
-export const RADIO_MIN = 76;
-export const RADIO_MAX = 170;
-
-/** Cuánto abre el arco cuando el anillo se vuelca. 170° deja las
- *  casillas repartidas casi en medio círculo: más y las de los
- *  extremos vuelven a acercarse al borde; menos y se amontonan. */
-export const APERTURA = 170;
-
-const TAU = Math.PI * 2;
-const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const LADOS = ['derecha', 'izquierda', 'abajo', 'arriba'];
+const limitar = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 /**
- * El radio que toca para esta ventana.
+ * Dónde va la tarjeta, y a qué lado de la ficha.
  *
- * El tope se aplica al anillo INTERIOR y el exterior sale
- * proporcional. Aplicándoselo a los dos por separado, en una pantalla
- * grande los dos chocaban contra el mismo techo y salían del mismo
- * tamaño — o sea que las variantes se dibujarían encima de las
- * acciones, que es exactamente lo que el segundo anillo existe para
- * evitar.
- */
-export function radioDe(vw, vh, fraccion = RADIO_INTERIOR) {
-  const base = clamp(Math.min(vw, vh) * RADIO_INTERIOR, RADIO_MIN, RADIO_MAX);
-  return base * (fraccion / RADIO_INTERIOR);
-}
-
-/**
- * Dónde va cada casilla.
+ * Se prueba por este orden —derecha, izquierda, abajo, arriba— y se queda
+ * el primer lado en el que cabe entera sin tapar la ficha. Si no cabe en
+ * ninguno (una ventana más pequeña que la tarjeta), se queda el lado al
+ * que menos le falta, y entonces sí se recorta contra el borde: una
+ * tarjeta que tapa la ficha se pulsa; una fuera de pantalla, no.
  *
- * @param n        cuántas
- * @param cx,cy    el centro (la ficha), en píxeles de la ventana
- * @param vw,vh    la ventana
- * @param radio    del anillo
- * @param ancho,alto  el tamaño de una casilla, para no dejarla a medias
- * @param margen   aire mínimo contra el borde
- * @returns [{ x, y, angulo }] — el centro de cada casilla
+ * @param cx,cy        el centro de la ficha, en píxeles de la ventana
+ * @param vw,vh        la ventana
+ * @param ancho,alto   el tamaño de la tarjeta, ya medido
+ * @param margen,hueco ver arriba
+ * @returns { left, top, lado, flecha } — `lado` es el de la ficha en el que
+ *          se pone la tarjeta; `flecha`, a cuántos píxeles del borde de la
+ *          tarjeta (de su esquina superior o izquierda) apunta a la ficha.
  */
-export function repartir(n, {
-  cx, cy, vw, vh, radio, ancho = 110, alto = 34, margen = 8,
-} = {}) {
-  if (!(n > 0)) return [];
-  const mx = ancho / 2 + margen;
-  const my = alto / 2 + margen;
-  /* El anillo se aplasta en vertical a propósito: las casillas son
-     anchas y bajas, así que repartirlas en un círculo perfecto deja
-     las de arriba y abajo demasiado lejos y las de los lados
-     demasiado cerca. */
-  const ry = radio * 0.82;
-
-  const dentro = (p) => p.x >= mx && p.x <= vw - mx && p.y >= my && p.y <= vh - my;
-  const en = (ang) => ({ x: cx + Math.cos(ang) * radio, y: cy + Math.sin(ang) * ry, angulo: ang });
-
-  // 1) el reparto de siempre: en círculo, empezando por arriba
-  const completo = [];
-  for (let i = 0; i < n; i++) completo.push(en(-Math.PI / 2 + (i * TAU) / n));
-  if (completo.every(dentro)) return completo;
-
-  /* 2) no cabe: se vuelca hacia donde hay sitio, que es hacia el
-     centro de la ventana. Con la ficha justo en el centro —imposible
-     que no quepa, pero por si la ventana es diminuta— se abre hacia
-     abajo, que es donde suele haber más. */
-  const hx = vw / 2 - cx;
-  const hy = vh / 2 - cy;
-  const haciaDentro = (Math.abs(hx) < 1e-6 && Math.abs(hy) < 1e-6) ? Math.PI / 2 : Math.atan2(hy, hx);
-
-  const arco = (APERTURA * Math.PI) / 180;
-  const paso = n > 1 ? arco / (n - 1) : 0;
-  const salida = [];
-  for (let i = 0; i < n; i++) {
-    const ang = haciaDentro - arco / 2 + i * paso;
-    const p = en(ang);
-    /* Y aun así se recorta: con la ventana muy estrecha, ni el arco
-       entero cabe. Recortar mueve la casilla de su sitio ideal, pero
-       una casilla desplazada se pulsa y una fuera de pantalla no. */
-    salida.push({ x: clamp(p.x, mx, Math.max(mx, vw - mx)), y: clamp(p.y, my, Math.max(my, vh - my)), angulo: ang });
-  }
-  return salida;
-}
-
-/** Dónde va la pastilla de «⋯ más»: debajo del anillo, y si no cabe,
- *  encima. Nunca dentro, que taparía la ficha. */
-export function posicionMas({ cx, cy, vw, vh, radio, alto = 30, margen = 8 }) {
-  const abajo = cy + radio * 0.82 + alto + margen;
-  const arriba = cy - radio * 0.82 - alto - margen;
-  const y = abajo <= vh - alto / 2 - margen ? abajo : arriba;
-  return {
-    x: clamp(cx, 60, Math.max(60, vw - 60)),
-    y: clamp(y, alto / 2 + margen, Math.max(alto / 2 + margen, vh - alto / 2 - margen)),
+export function colocarTarjeta({ cx, cy, vw, vh, ancho, alto, margen = MARGEN, hueco = HUECO } = {}) {
+  /* Lo que sobra a cada lado una vez descontada la tarjeta: positivo si
+     cabe, negativo si falta. */
+  const sobra = {
+    derecha: vw - margen - (cx + hueco) - ancho,
+    izquierda: cx - hueco - margen - ancho,
+    abajo: vh - margen - (cy + hueco) - alto,
+    arriba: cy - hueco - margen - alto,
   };
+  /* Y a lo ancho de ese lado, que la tarjeta quepa en la ventana. */
+  const cabeDeLado = (lado) => (lado === 'derecha' || lado === 'izquierda'
+    ? alto + 2 * margen <= vh
+    : ancho + 2 * margen <= vw);
+  let lado = LADOS.find((l) => sobra[l] >= 0 && cabeDeLado(l));
+  if (!lado) lado = LADOS.reduce((mejor, l) => (sobra[l] > sobra[mejor] ? l : mejor), LADOS[0]);
+
+  const horizontal = lado === 'derecha' || lado === 'izquierda';
+  const xMax = Math.max(margen, vw - ancho - margen);
+  const yMax = Math.max(margen, vh - alto - margen);
+  let left;
+  let top;
+  if (lado === 'derecha') { left = cx + hueco; top = cy - alto / 2; }
+  else if (lado === 'izquierda') { left = cx - hueco - ancho; top = cy - alto / 2; }
+  else if (lado === 'abajo') { left = cx - ancho / 2; top = cy + hueco; }
+  else { left = cx - ancho / 2; top = cy - hueco - alto; }
+  left = limitar(left, margen, xMax);
+  top = limitar(top, margen, yMax);
+
+  const flecha = horizontal
+    ? limitar(cy - top, RADIO_ESQUINA, Math.max(RADIO_ESQUINA, alto - RADIO_ESQUINA))
+    : limitar(cx - left, RADIO_ESQUINA, Math.max(RADIO_ESQUINA, ancho - RADIO_ESQUINA));
+  return { left, top, lado, flecha };
 }
 
 /* ============================================================
    La parte con DOM
    ============================================================ */
 
+/** Lo que se dice bajo el título, según el aspecto. */
+const PIE = {
+  exterior: 'o pincha ya en la pista',
+  desenlace: 'pincha fuera para cancelar',
+};
+
+/** El dibujo de cada desenlace de un tiro. */
+const ICONO_DESENLACE = { entra: 'ok', falla: 'cerrar' };
+
 /**
- * El anillo, montado sobre una capa que cubre el lienzo.
+ * El menú de acciones, montado sobre una capa que cubre el lienzo.
  *
- * Dos niveles (§4.3): el interior con las seis acciones, y al elegir
- * una que tenga variantes, el exterior con el «cómo». El centro pasa a
- * ser la acción elegida, y se puede saltar el segundo nivel pinchando
+ * Dos niveles (§4.3): el interior con las acciones, y al elegir una que
+ * tenga variantes, el exterior con el «cómo». El título pasa a ser la
+ * acción elegida, y se puede saltar el segundo nivel pinchando
  * directamente en la pista.
  */
 export class Anillo {
@@ -147,26 +128,26 @@ export class Anillo {
     this.onElegir = onElegir;
     this.onCerrar = onCerrar;
     this.capa = null;
-    this.estado = null;   // { cx, cy, opciones, nivel, accion }
+    this.tarjeta = null;
+    this.estado = null;   // { cx, cy, opciones, nivel, accion, variante }
   }
 
   get abierto() { return !!this.capa; }
 
   /**
    * @param cx,cy     centro, en píxeles del host
-   * @param opciones  [{ slug, nombre, icono, pendiente, motivo }]
-   * @param centro    texto del centro (null en el anillo interior)
+   * @param opciones  [{ slug, nombre, icono, atajo, accion, pendiente, motivo }]
+   * @param centro    título del grupo o de la acción elegida (null en el menú de una ficha)
    * @param nivel     'interior' | 'exterior' | 'desenlace'
    * @param variante  la variante ya elegida, que viaja hasta el desenlace
    * @param conMas    si se ofrece «⋯ más»
+   * @param lista     el catálogo en lista, en vez de en cuadrícula
+   * @param quien     de quién es el menú: { nombre, detalle, color, numero }, o
+   *                  { icono, familia } cuando el título es una acción
    */
-  abrir({ cx, cy, opciones, centro = null, nivel = 'interior', conMas = true, accion = null, variante = null }) {
+  abrir({ cx, cy, opciones, centro = null, nivel = 'interior', conMas = true, accion = null, variante = null, lista = false, quien = null }) {
     this.cerrar();
     this.estado = { cx, cy, opciones, centro, nivel, accion, variante };
-    const r = this.host.getBoundingClientRect();
-    const vw = r.width, vh = r.height;
-    const radio = radioDe(vw, vh, nivel === 'exterior' ? RADIO_EXTERIOR : RADIO_INTERIOR);
-    this._piezas = [];
 
     this.capa = h('div', { class: 'pz-anillo' });
     /* Un velo transparente por debajo: es lo que convierte «pinchar
@@ -176,73 +157,172 @@ export class Anillo {
     velo.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); this.cerrar(true); });
     this.capa.append(velo);
 
-    if (centro) {
-      const c = h('div', { class: 'pz-anillo__centro' },
-        h('b', null, centro),
-        /* Saltarse el «cómo» pinchando en la pista vale en las variantes;
-           en el desenlace, pinchar fuera es cancelar el tiro. */
-        h('small', null, nivel === 'desenlace' ? 'pincha fuera para cancelar' : 'o pincha ya en la pista'));
-      this._piezas.push({ el: c, tipo: 'centro' });
-      this.capa.append(c);
-    }
-
-    opciones.forEach((o, i) => {
-      const b = h('button', {
-        class: 'pz-anillo__caja' + (o.pendiente ? ' is-pendiente' : ''),
-        type: 'button',
-        title: o.pendiente ? o.motivo : (o.descripcion || o.nombre),
-        disabled: o.pendiente ? '' : null,
-      }, o.icono ? h('em', null, o.icono) : null, h('span', null, o.nombre));
-      this._piezas.push({ el: b, tipo: 'caja', i });
-      if (!o.pendiente) {
-        b.addEventListener('pointerdown', (ev) => { ev.stopPropagation(); });
-        b.addEventListener('click', (ev) => { ev.stopPropagation(); this._elegir(o); });
-      }
-      this.capa.append(b);
+    const titulo = nivel === 'interior' && lista ? 'Más acciones' : (centro || (quien && quien.nombre) || 'Acciones');
+    this.tarjeta = h('div', {
+      class: `pz-tarjeta pz-tarjeta--${nivel}${lista ? ' pz-tarjeta--lista' : ''}`,
+      role: 'dialog', 'aria-label': titulo,
     });
+    /* Lo que se pulsa dentro de la tarjeta es de la tarjeta: ni arrastra
+       la pista ni empieza un trazo. */
+    this.tarjeta.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    /* Y la rueda, dentro, desplaza la lista y no acerca la pista. */
+    this.tarjeta.addEventListener('wheel', (ev) => ev.stopPropagation(), { passive: true });
 
-    if (conMas) {
-      const mas = h('button', { class: 'pz-anillo__mas', type: 'button' }, '⋯ más acciones');
-      mas.addEventListener('pointerdown', (ev) => ev.stopPropagation());
+    this.tarjeta.append(this._cabecera({ nivel, lista, titulo, centro, quien }));
+    let buscador = null;
+    if (nivel === 'desenlace') this.tarjeta.append(this._desenlace(opciones));
+    else if (nivel === 'exterior') this.tarjeta.append(this._variantes(opciones));
+    else if (lista) {
+      const l = this._lista(opciones);
+      buscador = l.buscador;
+      this.tarjeta.append(...l.nodos);
+    } else this.tarjeta.append(this._rejilla(opciones));
+
+    /* «Más acciones» solo tiene sentido al elegir qué hace la ficha: con
+       las variantes de «Tira» delante, ofrecer otra acción es ofrecer
+       abandonar la que se acaba de elegir. */
+    if (conMas && nivel === 'interior') {
+      const mas = h('button', { class: 'pz-tarjeta__mas', type: 'button' }, icono('mas', { size: 16 }), 'Más acciones');
       mas.addEventListener('click', (ev) => { ev.stopPropagation(); this.onElegir?.('__mas__', {}); });
-      this._piezas.push({ el: mas, tipo: 'mas' });
-      this.capa.append(mas);
+      this.tarjeta.append(mas);
     }
 
+    this.capa.append(this.tarjeta);
     this.host.append(this.capa);
     this.recolocar(cx, cy);
+    /* El buscador toma el foco DESPUÉS de que el Tablero lo devuelva al
+       lienzo, que lo hace nada más abrir el menú. */
+    if (buscador) setTimeout(() => buscador.focus?.({ preventScroll: true }), 0);
     return this;
   }
 
+  /* ---- las piezas -------------------------------------------- */
+
+  _cabecera({ nivel, lista, titulo, centro, quien }) {
+    let marca = null;
+    if (quien && quien.icono) {
+      marca = h('span', { class: 'pz-tarjeta__marca', 'data-fam': quien.familia || 'otra' }, icono(nombreDeIcono(quien.icono, quien.familia), { size: 20 }));
+    } else if (quien && quien.color) {
+      marca = h('span', { class: 'pz-tarjeta__ficha', style: { '--c': quien.color } }, quien.numero || '');
+    }
+    const pie = PIE[nivel] || (quien && quien.detalle) || null;
+    const cerrar = h('button', { class: 'pz-tarjeta__x', type: 'button', title: 'Cerrar (Esc)', 'aria-label': 'Cerrar' }, icono('cerrar', { size: 16 }));
+    cerrar.addEventListener('click', (ev) => { ev.stopPropagation(); this.cerrar(true); });
+    return h('header', { class: 'pz-tarjeta__cab' },
+      marca,
+      h('div', { class: 'pz-tarjeta__tit' },
+        h('b', null, titulo),
+        pie ? h('small', null, pie) : null),
+      cerrar);
+  }
+
+  /** Una casilla de la cuadrícula: el dibujo, el nombre y, si lo tiene, su atajo. */
+  _casilla(o) {
+    const familia = o.accion ? o.accion.familia : null;
+    const atajo = o.atajo ? ` (${o.atajo})` : '';
+    const b = h('button', {
+      class: 'pz-casilla' + (o.pendiente ? ' is-pendiente' : ''),
+      type: 'button',
+      'data-fam': familia || 'otra',
+      title: o.pendiente ? o.motivo : `${o.descripcion || o.nombre}${atajo}`,
+      disabled: o.pendiente ? '' : null,
+    },
+    o.atajo ? h('kbd', null, o.atajo) : null,
+    h('span', { class: 'pz-casilla__ico' }, icono(nombreDeIcono(o.slug, familia), { size: 22 })),
+    h('span', { class: 'pz-casilla__nombre' }, o.nombre));
+    if (!o.pendiente) b.addEventListener('click', (ev) => { ev.stopPropagation(); this._elegir(o); });
+    return b;
+  }
+
+  _rejilla(opciones) {
+    return h('div', { class: 'pz-tarjeta__rejilla' }, ...opciones.map((o) => this._casilla(o)));
+  }
+
+  /** «⋯ más»: una fila por acción, con buscador cuando son muchas. */
+  _lista(opciones) {
+    const filas = opciones.map((o) => {
+      const familia = o.accion ? o.accion.familia : null;
+      const b = h('button', {
+        class: 'pz-fila', type: 'button', 'data-fam': familia || 'otra',
+        title: o.pendiente ? o.motivo : (o.descripcion || o.nombre),
+        disabled: o.pendiente ? '' : null,
+      },
+      h('span', { class: 'pz-fila__ico' }, icono(nombreDeIcono(o.slug, familia), { size: 18 })),
+      h('span', { class: 'pz-fila__nombre' }, o.nombre),
+      o.atajo ? h('kbd', null, o.atajo) : null);
+      if (!o.pendiente) b.addEventListener('click', (ev) => { ev.stopPropagation(); this._elegir(o); });
+      return { b, clave: normalizarNombre(o.nombre) };
+    });
+    const cuerpo = h('div', { class: 'pz-tarjeta__lista' }, ...filas.map((f) => f.b));
+    const nodos = [cuerpo];
+    let buscador = null;
+    if (opciones.length >= MIN_PARA_BUSCAR) {
+      buscador = h('input', { class: 'pz-tarjeta__buscar', type: 'search', placeholder: 'Buscar una acción', 'aria-label': 'Buscar una acción', autocomplete: 'off' });
+      const vacio = h('p', { class: 'pz-tarjeta__nada' }, 'Ninguna acción se llama así.');
+      vacio.hidden = true;
+      buscador.addEventListener('input', () => {
+        const q = normalizarNombre(buscador.value);
+        let vistas = 0;
+        for (const f of filas) { const ok = !q || f.clave.includes(q); f.b.hidden = !ok; if (ok) vistas++; }
+        vacio.hidden = vistas > 0;
+        this.recolocar(this.estado.cx, this.estado.cy);
+      });
+      /* Escribir en el buscador no puede lanzar los atajos de la pista ni
+         borrar la ficha con Retroceso. Solo Esc sube, que es quien cierra. */
+      buscador.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') return;
+        ev.stopPropagation();
+        if (ev.key === 'Enter') { ev.preventDefault(); filas.find((f) => !f.b.hidden && !f.b.disabled)?.b.click(); }
+      });
+      nodos.unshift(h('div', { class: 'pz-tarjeta__busqueda' }, icono('buscar', { size: 16 }), buscador));
+      nodos.push(vacio);
+    }
+    return { nodos, buscador };
+  }
+
+  /** Las variantes técnicas (§4.3): en dos columnas, como pastillas. */
+  _variantes(opciones) {
+    return h('div', { class: 'pz-tarjeta__variantes' }, ...opciones.map((o) => {
+      const b = h('button', { class: 'pz-variante', type: 'button', title: o.descripcion || o.nombre }, o.nombre);
+      b.addEventListener('click', (ev) => { ev.stopPropagation(); this._elegir(o); });
+      return b;
+    }));
+  }
+
+  /** «¿Entra o falla?» (§4.4): dos botones grandes, uno al lado del otro. */
+  _desenlace(opciones) {
+    return h('div', { class: 'pz-tarjeta__desenlace' }, ...opciones.map((o) => {
+      const b = h('button', { class: `pz-desen pz-desen--${o.slug}`, type: 'button', title: o.descripcion || o.nombre },
+        icono(ICONO_DESENLACE[o.slug] || 'ok', { size: 22, trazo: 2.4 }), o.nombre);
+      b.addEventListener('click', (ev) => { ev.stopPropagation(); this._elegir(o); });
+      return b;
+    }));
+  }
+
   /**
-   * Vuelve a poner cada pieza en su sitio para un centro nuevo, SIN
+   * Vuelve a poner la tarjeta en su sitio para un centro nuevo, SIN
    * rehacer el DOM.
    *
-   * Hace falta porque el anillo va en píxeles y la pista se puede mover
+   * Hace falta porque el menú va en píxeles y la pista se puede mover
    * debajo de él: la rueda del ratón atraviesa el velo —que solo
-   * intercepta `pointerdown`— y el lienzo acerca o aleja con el anillo
-   * abierto. Sin esto el menú se quedaba clavado donde estaba, flotando
-   * sobre otra ficha. Sin rehacer el DOM porque recrearlo perdería el
-   * foco del teclado y el `:hover` a media pulsación.
+   * intercepta `pointerdown`— y el lienzo acerca o aleja con el menú
+   * abierto. Sin esto se quedaba clavado donde estaba, flotando sobre
+   * otra ficha. Sin rehacer el DOM porque recrearlo perdería el foco del
+   * teclado y el `:hover` a media pulsación.
    */
   recolocar(cx, cy) {
-    if (!this.capa || !this.estado) return;
+    if (!this.capa || !this.estado || !this.tarjeta) return;
     this.estado.cx = cx; this.estado.cy = cy;
     const r = this.host.getBoundingClientRect();
-    const vw = r.width, vh = r.height;
-    const radio = radioDe(vw, vh, this.estado.nivel === 'exterior' ? RADIO_EXTERIOR : RADIO_INTERIOR);
-    const cajas = this._piezas.filter((p) => p.tipo === 'caja');
-    const sitios = repartir(cajas.length, { cx, cy, vw, vh, radio });
-    for (const p of this._piezas) {
-      if (p.tipo === 'centro') { p.el.style.left = `${cx}px`; p.el.style.top = `${cy}px`; continue; }
-      if (p.tipo === 'mas') {
-        const m = posicionMas({ cx, cy, vw, vh, radio });
-        p.el.style.left = `${m.x}px`; p.el.style.top = `${m.y}px`;
-        continue;
-      }
-      const s = sitios[p.i];
-      if (s) { p.el.style.left = `${s.x}px`; p.el.style.top = `${s.y}px`; }
-    }
+    const t = this.tarjeta;
+    /* El tope de alto va ANTES de medir: con él, una lista larga se
+       desplaza dentro de la tarjeta en vez de salirse de la pista. */
+    t.style.maxHeight = `${Math.max(140, r.height - 2 * MARGEN)}px`;
+    const s = colocarTarjeta({ cx, cy, vw: r.width, vh: r.height, ancho: t.offsetWidth, alto: t.offsetHeight });
+    t.style.left = `${s.left}px`;
+    t.style.top = `${s.top}px`;
+    t.style.setProperty('--flecha', `${s.flecha}px`);
+    if (t.dataset.lado !== s.lado) t.dataset.lado = s.lado;
   }
 
   _elegir(o) {
@@ -256,8 +336,8 @@ export class Anillo {
     if (!this.capa) return;
     this.capa.remove();
     this.capa = null;
+    this.tarjeta = null;
     this.estado = null;
-    this._piezas = [];
     if (porFuera) this.onCerrar?.();
   }
 }

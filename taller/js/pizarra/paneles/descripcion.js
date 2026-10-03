@@ -1,7 +1,7 @@
 /* ============================================================
    pizarra/paneles/descripcion.js — la frase de la fase (§9.1, §9.2).
 
-   Debajo de la línea de tiempo: lo que pasa en la fase que se edita,
+   En la pestaña «Texto» del panel derecho: lo que pasa en la fase que se edita,
    escrito solo a partir de lo dibujado (motor/frase.js). Se puede
    reescribir; lo escrito manda para la ficha y el paso 3, y «Volver a
    la automática» lo deshace. La voz lee siempre la automática (§9.3).

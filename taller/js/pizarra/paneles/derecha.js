@@ -1,7 +1,17 @@
 /* ============================================================
-   pizarra/paneles/derecha.js — el panel derecho (§2.4), hoy con una
-   sola pestaña, «Ajustes», y solo con lo de la defensa (§8). Las de
-   «Fases» y «Texto» llegan en sus capas.
+   pizarra/paneles/derecha.js — el panel derecho (§2.4), con sus tres
+   pestañas:
+
+     · Ajustes  lo de lo que haya seleccionado: la defensa (§8), un trazo,
+                una fila de conos… Sin nada seleccionado, los del ejercicio.
+     · Fases    la fase que se edita, con sus carriles y lo que se puede
+                hacer con ella (paneles/fases.js).
+     · Texto    la frase de la fase, escrita sola y editable
+                (paneles/descripcion.js).
+
+   Este archivo solo pinta Ajustes. Las otras dos pestañas son huecos que
+   rellenan sus dueños (`huecoDe`): cada una sabe de lo suyo y el panel no
+   tiene que saber de nada más que de pestañas.
 
    Toca el DOM, así que no tiene banco propio: QUÉ se enseña lo decide
    ajustes-modelo.js, que sí lo tiene. Aquí solo se pinta, y se pinta
@@ -9,14 +19,22 @@
    rehacer un formulario en cada fotograma se come el foco de un número
    a medio escribir.
 
-   Se pliega a una tira estrecha; por debajo de 1100 px empieza plegado
-   (§2.6).
+   Se pliega a una tira de iconos —con las tres pestañas, para abrirlo ya
+   en la que se quiere—; por debajo de 1100 px empieza plegado (§2.6).
    ============================================================ */
 
 import { h, mount } from '../../ui/dom.js';
 import { mismoPanel } from './ajustes-modelo.js';
+import { icono } from '../iconos.js';
 
 const ANCHO_PLEGADO_BAJO = 1100;
+
+/** Las pestañas: clave, nombre y dibujo. */
+const PESTANAS = [
+  ['ajustes', 'Ajustes', 'ajustes'],
+  ['fases', 'Fases', 'fases'],
+  ['texto', 'Texto', 'texto'],
+];
 
 export class PanelDerecho {
   /**
@@ -33,11 +51,13 @@ export class PanelDerecho {
    * @param onVideo   (clave, { enlace, desde, hasta }) — poner el vídeo de una variante (§10.1)
    * @param onQuitarVideo (clave)
    * @param onNuevaVariante (accion, { nombre, descripcion, enlace, desde, hasta }) (§4.3)
+   * @param onPlegar   (plegado) — el panel se ha plegado o desplegado
    */
   constructor({
     onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null, onDeshacerPuerta = null, onFila = null, onDarBalon = null,
-    onVariante = null, onVideo = null, onQuitarVideo = null, onNuevaVariante = null,
+    onVariante = null, onVideo = null, onQuitarVideo = null, onNuevaVariante = null, onPlegar = null,
   } = {}) {
+    this.onPlegar = onPlegar;
     this.onVariante = onVariante;
     this.onVideo = onVideo;
     this.onQuitarVideo = onQuitarVideo;
@@ -52,27 +72,66 @@ export class PanelDerecho {
     this._clave = null;
     this._modelo = null;
 
-    this._cuerpo = h('div', { class: 'pz-der__cuerpo' });
+    /* Un hueco por pestaña. El de Ajustes lo pinta este archivo; los
+       otros, quien los reclame con `huecoDe`. */
+    this._cuerpo = h('div', { class: 'pz-der__cuerpo pz-der__cuerpo--ajustes', role: 'tabpanel' });
+    this._huecos = { ajustes: this._cuerpo };
+    this._pestanas = {};
+    this._hayAjustes = false;
+    const tira = h('div', { class: 'pz-der__pestanas', role: 'tablist', 'aria-label': 'Panel de la pizarra' });
+    for (const [clave, nombre, dibujo] of PESTANAS) {
+      if (clave !== 'ajustes') this._huecos[clave] = h('div', { class: `pz-der__cuerpo pz-der__cuerpo--${clave}`, role: 'tabpanel' });
+      const b = h('button', {
+        class: 'pz-der__pestana', type: 'button', role: 'tab', title: nombre, 'aria-label': nombre,
+      }, icono(dibujo, { size: 16 }), h('span', { class: 'pz-der__pestana-texto' }, nombre));
+      /* Un punto en «Ajustes» avisa de que lo seleccionado tiene los
+         suyos cuando se está mirando otra pestaña. */
+      if (clave === 'ajustes') b.append(h('i', { class: 'pz-der__punto', title: 'Lo seleccionado tiene ajustes' }));
+      /* Pulsar una pestaña con el panel plegado lo abre ya en ella. */
+      b.addEventListener('click', () => { this.activar(clave); if (this.plegado) this.plegar(false); });
+      this._pestanas[clave] = b;
+      tira.append(b);
+    }
     this._boton = h('button', {
       class: 'pz-der__plegar', type: 'button', title: 'Plegar el panel', 'aria-label': 'Plegar el panel',
       onClick: () => this.plegar(!this.plegado),
-    }, '›');
-    this.el = h('aside', { class: 'pz-der', 'aria-label': 'Ajustes' },
-      h('div', { class: 'pz-der__cabecera' },
-        h('span', { class: 'pz-der__pestana', role: 'tab', 'aria-selected': 'true' }, 'Ajustes'),
-        this._boton),
-      this._cuerpo);
+    });
+    this.el = h('aside', { class: 'pz-der', 'aria-label': 'Panel de la pizarra' },
+      h('div', { class: 'pz-der__cabecera' }, tira, this._boton),
+      ...Object.values(this._huecos));
+    this.activar('ajustes');
     const ancho = typeof window !== 'undefined' ? window.innerWidth : 0;
     this.plegar(ancho > 0 && ancho < ANCHO_PLEGADO_BAJO);
+  }
+
+  /** El hueco de una pestaña, para que su dueño lo rellene. */
+  huecoDe(clave) { return this._huecos[clave] || null; }
+
+  /** Enseña una pestaña. */
+  activar(clave) {
+    if (!this._huecos[clave]) return;
+    this.pestana = clave;
+    for (const [k, hueco] of Object.entries(this._huecos)) hueco.hidden = k !== clave;
+    for (const [k, b] of Object.entries(this._pestanas)) {
+      b.classList.toggle('is-activa', k === clave);
+      b.setAttribute('aria-selected', k === clave ? 'true' : 'false');
+    }
+    this._avisarDeAjustes();
+  }
+
+  /** El punto de «Ajustes»: solo cuando hay algo suyo que no se está viendo. */
+  _avisarDeAjustes() {
+    this._pestanas.ajustes?.classList.toggle('tiene-aviso', this._hayAjustes && this.pestana !== 'ajustes');
   }
 
   plegar(on) {
     this.plegado = !!on;
     this.el.classList.toggle('is-plegado', this.plegado);
-    this._boton.textContent = this.plegado ? '‹' : '›';
-    this._boton.title = this.plegado ? 'Abrir los ajustes' : 'Plegar el panel';
+    this._boton.replaceChildren(icono(this.plegado ? 'izquierda' : 'derecha', { size: 16 }));
+    this._boton.title = this.plegado ? 'Abrir el panel' : 'Plegar el panel';
     this._boton.setAttribute('aria-label', this._boton.title);
     this._boton.setAttribute('aria-expanded', this.plegado ? 'false' : 'true');
+    this.onPlegar?.(this.plegado);
   }
 
   /**
@@ -91,6 +150,13 @@ export class PanelDerecho {
        mismo que había (ajustes-modelo.js#mismoPanel). */
     const mismo = mismoPanel(this._modelo, modelo);
     this._modelo = modelo;
+    /* Pinchar un trazo es querer corregirlo: se abre en Ajustes, que es
+       donde están su variante y su vídeo. Con una ficha, el menú de
+       acciones ya está a la vista y la pestaña se deja como estaba: un
+       punto avisa de que tiene lo suyo. */
+    this._hayAjustes = !!modelo && modelo.tipo !== 'ejercicio' && modelo.tipo !== 'otro';
+    if (!mismo && modelo && modelo.tipo === 'tramo') this.activar('ajustes');
+    else this._avisarDeAjustes();
     const abierto = mismo && !!this._cuerpo.querySelector('details[open]');
     const foco = document.activeElement;
     const etiqueta = mismo && foco && this._cuerpo.contains(foco) ? foco.getAttribute('aria-label') : null;
@@ -167,7 +233,7 @@ export class PanelDerecho {
       m.hace ? this._campoSelect('En esta fase', m.hace, (v) => this.onHaceDe?.(m.id, v)) : null,
       m.explicacion ? h('p', { class: 'pz-der__porque' }, m.explicacion) : null,
       this._darBalon(m),
-      h('p', { class: 'pz-der__nota' }, 'También se cambia el par arrastrando su línea discontinua hasta otro atacante. Ayudar y cambiar el par con otro defensor se eligen en el anillo, pinchando a quién.'),
+      h('p', { class: 'pz-der__nota' }, 'También se cambia el par arrastrando su línea discontinua hasta otro atacante. Ayudar y cambiar el par con otro defensor se eligen en el menú de la ficha, pinchando a quién.'),
     ];
   }
 
@@ -204,7 +270,7 @@ export class PanelDerecho {
       const hasta = texto('Hasta (variante)', '0:14');
       partes.push(h('details', { class: 'pz-der__mas' },
         h('summary', null, 'Nueva variante'),
-        h('p', { class: 'pz-der__nota' }, 'Queda en el anillo para todo el club.'),
+        h('p', { class: 'pz-der__nota' }, 'Queda en el menú de acciones para todo el club.'),
         this._campo('Nombre', nombre),
         this._campo('Descripción', descripcion),
         this._campo('Vídeo (si quieres)', enlace),

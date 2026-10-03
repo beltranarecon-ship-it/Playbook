@@ -155,6 +155,16 @@ carril, borrar, y cambiarle acción, variante y ritmo. Los tramos automáticos
 - **Controles** de reproducción: anterior / reproducir / siguiente / reiniciar /
   velocidad / bucle.
 
+> **Reparto actual (2026-10-03):** la línea de tiempo es una tira de una sola
+> fila bajo la pista —mandos «Fase» y «Toda la jugada», la duración, la tira de
+> fases con sus ramas y «Siguiente fase»—. Los carriles de la fase activa, con su
+> regla de tiempo, y lo que se hace con ella (nombre, fases antes y después,
+> duplicar, borrar, ramas y plantillas, en un menú «⋯») viven en la pestaña
+> **Fases** del panel derecho, y la frase en **Texto** (§2.4). Los dos paneles se
+> pliegan a una tira de iconos y se ensanchan arrastrando su borde; el ancho se
+> recuerda. En el paso de la Pizarra, el marco del asistente se compacta: pasos
+> en una fila y «Atrás» / «Llevar a…» dentro de la barra de guardar.
+
 ### 2.6 Tablet y móvil
 
 - **Tablet**: mismo reparto; los paneles se pliegan solos por debajo de 1100 px.
@@ -231,6 +241,17 @@ Ninguno bloquea. Todos aparecen también en la pestaña Fases, junto al tramo.
 ---
 
 ## 4 · El anillo de acciones
+
+> **Forma (2026-10-03):** el «anillo» es ahora una **tarjeta anclada junto a la
+> ficha** (a su derecha, o al lado, arriba o abajo donde quepa), con una flecha
+> que la señala. Las casillas van en cuadrícula de 3×2 —un círculo de casillas
+> anchas se pisaba entre sí—, con cabecera (la ficha, su color y cómo está), el
+> dibujo de cada acción en el color de su familia (balón naranja, movimiento
+> azul, contacto con el rival verde, gestos gris) y la letra de su atajo (§4.7).
+> «⋯ más» abre el catálogo en lista, con buscador si pasa de ocho. Las variantes
+> (§4.3) y el «¿entra o falla?» (§4.4) salen en la misma tarjeta. Lo que dicen
+> los apartados de abajo sobre qué casillas salen y cuándo no cambia; solo
+> cambia «centrado en ella» y «anillo exterior».
 
 ### 4.1 Apertura y cierre
 

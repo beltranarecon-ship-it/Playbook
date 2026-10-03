@@ -89,6 +89,11 @@ export function render(root, { id = null, modo = 'nuevo', paso = 0 } = {}) {
   const navHost = h('div');
   const stepHost = h('div', { class: 'wizard-step' });
   const footHost = h('div');
+  /* En el paso de la Pizarra, «Atrás» y «Llevar a…» se van a la barra de
+     guardar, que está siempre abajo: cada fila que se quita del medio es
+     un trozo más de pista. En los otros pasos siguen donde estaban. */
+  const pasoAtras = h('span', { class: 'savebar__paso' });
+  const pasoSigue = h('span', { class: 'savebar__paso' });
 
   // ---- autoguardado de borrador (§13) ----
   let saveTimer = null;
@@ -204,7 +209,16 @@ export function render(root, { id = null, modo = 'nuevo', paso = 0 } = {}) {
     view.classList.toggle('taller--pizarra', enPizarra);
     mount(navHost, stepNav(STEPS, state.step, { onJump: goTo }));
     mount(stepHost, current.el);
-    mount(footHost, footer());
+    if (enPizarra) {
+      const { atras, sigue } = botonesDePaso();
+      mount(footHost);
+      mount(pasoAtras, atras);
+      mount(pasoSigue, sigue);
+    } else {
+      mount(pasoAtras);
+      mount(pasoSigue);
+      mount(footHost, footer());
+    }
     current.alMontar?.();
     /* Dentro de la Pizarra la columna no se ve: su motor se para, o
        seguiría pintando a ciegas cada fotograma mientras se dibuja. Al
@@ -241,18 +255,26 @@ export function render(root, { id = null, modo = 'nuevo', paso = 0 } = {}) {
     if (puestos.length) toast(`Traído de la pizarra: ${puestos.join(', ')}. Lo que habías escrito tú no se ha tocado.`, { type: 'ok', timeout: 5000 });
   }
 
-  function footer() {
-    /* Desde la Pizarra, «siguiente» es llevar lo dibujado a la ficha. */
+  /** Los botones de paso: «Atrás» y el que sigue. Desde la Pizarra,
+   *  «siguiente» es llevar lo dibujado a la ficha. */
+  function botonesDePaso() {
     const desdeLaPizarra = state.step === PASO_PIZARRA;
     const siguiente = STEPS[state.step + 1];
-    return h('div', { class: 'wizard-foot' },
-      state.step > 0 ? h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => goTo(state.step - 1) }, '← Atrás') : h('span'),
-      siguiente ? h('button', {
+    return {
+      atras: state.step > 0
+        ? h('button', { class: 'btn btn--ghost', type: 'button', onClick: () => goTo(state.step - 1) }, '← Atrás')
+        : null,
+      sigue: siguiente ? h('button', {
         class: 'btn btn--secondary has-arrow', type: 'button',
         title: desdeLaPizarra ? `Lleva a la ficha lo que la pizarra ya sabe —sin tocar lo que hayas escrito tú— y pasa a ${siguiente.label}` : null,
         onClick: () => goTo(state.step + 1),
       }, desdeLaPizarra ? `Llevar a ${siguiente.label} ` : 'Siguiente ', icon('M9 18l6-6-6-6', { size: 16 })) : null,
-    );
+    };
+  }
+
+  function footer() {
+    const { atras, sigue } = botonesDePaso();
+    return h('div', { class: 'wizard-foot' }, atras || h('span'), sigue);
   }
 
   /** Olvida la Pizarra: se rehará con lo que haya en el borrador la
@@ -331,6 +353,8 @@ export function render(root, { id = null, modo = 'nuevo', paso = 0 } = {}) {
       : 'Tu progreso se autoguarda como borrador.',
   });
   const btnGuardar = bar.querySelector('#btn-guardar');
+  bar.prepend(pasoAtras);
+  btnGuardar.before(pasoSigue);
 
   const view = h('div', { class: 'taller taller--wizard' },
     cabecera,

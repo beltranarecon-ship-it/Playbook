@@ -22,6 +22,35 @@ por el entrenador. La rama `pizarra-v3` queda como historia. Antes se
 decidió (2026-09-13) no subir nada a `main` hasta acabar TODAS las capas;
 ya está cumplido.
 
+**Rediseño de la pantalla (2026-10-03, rama `pizarra-rediseno-pantalla`,
+sin fusionar a `main`):** el paso de la Pizarra se veía mal —la línea de
+tiempo apilaba ~450 px bajo la pista y a esta le quedaban ~85 px de alto—.
+Decidido con el entrenador y hecho:
+
+1. La línea de tiempo es una **tira de una sola fila** (mandos, fases con
+   sus ramas, «Siguiente fase»). Los carriles —con una regla de tiempo—, el
+   nombre de la fase y sus operaciones (en un menú «⋯») y la frase van a las
+   pestañas **Fases** y **Texto** del panel derecho, junto a «Ajustes»
+   (`paneles/fases.js`, nuevo). «Ajustes» se abre solo al pinchar un trazo.
+2. En el paso de la Pizarra el **marco del asistente se compacta**: pasos en
+   una fila, cabecera y barra de guardar más bajas, y «Atrás» / «Llevar a
+   Metadatos» dentro de la barra de guardar. A 1920×912 la pista pasa a
+   1330×638 px.
+3. Los dos paneles **se pliegan a una tira de iconos y se ensanchan
+   arrastrando su borde**, con el ancho recordado (`divisor.js`,
+   `eval-divisor.mjs`). Pedido en el §2.1; las miniaturas de las fases, no.
+4. El anillo es una **tarjeta anclada junto a la ficha**: cuadrícula 3×2 que
+   no se pisa, cabecera con la ficha y su estado, color por familia de
+   acción, atajo en cada casilla, lista con buscador en «⋯ más», y las
+   variantes y el «¿entra o falla?» en la misma tarjeta (`anillo.js` y
+   `eval-anillo.mjs` reescritos). En las variantes ya no sale «Más acciones».
+5. Iconos SVG propios (`iconos.js`) en vez de glifos de texto.
+
+Verificado en `dev/pizarra.html` y en el asistente sin sesión (no se guardó
+nada), a 1920, 1440, 1100, 1000 y 390 px. Pendiente de mirar: con el dedo en
+una tablet de verdad, y el móvil con cajones (§2.6), que sigue sin hacerse.
+La forma nueva está anotada en el ESPEC (§2.5 y §4).
+
 **Capa 5, decidido (2026-09-13):** ataca el equipo que tiene el balón al
 empezar y los demás defienden (se puede cambiar en los ajustes); los
 ajustes de la defensa van en la pestaña «Ajustes» del panel derecho,
@@ -44,7 +73,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
 `pizarra-v3`, subida, y **no en `main`**, como las siguientes. Bancos:
-**76 en verde, 1937 pruebas**, más el del linter de la biblioteca (`node
+**77 en verde**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla),
 `dev/pizarra-dibujar.html` y `dev/jugadas.html` (las doce jugadas de
@@ -1166,6 +1195,7 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
 - ~~`resto()` ofrece *Pasa* y *Tira* en «⋯ más» a quien no lleva balón.~~
   Arreglado en la 5.3 (`saleEn`), salvo los gestos con balón (ver abajo).
 - El anillo promete «o pincha ya en la pista» y su velo se come ese clic.
+  Sigue igual con la tarjeta: pinchar fuera de las variantes solo la cierra.
 - `fichas.js`: abortar el arrastre de un balón no se lo devuelve a su
   portador, ni restaura la selección que cambió el `pointerdown`.
 - `makeSampler` (`canvas/geometry.js`) revienta con un camino de longitud

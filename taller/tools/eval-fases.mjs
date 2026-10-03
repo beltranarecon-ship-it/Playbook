@@ -27,7 +27,7 @@ import {
   nuevaFase, carrilesDesde, tramosDe,
   duracionDeTramo, tiemposDe, duracionDeCarril, posicionesFinales,
   reanclarFase, recalcular, posesionAlFinal, declaradasConFicha,
-  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS,
+  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS, marcasDeTiempo,
 } from '../js/pizarra/fases.js';
 import { trasElTiro } from '../js/pizarra/destino.js';
 import { tramosSinBalon } from '../js/pizarra/posesion.js';
@@ -793,6 +793,23 @@ test('LOS TRAMOS QUE PIDEN BALÓN Y NO LO TIENEN SE ENCUENTRAN, y los de detrás
     { tramos: [{ id: 'x1', elemento_id: 'A1', corre_id: 'A1', accion: 'bota' }, { id: 'x2', elemento_id: 'B1', corre_id: 'B1', accion: 'bota' }] },
   ];
   eq(tramosSinBalon(robo, inicial, pideBalon).map((x) => [x.fase, x.tramo.id]), [[1, 'x1']], 'tras el robo, bota B1 y no A1:');
+});
+
+test('LA REGLA DE TIEMPO: un paso que no amontona las cifras, siempre con el cero', () => {
+  /* Una fase corta marca cada medio segundo o cada segundo; una larga, de cinco en cinco. */
+  eq(marcasDeTiempo(2400).paso_ms, 500, 'dos segundos y medio:');
+  eq(marcasDeTiempo(6000).paso_ms, 1000, 'seis segundos:');
+  eq(marcasDeTiempo(16700).paso_ms, 5000, 'dieciséis segundos y medio:');
+  eq(marcasDeTiempo(16700).marcas.map((m) => m.texto), ['0 s', '5 s', '10 s', '15 s'], 'las marcas:');
+  eq(marcasDeTiempo(2400).marcas.map((m) => m.texto), ['0 s', '0,5 s', '1 s', '1,5 s', '2 s'], 'con decimales, en coma:');
+  ok(marcasDeTiempo(16700).marcas.every((m) => m.ms <= 16700), 'ninguna más allá de la duración');
+  ok(marcasDeTiempo(99999).marcas.length <= 7, 'nunca más de las que caben');
+});
+
+test('LA REGLA DE TIEMPO no se rompe con una fase sin duración', () => {
+  for (const malo of [0, -5, NaN, undefined, null]) {
+    eq(marcasDeTiempo(malo).marcas, [{ ms: 0, texto: '0 s' }], `con ${malo}:`);
+  }
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
