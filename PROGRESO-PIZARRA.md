@@ -16,9 +16,11 @@ node taller/tools/eval-fases.mjs   # y el resto de bancos: todos en verde
 
 ## Dónde estamos
 
-**Decisión del entrenador (2026-09-13): NADA se sube a `main` ni se
-publica hasta que estén acabadas TODAS las capas (1 a 10).** Todo sigue
-en la rama `pizarra-v3`. La 043 ya está aplicada.
+**Publicado (2026-10-03):** las diez capas están en `main` (fusión
+`a938805`) y en GitHub, con las migraciones 043, 044 y 045 ya aplicadas
+por el entrenador. La rama `pizarra-v3` queda como historia. Antes se
+decidió (2026-09-13) no subir nada a `main` hasta acabar TODAS las capas;
+ya está cumplido.
 
 **Capa 5, decidido (2026-09-13):** ataca el equipo que tiene el balón al
 empezar y los demás defienden (se puede cambiar en los ajustes); los
@@ -37,8 +39,8 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 6 · Conos y elementos | ✅ cerrada en la rama `pizarra-v3` (pasos 6.0 a 6.7; los equipos del club, para más adelante) | `1633407` |
 | 7 · Texto y voz | ✅ cerrada en la rama `pizarra-v3` (pasos 7.0 a 7.3, y los arreglos de su revisión) | ver «Capa 7» |
 | 8 · Ramas | ✅ cerrada en la rama `pizarra-v3` (pasos 8.1 a 8.3, y los arreglos de su revisión) | ver «Capa 8» |
-| 9 · Variantes y vídeo | ✅ cerrada en la rama `pizarra-v3` (pasos 9.1 a 9.4, y los arreglos de su revisión). **La migración 044 está sin aplicar** | ver «Capa 9» |
-| 10 · Plantillas y remate | ✅ cerrada en la rama `pizarra-v3` (pasos 10.1 a 10.6, y los arreglos de su revisión). **La migración 045 está sin aplicar** | ver «Capa 10» |
+| 9 · Variantes y vídeo | ✅ cerrada y en `main` (pasos 9.1 a 9.4, y los arreglos de su revisión). Migración 044 aplicada | ver «Capa 9» |
+| 10 · Plantillas y remate | ✅ cerrada y en `main` (pasos 10.1 a 10.6, y los arreglos de su revisión). Migración 045 aplicada | ver «Capa 10» |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
 `pizarra-v3`, subida, y **no en `main`**, como las siguientes. Bancos:
@@ -989,18 +991,14 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
-**Las diez capas del §14 están acabadas (2026-10-01), y la 10 revisada
-(2026-10-03)**, todas en la rama `pizarra-v3` (en el remoto, hasta el paso
-10.5). Lo que queda no es código:
+**Las diez capas del §14 están acabadas (2026-10-01), la 10 revisada
+(2026-10-03) y todo publicado en `main` (2026-10-03).** Lo que queda no es
+código de ninguna capa:
 
-1. **Aplicar en Supabase las migraciones 044 (variantes) y 045
-   (plantillas)**: las aplica el entrenador. Hasta entonces la Pizarra
-   funciona igual, pero «Nueva variante» y guardar una plantilla dicen
-   que falta la migración.
-2. **Mirar el banco visual** (`dev/jugadas.html`) y probar la Pizarra con
-   los dedos en una tablet.
-3. **Decidir cuándo pasa a `main`**: Netlify publica `main`, así que
-   fusionar es publicar. No se fusiona sin el visto bueno del entrenador.
+1. **Mirar el banco visual** (`dev/jugadas.html`) y probar la Pizarra con
+   los dedos en una tablet de verdad.
+2. **Los puntos de «Pendiente de decidir o de arreglar»** (al final de
+   este fichero), cuando el entrenador diga cuáles.
 
 Lo que viene después de esta línea es el siguiente paso de la capa 4,
 que ya está hecho; se deja como historia.
