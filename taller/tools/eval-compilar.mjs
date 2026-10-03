@@ -18,6 +18,7 @@
 import {
   VERSION_JUGADA, PAUSA_POR_DEFECTO_MS, RECOGIDA_FRACCION, compilar, esDeLaPizarra,
 } from '../js/pizarra/motor/compilar.js';
+import { finDeLaDefensa, alAcabarConDefensa, nombreEnLaAnimacion } from '../js/pizarra/motor/compilar.js';
 import { MOTOR_PIZARRA, soloColocacion, paraVer, perdioLaAnimacion } from '../js/pizarra/motor/marca.js';
 import { anadir, asignarBalon, reiniciarIds } from '../js/pizarra/elementos.js';
 import { hacerFila, deLaFila } from '../js/pizarra/filas.js';
@@ -1083,6 +1084,58 @@ test('Y CADA FASE EMPIEZA DONDE ACABÓ LA DEFENSA EN LA ANTERIOR', () => {
   const motor = new AnimationEngine({ w: 0, basket: () => [0.5, 0.1] }, anim, { autoplay: false, loop: false, paused: true });
   const alEmpezar = enElInstante(motor, 1, 0);
   ok(cerca(alEmpezar.players.B1.x, ultima.x) && cerca(alEmpezar.players.B1.y, ultima.y), 'y el motor la pinta ahí');
+});
+
+console.log('\n· dónde deja la defensa a cada uno (§8.4), para quien reancla');
+
+test('`finDeLaDefensa` ES LO QUE REPRODUCE EL PROYECTOR, por ficha', () => {
+  const { l, a1, b1 } = escena();
+  const t = tramo(a1.id, P(0.3, 0.8), P(0.3, 0.5), { accion: 'bota', tipo: 'run' });
+  const j = jugadaCon(l, [{ id: 'f1', tramos: [t] }]);
+  const auto = compilar(j).fases[0].movimientos.find((m) => m.automatico && m.elemento_id === 'B1');
+  const u = auto.muestras.at(-1);
+  eq(finDeLaDefensa(j), { [b1.id]: { x: u.x, y: u.y } });
+  ok(Math.hypot(u.x - 0.5, u.y - 0.4) > 0.05, `y se ha movido de su sitio: ${JSON.stringify(u)}`);
+  /* Sin dos equipos, o con la última fase vacía, nadie se mueve solo. */
+  const sinB = l.filter((e) => e.id !== b1.id);
+  eq(finDeLaDefensa(jugadaCon(sinB, [{ id: 'f1', tramos: [t] }])), {});
+  eq(finDeLaDefensa(jugadaCon(l, [{ id: 'f1', tramos: [t] }, { id: 'f2', tramos: [] }])), {});
+  eq(alAcabarConDefensa(jugadaCon(sinB, [])), null, 'sin defensa no hay nada que preguntar:');
+  eq([nombreEnLaAnimacion(a1), nombreEnLaAnimacion(b1), nombreEnLaAnimacion({ kind: 'balon', id: 'balon_9' })], ['A1', 'B1', 'balon_9']);
+});
+
+test('`alAcabarConDefensa` COMPILA CADA PRINCIPIO DE CAMINO UNA VEZ', () => {
+  const { l, a1, b1 } = escena();
+  const t = tramo(a1.id, P(0.3, 0.8), P(0.3, 0.5), { accion: 'bota', tipo: 'run' });
+  const memo = new Map();
+  const alAcabar = alAcabarConDefensa(jugadaCon(l, []), memo);
+  const hechas = [{ id: 'f1', carriles: carrilesDesde([t]) }, { id: 'f2', carriles: [] }];
+  const fin = alAcabar(0, hechas);
+  eq(fin, finDeLaDefensa(jugadaCon(l, [{ id: 'f1', tramos: [t] }])), 'lo de la fase 1, con sus carriles vueltos a lista:');
+  ok(fin[b1.id], 'B1 acaba en algún sitio');
+  ok(alAcabar(0, hechas) === fin && memo.size === 1, 'y la segunda vez no se compila:');
+});
+
+test('QUIEN ROBA SALE EN LA FASE SIGUIENTE DE DONDE ROBÓ, también con ramas (que se reanclan todas)', () => {
+  const { l, a1, b1 } = escena();
+  const puestos = l.map((e) => (e.id === b1.id ? { ...e, x: 0.32, y: 0.78 } : e));
+  const f1 = { id: 'f1', tramos: [tramo(a1.id, P(0.3, 0.8), P(0.3, 0.5), { accion: 'bota', tipo: 'run' })], defensa: { [b1.id]: { accion: 'roba', objetivo_id: a1.id } } };
+  const donde = finDeLaDefensa(jugadaCon(puestos, [f1]))[b1.id];
+  ok(donde && Math.hypot(donde.x - 0.32, donde.y - 0.78) > 0.05, `el que roba se ha movido: ${JSON.stringify(donde)}`);
+  /* Dibujado desde donde robó, como lo deja la Pizarra. */
+  const sale = (hasta) => tramo(b1.id, donde, hasta, { accion: 'bota', tipo: 'run' });
+  const anim = compilar(jugadaCon(puestos, [
+    f1,
+    { id: 'f2', rama_de: 'f1', rama_nombre: 'por la derecha', tramos: [sale(P(0.8, 0.9))] },
+    { id: 'f3', rama_de: 'f1', rama_nombre: 'por la izquierda', tramos: [sale(P(0.1, 0.9))] },
+  ]));
+  eq(anim.warnings, []);
+  const suyo = (fase) => fase.movimientos.find((m) => m.elemento_id === 'B1' && !m.automatico).path;
+  for (const [fase, x] of [[anim.fases[1], 0.8], [anim.fases_rama[0], 0.1]]) {
+    const p = suyo(fase);
+    ok(cerca(p[0].x, donde.x) && cerca(p[0].y, donde.y), `sale de donde robó y no de su sitio del principio: ${JSON.stringify(p[0])}`);
+    ok(cerca(p.at(-1).x, x), 'y va a donde se dibujó');
+  }
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

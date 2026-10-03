@@ -19,15 +19,22 @@
    Una colocación guardada trae los nombres de las fichas de cuando se
    guardó, que en otra pizarra chocarían con los de las que ya hay. Así
    que cada ficha se vuelve a poner con las mismas piezas que el panel
-   —`anadir`, `asignarBalon`, `hacerFila`—: se numera sola (el dorsal
-   escrito a mano no viaja), coge su balón y su fila se rehace con su
-   cola.
+   —`anadir`, `asignarBalon`—, EN EL ORDEN EN QUE SE GUARDÓ: se numera
+   sola y le toca el mismo número (el dorsal escrito a mano no viaja),
+   coge su balón, y los que esperan en una fila vuelven a su cono cada
+   uno con lo suyo.
+
+   ── LO QUE TIENE SU SITIO, VA A SU SITIO DE AHORA ───────────
+   Un bloqueo se pone junto al compañero, y una entrada o un tiro van al
+   aro que se ataca: su final no es un punto de la pista sino una cuenta.
+   Al insertar una fase guardada esa cuenta se vuelve a hacer con la
+   escena de ahora (lo dice quien inserta, con `destino`).
 
    ── LOS BALONES DE UNA FASE NO SE GUARDAN ───────────────────
    Un pase lo hace «el balón que lleve quien pasa» en ese momento: al
    insertar la fase se sigue quién lo tiene tramo a tramo, y si quien
-   tiene que pasar, tirar o botar no lo lleva, ese tramo no se pone y
-   se dice.
+   tiene que pasar, tirar o botar no lo lleva, ese tramo no se pone, no
+   mueve a nadie y se dice.
 
    ── LA CANASTA ──────────────────────────────────────────────
    Cada plantilla guarda a qué canasta se atacaba (`datos.canasta`,
@@ -43,7 +50,7 @@
    papel, un trazo roto) se deja fuera y se cuenta, en vez de romper.
    ============================================================ */
 
-import { anadir, asignarBalon, enJuego, numeroDe, COLOCABLES, EQUIPOS } from './elementos.js';
+import { anadir, asignarBalon, renumerar, numeroDe, COLOCABLES, EQUIPOS } from './elementos.js';
 import { hacerFila, normalizarFila, normalizarGrados } from './filas.js';
 import { reanclar, trasladar, nuevoTrazo } from './trazo.js';
 import { saleEn } from './repertorio.js';
@@ -80,6 +87,8 @@ const slug = (v) => (typeof v === 'string' && SLUG.test(v) ? v : null);
 const punto = (p) => (p && typeof p === 'object' && finito(p.x) && finito(p.y) ? { x: p.x, y: p.y } : null);
 const entre01 = (v) => Math.min(1, Math.max(0, v));
 const canastaDe = (c) => (CANASTAS_PLANTILLA.includes(c) ? c : 'norte');
+/** El arranque puesto a mano (§6.3), en ms enteros, o null. */
+const arranque = (v) => (finito(v) ? Math.max(0, Math.round(v)) : null);
 
 function nodo(n) {
   const p = punto(n);
@@ -149,6 +158,7 @@ function tramoGuardado(t, claves) {
   const companero = ref(t.companero);
   if (receptor === undefined || companero === undefined) return null;
   const variante_nombre = textoONull(t.variante_nombre);
+  const inicio = arranque(t.inicio_ms);
   return {
     accion,
     variante: slug(t.variante),
@@ -161,6 +171,7 @@ function tramoGuardado(t, claves) {
     receptor,
     companero,
     vuela: t.vuela === true,
+    ...(inicio != null ? { inicio_ms: inicio } : {}),
   };
 }
 
@@ -294,61 +305,76 @@ export function colocacionDe(elementos, { canasta = 'norte' } = {}) {
 
 /**
  * PONE UNA COLOCACIÓN sobre una lista de fichas: vacía, la sustituye; con
- * las que ya hay, se añade. Cada ficha se pone como desde el panel, y si
- * la jugada ataca a la otra canasta, en espejo.
+ * las que ya hay, se añade. Cada ficha se pone como desde el panel, todas
+ * y en su orden, y si la jugada ataca a la otra canasta, en espejo.
  *
  * @param canasta  la canasta a la que ataca la jugada donde se pone
+ * @param nombreDe (elemento) => «B1», para los avisos
  * @returns { elementos, puestas, avisos } — `puestas`, cuántas fichas ha traído
  */
 export function ponerColocacion(lista, datos, pista = 'entera', canasta = 'norte', { nombreDe = nombrePorDefecto } = {}) {
   const { datos: limpio, descartados } = datosDeColocacion(datos);
   const s = espejoEntre(limpio.canasta, canasta, pista);
   const suyas = s == null ? limpio.elementos : limpio.elementos.map((e) => fichaEnEspejo(e, s));
-  /* Los que esperan en una fila, y sus balones, los pone la fila. */
-  const deFila = new Set(suyas.filter((e) => e.kind === 'jugador' && e.fila_de).map((e) => e.id));
-  const delaFila = (e) => deFila.has(e.id) || (e.kind === 'balon' && deFila.has(e.portador_id));
+  const guardada = new Map(suyas.map((e) => [e.id, e]));
+  /* Quien espera en una fila es de su cono; sin él, es un jugador suelto. */
+  const conoDe = (e) => {
+    const c = e.kind === 'jugador' && e.fila_de ? guardada.get(e.fila_de) : null;
+    return c && c.kind === 'cono' && c.fila ? c : null;
+  };
   let l = [...(lista || [])];
   const nuevo = new Map();   // nombre de la guardada -> nombre de la puesta
   const avisos = descartados
     ? [`${descartados === 1 ? 'Una ficha' : `${descartados} fichas`} de la colocación no se ${descartados === 1 ? 'entendía' : 'entendían'}. Eso no se ha puesto.`]
     : [];
-  let puestas = 0;
+  /* TODAS, Y EN SU ORDEN. Los dorsales se cuentan por orden de lista y la
+     defensa se empareja por dorsal (§8.1): poniendo aparte a los de las
+     filas, al final, el primero de una fila cambiaba de número y los
+     pares de la defensa salían cruzados. */
   for (const e of suyas) {
-    if (delaFila(e)) continue;
     l = anadir(l, { kind: e.kind, equipo: e.equipo }, e.x, e.y);
     const id = l[l.length - 1].id;
     nuevo.set(e.id, id);
-    puestas++;
     /* El dorsal escrito a mano NO viaja: la colocación se numera sola. */
     const extra = {};
     if (e.kind === 'jugador') {
       if (e.nombre) extra.nombre = e.nombre;
       if (e.regla_defensa) extra.regla_defensa = e.regla_defensa;
+      if (e.en_juego === false) extra.en_juego = false;
+      if (conoDe(e)) extra.puesto = e.puesto ?? 0;
     }
     if (e.kind === 'cono' && e.nombre) extra.nombre = e.nombre;
     if (e.kind === 'escalera') extra.rot = e.rot;
     if (Object.keys(extra).length) l = l.map((x) => (x.id === id ? { ...x, ...extra } : x));
-    if (e.kind === 'jugador' && e.en_juego === false) l = enJuego(l, id, false);
   }
+  /* Y lo que nombra a otra ficha, con su nombre de ahora: de quién es cada
+     balón, la otra pata de una puerta, a quién se defiende, de qué cono es
+     cada uno de la cola y a qué fila se vuelve. */
+  const de = (id) => (id && nuevo.has(id) ? nuevo.get(id) : null);
+  const sinCola = [];
   for (const e of suyas) {
     const id = nuevo.get(e.id);
-    if (!id) continue;
-    if (e.kind === 'balon' && e.portador_id && nuevo.has(e.portador_id)) l = asignarBalon(l, id, nuevo.get(e.portador_id), pista);
+    const cambios = {};
+    if (e.kind === 'cono' && e.puerta_con && de(e.puerta_con)) cambios.puerta_con = de(e.puerta_con);
+    if (e.kind === 'jugador' && e.defiende_a) {
+      if (de(e.defiende_a)) cambios.defiende_a = de(e.defiende_a);
+      else avisos.push(`No se pone a quién defiende ${nombreDe(l.find((x) => x.id === id))}: no está en la colocación. Se empareja solo.`);
+    }
+    if (e.kind === 'jugador' && conoDe(e)) cambios.fila_de = de(e.fila_de);
     if (e.kind === 'cono' && e.fila) {
       /* La vuelta es OTRO cono: con su nombre de ahora, o sin ella. */
-      const vuelta = e.fila.vuelta && nuevo.has(e.fila.vuelta) ? nuevo.get(e.fila.vuelta) : null;
-      l = hacerFila(l, id, { ...e.fila, vuelta }, pista);
+      cambios.fila = { ...e.fila, vuelta: de(e.fila.vuelta) };
+      if (!suyas.some((x) => conoDe(x) === e)) sinCola.push(id);
     }
-    if (e.kind === 'cono' && e.puerta_con && nuevo.has(e.puerta_con)) l = l.map((x) => (x.id === id ? { ...x, puerta_con: nuevo.get(e.puerta_con) } : x));
-    if (e.kind === 'jugador' && e.defiende_a) {
-      if (nuevo.has(e.defiende_a)) l = l.map((x) => (x.id === id ? { ...x, defiende_a: nuevo.get(e.defiende_a) } : x));
-      else if (deFila.has(e.defiende_a)) {
-        const suyo = l.find((x) => x.id === id);
-        avisos.push(`No se pone a quién defiende ${nombreDe(suyo)}: era uno de una fila, y la fila se rehace. Se empareja solo.`);
-      }
-    }
+    if (Object.keys(cambios).length) l = l.map((x) => (x.id === id ? { ...x, ...cambios } : x));
   }
-  return { elementos: l, puestas, avisos };
+  for (const e of suyas) {
+    if (e.kind === 'balon' && de(e.portador_id)) l = asignarBalon(l, nuevo.get(e.id), de(e.portador_id), pista);
+  }
+  /* Una fila que llegó sin su cola (de la tabla puede llegar cualquier
+     cosa) se rehace, como desde el panel. */
+  for (const id of sinCola) l = hacerFila(l, id, l.find((x) => x.id === id).fila, pista);
+  return { elementos: renumerar(l), puestas: suyas.length, avisos };
 }
 
 /* ── Fases ─────────────────────────────────────────────────── */
@@ -358,7 +384,7 @@ export function ponerColocacion(lista, datos, pista = 'entera', canasta = 'norte
  * de fichas. Solo lo que hacen los jugadores: lo que cuelga de un balón
  * suelto (recoger), los conos que rodea un trazo, a qué defensor se pone
  * un bloqueo y lo que declaran los defensores no se pueden llevar a otra
- * escena, y se dice.
+ * escena, y se dice. El arranque puesto a mano (§6.3), sí.
  *
  * @param fase     { tramos, defensa }
  * @param elementos la escena
@@ -399,18 +425,22 @@ export function plantillaDeFase(fase, elementos, { entrada = {}, nombreDe = (e) 
       tipo: t.tipo,
       ritmo: t.ritmo || 'normal',
       ...(t.desenlace ? { desenlace: t.desenlace } : {}),
-      trazo: copia(t.trazo).map(({ por_cono: _c, lado: _l, puerta: _p, ...n }) => n),
+      /* Sin los nodos que puso un cono al rodearlo (§7.4): el cono no
+         viaja con la fase, y su quiebro se quedaba en una pista sin él. */
+      trazo: copia(t.trazo).filter((n) => n && !n.por_cono),
       quien,
       receptor: t.receptor_id ? claveDe(t.receptor_id) : null,
       companero: t.companero_id ? claveDe(t.companero_id) : null,
       /* ¿lo recorre el balón (un pase, un tiro) y no quien actúa? */
       vuela: !!t.corre_id && t.corre_id !== t.elemento_id,
+      /* El arranque puesto a mano en la línea de tiempo (§6.3). */
+      ...(t.manual && finito(t.inicio_ms) ? { inicio_ms: arranque(t.inicio_ms) } : {}),
     });
   }
   const avisos = [];
   if (fuera.size) avisos.push(`No se guarda lo que cuelga de un balón suelto o de otra ficha que no es un jugador (${[...fuera].join(', ')}).`);
   if (conDefensor.size) avisos.push(`No se guarda a qué defensor se le pone el bloqueo (${[...conDefensor].join(', ')}): al insertarla, la barra mira hacia donde llega.`);
-  if (conConos.size) avisos.push(`No se guardan los conos que se rodean (${[...conConos].join(', ')}): el camino se queda con su forma, sin ellos.`);
+  if (conConos.size) avisos.push(`No se guardan los conos que se rodean (${[...conConos].join(', ')}): el camino se guarda sin rodearlos.`);
   if (fase && fase.defensa && typeof fase.defensa === 'object' && Object.keys(fase.defensa).length) {
     avisos.push('No se guarda lo que hacen distinto los defensores en esta fase: al insertarla, defienden como diga la regla.');
   }
@@ -434,32 +464,40 @@ export function papelesPorDefecto(datos, elementos, nombreDe = (e) => e.id) {
 const accionDelCatalogo = (s) => CATALOGO_SISTEMA.find((a) => a.slug === s) || null;
 
 /* Lo que sale con balón y no sin él: botar, entrar, rodear, cambiar de
-   mano… (el pase y el tiro vuelan, y van aparte). */
+   mano… (el pase y el tiro vuelan, y van aparte). Es la regla del anillo
+   (repertorio.js#saleEn), la misma con la que se dibujan. */
 const necesitaBalon = (accion) => !!accion && saleEn(accion, 'conBalon') && !saleEn(accion, 'sinBalon');
 
 /**
  * LOS TRAMOS DE UNA PLANTILLA PARA ESTA ESCENA: cada papel es ya una
  * ficha, y lo dibujado sale de donde esté. Los desplazamientos conservan
- * su destino (§5.5), un gesto va entero con su ficha, y un pase va a
- * donde esté quien lo recibe en ese momento. Si la escena ataca a la
- * otra canasta, todo va en espejo.
+ * su destino (§5.5), lo que tiene su sitio (un bloqueo, una entrada, un
+ * tiro) va a su sitio de ahora si `destino` lo sabe, un gesto va entero
+ * con su ficha, y un pase va a donde esté quien lo recibe en ese
+ * momento. Si la escena ataca a la otra canasta, todo va en espejo.
  *
  * Se recorre en el orden en que se dibujó: es el orden en que pasan las
  * cosas de cada uno, y un pase solo pudo dibujarse hacia donde estaba
  * entonces el receptor (y si estuvo dos veces en el mismo sitio, en la
- * última).
+ * última). Lo que pide balón y le toca a quien no lo lleva no se pone,
+ * y tampoco mueve a nadie.
  *
  * @param mapa     { clave: id de la ficha }
  * @param entrada  { id: {x,y} } al empezar la fase donde se inserta
  * @param posesion { balon: jugador|null } al empezar esa fase
  * @param canasta  a qué canasta se ataca en esa fase
  * @param nuevoId  () => nombre para cada tramo
+ * @param destino  ({ accion, tipo, id, desde, companero }) => { x, y } | null
+ *                 — a dónde va AQUÍ lo que tiene su sitio (un bloqueo, una
+ *                 entrada, un tiro). `companero` es { id, en } o null. Sin
+ *                 él, o si no sabe, se conserva el destino guardado
  * @param accionDe (slug) => la acción del catálogo, para saber qué
  *                 necesita balón
  * @returns { tramos, avisos } o { motivo }
  */
 export function tramosDePlantilla(datos, mapa, {
-  entrada = {}, posesion = {}, pista = 'entera', canasta = 'norte', nuevoId, nombreDe = (id) => id, accionDe = accionDelCatalogo,
+  entrada = {}, posesion = {}, pista = 'entera', canasta = 'norte', nuevoId, nombreDe = (id) => id,
+  destino = null, accionDe = accionDelCatalogo,
 } = {}) {
   /* Saneado y COPIADO: lo insertado no comparte ni un nodo con la plantilla. */
   const { datos: limpio, descartados } = datosDeFase(datos);
@@ -470,6 +508,8 @@ export function tramosDePlantilla(datos, mapa, {
   if (fichas.some((id) => !id || !entrada[id])) return { motivo: 'hay que decir qué ficha hace cada papel' };
   if (new Set(fichas).size !== fichas.length) return { motivo: 'una ficha no puede hacer dos papeles' };
   const de = (clave) => (clave ? mapa[clave] : null);
+  const aDonde = (t, id, desde, companero = null) => (destino && t.tipo !== 'gesto'
+    ? destino({ accion: t.accion, tipo: t.tipo, id, desde: { x: desde.x, y: desde.y }, companero }) : null);
 
   /* Por dónde va pasando cada uno, en la plantilla y aquí, tramo a tramo
      suyo: es lo que dice a qué sitio de AHORA corresponde el final de un
@@ -486,6 +526,7 @@ export function tramosDePlantilla(datos, mapa, {
     const id = de(t.quien);
     const desde = ultima(ahora[id]);
     const fin = ultima(t.trazo);
+    const aMano = finito(t.inicio_ms);
     const comun = {
       id: nuevoId(),
       elemento_id: id,
@@ -496,7 +537,7 @@ export function tramosDePlantilla(datos, mapa, {
       ritmo: t.ritmo || 'normal',
       balon_id: null,
       balon_desde: null,
-      inicio_ms: null, duracion_ms: null, manual: false,
+      inicio_ms: aMano ? arranque(t.inicio_ms) : null, duracion_ms: null, manual: aMano,
     };
     if (!t.vuela) {
       if (necesitaBalon(accionDe(t.accion)) && !balonDe[id]) {
@@ -505,10 +546,13 @@ export function tramosDePlantilla(datos, mapa, {
         ahora[id].push({ ...desde });
         continue;
       }
-      const trazo = t.tipo === 'gesto' ? trasladar(t.trazo, desde) : reanclar(t.trazo, desde, pista);
+      const comp = de(t.companero);
+      const suSitio = aDonde(t, id, desde, comp ? { id: comp, en: { ...ultima(ahora[comp]) } } : null);
+      const trazo = t.tipo === 'gesto' ? trasladar(t.trazo, desde)
+        : suSitio ? nuevoTrazo(desde, suSitio) : reanclar(t.trazo, desde, pista);
       antes[t.quien].push({ x: fin.x, y: fin.y });
       ahora[id].push({ x: ultima(trazo).x, y: ultima(trazo).y });
-      tramos.push({ ...comun, corre_id: id, receptor_id: null, trazo: copia(trazo), ...(t.companero && de(t.companero) ? { companero_id: de(t.companero) } : {}) });
+      tramos.push({ ...comun, corre_id: id, receptor_id: null, trazo: copia(trazo), ...(comp ? { companero_id: comp } : {}) });
       continue;
     }
     const balon = balonDe[id];
@@ -528,7 +572,9 @@ export function tramosDePlantilla(datos, mapa, {
       });
       trazo = nuevoTrazo(desde, ahora[receptor][Math.min(mejor, ahora[receptor].length - 1)]);
     } else {
-      trazo = reanclar(t.trazo, desde, pista);
+      /* Un tiro va al aro que se ataque AHORA, no al de cuando se guardó. */
+      const suSitio = aDonde(t, id, desde);
+      trazo = suSitio ? nuevoTrazo(desde, suSitio) : reanclar(t.trazo, desde, pista);
     }
     tramos.push({ ...comun, corre_id: balon, receptor_id: receptor || null, trazo: copia(trazo), ...(t.desenlace ? { desenlace: t.desenlace } : {}) });
     delete balonDe[id];

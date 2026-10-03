@@ -42,7 +42,7 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
 `pizarra-v3`, subida, y **no en `main`**, como las siguientes. Bancos:
-**75 en verde, 1906 pruebas**, más el del linter de la biblioteca (`node
+**76 en verde, 1937 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
 hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla),
 `dev/pizarra-dibujar.html` y `dev/jugadas.html` (las doce jugadas de
@@ -474,7 +474,39 @@ míos, todos muertos tras ampliar tres pruebas):
 - **Limpieza**: los comentarios que hablaban de módulos ya borrados.
   `normalizarNombre` se queda (solo la usan los bancos, como `parametroDe`).
 
-**Decidido por el entrenador en la revisión (2026-10-02):**
+**La otra revisión de la capa 10** (rama `arreglos-capa-10`, 2026-10-02,
+hecha en una sesión anterior que no llegó a `pizarra-v3`; fusionada el
+2026-10-03). Arreglaba lo mismo en varios y atajos, teclas y plantillas, y
+además trajo lo que la de arriba no vio:
+
+- **El compilador**: el trazo de quien venía defendiendo se movía solo al
+  reabrir, deshacer o tocar una fase anterior, porque `recalcular` no sabía
+  dónde deja la defensa a cada uno (`alAcabarConDefensa`, `nombreEnLaAnimacion`
+  en `motor/compilar.js`; `alAcabar` en `fases.js`). Reabrir ya no deja
+  marcas de la cuenta (`orden`, `huerfano`) en los tramos.
+- **El repaso avisa de que se cortó** (`onCorte`): es el único sitio que
+  borra el cierre de fase pendiente, se corte como se corte.
+- **El banco de teclas** (`eval-teclas.mjs`): la Pizarra entera con su
+  Lienzo y su Tablero sobre un DOM que recuerda oyentes, árbol y foco.
+- **Plantillas**: las fichas se ponen en su orden y se renumeran (el
+  primero de una fila ya no cambia de dorsal ni cruza a la defensa); lo que
+  tiene su sitio —un bloqueo, una entrada, un tiro— va al sitio de AHORA
+  (`destino`); una colocación añadida cuenta como puesta a mano; un tiro no
+  se pierde si no se puede poner nada.
+- **Otros**: el aro de «Ataca a» entra en la clave de los papeles; el botón
+  del grupo no queda huérfano al cambiar de escena; el foco vuelve al
+  lienzo tras lo dicho a varios.
+
+Al fusionar chocaron seis archivos (`tablero.js`, `pizarra.js`, `lienzo.js`,
+`plantillas.js` y sus dos bancos): casi todo estaba arreglado dos veces con
+el mismo fondo. Se dejó una sola forma de cada cosa. Donde no coincidían:
+con el **pase a varios** manda lo decidido arriba (no se ofrece; la otra
+rama mandaba un balón a cada uno, y sus pruebas se quitaron); en las
+plantillas, lo de saneado, canasta y errores es de la primera revisión y lo
+de orden, destinos y conos (el quiebro de un cono se quita al guardar) es
+de esta.
+
+**Decidido por el entrenador en la revisión (2026-10-03):**
 
 - **Plantillas y canasta**: la plantilla guarda a qué aro atacaba
   (`datos.canasta`, sin tocar la 045) y se pone en espejo si la jugada

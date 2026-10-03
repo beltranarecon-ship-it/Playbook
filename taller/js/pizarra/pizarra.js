@@ -204,7 +204,7 @@ export class Pizarra {
     /* Con el foco en la pista, el Espacio es también el modo mano (para
        desplazarla): el Lienzo lo atiende primero, y solo si al soltarlo no
        ha movido nada era un «reproducir». */
-    this.lienzo.alEspacioSolo = () => this._espacioSolo();
+    this.lienzo.onEspacio = () => this._espacioSolo();
 
     this.tablero.poner([]);
     this.panel.recuento(recuento([]));

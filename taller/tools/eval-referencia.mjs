@@ -105,7 +105,7 @@ for (const j of JUGADAS_DE_REFERENCIA) {
     eq(r.avisos, [], 'se reabre sin avisos:');
     const otro = tableroDe(j.pista).t;
     ok(otro.cargar(jugada).ok, 'se carga');
-    eq(JSON.parse(JSON.stringify(otro.jugada())).fases.map((f) => f.tramos.map((x) => [x.accion, x.elemento_id])), jugada.fases.map((f) => f.tramos.map((x) => [x.accion, x.elemento_id])), 'con los mismos tramos:');
+    eq(JSON.parse(JSON.stringify(otro.jugada())), jugada, 'la misma, punto por punto:');
     eq(compilar(otro.jugada()).fases.map((f) => f.frase), anim.fases.map((f) => f.frase), 'y cuenta lo mismo:');
     ok(t, 'tablero');
   });

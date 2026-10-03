@@ -54,10 +54,13 @@ export function duracionRepaso(trazo, pista = 'entera', ritmo = 'normal') {
 }
 
 export class Repaso {
-  /** @param onFin () — terminó; no hay nada que recolocar */
-  constructor(lienzo, { onFin } = {}) {
+  /** @param onFin   () — terminó; no hay nada que recolocar
+   *  @param onCorte () — se cortó a medias: lo que esperaba a que acabase
+   *                      ya no tiene que pasar */
+  constructor(lienzo, { onFin, onCorte } = {}) {
     this.lienzo = lienzo;
     this.onFin = onFin;
+    this.onCorte = onCorte;
     this.activo = null;   // { porElemento, dur, t0 }
     this._raf = null;
     this._reloj = null;
@@ -164,7 +167,7 @@ export class Repaso {
     this._raf = null; this._reloj = null;
     const habia = !!this.activo;
     this.activo = null;
-    if (habia) this.lienzo.pintar();
+    if (habia) { this.lienzo.pintar(); this.onCorte?.(); }
   }
 
   /**
