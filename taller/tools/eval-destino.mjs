@@ -12,11 +12,16 @@
    hasta que se proyecta en el pabellón.
    ============================================================ */
 
-import { tieneDestinoPropio, destinoDe } from '../js/pizarra/destino.js';
+import {
+  tieneDestinoPropio, destinoDe, METROS_FINALIZACION, METROS_RECOGIDA, trasElTiro, METROS_REBOTE, METROS_CAIDA,
+  esAccionDeBloqueo, defensorSupuesto, sitioDelBloqueo, frenteDelBloqueo,
+  METROS_BLOQUEO, METROS_PAR_CON_BALON, METROS_PAR_SIN_BALON, esGesto, trazoDeGesto,
+} from '../js/pizarra/destino.js';
+import { radioMetros } from '../js/pizarra/elementos.js';
+import { limitesCancha } from '../js/canvas/medidas.js';
 import { CATALOGO_SISTEMA } from '../js/ia/acciones.js';
-import { METROS_FINALIZACION, METROS_RECOGIDA } from '../js/ia/compilador.js';
 import { posicionesDe } from '../js/canvas/anclas.js';
-import { metrosEntre } from '../js/canvas/escala.js';
+import { metrosEntre, escalaDe } from '../js/canvas/escala.js';
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -62,9 +67,9 @@ test('«entra» SE PARA DONDE SE APOYA, no encima del aro', () => {
 });
 
 test('Y ESA DISTANCIA ES LA DEL MOTOR, no una parecida', () => {
-  /* El catálogo declara 1,1 y el compilador usa METROS_FINALIZACION de
-     reserva: los dos números tienen que ser el mismo, o el trazo que se
-     dibuja y el que se anima no coincidirán. */
+  /* La acción declara 1,1 y su familia lo declara de reserva: los dos
+     números tienen que ser el mismo, o una acción sin `separacion`
+     propia pararía a otra distancia que la que la declara. */
   eq(de('entra').parametros.separacion, METROS_FINALIZACION,
     'si esto falla, el trazo dibujado y el animado se separan:');
   // y sin `separacion`, se cae en la constante del motor
@@ -141,6 +146,217 @@ test('entradas imposibles no rompen nada', () => {
   ok(destinoDe(de('entra'), { id: 'x', kind: 'jugador' }, {}).motivo, 'sin coordenadas:');
   eq(tieneDestinoPropio(null), false);
   eq(tieneDestinoPropio({}), false);
+});
+
+/* ── 4. Después del tiro ─────────────────────────────────── */
+
+const aroDe = (pista, canasta) => { const a = posicionesDe(pista, canasta).aro; return { x: a[0], y: a[1] }; };
+
+test('UN TIRO QUE FALLA REBOTA A 2,5 M, hacia dentro y al lado CONTRARIO al tirador', () => {
+  const aro = aroDe('entera', 'norte');
+  const izq = trasElTiro({ pista: 'entera', canasta: 'norte', desde: { x: aro.x - 0.25, y: aro.y + 0.2 }, desenlace: 'falla' });
+  aprox(metrosEntre('entera', izq, aro), METROS_REBOTE, 1e-6, 'a qué distancia del aro:');
+  ok(izq.x > aro.x, `tirando desde la izquierda, rebota a la derecha: ${izq.x} frente a ${aro.x}`);
+  ok(izq.y > aro.y, 'y hacia dentro de la pista, no fuera de la línea de fondo');
+  const der = trasElTiro({ pista: 'entera', canasta: 'norte', desde: { x: aro.x + 0.25, y: aro.y + 0.2 }, desenlace: 'falla' });
+  ok(der.x < aro.x, 'desde la derecha, a la izquierda');
+});
+
+test('en la OTRA canasta, dentro es hacia el otro lado', () => {
+  const aro = aroDe('entera', 'sur');
+  const p = trasElTiro({ pista: 'entera', canasta: 'sur', desde: { x: aro.x + 0.25, y: aro.y - 0.2 }, desenlace: 'falla' });
+  aprox(metrosEntre('entera', p, aro), METROS_REBOTE, 1e-6);
+  ok(p.y < aro.y && p.x < aro.x, `hacia dentro y al otro lado: ${JSON.stringify(p)}`);
+});
+
+test('desde el centro rebota recto; y un tiro que ENTRA cae bajo el aro', () => {
+  const aro = aroDe('entera', 'norte');
+  const recto = trasElTiro({ pista: 'entera', canasta: 'norte', desde: { x: aro.x, y: aro.y + 0.3 }, desenlace: 'falla' });
+  aprox(recto.x, aro.x, 1e-9, 'sin elegir lado por un centímetro:');
+  const cae = trasElTiro({ pista: 'entera', canasta: 'norte', desde: { x: aro.x - 0.3, y: aro.y + 0.2 }, desenlace: 'entra' });
+  aprox(metrosEntre('entera', cae, aro), METROS_CAIDA, 1e-6, 'bajo el aro:');
+  aprox(cae.x, aro.x, 1e-9, 'justo delante, venga de donde venga:');
+});
+
+test('EN LAS CUATRO PISTAS Y LAS DOS CANASTAS, el balón queda dentro de la cancha', () => {
+  for (const pista of ['entera', 'media', 'entera_fiba', 'media_fiba']) {
+    for (const canasta of ['norte', 'sur']) {
+      const aro = aroDe(pista, canasta);
+      const lim = limitesCancha(pista);
+      for (const desenlace of ['entra', 'falla']) {
+        for (const desde of [{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }, { x: aro.x, y: aro.y }]) {
+          const p = trasElTiro({ pista, canasta, desde, desenlace });
+          ok(p && p.x >= lim.x[0] && p.x <= lim.x[1] && p.y >= lim.y[0] && p.y <= lim.y[1],
+            `${pista} ${canasta} ${desenlace}: fuera de la cancha ${JSON.stringify(p)}`);
+        }
+      }
+    }
+  }
+  ok(trasElTiro({ pista: 'no_existe', desenlace: 'falla' }) === null, 'sin aro conocido, null');
+});
+
+/* ── 6. El sitio del bloqueo (§4.4) ──────────────────────── */
+
+test('ES UN BLOQUEO LO QUE DIBUJA LA RELACIÓN DE BLOQUEO, según el catálogo', () => {
+  for (const a of CATALOGO_SISTEMA) {
+    const esperado = a.familia === 'entre_dos' && a.parametros.simbolo_relacion === 'bloqueo';
+    eq(esAccionDeBloqueo(a), esperado, `${a.slug}:`);
+  }
+  ok(esAccionDeBloqueo(de('bloquea')), 'bloquea lo es');
+  ok(!esAccionDeBloqueo(de('defiende')) && !esAccionDeBloqueo(null), 'defiende no, y nada tampoco');
+});
+
+test('SIN DEFENSA, EL DEFENSOR SE SUPONE ENTRE EL COMPAÑERO Y EL ARO: 1,2 m con balón, 2,0 sin él', () => {
+  const aro = aroDe('entera', 'norte');
+  const par = { x: 0.5, y: 0.5 };
+  for (const [conBalon, metros] of [[true, METROS_PAR_CON_BALON], [false, METROS_PAR_SIN_BALON]]) {
+    const d = defensorSupuesto({ pista: 'entera', canasta: 'norte', par, conBalon });
+    aprox(metrosEntre('entera', d, par), metros, 1e-6, `con balón ${conBalon}, a su par:`);
+    aprox(metrosEntre('entera', d, aro) + metros, metrosEntre('entera', par, aro), 1e-6, 'y sobre la línea al aro:');
+  }
+});
+
+/* El producto escalar de dos vectores medidos en METROS. */
+const escalar = (pista, a, b, c, d) => {
+  const e = escalaDe(pista);
+  return (b.x - a.x) * e.x * (d.x - c.x) * e.x + (b.y - a.y) * e.y * (d.y - c.y) * e.y;
+};
+
+test('QUIEN BLOQUEA SE PLANTA AL LADO DE ESE DEFENSOR, a 0,7 m y del lado por el que llega', () => {
+  const companero = { x: 0.5, y: 0.5 };
+  const d = defensorSupuesto({ pista: 'entera', canasta: 'norte', par: companero, conBalon: false });
+  for (const desde of [{ x: 0.85, y: 0.5 }, { x: 0.15, y: 0.5 }]) {
+    const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero, conBalon: false });
+    aprox(metrosEntre('entera', s, d), METROS_BLOQUEO, 1e-6, 'pegado a él:');
+    aprox(escalar('entera', companero, d, d, s), 0, 1e-6, 'al LADO, no en la línea al aro:');
+    ok(escalar('entera', d, s, d, desde) > 0, `del lado por el que llega (desde x=${desde.x}): ${JSON.stringify(s)}`);
+  }
+});
+
+test('LA PERPENDICULAR ES EN METROS: también con el compañero en el ala, fuera del eje del aro', () => {
+  /* Con la línea al aro vertical, medir en [0,1] o en metros da lo mismo;
+     en diagonal no, porque la pista entera mide 18 por 27. */
+  const companero = { x: 0.2, y: 0.3 };
+  const d = defensorSupuesto({ pista: 'entera', canasta: 'norte', par: companero, conBalon: false });
+  const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde: { x: 0.05, y: 0.5 }, companero, conBalon: false });
+  aprox(escalar('entera', companero, d, d, s), 0, 1e-6, 'a 90° en metros:');
+  aprox(metrosEntre('entera', s, d), METROS_BLOQUEO, 1e-6);
+});
+
+test('NO SE QUEDA ENCIMA DEL COMPAÑERO aunque llegue desde su misma altura', () => {
+  /* Parándose en su camino hacia el defensor, el que venía desde la
+     altura del compañero acababa a medio metro de él, ficha sobre ficha. */
+  const companero = { x: 0.35, y: 0.30 };
+  const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde: { x: 0.12, y: 0.30 }, companero, conBalon: true });
+  ok(metrosEntre('entera', s, companero) > 1.3, `a ${metrosEntre('entera', s, companero).toFixed(2)} m del compañero`);
+});
+
+test('CON DEFENSA EN LA PISTA SE BLOQUEA AL DEFENSOR DE VERDAD, no al supuesto', () => {
+  const companero = { x: 0.5, y: 0.5 };
+  const desde = { x: 0.85, y: 0.5 };
+  /* Uno que no está donde lo pondría la regla: más arriba y a un lado. */
+  const defensor = { x: 0.58, y: 0.56 };
+  const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero, conBalon: false, defensor });
+  aprox(metrosEntre('entera', s, defensor), METROS_BLOQUEO, 1e-6, 'pegado a él:');
+  aprox(escalar('entera', companero, defensor, defensor, s), 0, 1e-6, 'y al lado de la línea compañero→defensor:');
+  const supuesto = defensorSupuesto({ pista: 'entera', canasta: 'norte', par: companero, conBalon: false });
+  ok(metrosEntre('entera', s, supuesto) > 1, 'y no donde estaría el supuesto');
+});
+
+test('un defensor sin sitio no cuela: se vuelve al supuesto', () => {
+  const companero = { x: 0.5, y: 0.5 }, desde = { x: 0.85, y: 0.5 };
+  const bueno = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero, conBalon: false });
+  for (const malo of [null, {}, { x: 0.5, y: NaN }]) {
+    eq(sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero, conBalon: false, defensor: malo }), bueno);
+  }
+});
+
+test('«VUELVE A LA FILA» VA AL FINAL DE SU COLA, o a la que diga su fila (§7.4.2)', () => {
+  const vuelve = de('vuelve_a_fila');
+  const cono = { id: 'c1', kind: 'cono', x: 0.5, y: 0.5, fila: { n: 3, orientacion: 90, vuelta: null } };
+  const otra = { id: 'c2', kind: 'cono', x: 0.2, y: 0.5, fila: { n: 2, orientacion: 0, vuelta: null } };
+  const j = { id: 'j1', kind: 'jugador', x: 0.5, y: 0.3, fila_de: 'c1' };
+  const r = destinoDe(vuelve, j, { pista: 'entera', elementos: [cono, otra, j] });
+  ok(r.punto, r.motivo);
+  /* Un hueco detrás del tercero: 3 huecos del cono hacia abajo. */
+  aprox(metrosEntre('entera', r.punto, cono), 3 * 1.95 * 0.65, 1e-9, 'al final de la suya:');
+  ok(r.punto.y > cono.y, 'por detrás, que es hacia abajo');
+  const aOtra = destinoDe(vuelve, j, { pista: 'entera', elementos: [{ ...cono, fila: { ...cono.fila, vuelta: 'c2' } }, otra, j] });
+  aprox(metrosEntre('entera', aOtra.punto, otra), 2 * 1.95 * 0.65, 1e-9, 'y a la otra, si su fila lo dice:');
+  const suelto = destinoDe(vuelve, { id: 'j9', kind: 'jugador', x: 0.4, y: 0.4 }, { pista: 'entera', elementos: [cono] });
+  ok(!suelto.punto && /fila/.test(suelto.motivo), `quien no salió de una fila no tiene a dónde volver: ${suelto.motivo}`);
+});
+
+test('con el compañero en el aro se acerca por su camino; sin compañero o sin aro, no se inventa', () => {
+  const aro = aroDe('entera', 'norte');
+  const desde = { x: 0.5, y: 0.5 };
+  const s = sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde, companero: aro, conBalon: false });
+  aprox(metrosEntre('entera', s, aro), METROS_BLOQUEO, 1e-6, 'se para antes de llegar:');
+  const companero = { x: 0.5, y: 0.5 };
+  eq(sitioDelBloqueo({ pista: 'entera', canasta: 'norte', desde: { x: 0.2, y: 0.2 }, companero: null }), null);
+  eq(sitioDelBloqueo({ pista: 'no_existe', desde: { x: 0.2, y: 0.2 }, companero }), null);
+  eq(sitioDelBloqueo({ pista: 'entera', desde: null, companero }), null);
+});
+
+test('EN LAS CUATRO PISTAS Y LAS DOS CANASTAS, el bloqueador acaba dentro de la cancha', () => {
+  for (const pista of ['entera', 'media', 'entera_fiba', 'media_fiba']) {
+    for (const canasta of ['norte', 'sur']) {
+      const lim = limitesCancha(pista);
+      for (const companero of [{ x: 0.02, y: 0.5 }, { x: 0.5, y: 0.5 }, aroDe(pista, canasta)]) {
+        for (const desde of [{ x: 0.98, y: 0.02 }, { x: 0.1, y: 0.9 }]) {
+          const p = sitioDelBloqueo({ pista, canasta, desde, companero, conBalon: false });
+          ok(p && p.x >= lim.x[0] && p.x <= lim.x[1] && p.y >= lim.y[0] && p.y <= lim.y[1],
+            `${pista} ${canasta}: fuera de la cancha ${JSON.stringify(p)}`);
+        }
+      }
+    }
+  }
+});
+
+test('LA BARRA MIRA HACIA DONDE LLEGA: un punto justo delante del final', () => {
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal', handle_in: null, handle_out: null });
+  const f = frenteDelBloqueo([N(0.8, 0.5), N(0.6, 0.5)]);
+  ok(f.x < 0.6 && Math.abs(f.y - 0.5) < 1e-9, `hacia la izquierda, que es por donde iba: ${JSON.stringify(f)}`);
+  eq(frenteDelBloqueo([N(0.5, 0.5), N(0.5, 0.5)]), null, 'si no se ha movido, no tiene frente:');
+  eq(frenteDelBloqueo(null), null);
+});
+
+console.log('\n· los gestos en el sitio (§4.4)');
+
+const GESTOS = CATALOGO_SISTEMA.filter(esGesto);
+
+test('UN GESTO EN EL SITIO SALE Y VUELVE: acaba donde empezó, en las cuatro pistas', () => {
+  eq(GESTOS.map((a) => a.slug), ['finta', 'pivota', 'cambia_de_mano', 'protege', 'para']);
+  for (const pista of ['entera', 'entera_fiba', 'media', 'media_fiba']) {
+    for (const a of GESTOS) {
+      const t = trazoDeGesto(a, jugador, { pista, canasta: 'norte' });
+      eq(t.length, 3, `${a.slug} en ${pista}: ida y vuelta`);
+      eq([[t[0].x, t[0].y], [t[2].x, t[2].y]], [[jugador.x, jugador.y], [jugador.x, jugador.y]], `${a.slug} en ${pista}: sale de la ficha y vuelve a ella`);
+    }
+  }
+});
+
+test('LA AMPLITUD ES LA DEL CATÁLOGO, EN METROS Y POR FUERA DE LA FICHA: igual en las cuatro pistas y sin que la ficha la tape', () => {
+  for (const pista of ['entera', 'entera_fiba', 'media', 'media_fiba']) {
+    for (const a of GESTOS) {
+      const t = trazoDeGesto(a, jugador, { pista, canasta: 'norte' });
+      aprox(metrosEntre(pista, t[0], t[1]), radioMetros('jugador') + a.parametros.amplitud, 1e-6, `${a.slug} en ${pista}`);
+    }
+  }
+});
+
+test('EL GESTO SALE HACIA EL ARO; y debajo del aro, hacia el centro de la pista', () => {
+  const aro = posicionesDe('entera', 'norte').aro;
+  const t = trazoDeGesto(de('finta'), jugador, { pista: 'entera', canasta: 'norte' });
+  ok(metrosEntre('entera', t[1], aro) < metrosEntre('entera', t[0], aro), 'la punta queda más cerca del aro');
+  const sur = trazoDeGesto(de('finta'), jugador, { pista: 'entera', canasta: 'sur' });
+  ok(sur[1].y > jugador.y && t[1].y < jugador.y, 'y atacando a la otra canasta, hacia la otra');
+  const debajo = { id: 'j2', kind: 'jugador', x: aro[0], y: aro[1] };
+  const d = trazoDeGesto(de('finta'), debajo, { pista: 'entera', canasta: 'norte' });
+  ok(metrosEntre('entera', d[0], d[1]) > 1 && d[1].y > debajo.y, `sin dirección al aro, hacia el centro: ${JSON.stringify(d[1])}`);
+  const aroSur = posicionesDe('entera', 'sur').aro;
+  const dSur = trazoDeGesto(de('finta'), { id: 'j3', kind: 'jugador', x: aroSur[0], y: aroSur[1] }, { pista: 'entera', canasta: 'sur' });
+  ok(dSur[1].y < aroSur[1], `y bajo el otro aro, hacia arriba, no fuera de la pista: ${JSON.stringify(dSur[1])}`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

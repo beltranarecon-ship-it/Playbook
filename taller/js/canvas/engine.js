@@ -5,56 +5,16 @@
    Estado del motor §9.5. Coordenadas normalizadas [0–1].
    ============================================================ */
 
-import { makeSampler, easeInOut } from './geometry.js';
-import { drawArrow, drawBloqueo, MOV_TO_ARROW } from './arrows.js';
+/* Dónde está cada uno en t: la misma cuenta que usan el repaso de la
+   Pizarra y la defensa que se mueve sola (ver instante.js y
+   fotograma.js, que es de donde sale lo de una fase entera). */
+import { metaDeFase, fotograma, copiarEscena } from './fotograma.js';
+import { drawArrow, drawBloqueo } from './arrows.js';
 import { drawPlayer, drawBall, drawCone, drawFila, drawPelotaTenis, drawEscalera, drawZona, radii } from './symbols.js';
 import { zonaDesdeGuardada, contornoDe, centroDe as centroZona } from './zonas.js';
 import { COLORS, TAU } from './colors.js';
 
-const clone = (m) => { const o = {}; for (const k in m) o[k] = { ...m[k] }; return o; };
-const lastNode = (path) => (path && path.length ? { x: path[path.length - 1].x, y: path[path.length - 1].y } : null);
 const numLabel = (j) => (j.dorsal ?? (String(j.id).match(/\d+/)?.[0] ?? j.id));
-
-/* Un camino de LONGITUD CERO —soltar el destino encima de la ficha, un
-   balón que ya está en las manos a las que va— hace que `makeSampler`
-   reparta por una longitud de arco que no existe, se salga de su propia
-   tabla y reviente a mitad del recorrido. Aquí eso es simplemente
-   quedarse quieto. */
-function muestreador(path) {
-  const s = makeSampler(path);
-  const flat = s.flat || [];
-  let largo = 0;
-  for (let i = 1; i < flat.length; i++) largo += Math.hypot(flat[i].x - flat[i - 1].x, flat[i].y - flat[i - 1].y);
-  if (largo > 0) return s;
-  const p = flat[flat.length - 1] || lastNode(path) || { x: 0.5, y: 0.5 };
-  const quieto = () => ({ x: p.x, y: p.y });
-  quieto.flat = flat.length ? flat : [p];
-  quieto.totalLen = 0;
-  return quieto;
-}
-
-/* Dónde está alguien en el instante t, con sus tramos ordenados por
-   arranque. Tres casos, y los tres importan: mientras uno está activo,
-   sobre su camino; ANTES del primero, en su salida —si no, esperaría de
-   pie en el destino—; y ENTRE dos, donde acabó el anterior. */
-function posicionEn(movs, t) {
-  if (!movs || !movs.length) return null;
-  let ultimo = null;
-  for (const x of movs) {
-    if (t < x.inicio) break;
-    if (t <= x.fin) return x.sampler(easeInOut((t - x.inicio) / x.dur));
-    ultimo = x;
-  }
-  return ultimo ? ultimo.sampler(1) : movs[0].sampler(0);
-}
-
-/* De quién es un balón en el instante t: el último cambio de manos que
-   ya haya ocurrido, o el dueño con el que empezó la fase. */
-function duenoEn(eventos, t, inicial) {
-  let quien = inicial ?? null;
-  for (const ev of eventos || []) { if (ev.t <= t) quien = ev.quien; else break; }
-  return quien;
-}
 
 export class AnimationEngine {
   constructor(view, animacion, opts = {}) {
@@ -68,10 +28,24 @@ export class AnimationEngine {
     // Vista previa (§Tramo 1): null en reproducción normal; en modo preview,
     // { canasta } — render() omite las flechas de fase y resalta ese aro.
     this.preview = null;
+    /* Quien necesite que una fase no se acabe todavía —la voz que está
+       leyendo su frase (§9.3)— pone aquí una función que diga si hay que
+       esperar. Al final de cada fase, mientras diga que sí, el motor se
+       queda quieto. */
+    this.retener = null;
+    /* LAS RAMAS (§6.7): el proyector se para en cada cruce y pregunta. Los
+       demás —la ficha, la miniatura, el planificador— siguen el camino
+       principal sin pararse, que es lo que ya traen las fases. */
+    this.elegirRamas = !!opts.elegirRamas;
+    this.cruce = null;
     this.load(animacion, { paused: opts.paused });
   }
 
   on(ev, cb) { (this._listeners[ev] ||= []).push(cb); return this; }
+  /* Sin esto no había forma de dejar de escuchar: el escenario del
+     asistente monta unos mandos nuevos cada vez que enseña una jugada, y
+     los de antes seguían recibiendo cada fotograma fuera de la pantalla. */
+  off(ev, cb) { this._listeners[ev] = (this._listeners[ev] || []).filter((f) => f !== cb); return this; }
   _emit(ev, d) { (this._listeners[ev] || []).forEach((f) => f(d)); }
 
   /* ---- carga y construcción de la línea de tiempo ----
@@ -83,6 +57,11 @@ export class AnimationEngine {
     this.balones = this.anim.balones || [];
     this.conos = this.anim.conos || [];
     this.fases = this.anim.fases || [];
+    this.cruce = null;
+    /* Las fases de todos los caminos, por su id, y lo que ofrece cada
+       cruce: con eso se rehace el camino cuando se elige otra rama. */
+    this._faseDeId = new Map([...this.fases, ...(this.anim.fases_rama || [])].map((f) => [f.id, f]));
+    this._cruces = new Map((this.anim.ramas || []).map((r) => [r.desde, r.opciones || []]));
     // El rol (defensor) se define por fase con fase.defensores (§10). Si ninguna
     // fase lo declara, es una animación del modelo antiguo: caemos a jugador.tipo.
     this.usesPhaseRoles = this.fases.some((f) => Array.isArray(f.defensores));
@@ -106,111 +85,57 @@ export class AnimationEngine {
 
     this.restStart = [];
     this.meta = [];
+    /* La escena del principio, aparte de las fases. Sin ninguna fase no
+       hay `restStart[0]`, y el cálculo del fotograma caía a su valor de
+       reserva: TODOS pintados en el centro de la pista, uno encima de
+       otro. Pasaba ya con lo que se guardaba «sin animación», y con la
+       Pizarra pasa con toda colocación sin trazos (se compila sin
+       fases). */
+    this.inicio = copiarEscena({ P, B, owner });
 
+    let escena = { P, B, owner };
     for (const fase of this.fases) {
-      const dur = fase.duracion_ms || 1000;
-      /* CUÁNDO va cada cosa dentro de la fase (§11.2).
-         Solo lleva tiempo propio lo que trae `inicio_ms`, que es la señal
-         de que viene del compilador con carriles. Todo lo demás
-         —cualquier animación guardada antes— ocupa la fase entera,
-         exactamente como hacía este motor, así que nada de lo guardado
-         cambia de aspecto. Y no basta con `duracion_ms`: las animaciones
-         de antes ya lo traían en algunos pases, y hacerle caso cambiaría
-         cómo se ven. */
-      const cuando = (x) => {
-        if (!Number.isFinite(x && x.inicio_ms)) return { inicio: 0, fin: dur, dur };
-        const inicio = Math.max(0, x.inicio_ms);
-        const d = Number.isFinite(x.duracion_ms) && x.duracion_ms > 0 ? x.duracion_ms : Math.max(1, dur - inicio);
-        return { inicio, fin: inicio + d, dur: d };
-      };
-      this.restStart.push({ P: clone(P), B: clone(B), owner: { ...owner } });
-      const m = {
-        movs: {},        // jugador -> [{ sampler, inicio, fin, dur }], por orden de arranque
-        ballMovs: {},    // balón   -> [{ kind, sampler, inicio, fin, dur }]
-        duenos: {},      // balón   -> [{ t, quien }]: cuándo cambia de manos
-        /* El último movimiento de cada uno, como lo guardaba el motor de
-           antes: quien lo lea desde fuera sigue encontrándolo. */
-        movByEl: {}, ballMoves: {},
-        bloqueos: fase.bloqueos || [], arrows: [], defenders: new Set(fase.defensores || []),
-      };
-      const pon = (lista, id, x) => { (lista[id] ||= []).push(x); };
-      /* Dónde acaba cada uno se decide por INSTANTE, no por el orden en
-         que vienen escritos: con carriles, el último de la lista no tiene
-         por qué ser el último en acabar. Con empate —todo lo que ocupa la
-         fase entera— gana el último escrito, como antes. */
-      const alFinal = {};
-      const acaba = (id, fin, punto) => { if (punto && (!alFinal[id] || fin >= alFinal[id].fin)) alFinal[id] = { fin, punto }; };
-
-      // movimientos de jugadores y balones
-      for (const mv of (fase.movimientos || [])) {
-        const sampler = muestreador(mv.path);
-        const type = MOV_TO_ARROW[mv.tipo_movimiento] || 'cut';
-        const c = cuando(mv);
-        if (mv.tipo_elemento === 'balon') {
-          pon(m.ballMovs, mv.elemento_id, { kind: 'mov', sampler, ...c });
-          m.ballMoves[mv.elemento_id] = { kind: 'mov', sampler };
-        } else {
-          pon(m.movs, mv.elemento_id, { sampler, ...c });
-          m.movByEl[mv.elemento_id] = { sampler, type };
-          m.arrows.push({ flat: sampler.flat, type });
-        }
-        acaba(mv.elemento_id, c.fin, lastNode(mv.path));
-      }
-      for (const j of this.jugadores) if (alFinal[j.id]) P[j.id] = alFinal[j.id].punto;
-
-      // pases (el balón viaja al receptor, y es suyo al llegar)
-      for (const p of (fase.pases || [])) {
-        const recvEnd = P[p.a_id] || lastNode(p.path) || B[p.balon_id];
-        const effPath = (p.path && p.path.length >= 2) ? p.path : [this.restStart[this.restStart.length - 1].B[p.balon_id] || B[p.balon_id], recvEnd];
-        const sampler = muestreador(effPath);
-        const c = cuando(p);
-        pon(m.ballMovs, p.balon_id, { kind: 'pase', sampler, ...c });
-        m.ballMoves[p.balon_id] = { kind: 'pase', sampler };
-        m.arrows.push({ flat: sampler.flat, type: 'pass' });
-        pon(m.duenos, p.balon_id, { t: c.fin, quien: p.a_id || null });
-        acaba(p.balon_id, c.fin, lastNode(effPath));
-      }
-
-      // tiros (el balón viaja a canasta y deja de ser de nadie)
-      for (const t of (fase.tiros || [])) {
-        const start = this.restStart[this.restStart.length - 1].B[t.balon_id] || B[t.balon_id];
-        const basket = this._basket(t.canasta);
-        const effPath = (t.path && t.path.length >= 2) ? t.path : [start, basket];
-        const sampler = muestreador(effPath);
-        const c = cuando(t);
-        pon(m.ballMovs, t.balon_id, { kind: 'tiro', sampler, ...c });
-        m.ballMoves[t.balon_id] = { kind: 'tiro', sampler };
-        m.arrows.push({ flat: sampler.flat, type: 'pass' });
-        pon(m.duenos, t.balon_id, { t: c.fin, quien: null });
-        // reposo final = último nodo del path EFECTIVO (Tramo 2): el balón
-        // no salta al aro de court.js al acabar la fase.
-        acaba(t.balon_id, c.fin, lastNode(effPath) || basket);
-      }
-
-      // recogidas: alguien va a por un balón suelto y se lo queda. Es suyo
-      // cuando el balón llega a sus manos —el final de su último viaje en
-      // esta fase—, y si no viaja, al acabar la fase, como antes. Va
-      // DESPUÉS de los tiros: en la misma fase, primero se suelta.
-      for (const rec of (fase.recogidas || [])) {
-        if (!rec || !rec.balon_id) continue;
-        const viajes = m.ballMovs[rec.balon_id] || [];
-        const t = viajes.length ? Math.max(...viajes.map((x) => x.fin)) : dur;
-        pon(m.duenos, rec.balon_id, { t, quien: rec.jugador_id || null });
-      }
-
-      // dueños y sitios al acabar la fase
-      for (const b of this.balones) {
-        const lista = m.duenos[b.id];
-        if (lista) { lista.sort((a, z) => a.t - z.t); owner[b.id] = lista[lista.length - 1].quien; }
-        const o = owner[b.id];
-        if (o && P[o]) B[b.id] = { ...P[o] };
-        else if (alFinal[b.id]) B[b.id] = alFinal[b.id].punto;
-      }
-      for (const id in m.movs) m.movs[id].sort((a, z) => a.inicio - z.inicio);
-      for (const id in m.ballMovs) m.ballMovs[id].sort((a, z) => a.inicio - z.inicio);
-
-      this.meta.push(m);
+      this.restStart.push(copiarEscena(escena));
+      const r = metaDeFase(fase, {
+        jugadores: this.jugadores, balones: this.balones, escena,
+        aro: (cual) => this._basket(cual),
+      });
+      this.meta.push(r.meta);
+      escena = r.escena;
     }
+  }
+
+  /**
+   * Los bloqueos que se ven en el instante t de la fase k, cada uno con
+   * sus dos extremos: `a`, dónde está el bloqueador, y `b`, hacia dónde
+   * mira la barra.
+   *
+   * Lo de antes no trae instante y se ve la fase entera, mirando al
+   * bloqueado, exactamente como siempre. Lo de la Pizarra trae cuándo
+   * LLEGA el bloqueador (`inicio_ms`) y cuánto aguanta (`duracion_ms`):
+   * la barra sale al plantarse y no mientras va de camino. Y mira hacia
+   * `hacia`, el frente con el que llegó; mirando al compañero, la barra
+   * giraría mientras el compañero pasa por su lado.
+   *
+   * Va aparte de `render` para poder probarlo en Node, donde no se pinta.
+   */
+  bloqueosEn(k, t, players) {
+    const lista = [];
+    for (const bl of (this.meta[k] && this.meta[k].bloqueos) || []) {
+      if (!bl) continue;
+      if (Number.isFinite(bl.inicio_ms)) {
+        const hasta = Number.isFinite(bl.duracion_ms) ? bl.inicio_ms + bl.duracion_ms : Infinity;
+        if (t < bl.inicio_ms || t > hasta) continue;
+      }
+      const a = players[bl.bloqueador_id];
+      /* A quién mira la barra: al defensor al que se le pone, DONDE ESTÉ
+         en este instante —se mueve solo (§8.4)—; si no se sabe cuál es,
+         hacia donde llegó el bloqueador; y si tampoco, a su compañero. */
+      const b = (bl.defensor_id && players[bl.defensor_id])
+        || (Array.isArray(bl.hacia) ? { x: bl.hacia[0], y: bl.hacia[1] } : players[bl.bloqueado_id]);
+      if (a && b) lista.push({ a, b });
+    }
+    return lista;
   }
 
   /* ---- estado de reproducción §9.5 ---- */
@@ -225,6 +150,8 @@ export class AnimationEngine {
 
   play() {
     if (this.playing || !this.fases.length) return;
+    /* Parado en un cruce, darle al play es seguir por el camino principal. */
+    if (this.cruce) { this.elegirRama(0); return; }
     /* Terminada y sin bucle, `play` no hacía NADA (Tramo 2.15): el
        reloj arrancaba con la última fase ya consumida, así que el
        primer latido volvía a darla por acabada y se paraba otra vez.
@@ -236,15 +163,25 @@ export class AnimationEngine {
   }
   pause() { this.playing = false; if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } this.render(); this._emit('pause'); this._emitFrame(); }
   toggle() { this.playing ? this.pause() : this.play(); }
-  restart() { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this._emit('phase', this._infoFase(0)); this.play(); }
-  nextPhase() { this._goPhase(Math.min(this.k + 1, this.phaseCount - 1)); }
+  restart() { this._alPrincipio(); this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this._emit('phase', this._infoFase(0)); this.play(); }
+  nextPhase() {
+    /* Fase a fase también se para en un cruce y pregunta (§6.7); con el
+       cartel delante, lo que sigue lo dice la rama que se elija. */
+    if (this.cruce) return;
+    const opciones = this._opcionesDe(this.k);
+    if (opciones && opciones.length) { this._preguntar(opciones); return; }
+    this._goPhase(Math.min(this.k + 1, this.phaseCount - 1));
+  }
   prevPhase() { this._goPhase(Math.max(this.k - 1, 0)); }
 
   /* ---- rondas de fila (Tramo 2.8) ----------------------------------
      Un ejercicio de seis en fila son seis rondas de las mismas fases.
      El proyector enseña «2 de 6» y salta de una a otra: ver las seis
      seguidas fase a fase no aporta nada, porque son la misma. */
-  get rondas() { return this.anim?.rondas || 1; }
+  /* Solo las del modelo antiguo, que repetían FASES (`fase.ronda`). Las
+     rondas de la Pizarra (§7.4.2) van dentro de cada fase: se ven
+     enteras, uno tras otro, y no hay ronda a la que saltar. */
+  get rondas() { return this.fases.some((f) => f && f.ronda != null) ? (this.anim?.rondas || 1) : 1; }
   rondaActual() { return this.fases[this.k]?.ronda || 1; }
   /** Primera fase de una ronda; -1 si esa ronda no existe. */
   _inicioDeRonda(r) { return this.fases.findIndex((f) => (f.ronda || 1) === r); }
@@ -257,18 +194,22 @@ export class AnimationEngine {
     if (i >= 0) this._goPhase(i);
   }
 
-  _goPhase(k) { this.k = k; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this.render(); this._emit('phase', this._infoFase(k)); this._emitFrame(); }
+  /* Ir a otra fase deja sin contestar el cruce en el que estuviera. */
+  _goPhase(k) { this.cruce = null; this.k = k; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0; this.render(); this._emit('phase', this._infoFase(k)); this._emitFrame(); }
   /* Qué acciones ocurren en una fase (Tramo 2.14). Lo escribe el
      compilador; una fase dibujada a mano en el editor de flechas no
      tiene ninguna, y eso es una lista vacía, no un fallo. */
   accionesDeFase(k) { const a = this.fases[k]?.acciones; return Array.isArray(a) ? a : []; }
-  _infoFase(k) { return { k, n: this.phaseCount, ronda: this.fases[k]?.ronda || 1, rondas: this.rondas, acciones: this.accionesDeFase(k) }; }
+  _infoFase(k) { return { k, n: this.phaseCount, ronda: this.fases[k]?.ronda || 1, rondas: this.rondas, acciones: this.accionesDeFase(k), variantes: this.variantesDeFase(k) }; }
+  /* Las variantes de una fase (§11.2), para su vídeo (§10.2). */
+  variantesDeFase(k) { const v = this.fases[k]?.variantes; return Array.isArray(v) ? v : []; }
   setSpeed(s) { this.speed = s; this._emitFrame(); }
   setLoop(b) { this.loop = b; this._emitFrame(); }
   seek(u) {
     const ms = Math.max(0, Math.min(1, u)) * this.totalDuration;
     let k = 0;
     while (k < this.phaseCount - 1 && (this.cumDur[k + 1] || Infinity) <= ms) k++;
+    this.cruce = null;
     this.k = k; this.phaseElapsed = ms - (this.cumDur[k] || 0); this.mode = 'play'; this.pauseElapsed = 0;
     this.render(); this._emit('phase', this._infoFase(k)); this._emitFrame();
   }
@@ -282,16 +223,90 @@ export class AnimationEngine {
         if (this.phaseElapsed >= this._dur()) { this.phaseElapsed = this._dur(); this.mode = 'pausePost'; this.pauseElapsed = 0; }
       } else {
         this.pauseElapsed += dt * this.speed;
-        if (this.pauseElapsed >= (this.fases[this.k]?.pausa_post_ms ?? 400)) this._advance();
+        if (this.pauseElapsed >= (this.fases[this.k]?.pausa_post_ms ?? 400) && !(this.retener && this.retener())) this._advance();
       }
     }
     this.render();
     this._emitFrame();
     if (this.playing) this._schedule(); else this._raf = null;
   }
+  /* ---- las ramas (§6.7) -------------------------------------------- */
+
+  /** ¿Se abren ramas al acabar esta fase? */
+  _opcionesDe(k) { return this.elegirRamas ? (this._cruces.get(this.fases[k]?.id) || null) : null; }
+
+  /* Pone un camino nuevo y lo rehace todo: dónde empieza cada fase
+     depende de por dónde se ha llegado a ella. */
+  _ponerCamino(fases) {
+    this.fases = fases;
+    this.usesPhaseRoles = this.fases.some((f) => Array.isArray(f.defensores));
+    this._build();
+    this.cumDur = []; let acc = 0;
+    for (const f of this.fases) { this.cumDur.push(acc); acc += (f.duracion_ms || 1000); }
+    this.totalDuration = acc || 1;
+  }
+
+  /* Las fases desde esta, siguiendo a cada una por su camino. */
+  _desde(id) {
+    const r = [];
+    const vistas = new Set();
+    for (let f = this._faseDeId.get(id); f && !vistas.has(f.id); f = this._faseDeId.get(f.siguiente)) {
+      vistas.add(f.id);
+      r.push(f);
+    }
+    return r;
+  }
+
+  /**
+   * ELIGE UNA RAMA en el cruce en el que está parado: el camino sigue
+   * por ella y la animación continúa.
+   */
+  elegirRama(i) {
+    const c = this.cruce;
+    if (!c) return false;
+    const op = c.opciones[i];
+    if (!op) return false;
+    this.cruce = null;
+    const resto = op.fase ? this._desde(op.fase) : [];
+    this._ponerCamino([...this.fases.slice(0, c.k + 1), ...resto]);
+    this._emit('rama', { k: c.k, elegida: i });
+    if (!resto.length) { this.phaseElapsed = this._dur(); this.mode = 'play'; this._emit('ended'); this.render(); this._emitFrame(); return true; }
+    this.k = c.k + 1; this.phaseElapsed = 0; this.mode = 'play'; this.pauseElapsed = 0;
+    /* La fase se anuncia ya reproduciendo: quien la mira puede pararla
+       —el vídeo de referencia del proyector— y entonces no se sigue. */
+    this.playing = true; this._last = performance.now(); this._schedule();
+    this._emit('phase', this._infoFase(this.k));
+    if (this.playing) { this._emit('play'); this._emitFrame(); }
+    return true;
+  }
+
+  /* Se para al final de la fase del cruce y pregunta. */
+  _preguntar(opciones) {
+    if (this.playing) { this.playing = false; if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; } }
+    this.phaseElapsed = this._dur(); this.mode = 'pausePost'; this.pauseElapsed = 0;
+    this.cruce = { k: this.k, opciones };
+    this.render();
+    this._emit('cruce', { k: this.k, opciones });
+    this._emit('pause');
+    this._emitFrame();
+  }
+
+  /* Al volver a empezar, el camino principal otra vez. */
+  _alPrincipio() {
+    this.cruce = null;
+    if (this.elegirRamas && this.fases !== this.anim.fases && (this.anim.ramas || []).length) this._ponerCamino(this.anim.fases || []);
+  }
+
   _advance() {
+    const opciones = this._opcionesDe(this.k);
+    if (opciones && opciones.length) {
+      /* UN CRUCE: se para y pregunta (lo decidió el entrenador: espera a
+         que se elija). */
+      this._preguntar(opciones);
+      return;
+    }
     if (this.k < this.phaseCount - 1) { this.k++; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', this._infoFase(this.k)); }
-    else if (this.loop) { this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', this._infoFase(0)); }
+    else if (this.loop) { this._alPrincipio(); this.k = 0; this.phaseElapsed = 0; this.mode = 'play'; this._emit('phase', this._infoFase(0)); }
     else { this.playing = false; this.phaseElapsed = this._dur(); this.mode = 'play'; this._emit('ended'); this._emit('pause'); }
   }
 
@@ -299,28 +314,16 @@ export class AnimationEngine {
 
   /* ---- cálculo del fotograma actual ---- */
   _computePositions() {
-    const meta = this.meta[this.k], start = this.restStart[this.k];
     /* El instante DENTRO de la fase, en milisegundos. Lo que no trae
        tiempo propio ocupa la fase entera, así que para eso esto es lo
        mismo que el `easeInOut(tNorm())` de siempre. */
-    const t = Math.min(this.phaseElapsed, this._dur());
-    const players = {}, balls = {}, carrying = new Set();
-    for (const j of this.jugadores) {
-      players[j.id] = posicionEn(meta?.movs[j.id], t) || (start ? { ...start.P[j.id] } : { x: 0.5, y: 0.5 });
-    }
-    for (const b of this.balones) {
-      const movs = meta?.ballMovs[b.id];
-      const activo = movs && movs.find((x) => t >= x.inicio && t <= x.fin);
-      if (activo) { balls[b.id] = activo.sampler(easeInOut((t - activo.inicio) / activo.dur)); continue; }
-      /* Sin viaje en este instante: con su dueño de AHORA, que puede no
-         ser el del principio de la fase —tras un pase es del receptor,
-         aunque el receptor eche a correr en esta misma fase. */
-      const o = duenoEn(meta?.duenos[b.id], t, start?.owner[b.id]);
-      if (o && players[o]) { balls[b.id] = { x: players[o].x + 0.012, y: players[o].y }; carrying.add(o); continue; }
-      const hecho = movs ? movs.filter((x) => x.fin < t).pop() : null;
-      balls[b.id] = hecho ? hecho.sampler(1) : (start ? { ...start.B[b.id] } : { x: 0.5, y: 0.5 });
-    }
-    return { players, balls, carrying };
+    return fotograma({
+      meta: this.meta[this.k],
+      inicio: this.restStart[this.k] || this.inicio,
+      jugadores: this.jugadores,
+      balones: this.balones,
+      t: Math.min(this.phaseElapsed, this._dur()),
+    });
   }
 
   render() {
@@ -377,9 +380,8 @@ export class AnimationEngine {
     // dibujan: el fotograma 0 es el PLANTEAMIENTO estático, sin acciones.
     if (meta && !this.preview) {
       for (const ar of meta.arrows) drawArrow(ctx, ar.flat.map(toPx), ar.type, R.scale);
-      for (const bl of meta.bloqueos) {
-        const a = f.players[bl.bloqueador_id], b = f.players[bl.bloqueado_id];
-        if (a && b) drawBloqueo(ctx, toPx(a), toPx(b), R.scale);
+      for (const { a, b } of this.bloqueosEn(this.k, Math.min(this.phaseElapsed, this._dur()), f.players)) {
+        drawBloqueo(ctx, toPx(a), toPx(b), R.scale, R.jugador);
       }
     }
 

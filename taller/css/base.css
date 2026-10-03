@@ -313,49 +313,6 @@ h1, h2, h3, .display {
   letter-spacing: .02em;
 }
 
-/* ---- Stub / placeholder (Bloque 1) -------------------------- */
-.stub {
-  display: grid;
-  gap: var(--sp-3);
-  place-content: center;
-  text-align: center;
-  min-height: 280px;
-  padding: var(--sp-7);
-  border: 2px dashed var(--color-border);
-  border-radius: var(--r-lg);
-  color: var(--color-text-muted);
-  background: var(--surface-2);
-}
-.canvas-stub {
-  /* El hueco que se reserva mientras no hay pista: la proporción de la
-     entera, que es la por defecto (18/27). Estaba en 210/297, el folio
-     A4 de los SVG antiguos. */
-  aspect-ratio: 18 / 27;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  gap: var(--sp-2);
-  border-radius: var(--r-lg);
-  border: 1px solid var(--color-border);
-  background:
-    repeating-linear-gradient(45deg, var(--accent-tint) 0 2px, transparent 2px 22px),
-    var(--color-deep);
-  color: var(--accent-soft);
-}
-
-/* ---- Editor (modo edición) layout §3 ------------------------ */
-.editor-grid {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) 320px;
-  grid-template-rows: minmax(0,1fr) auto;
-  gap: var(--sp-4);
-  padding: var(--sp-5);
-  min-height: calc(100vh - var(--header-h) - var(--savebar-h));
-}
-.editor-canvas { grid-row: 1 / 2; grid-column: 1 / 2; }
-.editor-side { grid-row: 1 / 3; grid-column: 2 / 3; }
-.editor-storyboard { grid-row: 2 / 3; grid-column: 1 / 2; }
-
 /* ============================================================
    Responsive — breakpoint 1024px (§3, §7)
    En móvil: una columna, canvas debajo del formulario, no sticky.
@@ -364,9 +321,6 @@ h1, h2, h3, .display {
   .wizard-grid { grid-template-columns: 1fr; }
   .canvas-col { position: static; top: auto; order: 2; }
   .wizard-form { order: 1; }
-  .editor-grid { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
-  .editor-side { grid-row: auto; grid-column: 1; }
-  .editor-storyboard { grid-row: auto; grid-column: 1; }
   .header-title { max-width: 22ch; }
 }
 

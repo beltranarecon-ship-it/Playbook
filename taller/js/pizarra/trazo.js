@@ -70,7 +70,13 @@ export const PASE_MINIMO_S = 0.25;
  *  —arranques, carriles, la fase que dura lo que el carril más largo—
  *  es de la capa 3; esto es lo justo para poder decirlo mientras se
  *  dibuja. */
+/** Lo que tarda un tiro en llegar al aro, venga de donde venga (§6.2:
+ *  «0,9 s hasta el aro»). No sale de la distancia: un tiro de tres no
+ *  tarda el doble que uno de media distancia, cambia la parábola. */
+export const TIRO_S = 0.9;
+
 export function duracionDe(metros, ritmo = 'normal') {
+  if (ritmo === 'tiro') return TIRO_S;
   if (ritmo === 'pase') return Math.max(PASE_MINIMO_S, metros / VELOCIDAD_PASE);
   const v = RITMOS[ritmo] || RITMOS.normal;
   return metros / v;
@@ -114,8 +120,25 @@ export function desdePuntos(puntos) {
  */
 export function nodosFijos(tipo, n) {
   const fijos = new Set([0]);
-  if (tipo === 'pass' && n > 1) fijos.add(n - 1);
+  /* Y el final de un GESTO en el sitio: acaba donde empezó, que es lo
+     que lo hace un gesto y no un desplazamiento. */
+  if ((tipo === 'pass' || tipo === 'gesto') && n > 1) fijos.add(n - 1);
   return fijos;
+}
+
+/** Un gesto en el sitio (§4.4): sale hasta la punta y vuelve. */
+export function trazoDeIdaYVuelta(desde, punta) {
+  return [nodo(desde), nodo(punta), nodo(desde)];
+}
+
+/** El trazo entero a otro sitio, sin deformarlo: empieza en `origen`.
+ *  Es como se mueve un gesto en el sitio, que va con su ficha. */
+export function trasladar(trazo, origen) {
+  if (!trazo || !trazo.length || !origen) return trazo;
+  const dx = origen.x - trazo[0].x;
+  const dy = origen.y - trazo[0].y;
+  if (dx === 0 && dy === 0) return trazo;
+  return trazo.map((n) => desplazar(n, dx, dy));
 }
 
 /** Mueve un nodo, y sus manejadores con él: si se quedaran quietos, la
@@ -168,6 +191,8 @@ export function alternarCurva(trazo, i, minimo = 0.02) {
  *  no es un trazo, y los fijos no se tocan. */
 export function borrarNodo(trazo, i, tipo = 'run') {
   if (trazo.length <= 2) return trazo;
+  /* Un gesto sin su punta serían dos nodos en el mismo sitio. */
+  if (tipo === 'gesto' && trazo.length <= 3) return trazo;
   if (nodosFijos(tipo, trazo.length).has(i)) return trazo;
   return trazo.filter((_, k) => k !== i);
 }
@@ -300,6 +325,65 @@ export function longitudMetros(trazo, pista = 'entera') {
   let m = 0;
   for (let i = 1; i < flat.length; i++) m += metrosEntre(pista, flat[i - 1], flat[i]);
   return m;
+}
+
+/**
+ * En qué punto de un trazo se pasa MÁS CERCA de un sitio, como fracción de
+ * su recorrido (0 = la salida, 1 = la llegada). Con lo que tarda en
+ * recorrerse sale el instante en que un jugador pasa junto a otro.
+ *
+ * En metros, como todo lo que se mide aquí. Si pasa igual de cerca por dos
+ * sitios, vale el primero: es cuando le roza por primera vez.
+ */
+export function fraccionMasCercana(trazo, punto, pista = 'entera') {
+  const flat = flattenPath(trazo || []);
+  if (flat.length < 2 || !punto || !Number.isFinite(punto.x)) return 0;
+  const e = escalaDe(pista);
+  const largos = [];
+  let total = 0;
+  for (let i = 1; i < flat.length; i++) { const l = metrosEntre(pista, flat[i - 1], flat[i]); largos.push(l); total += l; }
+  if (!(total > 0)) return 0;
+  let recorrido = 0;
+  let mejor = { metros: Infinity, en: 0 };
+  for (let i = 1; i < flat.length; i++) {
+    const c = masCercaDelSegmento(punto, flat[i - 1], flat[i], e);
+    if (c.metros < mejor.metros - 1e-9) mejor = { metros: c.metros, en: recorrido + c.t * largos[i - 1] };
+    recorrido += largos[i - 1];
+  }
+  return mejor.en / total;
+}
+
+/**
+ * El trazo CORTADO en la fracción `u` de su longitud: solo el trozo que
+ * se recorre hasta ahí.
+ *
+ * Lo usa la intercepción de un pase (§8.6): el balón no llega a su
+ * destino, se queda donde se lo quitan. Sale en nodos lineales porque lo
+ * que se corta es el camino ya aplanado, curvas incluidas.
+ */
+export function cortarTrazo(trazo, u, pista = 'entera') {
+  const flat = flattenPath(trazo || []);
+  const nodo = (p) => ({ x: p.x, y: p.y, tipo_nodo: 'lineal' });
+  if (flat.length < 2) return flat.length ? [nodo(flat[0]), nodo(flat[0])] : [];
+  const k = Math.max(0, Math.min(1, Number.isFinite(u) ? u : 1));
+  const largos = [];
+  let total = 0;
+  for (let i = 1; i < flat.length; i++) { const l = metrosEntre(pista, flat[i - 1], flat[i]); largos.push(l); total += l; }
+  if (!(total > 0)) return [nodo(flat[0]), nodo(flat[0])];
+  const hasta = total * k;
+  const salida = [nodo(flat[0])];
+  let recorrido = 0;
+  for (let i = 1; i < flat.length; i++) {
+    const l = largos[i - 1];
+    if (recorrido + l < hasta - 1e-9) { salida.push(nodo(flat[i])); recorrido += l; continue; }
+    const t = l > 0 ? (hasta - recorrido) / l : 0;
+    salida.push(nodo({
+      x: flat[i - 1].x + (flat[i].x - flat[i - 1].x) * t,
+      y: flat[i - 1].y + (flat[i].y - flat[i - 1].y) * t,
+    }));
+    break;
+  }
+  return salida.length > 1 ? salida : [salida[0], salida[0]];
 }
 
 /** Lo que se enseña mientras se dibuja: «8,4 m · 2,1 s». */

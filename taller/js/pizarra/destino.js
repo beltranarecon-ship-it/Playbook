@@ -16,22 +16,53 @@
    corrige pinchándolo y moviendo sus nodos, que es lo que ya funciona.
    Es la decisión tomada: automático y ajustable.
 
-   ── LAS CUENTAS SON LAS DEL MOTOR, NO UNAS PARECIDAS ────────
-   `puntoADistanciaDe` y las dos distancias de parada salen de donde
-   ya estaban —canvas/escala.js y ia/compilador.js— en vez de copiarse
-   aquí. Con dos copias del número, el trazo que se ve al dibujar y el
-   que anima el motor acabarían a distinta distancia del aro, y eso no
-   se ve hasta que se proyecta.
+   ── LAS CUENTAS NO SE COPIAN, SE PIDEN ──────────────────────
+   `puntoADistanciaDe` sale de canvas/escala.js y las dos distancias de
+   parada, del CATÁLOGO de acciones (ia/acciones.js), que es donde cada
+   familia declara la suya. Con dos copias del número, el trazo que se
+   ve al dibujar y el que anima el motor acabarían a distinta distancia
+   del aro, y eso no se ve hasta que se proyecta.
 
    ── LO QUE NO SE PUEDE SABER, SE DICE ───────────────────────
    «Vuelve a la fila» necesita saber de qué fila salió, y las filas son
    de los conos (§7), que todavía no existen. Devuelve `null` con su
    motivo en vez de inventarse una esquina.
+
+   ── EL SITIO DE UN BLOQUEO ──────────────────────────────────
+   «Bloquea» tampoco pregunta a dónde: se pincha al compañero y el
+   bloqueador va solo a pegarse a su defensor (§4.4). Ver
+   `sitioDelBloqueo`.
    ============================================================ */
 
 import { posicionesDe } from '../canvas/anclas.js';
-import { puntoADistanciaDe, metrosEntre } from '../canvas/escala.js';
-import { METROS_FINALIZACION, METROS_RECOGIDA } from '../ia/compilador.js';
+import { finalDeFila } from './filas.js';
+import { trazoDeIdaYVuelta } from './trazo.js';
+import { radioMetros } from './elementos.js';
+import { puntoADistanciaDe, metrosEntre, escalaDe } from '../canvas/escala.js';
+import { limitesCancha } from '../canvas/medidas.js';
+import { FAMILIAS } from '../ia/acciones.js';
+import { flattenPath } from '../canvas/geometry.js';
+import { PARAMETROS, enCancha } from './motor/defensa.js';
+
+/** A cuánto del aro se para quien acaba «pegado», en metros. Del
+ *  catálogo: una acción puede traer la suya, y esta es la de reserva. */
+export const METROS_FINALIZACION = FAMILIAS.desplazamiento.parametros.separacion.porDefecto;
+/** Y a cuánto del balón se para quien va a recogerlo. */
+export const METROS_RECOGIDA = FAMILIAS.balon.parametros.separacion.porDefecto;
+
+/** A cuánto del aro rebota un tiro que falla, en metros. */
+export const METROS_REBOTE = 2.5;
+/** Y cuánto por delante del aro cae uno que entra. */
+export const METROS_CAIDA = 0.6;
+
+/** Dónde espera el defensor de alguien con la regla de serie, «entre su
+ *  par y el aro» (§8.3): a 1,2 m si su par lleva balón y a 2,0 m si no.
+ *  Y a cuánto de ese defensor se planta quien le bloquea: cuerpo con
+ *  cuerpo, sin llegar a pisarle. Los números viven en motor/defensa.js,
+ *  que es donde se ajustan por ejercicio; aquí solo se leen. */
+export const METROS_PAR_CON_BALON = PARAMETROS.par_con_balon;
+export const METROS_PAR_SIN_BALON = PARAMETROS.par_sin_balon;
+export const METROS_BLOQUEO = PARAMETROS.bloqueo;
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const punto = (p) => ({ x: clamp01(p.x), y: clamp01(p.y) });
@@ -63,11 +94,188 @@ export function destinoDe(accion, elemento, {
   if (p.destino === 'aro') return { punto: alAro(desde, p, pista, canasta) };
   if (p.modo === 'recoge') return alBalon(desde, p, pista, elementos);
   if (p.destino === 'fila_propia') {
-    /* Las filas son de los conos (§7). Hasta que existan, esto no se
-       puede saber y no se inventa. */
-    return { motivo: 'todavía no hay filas en la pista' };
+    /* AL FINAL DE SU FILA (§7.4.2): la del cono del que salió, o la que
+       diga su fila como vuelta. Quien no salió de ninguna no tiene a
+       dónde volver, y no se inventa. */
+    const suya = elemento.fila_de ? (elementos || []).find((e) => e && e.id === elemento.fila_de && e.kind === 'cono') : null;
+    if (!suya || !suya.fila) return { motivo: 'no ha salido de ninguna fila' };
+    const vuelta = suya.fila.vuelta
+      ? (elementos || []).find((e) => e && e.id === suya.fila.vuelta && e.kind === 'cono' && e.fila)
+      : null;
+    const cono = vuelta || suya;
+    return { punto: finalDeFila(cono, cono.fila.n, cono.fila.orientacion, pista) };
   }
   return { motivo: 'esta acción no tiene un destino propio' };
+}
+
+/**
+ * Dónde queda el balón SUELTO después de un tiro (§4.4).
+ *
+ *   falla  rebota a METROS_REBOTE del aro, hacia dentro de la pista y
+ *          hacia el lado CONTRARIO al del tirador (desde la izquierda,
+ *          sale por la derecha); desde el centro, recto hacia fuera.
+ *   entra  cae bajo el aro, METROS_CAIDA hacia dentro de la pista.
+ *
+ * Es un cálculo y no un dato guardado: si el tirador se mueve en una
+ * fase anterior, el rebote cambia con él. Todo se mide en METROS —los
+ * dos ejes no escalan igual— y se recorta dentro de la cancha.
+ *
+ * @param desde  de dónde sale el tiro (el primer nodo de su trazo)
+ * @returns { x, y } o null si la pista no tiene aro conocido
+ */
+export function trasElTiro({ pista = 'entera', canasta = 'norte', desde = null, desenlace = 'entra' } = {}) {
+  const pos = posicionesDe(pista, canasta);
+  if (!pos || !pos.aro) return null;
+  const aro = { x: pos.aro[0], y: pos.aro[1] };
+  const e = escalaDe(pista);
+  const lim = limitesCancha(pista);
+
+  /* HACIA DENTRO DE LA PISTA es el eje largo, del aro hacia el centro de
+     la cancha: así vale igual en vertical y en horizontal, y para las
+     dos canastas. Lo de al lado es el eje perpendicular. */
+  const cx = ((lim.x[0] + lim.x[1]) / 2 - aro.x) * e.x;
+  const cy = ((lim.y[0] + lim.y[1]) / 2 - aro.y) * e.y;
+  const dentro = Math.abs(cx) >= Math.abs(cy) ? { x: Math.sign(cx) || 1, y: 0 } : { x: 0, y: Math.sign(cy) || 1 };
+  const lado = { x: dentro.y, y: dentro.x };
+
+  let dir = dentro;
+  let metros = METROS_CAIDA;
+  if (desenlace === 'falla') {
+    metros = METROS_REBOTE;
+    const d = desde && Number.isFinite(desde.x) ? { x: (desde.x - aro.x) * e.x, y: (desde.y - aro.y) * e.y } : { x: 0, y: 0 };
+    const deLado = d.x * lado.x + d.y * lado.y;
+    /* Medio metro de margen: un tiro casi centrado no elige lado por un
+       centímetro, sale recto. */
+    const signo = deLado > 0.5 ? -1 : deLado < -0.5 ? 1 : 0;
+    const v = { x: dentro.x + lado.x * signo, y: dentro.y + lado.y * signo };
+    const largo = Math.hypot(v.x, v.y) || 1;
+    dir = { x: v.x / largo, y: v.y / largo };
+  }
+
+  return enCancha(pista, { x: aro.x + (dir.x * metros) / e.x, y: aro.y + (dir.y * metros) / e.y });
+}
+
+/* ── El bloqueo (§4.4) ─────────────────────────────────────── */
+
+/**
+ * ¿Esta acción es un bloqueo? Lo dice la relación que dibuja, en el
+ * catálogo, y no su nombre: un bloqueo que cree el club vale igual.
+ */
+/* ── Los gestos en el sitio (§4.4) ─────────────────────────── */
+
+/** ¿Es un gesto en el sitio? Lo dice su familia en el catálogo. */
+export const esGesto = (accion) => !!accion && accion.familia === 'gesto';
+
+/**
+ * EL TRAZO DE UN GESTO EN EL SITIO —finta, pivote, cambio de mano,
+ * proteger, parada—: sale hacia el aro lo que diga su `amplitud` y
+ * vuelve. No se pregunta nada: se dibuja hecho sobre la ficha, y si la
+ * dirección no gusta se pincha y se mueve su punta.
+ *
+ * La amplitud va en METROS y se cuenta desde el BORDE de la ficha: así
+ * el gesto mide lo mismo en las cuatro pistas y la ficha no lo tapa.
+ */
+export function trazoDeGesto(accion, elemento, { pista = 'entera', canasta = 'norte' } = {}) {
+  const p = (accion && accion.parametros) || {};
+  const amplitud = Number.isFinite(p.amplitud) ? p.amplitud : FAMILIAS.gesto.parametros.amplitud.porDefecto;
+  const metros = radioMetros('jugador') + Math.max(0.1, amplitud);
+  const desde = { x: elemento.x, y: elemento.y };
+  const e = escalaDe(pista);
+  const aro = (posicionesDe(pista, canasta === 'sur' ? 'sur' : 'norte') || {}).aro;
+  let mx = aro ? (aro[0] - desde.x) * e.x : 0;
+  let my = aro ? (aro[1] - desde.y) * e.y : 0;
+  let largo = Math.hypot(mx, my);
+  /* Debajo del aro no hay «hacia el aro»: hacia el centro de la pista. */
+  if (!(largo > 0.05)) { mx = (0.5 - desde.x) * e.x; my = (0.5 - desde.y) * e.y; largo = Math.hypot(mx, my); }
+  if (!(largo > 0)) { mx = 0; my = 1; largo = 1; }
+  const punta = { x: desde.x + ((mx / largo) * metros) / e.x, y: desde.y + ((my / largo) * metros) / e.y };
+  return trazoDeIdaYVuelta(desde, punta);
+}
+
+export const esAccionDeBloqueo = (accion) => !!accion && accion.familia === 'entre_dos'
+  && !!accion.parametros && accion.parametros.simbolo_relacion === 'bloqueo';
+
+/**
+ * Dónde está el defensor de alguien mientras la defensa no exista: donde
+ * lo pondría la regla de serie, entre él y el aro (§8.3).
+ *
+ * @returns { x, y } o null si la pista no tiene aro conocido
+ */
+export function defensorSupuesto({ pista = 'entera', canasta = 'norte', par = null, conBalon = false } = {}) {
+  if (!par || !Number.isFinite(par.x) || !Number.isFinite(par.y)) return null;
+  const pos = posicionesDe(pista, canasta);
+  if (!pos || !pos.aro) return null;
+  const aro = { x: pos.aro[0], y: pos.aro[1] };
+  return puntoADistanciaDe(pista, aro, par, conBalon ? METROS_PAR_CON_BALON : METROS_PAR_SIN_BALON);
+}
+
+/**
+ * Dónde se planta quien bloquea (§4.4: «el que actúa se desplaza hasta el
+ * sitio que le corresponde»).
+ *
+ * Un bloqueo se le pone AL DEFENSOR del compañero, y se pone AL LADO: a
+ * METROS_BLOQUEO de él, en perpendicular a la línea compañero→aro, por el
+ * lado por el que llega el bloqueador. Es por ahí por donde el compañero
+ * sale rozándole. Parándose en su camino, el bloqueador que llegaba desde
+ * la altura del compañero se quedaba encima de él.
+ *
+ * Mientras no haya defensa, el defensor es el supuesto
+ * (`defensorSupuesto`) cuando no hay defensa en la pista; si la hay, se
+ * pone al lado del defensor de verdad, que es a quien se bloquea.
+ *
+ * Es automático y ajustable, como «entra»: si no gusta, se pincha el trazo
+ * y se mueve su final. Todo en METROS, y dentro de la cancha.
+ *
+ * @param desde      dónde está el bloqueador
+ * @param companero  dónde está el compañero al que se le pone
+ * @param conBalon   si el compañero lleva balón
+ * @returns { x, y } o null si no se puede saber
+ */
+export function sitioDelBloqueo({ pista = 'entera', canasta = 'norte', desde = null, companero = null, conBalon = false, defensor: suDefensor = null } = {}) {
+  if (!desde || !Number.isFinite(desde.x) || !Number.isFinite(desde.y)) return null;
+  if (!companero || !Number.isFinite(companero.x) || !Number.isFinite(companero.y)) return null;
+  /* Con defensa en la pista se bloquea al DEFENSOR DE VERDAD, donde
+     está. El supuesto es para cuando no hay ninguno: entonces se pone
+     donde lo pondría la regla de serie. */
+  const defensor = (suDefensor && Number.isFinite(suDefensor.x) && Number.isFinite(suDefensor.y))
+    ? { x: suDefensor.x, y: suDefensor.y }
+    : defensorSupuesto({ pista, canasta, par: companero, conBalon });
+  if (!defensor) return null;
+  const e = escalaDe(pista);
+  // la línea compañero→defensor (que va hacia el aro), en metros
+  const lx = (defensor.x - companero.x) * e.x, ly = (defensor.y - companero.y) * e.y;
+  const largo = Math.hypot(lx, ly);
+  /* Con el compañero debajo del aro no hay línea de la que ponerse al
+     lado: se acerca al defensor por su camino. */
+  if (largo < 1e-9) return enCancha(pista, puntoADistanciaDe(pista, desde, defensor, METROS_BLOQUEO));
+  const px = -ly / largo, py = lx / largo;
+  const lado = ((desde.x - defensor.x) * e.x * px + (desde.y - defensor.y) * e.y * py) < 0 ? -1 : 1;
+  return enCancha(pista, {
+    x: defensor.x + (px * lado * METROS_BLOQUEO) / e.x,
+    y: defensor.y + (py * lado * METROS_BLOQUEO) / e.y,
+  });
+}
+
+/**
+ * Hacia dónde mira la barra de un bloqueo: hacia delante, en la dirección
+ * con la que el bloqueador llega a su sitio, que es hacia el defensor al
+ * que se planta.
+ *
+ * Es un PUNTO un poco más allá del final y no un ángulo: así lo gira bien
+ * cualquier vista, también la del proyector, que rota la pista 90°.
+ *
+ * @returns { x, y } o null si el trazo no avanza (ya estaba en su sitio)
+ */
+export function frenteDelBloqueo(trazo) {
+  if (!Array.isArray(trazo) || trazo.length < 2) return null;
+  const flat = flattenPath(trazo);
+  const fin = flat[flat.length - 1];
+  for (let i = flat.length - 2; i >= 0; i--) {
+    const dx = fin.x - flat[i].x, dy = fin.y - flat[i].y;
+    const largo = Math.hypot(dx, dy);
+    if (largo > 1e-9) return { x: fin.x + (dx / largo) * 0.05, y: fin.y + (dy / largo) * 0.05 };
+  }
+  return null;
 }
 
 /**

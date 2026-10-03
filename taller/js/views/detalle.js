@@ -8,11 +8,13 @@ import { h, mount, icon } from '../ui/dom.js';
 import { header } from '../ui/chrome.js';
 import { Stage } from '../canvas/stage.js';
 import { abrirProyector } from '../canvas/proyector.js';
+import { paraVer, perdioLaAnimacion } from '../pizarra/motor/marca.js';
 import { toast } from '../ui/toast.js';
 import { confirmModal } from '../ui/modal.js';
 import { getEjercicio, setFavorito, eliminarEjercicio } from '../supabase/ejercicios.js';
 import { cargarCatalogoConVideos } from '../supabase/acciones.js';
 import { chipVideo } from '../ui/video.js';
+import { videosDeAnimacion } from '../pizarra/variantes.js';
 import { dificultadDe } from '../config.js';
 import {
   PISTA_LABEL, DENSIDAD_AYUDA, OPOSICION_AYUDA, PRESION_AYUDA,
@@ -28,6 +30,7 @@ export function render(root, { id } = {}) {
      proyector lo recoge en el momento de abrirse. Sin él —sin sesión,
      sin red— todo funciona igual y no hay vídeos (§11). */
   let catalogo = [];
+  let videos = {};   // los vídeos por slug, también los de las variantes (§10.1)
   const body = h('div', { class: 'taller-body' }, h('div', { class: 'detalle-loading' }, h('span', { class: 'spinner-lg' })));
   const titleEl = h('div', { class: 'header-title' }, 'Cargando…');
   const view = h('div', { class: 'taller taller--detalle' },
@@ -45,7 +48,7 @@ export function render(root, { id } = {}) {
       const ej = await getEjercicio(id);
       pintar(ej);
       cargarCatalogoConVideos()
-        .then(({ acciones }) => { catalogo = acciones || []; pintarVideos(); })
+        .then((r) => { catalogo = r.acciones || []; videos = r.videos || {}; pintarVideos(); })
         .catch(() => {});
     } catch (e) {
       mount(body, h('div', { class: 'detalle-error card' },
@@ -60,12 +63,19 @@ export function render(root, { id } = {}) {
     titleEl.textContent = ej.name;
     titleEl.title = ej.name;
     const anim = ej.animacion || { pista: ej.tipo_pista || 'entera', jugadores: [], balones: [], conos: [], fases: [] };
-    stage = new Stage({ pista: ej.tipo_pista || 'entera' });
-    stage.showAnimation(anim);
+    /* Lo de antes de la Pizarra ya no se reproduce: se ve su colocación
+       inicial, quieta, y se ofrece rehacerla (ESPEC-PIZARRA-v3 §11.4).
+       Lo que no tiene nada que reproducir se enseña sin mandos, que no
+       harían nada. */
+    const vista = paraVer(anim);
+    /* La ficha, con la narración (§9.3). */
+    stage = new Stage({ pista: ej.tipo_pista || 'entera', voz: true });
+    if ((vista.fases || []).length) stage.showAnimation(vista);
+    else stage.showPreview(vista);
     curEj = ej; curAnim = anim;
 
     mount(body, h('div', { class: 'detalle-grid' },
-      h('section', { class: 'detalle-canvas' }, stage.el),
+      h('section', { class: 'detalle-canvas' }, stage.el, perdioLaAnimacion(anim) ? avisoDeAntes(ej) : null),
       h('aside', { class: 'detalle-side' }, acciones(ej, anim), ...ficha(ej)),
     ));
   }
@@ -96,20 +106,36 @@ export function render(root, { id } = {}) {
   }
 
   function abrir(anim, ej) {
-    proj = abrirProyector(anim, { nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min, categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos, catalogo });
+    /* La ficha se para mientras se proyecta: seguía reproduciendo detrás
+       y, con la voz (§9.3), las dos narraciones se pisaban. Al cerrar el
+       proyector sigue como estaba. */
+    const iba = !!stage?.engine?.playing;
+    stage?.pausar();
+    proj = abrirProyector(paraVer(anim), {
+      nombre: ej.name, tipo: ej.type, dificultad_label: ej.dificultad_label, duracion_min: ej.duration_min,
+      categoria_rama: ej.categoria_rama, categoria_nivel: ej.categoria_nivel, requisitos: ej.requisitos, catalogo, videos,
+      alCerrar: () => { proj = null; if (iba) stage?.engine?.play(); },
+    });
   }
 
-  /* ---- vídeos de las acciones de ESTE ejercicio (Tramo 2.14) ------
-     Solo las que aparecen en su animación: el catálogo entero aquí
-     sería una lista de vocabulario, no una ficha. En la ficha no
-     interrumpen nada —nadie está proyectando—: son un botón. */
+  /* ESPEC-PIZARRA-v3 §11.4: al abrir un ejercicio de antes, la ficha lo
+     dice y ofrece «rehacer la pizarra», que abre la Pizarra con sus
+     posiciones iniciales ya colocadas. */
+  function avisoDeAntes(ej) {
+    return h('div', { class: 'detalle-aviso' },
+      h('p', null, h('b', null, 'Es de antes de la Pizarra.'), ' Su animación ya no se reproduce: se ve la colocación inicial.'),
+      h('a', { class: 'btn btn--secondary btn--sm', href: `/ejercicios/${ej.id}/rehacer`, 'data-link': true }, 'Rehacer la pizarra'));
+  }
+
+  /* ---- vídeos de ESTE ejercicio (Tramo 2.14, §10.1) ---------------
+     Solo los de lo que aparece en su animación —sus variantes y sus
+     acciones—: el catálogo entero aquí sería una lista de vocabulario,
+     no una ficha. En la ficha no interrumpen nada —nadie está
+     proyectando—: son un botón. */
   const hostVideos = h('div', { class: 'ficha-videos' });
   function pintarVideos() {
-    const usadas = new Set();
-    for (const f of curAnim?.fases || []) for (const sl of f.acciones || []) usadas.add(sl);
-    const chips = catalogo
-      .filter((a) => usadas.has(a.slug) && a.video)
-      .map((a) => chipVideo(a))
+    const chips = videosDeAnimacion(curAnim, { videos, catalogo })
+      .map((c) => chipVideo({ nombre: c.titulo, video: c.video }))
       .filter(Boolean);
     hostVideos.replaceChildren(...(chips.length
       ? [h('small', { class: 'ficha-videos__t' }, 'Cómo se hace'), ...chips]
@@ -128,6 +154,8 @@ export function render(root, { id } = {}) {
   // atajos §16: F favorito · P proyector · Espacio play/pausa
   function onKey(e) {
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
+    // con el proyector abierto, las teclas son suyas
+    if (proj) return;
     if (e.key === 'f' || e.key === 'F') favBtnRef?.click();
     else if (e.key === 'p' || e.key === 'P') { if (curAnim && curEj) abrir(curAnim, curEj); }
     else if (e.key === ' ') { e.preventDefault(); stage?.engine?.toggle(); }

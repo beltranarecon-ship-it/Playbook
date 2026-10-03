@@ -8,7 +8,7 @@
 import { PISTAS } from './court.js';
 import { neutro, proyectar } from './encuadre.js';
 import { AnimationEngine } from './engine.js';
-import { soloPrimeraRonda } from '../ia/rondas.js';
+import { soloPrimeraRonda } from '../pizarra/motor/rondas.js';
 
 const GIFJS = 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js';
 const GIFWORKER = 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js';

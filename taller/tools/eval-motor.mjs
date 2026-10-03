@@ -203,6 +203,84 @@ test('RECOGER: el balón es suyo al llegar a sus manos, no antes', () => {
   ok(Math.abs(alFinal.balls.b1.x - 0.5) < 0.02, `al final, en sus manos: ${txt(alFinal.balls.b1)}`);
 });
 
+test('RECOGER Y PASAR EN LA MISMA FASE: el balón acaba en el que recibe', () => {
+  /* El fallo que se encontró midiendo el motor real: la recogida se
+     fechaba al final del último viaje del balón —el pase—, así que el
+     balón volvía al que lo recogió después de llegar al que lo recibió. */
+  const jug = [
+    { id: 'A1', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.2, 0.8] },
+    { id: 'A2', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.8, 0.8] },
+    { id: 'A3', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.5, 0.5] },
+  ];
+  const m = motor(conCarriles([{
+    duracion_ms: 3800,
+    movimientos: [
+      { elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_sin_balon', path: recta([0.8, 0.8], [0.5, 0.2]), inicio_ms: 0, duracion_ms: 2000 },
+      { elemento_id: 'b1', tipo_elemento: 'balon', tipo_movimiento: 'recogida', path: recta([0.52, 0.2], [0.5, 0.2]), inicio_ms: 1500, duracion_ms: 500 },
+    ],
+    recogidas: [{ jugador_id: 'A2', balon_id: 'b1', t_ms: 2000 }],
+    pases: [{ de_id: 'A2', a_id: 'A3', balon_id: 'b1', path: recta([0.5, 0.2], [0.5, 0.5]), inicio_ms: 3000, duracion_ms: 500 }],
+  }, { duracion_ms: 1000 }], jug, [{ id: 'b1', posicion_inicial: [0.52, 0.2], portador_id: null }]));
+  ok(en(m, 0, 2600).carrying.has('A2'), 'recién recogido, es de A2');
+  const tras = en(m, 0, 3700);   // ya llegado: en el instante justo del final el balón aún va en vuelo
+  ok(tras.carrying.has('A3') && !tras.carrying.has('A2'), `pasado, es de A3: ${[...tras.carrying]}`);
+  ok(en(m, 1, 0).carrying.has('A3'), 'y la fase siguiente empieza con A3');
+});
+
+test('TIRAR, RECOGER Y VOLVER A TIRAR: el balón acaba en el aro, no en las manos', () => {
+  const m = motor(conCarriles([{
+    duracion_ms: 4500,
+    movimientos: [
+      { elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_sin_balon', path: recta([0.8, 0.8], [0.5, 0.15]), inicio_ms: 1000, duracion_ms: 1500 },
+      { elemento_id: 'b1', tipo_elemento: 'balon', tipo_movimiento: 'recogida', path: recta([0.5, 0.1], [0.5, 0.15]), inicio_ms: 2125, duracion_ms: 375 },
+    ],
+    tiros: [
+      { jugador_id: 'A1', balon_id: 'b1', canasta: 'norte', path: recta([0.2, 0.8], [0.5, 0.1]), inicio_ms: 0, duracion_ms: 1000 },
+      { jugador_id: 'A2', balon_id: 'b1', canasta: 'norte', path: recta([0.5, 0.15], [0.5, 0.1]), inicio_ms: 3000, duracion_ms: 1000 },
+    ],
+    recogidas: [{ jugador_id: 'A2', balon_id: 'b1', t_ms: 2500 }],
+  }]));
+  ok(en(m, 0, 2700).carrying.has('A2'), 'entre los dos tiros lo tiene A2');
+  const fin = en(m, 0, 4500);
+  ok(!fin.carrying.has('A2'), `tras el segundo tiro nadie lo lleva: ${[...fin.carrying]}`);
+  ok(cerca(fin.balls.b1, { x: 0.5, y: 0.1 }, 1e-6), `y está en el aro: ${txt(fin.balls.b1)}`);
+});
+
+test('TRAS UN TIRO EL BALÓN SE QUEDA EN EL ARO, no en la mano del tirador', () => {
+  /* Venía del banco del motor viejo probada contra rest-positions.js,
+     que se va con él; la regla es de aquí. Un tiro suelta el balón: deja
+     de ser de nadie y se queda donde acaba su trazo. Si siguiera
+     contando como suyo, en la fase siguiente el balón se iría detrás
+     del tirador —que normalmente sale corriendo— en vez de quedarse
+     en la canasta. */
+  const m = motor(conCarriles([
+    {
+      duracion_ms: 2000,
+      tiros: [{ jugador_id: 'A1', balon_id: 'b1', canasta: 'norte', path: recta([0.5, 0.5], [0.5, 0.08]) }],
+    },
+    {
+      duracion_ms: 2000,
+      movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: recta([0.5, 0.5], [0.5, 0.8]) }],
+    },
+  ],
+  [{ id: 'A1', equipo: 'A', tipo: 'atacante', posicion_inicial: [0.5, 0.5] }],
+  [{ id: 'b1', posicion_inicial: [0.5, 0.5], portador_id: 'A1' }]));
+
+  const aro = { x: 0.5, y: 0.08 };
+  ok(cerca(en(m, 0, 2000).balls.b1, aro), `al acabar el tiro, en el aro: ${txt(en(m, 0, 2000).balls.b1)}`);
+  eq(m.restStart[1].owner.b1, null, 'un tiro deja el balón sin dueño:');
+  ok(cerca(m.restStart[1].B.b1, aro), `y la fase 2 arranca con él en el aro: ${txt(m.restStart[1].B.b1)}`);
+  /* Lo que se ve, que es lo que importa: el tirador se va y el balón no
+     le sigue. */
+  const corriendo = en(m, 1, 2000);
+  ok(cerca(corriendo.players.A1, { x: 0.5, y: 0.8 }), `A1 se ha ido: ${txt(corriendo.players.A1)}`);
+  ok(cerca(corriendo.balls.b1, aro), `y el balón sigue en el aro: ${txt(corriendo.balls.b1)}`);
+  ok(!corriendo.carrying.size, 'no lo lleva nadie');
+  /* Y donde se queda es el final de SU TRAZO, no el aro de la pista: el
+     0,08 del trazo no es el 0,1 que da la vista. */
+  ok(Math.abs(m.restStart[1].B.b1.y - 0.1) > 1e-6, 'el sitio lo da el trazo del tiro, no la canasta de court.js');
+});
+
 /* ── 4. Lo que no puede romperse ─────────────────────────── */
 
 test('UN CAMINO DE LONGITUD CERO NO REVIENTA EL MOTOR', () => {
@@ -215,6 +293,33 @@ test('UN CAMINO DE LONGITUD CERO NO REVIENTA EL MOTOR', () => {
   let f;
   try { f = en(m, 0, 500); } catch (e) { throw new Error(`ha reventado: ${e.message}`); }
   ok(cerca(f.players.A1, { x: 0.3, y: 0.3 }), `se queda quieto: ${txt(f.players.A1)}`);
+});
+
+test('LOS BLOQUEOS DE ANTES SE VEN LA FASE ENTERA, mirando al bloqueado', () => {
+  const m = motor(SAMPLE_ANIMACION);
+  const k = SAMPLE_ANIMACION.fases.findIndex((f) => (f.bloqueos || []).length);
+  ok(k >= 0, 'la muestra tiene un bloqueo');
+  const fase = SAMPLE_ANIMACION.fases[k];
+  for (const u of [0, 0.5, 1]) {
+    const t = u * fase.duracion_ms;
+    const f = en(m, k, t);
+    const v = m.bloqueosEn(k, t, f.players);
+    eq(v.length, fase.bloqueos.length, `al ${u * 100}%:`);
+    ok(cerca(v[0].a, f.players[fase.bloqueos[0].bloqueador_id]) && cerca(v[0].b, f.players[fase.bloqueos[0].bloqueado_id]),
+      'entre bloqueador y bloqueado, como siempre');
+  }
+});
+
+test('CON INSTANTE, LA BARRA SOLO MIENTRAS DURA; y con frente, mira hacia él', () => {
+  const m = motor(conCarriles([{
+    duracion_ms: 3000,
+    bloqueos: [{ bloqueador_id: 'A2', bloqueado_id: 'A1', inicio_ms: 1000, duracion_ms: 1000, hacia: [0.5, 0.5] }],
+  }]));
+  const v = (t) => m.bloqueosEn(0, t, en(m, 0, t).players);
+  eq(v(500).length, 0, 'antes de llegar:');
+  eq(v(1500).length, 1, 'plantado:');
+  eq(v(2500).length, 0, 'ya se ha ido:');
+  ok(cerca(v(1500)[0].b, { x: 0.5, y: 0.5 }), `mira a su frente: ${txt(v(1500)[0].b)}`);
 });
 
 test('LA INTERFAZ PÚBLICA SIGUE ENTERA: la usan proyector, miniatura y visor', () => {
@@ -233,6 +338,26 @@ test('seek sigue colocando la fase y el instante', () => {
   ok(m.k >= 0 && m.k < m.phaseCount, 'una fase válida');
   const f = m._computePositions();
   ok(f.players.A1 && Number.isFinite(f.players.A1.x), 'y dónde está cada uno');
+});
+
+test('OFF suelta a quien escuchaba: unos mandos quitados no siguen trabajando', () => {
+  /* El asistente monta mandos nuevos cada vez que enseña una jugada en
+     su columna, sobre el mismo motor. Sin poder darse de baja, los de
+     antes seguían recibiendo cada fotograma fuera de la pantalla, y el
+     trabajo crecía con cada ida y vuelta entre pasos. */
+  const m = motor(SAMPLE_ANIMACION);
+  let a = 0, b = 0;
+  const uno = () => { a++; };
+  const otro = () => { b++; };
+  m.on('frame', uno);
+  m.on('frame', otro);
+  m._emitFrame();
+  if (a !== 1 || b !== 1) throw new Error(`antes de off: ${a} y ${b}`);
+  m.off('frame', uno);
+  m._emitFrame();
+  if (a !== 1) throw new Error(`después de off siguió llamando al que se dio de baja: ${a}`);
+  if (b !== 2) throw new Error(`off se ha llevado también al que seguía escuchando: ${b}`);
+  m.off('phase', uno);   // darse de baja de lo que no se escuchaba no revienta
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

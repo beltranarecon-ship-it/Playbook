@@ -236,6 +236,34 @@ export function duracionMs(v, { margen_ms = 900 } = {}) {
   return (n.hasta - (n.desde ?? 0)) * 1000 + margen_ms;
 }
 
+/* ── 5. La columna del proyector (ESPEC-PIZARRA-v3 §10.2) ─────
+   Mientras la pista se anima, a la derecha va el clip de la variante de
+   la fase: mudo, en bucle y recortado a los primeros segundos —la
+   demostración a velocidad normal, no la explicación entera—. */
+
+/** Cuántos segundos del tramo se repiten en la columna. */
+export const CLIP_COLUMNA_S = 8;
+
+/** El trozo que se repite: el principio del tramo, `segundos` como mucho. */
+export function clipDeColumna(v, { segundos = CLIP_COLUMNA_S } = {}) {
+  const n = normalizarVideo(v);
+  if (!n || n.tipo !== 'youtube') return null;
+  const desde = n.desde ?? 0;
+  return { id: n.id, desde, hasta: Math.min(n.hasta ?? Infinity, desde + segundos) };
+}
+
+/**
+ * La URL de la columna: muda (sin eso no arranca sola), sin mandos, en
+ * bucle, del trozo. `enablejsapi` deja pedirle que vuelva al principio
+ * del trozo con un mensaje, sin cargar la librería de YouTube.
+ */
+export function urlEnBucle(v, opciones) {
+  const c = clipDeColumna(v, opciones);
+  if (!c) return null;
+  const q = ['autoplay=1', 'mute=1', 'controls=0', 'loop=1', `playlist=${c.id}`, 'rel=0', 'modestbranding=1', 'playsinline=1', 'enablejsapi=1', `start=${c.desde}`, `end=${c.hasta}`];
+  return `https://www.youtube-nocookie.com/embed/${c.id}?${q.join('&')}`;
+}
+
 /** ¿Este vídeo puede parar la animación y devolverla sola? (§2.14) */
 export function seIncrusta(v) {
   return urlIncrustado(v) != null;

@@ -35,13 +35,10 @@ import { puntosDeIman, imantar } from './iman.js';
  *  declara en el catálogo, así que una acción nueva del club hereda su
  *  flecha sin tocar esto.
  *
- *  El bloqueo se queda fuera a propósito: no es un trazo sino una
- *  RELACIÓN entre dos fichas —el motor lo dibuja con `drawBloqueo`
- *  entre bloqueador y compañero (engine.js)— y por eso «bloquea» pide
- *  compañero y no destino. Aquí caería en `run` y el fantasma
- *  enseñaría una flecha que luego no va a existir; el modo de elegir
- *  compañero es de una capa posterior y hasta que llegue, esta acción
- *  no debe entrar en el modo destino. */
+ *  El bloqueo tiene la suya: el camino del bloqueador SIN punta, porque
+ *  acaba en la barra del bloqueo (`drawBloqueo`), igual en la Pizarra y
+ *  en el proyector. «Bloquea» no entra nunca en este modo: pide
+ *  compañero (pizarra/companero.js) y su sitio lo calcula destino.js. */
 export function tipoFlecha(accion) {
   const s = accion && accion.simbolo;
   if (s === 'pase' || s === 'tiro') return 'pass';
@@ -57,7 +54,14 @@ export function tipoFlecha(accion) {
  *  4,0: casi el triple. */
 export function ritmoDe(accion) {
   if (!accion) return 'normal';
-  if (accion.familia === 'balon') return 'pase';
+  /* Lo que viaja en un pase o un tiro es el balón, y va a su ritmo. En
+     «recoge» NO: quien va es el jugador, corriendo. Con la familia a secas,
+     el que iba a por un rebote corría a 9 m/s. */
+  const modo = accion.parametros && accion.parametros.modo;
+  /* Un tiro tampoco va a ritmo de pase: tarda lo que tarda en llegar al
+     aro, y eso no depende de la distancia (§6.2). */
+  if (accion.familia === 'balon' && modo === 'tiro') return 'tiro';
+  if (accion.familia === 'balon' && modo !== 'recoge') return 'pase';
   const r = accion.parametros && accion.parametros.ritmo;
   return RITMOS[r] ? r : 'normal';
 }

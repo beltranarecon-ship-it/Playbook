@@ -298,10 +298,21 @@ test('la 038 pone la columna, su tope y el 3 por defecto', () => {
   ok(/CHECK \(marco IN \(1, 2, 3\)\)/.test(sql), 'falta el tope de valores');
 });
 
-test('el importador escribe el marco, o la otra herramienta duplicaría el mapa', () => {
+test('el importador escribe el marco al DAR DE ALTA, y nunca sin la animación', () => {
   const imp = readFileSync(new URL('../tools/biblioteca/importar.mjs', import.meta.url), 'utf8');
   ok(/MARCO_ACTUAL = 3/.test(imp), 'importar.mjs no declara el marco');
-  ok(/'marco'/.test(imp), "'marco' no está en CAMPOS: no viajaría en el PATCH");
+  /* El marco dice en qué dibujo de pista están las coordenadas de la
+     animación, así que solo puede viajar con ella. El alta lo escribe
+     —si dejara el marco viejo, migrar-marco-3-base.mjs volvería a aplicar
+     el mapa y movería la ficha el doble—. Pero `--actualizar` ya no
+     escribe la animación (la dibuja la Pizarra), y sellar ahí el marco
+     marcaría como 3 unas coordenadas del 2. */
+  ok(/animacion: f\.animacion[^\n]*\n\s*marco: MARCO_ACTUAL/.test(imp),
+    'el alta tiene que escribir el marco junto a la animación');
+  const campos = /const CAMPOS = \[([\s\S]*?)\];/.exec(imp);
+  ok(campos, 'no encuentro CAMPOS en importar.mjs');
+  ok(!/'marco'/.test(campos[1]), "'marco' ha vuelto a CAMPOS: --actualizar lo sellaría sin la animación");
+  ok(!/'animacion'/.test(campos[1]), "'animacion' ha vuelto a CAMPOS: --actualizar machacaría lo dibujado en la Pizarra");
 });
 
 console.log('\n· el SQL dice lo mismo que el código');

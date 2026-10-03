@@ -14,7 +14,7 @@
        receptor no eche a correr con el balón todavía en el aire.
 
    Y una cosa más, que es de las que se descubren tarde: que esto NO SE
-   PUEDA COLGAR. No por un tope en el bucle, sino porque las dos
+   PUEDA COLGAR. No por un tope en el bucle, sino porque todas las
    dependencias apuntan siempre hacia atrás en el orden de dibujo, así
    que el grafo es acíclico por construcción. Eso es una propiedad de
    las REGLAS, no del código que las resuelve, y por eso se prueba
@@ -23,12 +23,18 @@
    ============================================================ */
 
 import {
-  MINIMO_TRAMO_MS, PENDIENTES,
+  MINIMO_TRAMO_MS, esBloqueo,
   nuevaFase, carrilesDesde, tramosDe,
   duracionDeTramo, tiemposDe, duracionDeCarril, posicionesFinales,
-  reanclarFase, recalcular, posesionAlFinal,
+  reanclarFase, recalcular, posesionAlFinal, declaradasConFicha,
+  tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS,
 } from '../js/pizarra/fases.js';
-import { duracionDe, longitudMetros, nuevoTrazo } from '../js/pizarra/trazo.js';
+import { trasElTiro } from '../js/pizarra/destino.js';
+import { tramosSinBalon } from '../js/pizarra/posesion.js';
+import { duracionDe, longitudMetros, nuevoTrazo, fraccionMasCercana, trazoDeIdaYVuelta } from '../js/pizarra/trazo.js';
+import { muestreador, tiempoDeRecorrido } from '../js/canvas/instante.js';
+import { easeInOut } from '../js/canvas/geometry.js';
+import { metrosEntre } from '../js/canvas/escala.js';
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -59,6 +65,12 @@ const tramo = (elemento, desde, hasta, extra = {}) => ({
   manual: !!extra.manual,
 });
 const conCarriles = (tramos) => ({ ...nuevaFase('f1'), carriles: carrilesDesde(tramos) });
+/** Un bloqueo como los que produce la Pizarra: su trazo acaba en la barra
+ *  y sabe para quién es. */
+const bloqueo = (bloqueador, companero, desde, hasta) => ({
+  ...tramo(bloqueador, desde, hasta, { accion: 'bloquea', tipo: 'bloqueo' }),
+  companero_id: companero,
+});
 const P = (x, y) => ({ x, y });
 
 /* ── 1. Los carriles ─────────────────────────────────────── */
@@ -197,6 +209,13 @@ test('NO PUEDE HABER CICLOS: las dependencias apuntan siempre hacia atrás', () 
   eq(r.avisos, [], 'nada de ciclos:');
   eq(r.tramos[p1.id].inicio_ms, 0, 'el primero sale ya:');
   eq(r.tramos[p2.id].inicio_ms, r.tramos[p1.id].fin_ms, 'y el segundo cuando el balón ha llegado:');
+  /* Y dos bloqueos cruzados —A1 se lo pone a A2 y A2 a A1— tampoco: el
+     segundo espera al primero, y ya. */
+  const b1 = bloqueo('A1', 'A2', P(0.2, 0.5), P(0.4, 0.5));
+  const b2 = bloqueo('A2', 'A1', P(0.8, 0.5), P(0.6, 0.5));
+  const r2 = tiemposDe(conCarriles([b1, b2]), { pista: 'entera' });
+  eq(r2.avisos, [], 'nada de ciclos con bloqueos:');
+  eq(r2.tramos[b2.id].inicio_ms, r2.tramos[b1.id].fin_ms);
 });
 
 test('y ENCADENADO LARGO también termina, con todo el mundo colocado', () => {
@@ -284,12 +303,83 @@ test('sin entrada ni fase, devuelve algo válido en vez de romperse', () => {
   eq(posicionesFinales(nuevaFase('f1'), {}), {});
 });
 
-/* ── 6. Lo que falta, declarado ──────────────────────────── */
+/* ── 6. El tercer arranque: el bloqueo (§6.3) ────────────── */
 
-test('el tercer arranque del §6.3 sale DECLARADO como pendiente, con su motivo', () => {
-  ok(PENDIENTES.bloqueo, 'quien sale de un bloqueo espera al bloqueador');
-  ok(PENDIENTES.bloqueo.length > 30, 'un pendiente sin motivo es un olvido');
-  ok(/bloque/i.test(PENDIENTES.bloqueo));
+test('ES UN BLOQUEO LO QUE DICE EL DATO: su barra y para quién es', () => {
+  ok(esBloqueo(bloqueo('A2', 'A1', P(0.8, 0.5), P(0.6, 0.5))));
+  ok(!esBloqueo({ tipo: 'bloqueo' }), 'sin compañero, no');
+  ok(!esBloqueo({ tipo: 'cut', companero_id: 'A1' }), 'con el trazo de un corte, no');
+  ok(!esBloqueo(null));
+});
+
+test('QUIEN SALE DE UN BLOQUEO NO SALE HASTA QUE EL BLOQUEADOR HA LLEGADO', () => {
+  const b = bloqueo('A2', 'A1', P(0.8, 0.5), P(0.55, 0.45));
+  const sale = tramo('A1', P(0.5, 0.5), P(0.6, 0.2));
+  const r = tiemposDe(conCarriles([b, sale]), { pista: 'entera' });
+  eq(r.tramos[b.id].inicio_ms, 0, 'el bloqueador sale ya:');
+  eq(r.tramos[sale.id].inicio_ms, r.tramos[b.id].fin_ms, 'y el compañero cuando llega:');
+  ok(r.tramos[sale.id].inicio_ms > 0, 'que no es cero');
+});
+
+test('lo que el compañero ya estaba haciendo no se retrasa; y quien no es el compañero, tampoco', () => {
+  const antes = tramo('A1', P(0.4, 0.6), P(0.5, 0.5));
+  const b = bloqueo('A2', 'A1', P(0.9, 0.5), P(0.55, 0.45));
+  const despues = tramo('A1', P(0.5, 0.5), P(0.6, 0.2));
+  const otro = tramo('A3', P(0.2, 0.2), P(0.3, 0.3));
+  const r = tiemposDe(conCarriles([antes, b, despues, otro]), { pista: 'entera' });
+  eq(r.tramos[antes.id].inicio_ms, 0, 'lo de antes, a la vez que el bloqueo:');
+  eq(r.tramos[despues.id].inicio_ms, Math.max(r.tramos[antes.id].fin_ms, r.tramos[b.id].fin_ms), 'lo de después, cuando llega:');
+  eq(r.tramos[otro.id].inicio_ms, 0, 'y los demás, a lo suyo:');
+});
+
+test('BLOQUEO Y CONTINUACIÓN: EL BLOQUEADOR AGUANTA HASTA QUE SU COMPAÑERO LE PASA', () => {
+  /* Lo decidió el entrenador. Saliendo al llegar, la barra duraba cero. */
+  const b = bloqueo('A2', 'A1', P(0.8, 0.45), P(0.55, 0.42));
+  const rueda = tramo('A2', P(0.55, 0.42), P(0.5, 0.15));
+  const bota = tramo('A1', P(0.4, 0.5), P(0.7, 0.35));
+  const r = tiemposDe(conCarriles([b, rueda, bota]), { pista: 'entera' });
+  ok(r.tramos[rueda.id].inicio_ms > r.tramos[b.id].fin_ms, `rueda después de plantarse: ${r.tramos[rueda.id].inicio_ms} > ${r.tramos[b.id].fin_ms}`);
+  /* Y sale JUSTO cuando A1 pasa más cerca del sitio del bloqueo: se busca
+     ese instante recorriendo el bote de milisegundo en milisegundo. */
+  const sitio = b.trazo[1];
+  const m = r.tramos[bota.id];
+  const s = muestreador(bota.trazo);
+  let mejor = { t: 0, d: Infinity };
+  for (let t = m.inicio_ms; t <= m.fin_ms; t++) {
+    const d = metrosEntre('entera', s(easeInOut((t - m.inicio_ms) / m.duracion_ms)), sitio);
+    if (d < mejor.d) mejor = { t, d };
+  }
+  ok(Math.abs(r.tramos[rueda.id].inicio_ms - mejor.t) <= 2, `rueda en ${r.tramos[rueda.id].inicio_ms} y A1 le pasa en ${mejor.t}`);
+  eq(r.tramos[rueda.id].inicio_ms, m.inicio_ms + m.duracion_ms * tiempoDeRecorrido(fraccionMasCercana(bota.trazo, sitio, 'entera')));
+  eq(r.avisos, []);
+});
+
+test('«MANO A MANO»: SI LO SIGUIENTE ES ENTREGARLE EL BALÓN, NO SE AGUANTA (sería un círculo)', () => {
+  const b = bloqueo('A2', 'A1', P(0.8, 0.45), P(0.55, 0.42));
+  const entrega = tramo('A2', P(0.55, 0.42), P(0.5, 0.45), { corre_id: 'b1', accion: 'pasa', receptor_id: 'A1', ritmo: 'pase', tipo: 'pass' });
+  const bota = tramo('A1', P(0.5, 0.5), P(0.7, 0.35));
+  const r = tiemposDe(conCarriles([b, entrega, bota]), { pista: 'entera' });
+  eq(r.avisos, [], 'nada de ciclos:');
+  eq(r.tramos[entrega.id].inicio_ms, r.tramos[b.id].fin_ms, 'la entrega sale al plantarse:');
+  eq(r.tramos[bota.id].inicio_ms, r.tramos[entrega.id].fin_ms, 'y el compañero sale con el balón en las manos:');
+});
+
+test('si el compañero no hace nada después, el bloqueador no espera a nadie', () => {
+  const b = bloqueo('A2', 'A1', P(0.8, 0.45), P(0.55, 0.42));
+  const rueda = tramo('A2', P(0.55, 0.42), P(0.5, 0.15));
+  const r = tiemposDe(conCarriles([b, rueda]), { pista: 'entera' });
+  eq(r.tramos[rueda.id].inicio_ms, r.tramos[b.id].fin_ms);
+});
+
+test('SI ESPERA A UN PASE Y A UN BLOQUEO, SALE CUANDO HAN PASADO LAS DOS COSAS', () => {
+  /* El pase se mira primero —su carril va antes— y es lo que acaba antes.
+     Guardando una sola espera, A1 salía con el bloqueador de camino. */
+  const pase = tramo('A3', P(0.45, 0.55), P(0.5, 0.5), { corre_id: 'b1', accion: 'pasa', receptor_id: 'A1', ritmo: 'pase', tipo: 'pass' });
+  const b = bloqueo('A2', 'A1', P(0.95, 0.9), P(0.55, 0.45));
+  const sale = tramo('A1', P(0.5, 0.5), P(0.6, 0.2));
+  const r = tiemposDe(conCarriles([pase, b, sale]), { pista: 'entera' });
+  ok(r.tramos[b.id].fin_ms > r.tramos[pase.id].fin_ms, 'el bloqueo es lo que acaba más tarde (si no, esto no prueba nada)');
+  eq(r.tramos[sale.id].inicio_ms, r.tramos[b.id].fin_ms, 'sale al llegar el bloqueador:');
 });
 
 /* ── Volver atrás y arrastrar a las siguientes (§6.5) ── */
@@ -303,6 +393,28 @@ test('AL CAMBIAR UNA FASE, LAS SIGUIENTES SE ESTIRAN DESDE EL SITIO NUEVO', () =
   eq([t.trazo[0].x, t.trazo[0].y], [0.3, 0.7], 'arranca donde está ahora:');
   eq([t.trazo[1].x, t.trazo[1].y], [0.9, 0.1], 'y EL DESTINO SE QUEDA QUIETO:');
   eq(t.huerfano, false);
+});
+
+test('UN GESTO EN EL SITIO VA ENTERO CON SU FICHA: no se estira, y lo de detrás sale del mismo sitio', () => {
+  const gesto = { ...tramo('A1', P(0.5, 0.5), P(0.5, 0.5)), accion: 'finta', tipo: 'gesto', trazo: trazoDeIdaYVuelta(P(0.5, 0.5), P(0.5, 0.4)) };
+  const corte = tramo('A1', P(0.5, 0.5), P(0.9, 0.1));
+  const r = reanclarFase(conCarriles([gesto, corte]), { A1: P(0.3, 0.7) }, 'entera');
+  const [g, c] = r.carriles[0].tramos;
+  eq(g.trazo.map((n) => [Number(n.x.toFixed(6)), Number(n.y.toFixed(6))]), [[0.3, 0.7], [0.3, 0.6], [0.3, 0.7]], 'acaba donde empieza, en el sitio nuevo:');
+  eq([c.trazo[0].x, c.trazo[0].y], [0.3, 0.7], 'y el corte de después sale de ahí:');
+  eq(posicionesFinales(conCarriles([gesto]), { A1: P(0.5, 0.5) }).A1, { x: 0.5, y: 0.5 }, 'tras el gesto, la ficha sigue en su sitio:');
+});
+
+test('UNA FINTA ANTES DE SALIR DE UN BLOQUEO: el bloqueador aguanta hasta que su compañero pasa de verdad', () => {
+  const bloqueo = { ...tramo('A2', P(0.6, 0.4), P(0.34, 0.56)), accion: 'bloquea', tipo: 'bloqueo', companero_id: 'A1' };
+  const finta = { ...tramo('A1', P(0.3, 0.6), P(0.3, 0.6)), accion: 'finta', tipo: 'gesto', trazo: trazoDeIdaYVuelta(P(0.3, 0.6), P(0.3, 0.5)) };
+  const bote = tramo('A1', P(0.3, 0.6), P(0.5, 0.3), { accion: 'bota', tipo: 'run' });
+  const sale = tramo('A2', P(0.34, 0.56), P(0.5, 0.15));
+  const r = tiemposDe(conCarriles([bloqueo, finta, bote, sale]));
+  const t = r.tramos;
+  ok(t[finta.id].inicio_ms >= t[bloqueo.id].fin_ms, 'la finta espera al bloqueo');
+  ok(t[bote.id].inicio_ms >= t[finta.id].fin_ms, 'el bote va después de la finta');
+  ok(t[sale.id].inicio_ms > t[bote.id].inicio_ms, `el bloqueador no se va antes de que su compañero arranque: sale en ${t[sale.id].inicio_ms}, el bote en ${t[bote.id].inicio_ms}`);
 });
 
 test('EL ORIGEN LO PONE QUIEN ACTÚA, NO QUIEN VIAJA', () => {
@@ -385,6 +497,25 @@ test('recalcular no muta lo que recibe', () => {
   eq(f1, copia, 'la fase original ha cambiado:');
 });
 
+test('QUIEN SE MUEVE SIN TRAZO —la defensa— llega a la fase siguiente donde se le dice (`alAcabar`)', () => {
+  /* B1 no tiene trazo en la 1 (le lleva el seguimiento) y en la 2 bota. */
+  const f1 = conCarriles([tramo('A1', P(0.2, 0.9), P(0.5, 0.5))]);
+  const f2 = conCarriles([tramo('B1', P(0.6, 0.4), P(0.9, 0.9))]);
+  const fases = [{ ...f1, id: 'f1' }, { ...f2, id: 'f2' }];
+  const entrada = { A1: P(0.2, 0.9), B1: P(0.5, 0.3) };
+  const llamadas = [];
+  const alAcabar = (i, hechas) => { llamadas.push([i, hechas.map((f) => f.id)]); return { B1: P(0.6, 0.4) }; };
+  const r = recalcular(fases, entrada, 'entera', { alAcabar });
+  eq(r.entradas[1].B1, P(0.6, 0.4), 'empieza la 2 donde le dejó la defensa:');
+  const t2 = r.fases[1].carriles[0].tramos[0];
+  eq([t2.trazo[0].x, t2.trazo[0].y, t2.trazo[1].x, t2.trazo[1].y], [0.6, 0.4, 0.9, 0.9], 'y su trazo sale de ahí, no de su sitio del principio:');
+  eq(llamadas, [[0, ['f1']]], 'se pregunta al acabar cada fase menos la última, con lo reanclado hasta ella:');
+  /* Sin él, como siempre: desde donde estaba. */
+  const s = recalcular(fases, entrada, 'entera');
+  eq(s.entradas[1].B1, P(0.5, 0.3));
+  eq(recalcular(fases, entrada, 'entera', { alAcabar: () => null }).entradas[1].B1, P(0.5, 0.3), 'y si no dice nada, tampoco rompe:');
+});
+
 test('sin fases ni entrada, no rompe', () => {
   eq(recalcular([], {}, 'entera'), { fases: [], entradas: [], huerfanos: [] });
   eq(recalcular(null, {}, 'entera').fases, []);
@@ -394,6 +525,30 @@ test('sin fases ni entrada, no rompe', () => {
 /* ── De quién es el balón al volver a una fase (§6.5) ───── */
 
 const pase = (de, a, bal) => ({ id: `tp${++n}`, elemento_id: de, corre_id: bal, receptor_id: a, accion: 'pasa', trazo: [] });
+
+test('QUIEN RECOGE ESPERA A LA ÚLTIMA SUELTA, no a la primera que encuentra', () => {
+  /* El caso medido: A1 pasa a A2, A2 tira y A3 recoge. Buscando la
+     primera suelta carril a carril salía el pase, y A3 echaba a correr
+     con el balón todavía en las manos de A2. */
+  const psa = tramo('A1', P(0.2, 0.8), P(0.7, 0.6), { corre_id: 'b1', receptor_id: 'A2', accion: 'pasa', ritmo: 'pase' });
+  const tir = tramo('A2', P(0.7, 0.6), P(0.5, 0.1), { corre_id: 'b1', accion: 'tira', ritmo: 'pase' });
+  const rec = tramo('A3', P(0.3, 0.5), P(0.5, 0.15), { accion: 'recoge', balon_id: 'b1' });
+  const r = tiemposDe(conCarriles([psa, tir, rec]), { pista: 'entera' });
+  eq(r.tramos[rec.id].inicio_ms, r.tramos[tir.id].fin_ms, 'sale cuando se suelta el tiro:');
+  ok(r.tramos[rec.id].inicio_ms > r.tramos[psa.id].fin_ms, 'y no al acabar el pase');
+});
+
+test('LAS POSICIONES FINALES VAN EN EL ORDEN EN QUE PASAN, no carril a carril', () => {
+  /* A2 corta, A1 le pasa y A2 tira. El carril de A2 va primero (su corte
+     se dibujó antes), y recorriendo por carril el pase de A1 pisaba el
+     tiro: el balón acababa en las manos de A2 en vez de en el aro. */
+  const corte = tramo('A2', P(0.8, 0.8), P(0.7, 0.6));
+  const psa = tramo('A1', P(0.2, 0.8), P(0.7, 0.6), { corre_id: 'b1', receptor_id: 'A2', accion: 'pasa' });
+  const tir = tramo('A2', P(0.7, 0.6), P(0.5, 0.1), { corre_id: 'b1', accion: 'tira' });
+  const fin = posicionesFinales(conCarriles([corte, psa, tir]), { A1: P(0.2, 0.8), A2: P(0.8, 0.8), b1: P(0.22, 0.8) });
+  eq(fin.b1, P(0.5, 0.1), 'el balón, en el aro:');
+  eq(fin.A2, P(0.7, 0.6), 'A2, donde acabó su corte:');
+});
 
 test('VOLVER A UNA FASE DEVUELVE EL BALÓN A QUIEN LO TENÍA ENTONCES', () => {
   /* A1 pasa a A2 en la fase 1 y A2 se lo devuelve en la 2. El modelo
@@ -432,6 +587,212 @@ test('pedir más allá de la última fase se para en la última, y no toca lo qu
   eq(posesionAlFinal([{ tramos: [pase('A1', 'A2', 'b1')] }], 99, inicial).b1, 'A2');
   eq(inicial, { b1: 'A1' }, 'el dueño del principio ha cambiado:');
   eq(posesionAlFinal(null, 3, { b1: 'A1' }), { b1: 'A1' });
+});
+
+/* ── La escena: poner y quitar ───────────────────────────── */
+
+const p = (x, y) => ({ x, y });
+/* A1 pasa a A2 con b1; A3 recoge b2 del suelo; A4 tiene b3 y no hace
+   nada. En la fase 2, A2 corta. */
+const escena = () => [
+  {
+    id: 'f1',
+    tramos: [
+      { id: 'ta', elemento_id: 'A1', corre_id: 'b1', receptor_id: 'A2', trazo: [] },
+      { id: 'tb', elemento_id: 'A3', corre_id: 'A3', balon_id: 'b2', trazo: [] },
+    ],
+    entrada: { A1: p(0.3, 0.7), A2: p(0.7, 0.7), A3: p(0.5, 0.5), A4: p(0.2, 0.2), b1: p(0.31, 0.7), b2: p(0.6, 0.4), b3: p(0.21, 0.2) },
+    posesion: { b1: 'A1', b2: null, b3: 'A4' },
+  },
+  {
+    id: 'f2',
+    tramos: [{ id: 'tc', elemento_id: 'A2', corre_id: 'A2', trazo: [] }],
+    entrada: { A1: p(0.3, 0.7), A2: p(0.7, 0.7), A4: p(0.2, 0.2), b3: p(0.21, 0.2) },
+  },
+];
+
+test('TRAMOS CON FICHA: la encuentra actúe, corra, reciba o sea el balón que se recoge', () => {
+  const f = escena();
+  eq(tramosConFicha(f, 'A1').map((r) => r.tramo.id), ['ta'], 'el que pasa:');
+  eq(tramosConFicha(f, 'b1').map((r) => r.tramo.id), ['ta'], 'el balón que vuela:');
+  eq(tramosConFicha(f, 'A2').map((r) => `${r.fase}:${r.tramo.id}`), ['0:ta', '1:tc'], 'el que recibe, y también en la fase 2:');
+  eq(tramosConFicha(f, 'b2').map((r) => r.tramo.id), ['tb'], 'el balón que se recoge:');
+  eq(tramosConFicha(f, 'A4'), [], 'quien no hace nada:');
+});
+
+test('Y EL COMPAÑERO DE UN BLOQUEO: si no, Supr se lo llevaría y el bloqueo apuntaría a nadie', () => {
+  const f = [{ id: 'f1', tramos: [{ id: 'tx', elemento_id: 'A2', corre_id: 'A2', companero_id: 'A1', tipo: 'bloqueo', trazo: [] }] }];
+  eq(tramosConFicha(f, 'A1').map((r) => r.tramo.id), ['tx']);
+});
+
+test('sin id no hay tramos: un receptor vacío no es «este jugador»', () => {
+  /* `receptor_id` es null en un pase al suelo: sin la guarda, pedir los
+     tramos de una ficha sin id devolvía todos esos pases. */
+  eq(tramosConFicha(escena(), undefined), []);
+  eq(tramosConFicha(escena(), null), []);
+  eq(tramosConFicha(null, 'A1'), []);
+});
+
+test('BALÓN EN JUEGO: el que vuela o se recoge sí; el que nadie toca, no', () => {
+  const f = escena();
+  ok(balonEnJuego(f, 'b1'), 'b1 se pasa');
+  ok(balonEnJuego(f, 'b2'), 'b2 se recoge');
+  ok(!balonEnJuego(f, 'b3'), 'b3 nadie lo toca');
+});
+
+test('FICHA NUEVA: entra en el arranque de la fase 1, y en nada más', () => {
+  const f = escena();
+  const r = conFichaNueva(f, { id: 'A5', kind: 'jugador', x: 0.4, y: 0.6 });
+  eq(r[0].entrada.A5, p(0.4, 0.6));
+  ok(!('A5' in r[1].entrada), 'la fase 2 se deduce recalculando, no se escribe aquí');
+  ok(!('A5' in r[0].posesion), 'un jugador no es un balón');
+  ok(!('A5' in f[0].entrada), 'y no toca lo que recibe');
+});
+
+test('un BALÓN nuevo apunta de quién es al empezar, suelto o en las manos de alguien', () => {
+  eq(conFichaNueva(escena(), { id: 'b4', kind: 'balon', x: 0.5, y: 0.5, portador_id: null })[0].posesion.b4, null);
+  eq(conFichaNueva(escena(), { id: 'b4', kind: 'balon', x: 0.5, y: 0.5, portador_id: 'A3' })[0].posesion.b4, 'A3');
+  eq(conFichaNueva(escena(), { id: 'b4', kind: 'balon', x: 0.5, y: 0.5 })[0].posesion.b4, null, 'sin portador, suelto:');
+});
+
+test('una ficha nueva, al recalcular, sigue quieta en las fases siguientes', () => {
+  const f = [
+    { ...nuevaFase('f1'), tramos: [], entrada: { A1: p(0.3, 0.7) } },
+    { ...nuevaFase('f2'), tramos: [], entrada: { A1: p(0.3, 0.7) } },
+  ];
+  const r = conFichaNueva(f, { id: 'A2', kind: 'jugador', x: 0.6, y: 0.4 });
+  const rc = recalcular(r.map((x) => ({ ...x, carriles: carrilesDesde(x.tramos) })), r[0].entrada);
+  eq(rc.entradas[1].A2, p(0.6, 0.4));
+});
+
+test('sin ficha o sin fases, no cambia nada', () => {
+  const f = escena();
+  eq(conFichaNueva(f, null), f);
+  eq(conFichaNueva([], { id: 'A5', kind: 'jugador', x: 0, y: 0 }), []);
+});
+
+test('QUITAR: sale de las entradas de TODAS las fases, y solo ella', () => {
+  const r = sinFichas(escena(), ['A4']);
+  ok(!('A4' in r[0].entrada) && !('A4' in r[1].entrada), 'sigue en alguna fase');
+  ok('A1' in r[0].entrada && 'A1' in r[1].entrada, 'se ha llevado a quien no debía');
+});
+
+test('quitar al portador deja su balón SUELTO al empezar; quitar el balón lo borra de la posesión', () => {
+  eq(sinFichas(escena(), ['A4'])[0].posesion.b3, null, 'el balón de A4:');
+  const s = sinFichas(escena(), 'b3');
+  ok(!('b3' in s[0].posesion), 'el balón quitado sigue con dueño');
+  eq(s[0].posesion.b1, 'A1', 'los demás no cambian:');
+  ok(!('posesion' in s[1]), 'a una fase sin posesión no se le inventa una');
+});
+
+test('quitar no toca lo que recibe ni los tramos, y sin nada que quitar devuelve lo mismo', () => {
+  const f = escena();
+  const r = sinFichas(f, ['A1']);
+  ok('A1' in f[0].entrada, 'ha tocado la original');
+  eq(r[0].tramos.length, 2, 'los tramos son decisión de quien quita:');
+  ok(sinFichas(f, []) === f, 'sin nada que quitar, la misma jugada');
+});
+
+/* ── Los tiros ───────────────────────────────────────────── */
+
+const tiro = (de, desde, hasta, desenlace, extra = {}) => ({ ...tramo(de, desde, hasta, { corre_id: 'b1', accion: 'tira', ritmo: 'tiro', ...extra }), desenlace });
+
+test('ES TIRO LO QUE SABE SI ENTRA O FALLA, se llame como se llame', () => {
+  ok(esTiro(tiro('A1', P(0.3, 0.5), P(0.5, 0.1), 'falla')), 'un tiro');
+  ok(esTiro({ accion: 'tiro_del_club', desenlace: 'entra' }), 'una acción de tiro del club');
+  ok(!esTiro(tramo('A1', P(0.3, 0.5), P(0.5, 0.1), { accion: 'tira' })), 'sin desenlace no se da por tiro');
+  ok(!esTiro(null), 'nada');
+});
+
+test('UN TIRO TARDA 0,9 S HASTA EL ARO, y la fase dura hasta que cae el balón', () => {
+  const t = tiro('A1', P(0.3, 0.5), P(0.5, 0.1), 'falla');
+  const r = tiemposDe(conCarriles([t]), { pista: 'entera' });
+  eq(r.tramos[t.id].duracion_ms, 900, 'venga de donde venga:');
+  eq(r.duracion_ms, 900 + TRAS_EL_TIRO_MS, 'la fase:');
+});
+
+test('QUIEN VA AL REBOTE ESPERA A QUE CAIGA, no a que el balón llegue al aro', () => {
+  const t = tiro('A1', P(0.3, 0.5), P(0.5, 0.1), 'falla');
+  const rec = tramo('A2', P(0.7, 0.5), P(0.55, 0.2), { accion: 'recoge', balon_id: 'b1' });
+  const r = tiemposDe(conCarriles([t, rec]), { pista: 'entera' });
+  eq(r.tramos[rec.id].inicio_ms, r.tramos[t.id].fin_ms + TRAS_EL_TIRO_MS);
+});
+
+test('AL ACABAR LA FASE EL BALÓN ESTÁ DONDE CAE, sabiendo la pista y la canasta', () => {
+  const t = tiro('A1', P(0.3, 0.5), P(0.5, 0.1), 'falla');
+  const entrada = { A1: P(0.3, 0.5), b1: P(0.32, 0.5) };
+  const esperado = trasElTiro({ pista: 'entera', canasta: 'norte', desde: P(0.3, 0.5), desenlace: 'falla' });
+  eq(posicionesFinales(conCarriles([t]), entrada, { pista: 'entera', canasta: 'norte' }).b1, esperado, 'con pista:');
+  eq(posicionesFinales(conCarriles([t]), entrada).b1, P(0.5, 0.1), 'sin ella, en la punta como antes:');
+  const rc = recalcular([conCarriles([t]), conCarriles([])], entrada, 'entera', { canasta: 'norte' });
+  eq(rc.entradas[1].b1, esperado, 'y la fase siguiente empieza con el balón ahí:');
+});
+
+test('RECALCULAR RESPETA EL ARO DE CADA FASE (§8.6)', () => {
+  /* Un tiro fallado deja el balón rebotado: por el aro norte cae arriba,
+     y por el sur, abajo. Si `recalcular` no mirara el aro de la fase, las
+     dos saldrían iguales. */
+  const tiro = {
+    id: 'tr1', elemento_id: 'A1', corre_id: 'b1', accion: 'tira', tipo: 'pass', desenlace: 'falla',
+    trazo: [{ x: 0.5, y: 0.5, tipo_nodo: 'lineal' }, { x: 0.5, y: 0.1, tipo_nodo: 'lineal' }],
+  };
+  const fases = [{ id: 'f1', carriles: carrilesDesde([tiro]) }];
+  const entrada = { A1: { x: 0.5, y: 0.5 }, b1: { x: 0.5, y: 0.5 } };
+  const norte = recalcular(fases, entrada, 'entera', { canasta: 'norte' });
+  const sur = recalcular(fases, entrada, 'entera', { canasta: 'norte', canastaDe: () => 'sur' });
+  ok(Math.abs(norte.entradas.length - sur.entradas.length) === 0, 'las dos recorren lo mismo');
+  const finNorte = posicionesFinales(fases[0], entrada, { pista: 'entera', canasta: 'norte' });
+  const finSur = posicionesFinales(fases[0], entrada, { pista: 'entera', canasta: 'sur' });
+  ok(Math.abs(finNorte.b1.y - finSur.b1.y) > 0.05, `el rebote cae en sitios distintos: ${finNorte.b1.y} y ${finSur.b1.y}`);
+  /* Y lo que decide cuál usa `recalcular` es `canastaDe`. */
+  const conUno = recalcular([...fases, { id: 'f2', carriles: [] }], entrada, 'entera', { canasta: 'norte' });
+  const conDos = recalcular([...fases, { id: 'f2', carriles: [] }], entrada, 'entera', { canasta: 'norte', canastaDe: (i) => (i === 0 ? 'sur' : 'norte') });
+  ok(Math.abs(conUno.entradas[1].b1.y - conDos.entradas[1].b1.y) > 0.05,
+    `la fase 2 arranca con el balón donde diga el aro de la 1: ${conUno.entradas[1].b1.y} y ${conDos.entradas[1].b1.y}`);
+});
+
+test('QUITAR UNA FICHA LIMPIA LO QUE LA DEFENSA HACÍA CON ELLA (§8.5)', () => {
+  const fases = [{
+    id: 'f1', tramos: [], entrada: { B1: { x: 0.3, y: 0.5 }, A3: { x: 0.7, y: 0.6 } },
+    defensa: { B1: { accion: 'ayuda', objetivo_id: 'A3' }, B2: { accion: 'cierra_rebote', objetivo_id: null } },
+  }];
+  eq(declaradasConFicha(fases, 'A3').length, 1, 'A3 sale en lo que hace B1:');
+  eq(declaradasConFicha(fases, 'B1').length, 1, 'y B1, porque lo hace él:');
+  eq(declaradasConFicha(fases, 'A9').length, 0);
+  const limpias = sinFichas(fases, ['A3']);
+  eq(limpias[0].defensa, { B2: { accion: 'cierra_rebote', objetivo_id: null } }, 'al irse A3 se va la ayuda:');
+  eq(sinFichas(fases, ['B2'])[0].defensa, { B1: { accion: 'ayuda', objetivo_id: 'A3' } }, 'y al irse el que lo hacía, lo suyo:');
+  eq(sinFichas([{ id: 'f1', tramos: [], entrada: {} }], ['A3'])[0].defensa, undefined,
+    'una fase sin nada declarado no se llena de huecos:');
+});
+
+test('LOS TRAMOS QUE PIDEN BALÓN Y NO LO TIENEN SE ENCUENTRAN, y los de detrás se cuentan sin ellos', () => {
+  const pideBalon = (t) => ['bota', 'pasa', 'tira'].includes(t.accion);
+  const inicial = { bal: 'A1' };
+  /* A1 pasa a A2 y A2 bota: todo vale. */
+  const bien = [{ tramos: [
+    { id: 't1', elemento_id: 'A1', corre_id: 'bal', receptor_id: 'A2', accion: 'pasa' },
+    { id: 't2', elemento_id: 'A2', corre_id: 'A2', accion: 'bota' },
+  ] }];
+  eq(tramosSinBalon(bien, inicial, pideBalon), [], 'con su balón, nada que quitar:');
+  /* Sin el pase (se borró la fase que lo tenía), A2 bota sin balón. */
+  const sin = [{ tramos: [{ id: 't2', elemento_id: 'A2', corre_id: 'A2', accion: 'bota' }] }];
+  eq(tramosSinBalon(sin, inicial, pideBalon).map((x) => [x.fase, x.tramo.id]), [[0, 't2']], 'A2 bota sin balón:');
+  /* Un corte no pide balón, lo tenga o no. */
+  eq(tramosSinBalon([{ tramos: [{ id: 't3', elemento_id: 'A2', corre_id: 'A2', accion: 'corta' }] }], inicial, pideBalon), []);
+  /* Un pase que no vale no mueve el balón: lo de detrás lo cuenta sin él. */
+  const cadena = [{ tramos: [
+    { id: 'p1', elemento_id: 'A3', corre_id: 'bal', receptor_id: 'A2', accion: 'pasa' },   // A3 no lo tiene
+    { id: 'b1', elemento_id: 'A2', corre_id: 'A2', accion: 'bota' },                      // y A2 tampoco llega a tenerlo
+    { id: 'b2', elemento_id: 'A1', corre_id: 'A1', accion: 'bota' },                      // A1 sigue con él
+  ] }];
+  eq(tramosSinBalon(cadena, inicial, pideBalon).map((x) => x.tramo.id), ['p1', 'b1'], 'en cadena:');
+  /* En otra fase, y un robo cambia de manos. */
+  const robo = [
+    { tramos: [], defensa: { B1: { accion: 'roba', objetivo_id: 'A1' } } },
+    { tramos: [{ id: 'x1', elemento_id: 'A1', corre_id: 'A1', accion: 'bota' }, { id: 'x2', elemento_id: 'B1', corre_id: 'B1', accion: 'bota' }] },
+  ];
+  eq(tramosSinBalon(robo, inicial, pideBalon).map((x) => [x.fase, x.tramo.id]), [[1, 'x1']], 'tras el robo, bota B1 y no A1:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

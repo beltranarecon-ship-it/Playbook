@@ -1,5 +1,6 @@
 import { requireAuth, getProfile, logout, onAuthChange } from './auth.js';
 import { getEjercicios, getThumbnailGif } from './modules/ejercicios.js';
+import { MOTOR_PIZARRA } from '../taller/js/pizarra/motor/marca.js';
 // La etiqueta de dificultad sale del Taller, no de una tabla propia: había
 // DOS escalas para la misma columna (aquí 1-5 con cinco nombres, allí 1-6
 // con tres) y el mismo ejercicio se anunciaba distinto en la tarjeta y en
@@ -178,7 +179,7 @@ function renderEjerciciosGrid(data) {
   }
 
   grid.innerHTML = data.map((ej, i) => `
-    <article class="exercise-card animate-fadeIn" data-id="${ej.id}"
+    <article class="exercise-card animate-fadeIn" data-id="${ej.id}" data-anima="${Number(ej.motor) === MOTOR_PIZARRA ? '1' : ''}"
       style="animation-delay:${i * 30}ms">
       ${ej.poster ? `<div class="exercise-card-thumb" style="--thumb-aspect:${aspectoMiniatura(ej)}"><img class="thumb-img" src="${ej.poster}" alt="" loading="lazy"></div>` : ''}
       <div class="exercise-card-header">
@@ -195,9 +196,12 @@ function renderEjerciciosGrid(data) {
 
   grid.querySelectorAll('.exercise-card').forEach(card => {
     card.addEventListener('click', () => openEjercicioDetail(card.dataset.id));
-    // miniatura: póster en reposo, GIF en hover (carga diferida) §19
+    // miniatura: póster en reposo, GIF en hover (carga diferida) §19.
+    // Solo si la animación es de la Pizarra: el GIF de lo de antes
+    // enseñaría una animación que ya no se reproduce en ningún otro
+    // sitio; se queda su póster, la miniatura estática (§11.4).
     const img = card.querySelector('.thumb-img');
-    if (img) {
+    if (img && card.dataset.anima) {
       const poster = img.src; let gif = null; let loading = false;
       card.addEventListener('mouseenter', async () => {
         if (gif) { img.src = gif; return; }

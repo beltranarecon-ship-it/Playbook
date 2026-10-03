@@ -55,6 +55,26 @@ test('UNA JUGADA BUENA SE ABRE ENTERA Y SIN AVISOS', () => {
   eq(r.jugada.elementos.length, 3);
   eq(r.jugada.fases.map((f) => f.tramos.length), [1, 1]);
   eq(r.jugada.fases[1].pausa_post_ms, 800, 'lo puesto a mano se conserva:');
+  eq(r.jugada.defensa, { preajuste: 'entre_par_y_aro', parametros: {}, situacion: null, ataca: null },
+    'sin defensa guardada, la de serie, sin avisar:');
+});
+
+test('LA DEFENSA GUARDADA SE CONSERVA, y la rota se arregla diciéndolo', () => {
+  const j = buena();
+  j.defensa = { preajuste: 'presion', parametros: { presion: 0.6 }, situacion: null, ataca: 'nadie' };
+  eq(normalizarJugada(j).jugada.defensa, j.defensa);
+  j.defensa = { preajuste: 'inventada' };
+  const r = normalizarJugada(j);
+  eq(r.jugada.defensa.preajuste, 'entre_par_y_aro');
+  ok(r.avisos.some((a) => /regla de la defensa/.test(a)), `y se dice: ${r.avisos}`);
+});
+
+test('UN DEFENSOR QUE DEFENDÍA A ALGUIEN QUE NO ESTÁ SE EMPAREJA SOLO, y se dice', () => {
+  const j = buena();
+  j.elementos[1] = { ...j.elementos[1], defiende_a: 'jugador_9', regla_defensa: 'zona' };
+  const r = normalizarJugada(j);
+  eq([r.jugada.elementos[1].defiende_a, r.jugada.elementos[1].regla_defensa], [null, null]);
+  ok(r.avisos.some((a) => /ya no está/.test(a)) && r.avisos.some((a) => /regla que no se conoce/.test(a)), `${r.avisos}`);
 });
 
 test('y lo abierto se compila como lo guardado', () => {
@@ -197,6 +217,162 @@ test('continuarIds solo sube la cuenta, nunca la baja', () => {
   continuarIds([{ id: 'jugador_20' }]);
   continuarIds([{ id: 'jugador_3' }, { id: 'A1' }, null, {}]);
   eq(nuevoId('cono'), 'cono_21');
+});
+
+test('UN TIRO GUARDADO SIN DESENLACE SE ABRE COMO «ENTRA», y se dice', () => {
+  const j = buena();
+  j.fases[1].tramos.push({ id: 'tr10', elemento_id: 'jugador_1', corre_id: 'balon_3', accion: 'tira', trazo: [N(0.3, 0.4), N(0.5, 0.1)], tipo: 'pass', ritmo: 'tiro' });
+  const r = normalizarJugada(j);
+  eq(r.jugada.fases[1].tramos.find((t) => t.id === 'tr10').desenlace, 'entra');
+  ok(r.avisos.some((a) => /sin desenlace/.test(a)), `tiene que decirlo: ${r.avisos}`);
+});
+
+test('el que ya lo tiene lo conserva, y a lo que no es un tiro no se le pone', () => {
+  const j = buena();
+  j.fases[1].tramos.push({ id: 'tr10', elemento_id: 'jugador_1', corre_id: 'balon_3', accion: 'tira', desenlace: 'falla', trazo: [N(0.3, 0.4), N(0.5, 0.1)], tipo: 'pass', ritmo: 'tiro' });
+  const r = normalizarJugada(j);
+  eq(r.jugada.fases[1].tramos.find((t) => t.id === 'tr10').desenlace, 'falla');
+  ok(!('desenlace' in r.jugada.fases[0].tramos[0]), 'un corte no tiene desenlace');
+  ok(!r.avisos.some((a) => /desenlace/.test(a)), 'y no se avisa de nada');
+});
+
+test('UN BLOQUEO SIN SU COMPAÑERO SE CONSERVA, y se dice', () => {
+  const j = buena();
+  j.fases[0].tramos.push({ id: 'tr11', elemento_id: 'jugador_2', corre_id: 'jugador_2', companero_id: 'jugador_9', accion: 'bloquea', trazo: [N(0.7, 0.3), N(0.5, 0.3)], tipo: 'bloqueo', ritmo: 'normal' });
+  const r = normalizarJugada(j);
+  const t = r.jugada.fases[0].tramos.find((x) => x.id === 'tr11');
+  ok(t && t.companero_id === 'jugador_9', 'se conserva tal cual');
+  ok(r.avisos.some((a) => /compañero/.test(a)), `y se dice: ${r.avisos}`);
+  ok(!normalizarJugada(buena()).avisos.some((a) => /compañero/.test(a)), 'sin bloqueos no se habla de compañeros');
+});
+
+test('LO QUE UN DEFENSOR HACE DISTINTO SE GUARDA EN SU FASE, y lo roto se dice', () => {
+  const j = normalizarJugada({
+    version: 3, pista: 'entera', canasta: 'norte',
+    elementos: [
+      { id: 'A1', kind: 'jugador', equipo: 'A', x: 0.3, y: 0.7 },
+      { id: 'B1', kind: 'jugador', equipo: 'B', x: 0.3, y: 0.5 },
+    ],
+    fases: [{
+      id: 'f1', tramos: [],
+      defensa: {
+        B1: { accion: 'ayuda', objetivo_id: 'A1' },
+        B9: { accion: 'sobrepasado' },
+        A1: { accion: 'baila' },
+      },
+    }],
+  });
+  eq(j.jugada.fases[0].defensa, { B1: { accion: 'ayuda', objetivo_id: 'A1' } });
+  eq(j.avisos.filter((a) => /defensa/.test(a)).length, 2, 'las dos que se caen se dicen:');
+  const vacia = normalizarJugada({ version: 3, elementos: [], fases: [{ id: 'f1', tramos: [] }] });
+  eq(vacia.jugada.fases[0].defensa, {}, 'una fase sin nada declarado trae el hueco vacío:');
+});
+
+test('UNAS FASES ROTAS SE DICEN, no se abren en blanco y callando', () => {
+  for (const rotas of ['roto', 42, { f1: {} }]) {
+    const r = normalizarJugada({ version: 3, elementos: [], fases: rotas });
+    eq(r.jugada.fases.length, 1, 'se abre con una fase vacía:');
+    ok(r.avisos.some((a) => /fases/i.test(a)), `y se dice (${JSON.stringify(rotas)}): ${JSON.stringify(r.avisos)}`);
+  }
+  eq(normalizarJugada({ version: 3, elementos: [], fases: null }).avisos.length, 0,
+    'y una jugada sin fases no es un error: se abre con la primera vacía');
+});
+
+test('UNA FASE ROTA SE DICE, Y LOS AVISOS LLEVAN EL NÚMERO QUE VE EL ENTRENADOR', () => {
+  const N = (x, y) => ({ x, y, tipo_nodo: 'lineal' });
+  const r = normalizarJugada({
+    version: 3,
+    elementos: [{ id: 'A1', kind: 'jugador', equipo: 'A', x: 0.3, y: 0.7 }],
+    fases: [
+      { id: 'f1', tramos: [{ id: 'tr1', elemento_id: 'A1', corre_id: 'A1', accion: 'corta', trazo: [N(0.3, 0.7), N(0.3, 0.4)] }] },
+      'ROTA',
+      { id: 'f3', tramos: [{ id: 'tr3', elemento_id: 'A1', corre_id: 'A1', accion: 'corta', trazo: [N(0.3, 0.4)] }] },
+    ],
+  });
+  eq(r.jugada.fases.map((f) => f.id), ['f1', 'f3'], 'la rota se queda fuera:');
+  ok(r.avisos.some((a) => /Fase 2/.test(a) && /rota/.test(a)), `y se dice cuál era: ${JSON.stringify(r.avisos)}`);
+  ok(r.avisos.some((a) => /Fase 3/.test(a) && /trazo/.test(a)), `y la tercera sigue siendo la tercera: ${JSON.stringify(r.avisos)}`);
+});
+
+test('dos fases con el mismo nombre acaban con nombres distintos, aunque el inventado ya exista', () => {
+  const j = normalizarJugada({
+    version: 3, elementos: [],
+    fases: [{ id: 'f2_1', tramos: [] }, { id: 'f2_1', tramos: [] }, { id: 'f2_1', tramos: [] }],
+  }).jugada;
+  eq(new Set(j.fases.map((f) => f.id)).size, j.fases.length, `ninguno repetido: ${j.fases.map((f) => f.id)}`);
+});
+
+test('UNA ACCIÓN DE LA DEFENSA CONTRA UN CONO NO ENTRA, y se dice', () => {
+  const r = normalizarJugada({
+    version: 3,
+    elementos: [
+      { id: 'A1', kind: 'jugador', equipo: 'A', x: 0.3, y: 0.7 },
+      { id: 'B1', kind: 'jugador', equipo: 'B', x: 0.3, y: 0.5 },
+      { id: 'cono_1', kind: 'cono', x: 0.5, y: 0.5 },
+    ],
+    fases: [{ id: 'f1', tramos: [], defensa: {
+      B1: { accion: 'ayuda', objetivo_id: 'cono_1' },
+      cono_1: { accion: 'cierra_rebote' },
+    } }],
+  });
+  eq(r.jugada.fases[0].defensa, {}, 'ni la ayuda a un cono ni la del cono:');
+  eq(r.avisos.length, 2, `y las dos se dicen: ${JSON.stringify(r.avisos)}`);
+});
+
+test('LAS FILAS SE GUARDAN Y SE ABREN; una rota o huérfana se dice', () => {
+  const r = normalizarJugada({
+    version: 3,
+    elementos: [
+      { id: 'cono_1', kind: 'cono', x: 0.5, y: 0.5, fila: { n: 3, equipo: 'B', orientacion: 405 } },
+      { id: 'cono_2', kind: 'cono', x: 0.2, y: 0.2, fila: 'rota' },
+      { id: 'j1', kind: 'jugador', equipo: 'B', x: 0.5, y: 0.5, fila_de: 'cono_1', puesto: 0 },
+      { id: 'j2', kind: 'jugador', equipo: 'B', x: 0.5, y: 0.55, fila_de: 'cono_1', puesto: -3, en_juego: false },
+      { id: 'j3', kind: 'jugador', equipo: 'A', x: 0.8, y: 0.8, fila_de: 'cono_9', puesto: 1, en_juego: false },
+    ],
+    fases: [{ id: 'f1', tramos: [] }],
+  });
+  const e = (id) => r.jugada.elementos.find((x) => x.id === id);
+  eq(e('cono_1').fila.orientacion, 45, 'la fila, en condiciones:');
+  eq(e('cono_2').fila, null, 'la rota, cono suelto:');
+  eq(e('j2').puesto, 0, 'un puesto que no vale, al principio:');
+  eq([e('j3').fila_de, e('j3').en_juego], [undefined, true], 'el de una fila que no está, a jugar suelto:');
+  eq(r.avisos.filter((a) => /fila/.test(a)).length, 2, 'y las dos cosas se dicen:');
+});
+
+test('LA FRASE REESCRITA SE GUARDA EN SU FASE (§9.2); lo que no es texto, no', () => {
+  const b = buena();
+  b.fases[0].texto = '  A2 corta al aro.  ';
+  b.fases[1].texto = 42;
+  const r = normalizarJugada(b);
+  eq(r.jugada.fases.map((f) => f.texto), ['A2 corta al aro.', null]);
+  eq(normalizarJugada({ ...buena(), fases: [{ id: 'f1', tramos: [], texto: '   ' }] }).jugada.fases[0].texto, null, 'en blanco es la automática:');
+  eq(normalizarJugada({ version: 3, elementos: [], fases: [] }).jugada.fases[0].texto, null, 'y la fase vacía de serie, también:');
+});
+
+test('LAS RAMAS SE GUARDAN Y SE ABREN (§6.7); lo roto se arregla diciéndolo', () => {
+  const b = buena();
+  b.fases.push({ id: 'f3', tramos: [], rama_de: 'f1', rama_nombre: '  si le niegan  ' });
+  b.fases[1].rama_de = 'f1';
+  b.fases[1].rama_nombre = '';
+  b.fases.push({ id: 'f4', tramos: [], rama_de: 'nadie', reune: ['f2', 'f3', 'fantasma'] });
+  const r = normalizarJugada(b);
+  const f = Object.fromEntries(r.jugada.fases.map((x) => [x.id, x]));
+  eq([f.f3.rama_de, f.f3.rama_nombre], ['f1', 'si le niegan']);
+  eq([f.f2.rama_de, f.f2.rama_nombre], ['f1', 'Rama 1'], 'sin nombre, se le pone uno:');
+  eq([f.f4.rama_de, f.f4.reune], [null, ['f2', 'f3']], 'lo que apunta a nada, fuera:');
+  ok(r.avisos.some((a) => /sin nombre/.test(a)) && r.avisos.some((a) => /no está/.test(a)), r.avisos.join(' | '));
+  eq([r.jugada.fases[0].rama_de, r.jugada.fases[0].reune], [null, []], 'sin ramas, lo de siempre:');
+});
+
+test('UN ENLACE DE UNA SOLA FASE SE GUARDA si no lo dice el orden de la lista; si lo dice, sobra', () => {
+  const b = buena();
+  b.fases = [
+    { id: 'f1', tramos: [] }, { id: 'f2', tramos: [] },
+    { id: 'f4', tramos: [], reune: ['f3'] }, { id: 'f3', tramos: [], reune: ['f2'] },
+    { id: 'f5', tramos: [], reune: ['f3'] },
+  ];
+  const f = Object.fromEntries(normalizarJugada(b).jugada.fases.map((x) => [x.id, x.reune]));
+  eq([f.f4, f.f3, f.f5], [['f3'], ['f2'], []]);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

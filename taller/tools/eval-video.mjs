@@ -18,8 +18,6 @@ import {
   leerVideo, normalizarVideo, validarVideo, urlIncrustado, urlPublica,
   textoTramo, duracionMs, segundosDe, mmss, seIncrusta, TIPOS,
 } from '../js/ia/video.js';
-import { compilarAnimacion } from '../js/ia/compilador.js';
-import { expandirRondas } from '../js/ia/rondas.js';
 import { CATALOGO_SISTEMA, conVideos, validarAccion } from '../js/ia/acciones.js';
 
 let pasan = 0, fallan = 0;
@@ -204,95 +202,7 @@ test('SIN final no se adivina: se devuelve null y quien lo enseñe pone un botó
   eq(duracionMs({ tipo: 'youtube', id: ID }), null);
 });
 
-/* ── 7. De la fase al vídeo ───────────────────────────────── */
-
-/*
-   El eslabón que hace posible el 2.14: el proyector tiene que saber QUÉ
-   acción ocurre en la fase que va a empezar. Deducirlo del intent no
-   vale —las rondas de fila reordenan y funden fases—, así que lo
-   escribe el compilador, que es el único que lo sabe sin adivinar.
-*/
-
-console.log('\n· cada fase sabe qué acción es');
-
-const TABLERO_FILA = [
-  { id: 'cf', kind: 'cono', x: 0.86, y: 0.30, funcion: 'fila',
-    fila_config: { n_jugadores: 3, direccion_grados: 180, equipo: 'A', rondas: true, cadencia_s: null, rol: 'atacante' } },
-  { id: 'b1', kind: 'balon', x: 0.84, y: 0.30, portador_id: null },
-];
-const INTENT_FILA = {
-  canasta: 'norte',
-  fases: [
-    { eventos: [{ jugador: 'fila1', accion: 'entra', args: {} }] },
-    { eventos: [{ jugador: 'fila1', accion: 'tira', args: {} }] },
-    { eventos: [{ jugador: 'fila1', accion: 'vuelve_a_fila', args: {} }] },
-  ],
-};
-
-test('el compilador anota los slugs de cada fase', () => {
-  const anim = compilarAnimacion(INTENT_FILA, TABLERO_FILA, 'media');
-  eq(anim.fases.slice(0, 3).map((f) => f.acciones), [['entra'], ['tira'], ['vuelve_a_fila']]);
-});
-
-test('y sobreviven a las rondas de fila, que es donde se rompe todo', () => {
-  const anim = compilarAnimacion(INTENT_FILA, TABLERO_FILA, 'media');
-  ok(anim.rondas === 3, `deberían salir 3 rondas, salieron ${anim.rondas}`);
-  // la ronda 2 hace lo mismo que la 1: mismas acciones, otro actor
-  const ronda2 = anim.fases.filter((f) => f.ronda === 2).map((f) => f.acciones);
-  eq(ronda2, [['entra'], ['tira'], ['vuelve_a_fila']]);
-});
-
-test('el dialecto ANTIGUO de las 204 fichas también las anota', () => {
-  /* Y las anota con el slug al que TRADUCE, no con el verbo viejo:
-     `bote hacia 'aro'` es «entra» desde el Tramo 2.6 —es la corrección
-     que arregló las trece fichas que soltaban el balón lejos del aro—.
-     Así el vídeo del doble ritmo sale también en las fichas viejas, sin
-     tocarlas. */
-  const anim = compilarAnimacion({
-    canasta: 'norte',
-    fases: [{ eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'aro' }, { jugador: 'A1', tipo: 'tiro' }] }],
-  }, [{ id: 'j1', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.6 }], 'media');
-  eq(anim.fases[0].acciones, ['entra', 'tira']);
-});
-
-test('y el bote que solo AVANZA sigue siendo «bota»', () => {
-  const anim = compilarAnimacion({
-    canasta: 'norte',
-    fases: [{ eventos: [{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }] }],
-  }, [{ id: 'j1', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.6 }], 'media');
-  eq(anim.fases[0].acciones, ['bota']);
-});
-
-test('no se repite una acción que sale dos veces en la misma fase', () => {
-  const anim = compilarAnimacion({
-    canasta: 'norte',
-    fases: [{ eventos: [{ jugador: 'A1', tipo: 'corte', hacia: 'aro' }, { jugador: 'A2', tipo: 'corte', hacia: 'aro' }] }],
-  }, [
-    { id: 'j1', kind: 'jugador', equipo: 'A', label: '1', x: 0.4, y: 0.6 },
-    { id: 'j2', kind: 'jugador', equipo: 'A', label: '2', x: 0.6, y: 0.6 },
-  ], 'media');
-  eq(anim.fases[0].acciones, ['corta'], 'una lista de acciones, no de eventos');
-});
-
-test('con cadencia, dos rondas en el mismo hueco suman sus acciones', () => {
-  // fundir() es lo que une dos fases que caen en el mismo momento
-  const base = [
-    { id: 'fase_1', duracion_ms: 1000, pausa_post_ms: 0, acciones: ['entra'] },
-    { id: 'fase_2', duracion_ms: 1000, pausa_post_ms: 0, acciones: ['tira'] },
-  ];
-  const r = expandirRondas(base, { actor: 'fila1', siguientes: ['fila1_2'], cadencia_s: 1 });
-  const conDos = r.fases.filter((f) => (f.acciones || []).length > 1);
-  ok(conDos.length >= 1, `alguna fase debería tener dos acciones: ${JSON.stringify(r.fases.map((f) => f.acciones))}`);
-  eq(conDos[0].acciones.slice().sort(), ['entra', 'tira']);
-});
-
-test('una fase sin acciones no revienta al fundirse', () => {
-  const base = [{ id: 'fase_1', duracion_ms: 1000, pausa_post_ms: 0 }];
-  const r = expandirRondas(base, { actor: 'fila1', siguientes: ['fila1_2'], cadencia_s: 1 });
-  for (const f of r.fases) ok(Array.isArray(f.acciones) || f.acciones === undefined, 'o una lista, o nada, pero nunca basura');
-});
-
-/* ── 8. El vídeo pegado al catálogo ───────────────────────── */
+/* ── 7. El vídeo pegado al catálogo ───────────────────────── */
 
 console.log('\n· el vídeo, encima del catálogo');
 

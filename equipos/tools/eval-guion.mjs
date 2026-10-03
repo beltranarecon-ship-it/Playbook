@@ -126,6 +126,19 @@ test('bote + pase + tiro se leen como una jugada', () => {
 
 console.log('· guionDeAnimacion · honestidad del verbo');
 
+test('quien sale de una fila no lleva número: se le llama «uno de la fila»', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A_jugador_3', equipo: 'A', dorsal: '' }],
+    balones: [],
+    fases: [{
+      duracion_ms: 800,
+      movimientos: [{ elemento_id: 'A_jugador_3', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: camino(P.esquina_izq, P.poste_bajo_izq) }],
+    }],
+  });
+  eq(g.fases[0].lineas, ['Uno de la fila corta hacia el poste bajo izquierdo']);
+});
+
 test('quien NO lleva balón corta, no bota', () => {
   const g = guionDeAnimacion({
     pista: 'entera',
@@ -312,6 +325,140 @@ test('el bloqueo se cuenta antes que el movimiento que lo aprovecha', () => {
   eq(g.fases[0].lineas, ['El 5 bloquea para el 1', 'El 1 bota hacia el codo derecho']);
 });
 
+test('EL BLOQUEADOR NO SE CUENTA DOS VECES: su camino es su bloqueo', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A5', equipo: 'A' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 1600,
+      bloqueos: [{ bloqueador_id: 'A5', bloqueado_id: 'A1', inicio_ms: 800, duracion_ms: 800 }],
+      movimientos: [
+        { elemento_id: 'A5', tipo_elemento: 'jugador', tipo_movimiento: 'bloqueo', path: camino(P.poste_bajo_der, P.tiro_libre), inicio_ms: 0, duracion_ms: 800 },
+        { elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: camino(P.base, P.codo_der), inicio_ms: 800, duracion_ms: 800 },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 5 bloquea para el 1', 'El 1 bota hacia el codo derecho']);
+});
+
+test('LA DEFENSA QUE SE MUEVE SOLA SE CUENTA EN UNA FRASE, no jugador a jugador', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }, { id: 'B2', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1', 'B2'],
+      movimientos: [
+        { elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'carrera_con_balon', path: camino(P.base, P.codo_der) },
+        { elemento_id: 'B1', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.5, y: 0.3 }, { t: 900, x: 0.55, y: 0.28 }] },
+        { elemento_id: 'B2', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.3, y: 0.3 }, { t: 900, x: 0.32, y: 0.28 }] },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 1 bota hacia el codo derecho', 'La defensa ajusta el marcaje (el 1 del equipo 2, el 2)']);
+});
+
+test('con un solo defensor automático, la frase es suya', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1'],
+      movimientos: [{ elemento_id: 'B1', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.5, y: 0.3 }, { t: 900, x: 0.55, y: 0.28 }] }],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 ajusta el marcaje']);
+});
+
+test('LO QUE UN DEFENSOR HACE DISTINTO SE CUENTA, y no como «ajusta el marcaje»', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }, { id: 'B2', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1', 'B2'],
+      defensa: { B1: { accion: 'ayuda', objetivo_id: 'A1' }, B2: { accion: 'cierra_rebote', objetivo_id: null } },
+      movimientos: [
+        { elemento_id: 'B1', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.5, y: 0.3 }, { t: 900, x: 0.55, y: 0.28 }] },
+        { elemento_id: 'B2', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.3, y: 0.3 }, { t: 900, x: 0.32, y: 0.28 }] },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 ayuda sobre el 1 del equipo 1 y recupera', 'El 2 cierra el rebote']);
+});
+
+test('y el que no hace nada distinto sigue contándose con los demás', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }, { id: 'B2', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1', 'B2'],
+      defensa: { B1: { accion: 'sobrepasado', objetivo_id: null } },
+      movimientos: [
+        { elemento_id: 'B1', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.5, y: 0.3 }, { t: 900, x: 0.55, y: 0.28 }] },
+        { elemento_id: 'B2', tipo_elemento: 'jugador', tipo_movimiento: 'defensa', automatico: true, muestras: [{ t: 0, x: 0.3, y: 0.3 }, { t: 900, x: 0.32, y: 0.28 }] },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 es superado y persigue por detrás', 'El 2 ajusta el marcaje']);
+});
+
+test('UN ROBO SE CUENTA CON LO QUE CAMBIA (§8.6)', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'B1', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1'],
+      defensa: { B1: { accion: 'roba', objetivo_id: 'A1' } },
+      recogidas: [{ jugador_id: 'B1', balon_id: 'b1', t_ms: 400, robo: true }],
+      movimientos: [],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 le roba el balón al 1 del equipo 1 y su equipo pasa a atacar']);
+});
+
+test('y una intercepción se cuenta como tal, sin contar el pase dos veces', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A2', equipo: 'A' }, { id: 'B1', equipo: 'B' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    fases: [{
+      duracion_ms: 900,
+      defensores: ['B1'],
+      defensa: { B1: { accion: 'roba', objetivo_id: 'A2' } },
+      pases: [{ de_id: 'A1', a_id: 'B1', balon_id: 'b1', interceptado: true, path: camino(P.base, P.codo_der) }],
+      movimientos: [],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 del equipo 2 intercepta el pase para el 2 y su equipo pasa a atacar']);
+});
+
+test('POR UNA PUERTA SE PASA, y así se cuenta (§7.4.1)', () => {
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }],
+    balones: [],
+    conos: [
+      { id: 'pa', posicion: [0.45, 0.5], funcion: 'puerta' },
+      { id: 'pb', posicion: [0.55, 0.5], funcion: 'puerta' },
+    ],
+    fases: [{
+      duracion_ms: 900,
+      movimientos: [{ elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: [pt([0.5, 0.8]), pt([0.5, 0.3])] }],
+    }],
+  });
+  contiene(g.fases[0].lineas[0], 'pasando por la puerta');
+});
+
 test('la duración suma movimiento + pausa de cada fase', () => {
   const g = guionDeAnimacion({
     pista: 'entera', jugadores: [], balones: [],
@@ -327,6 +474,57 @@ test('singular y plural, y lo que vale cero no se escribe', () => {
   eq(resumenMaterial({ jugadores: 1, balones: 1, conos: 0, filas: 2 }), '1 jugador · 1 balón · 2 filas');
   eq(resumenMaterial({ jugadores: 5, balones: 3, conos: 4, filas: 0 }), '5 jugadores · 3 balones · 4 conos');
   eq(resumenMaterial(null), '');
+});
+
+test('RECOGE Y PASA EN LA MISMA FASE: la siguiente empieza con el balón en el que recibió', () => {
+  /* Contando primero los pases y luego las recogidas, el balón se quedaba
+     en el que lo recogió, y en la fase 2 el que lo tiene «cortaba». */
+  const g = guionDeAnimacion({
+    pista: 'entera',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A2', equipo: 'A' }, { id: 'A3', equipo: 'A' }],
+    balones: [{ id: 'b1', portador_id: null }],
+    fases: [
+      {
+        duracion_ms: 3500,
+        movimientos: [{ elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: camino(P.esquina_izq, P.base), inicio_ms: 0, duracion_ms: 2000 }],
+        recogidas: [{ jugador_id: 'A2', balon_id: 'b1', t_ms: 2000 }],
+        pases: [{ de_id: 'A2', a_id: 'A3', balon_id: 'b1', path: camino(P.base, P.codo_der), inicio_ms: 3000, duracion_ms: 500 }],
+      },
+      { duracion_ms: 800, movimientos: [{ elemento_id: 'A3', tipo_elemento: 'jugador', tipo_movimiento: 'corte', path: camino(P.codo_der, P.aro) }] },
+    ],
+  });
+  eq(g.fases[1].lineas, ['El 3 bota hacia el aro']);
+});
+
+test('EL TIRO DICE SI ANOTA O FALLA, cuando se sabe', () => {
+  const base = (desenlace) => guionDeAnimacion({
+    pista: 'entera', canasta: 'norte',
+    jugadores: [{ id: 'A5', equipo: 'A' }],
+    balones: [{ id: 'b1', portador_id: 'A5' }],
+    fases: [{ duracion_ms: 700, tiros: [{ jugador_id: 'A5', balon_id: 'b1', canasta: 'norte', desenlace, path: camino(P.poste_bajo_izq, P.aro) }] }],
+  });
+  eq(base('entra').fases[0].lineas, ['El 5 tira desde el poste bajo izquierdo y anota']);
+  eq(base('falla').fases[0].lineas, ['El 5 tira desde el poste bajo izquierdo y falla']);
+  eq(base(undefined).fases[0].lineas, ['El 5 tira desde el poste bajo izquierdo'], 'lo guardado antes, igual:');
+});
+
+test('UN GESTO EN EL SITIO se cuenta por su nombre, no como un bote o un corte a donde ya está', () => {
+  const ida = [P.codo_der, [P.codo_der[0], P.codo_der[1] - 0.05], P.codo_der];
+  const g = guionDeAnimacion({
+    pista: 'entera', canasta: 'norte',
+    jugadores: [{ id: 'A1', equipo: 'A' }, { id: 'A2', equipo: 'A' }],
+    balones: [{ id: 'b1', portador_id: 'A1' }],
+    conos: [],
+    fases: [{
+      duracion_ms: 700, pausa_post_ms: 300, pases: [], tiros: [], bloqueos: [],
+      movimientos: [
+        { elemento_id: 'A1', tipo_elemento: 'jugador', tipo_movimiento: 'gesto_en_sitio', gesto: 'finta', path: ida.map(([x, y]) => ({ x, y })) },
+        { elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'gesto_en_sitio', gesto: 'para', path: ida.map(([x, y]) => ({ x, y })) },
+        { elemento_id: 'A2', tipo_elemento: 'jugador', tipo_movimiento: 'gesto_en_sitio', path: ida.map(([x, y]) => ({ x, y })) },
+      ],
+    }],
+  });
+  eq(g.fases[0].lineas, ['El 1 finta', 'El 2 se para', 'El 2 hace un gesto en el sitio']);
 });
 
 console.log(`\n${pasan} pasan · ${fallan} fallan`);

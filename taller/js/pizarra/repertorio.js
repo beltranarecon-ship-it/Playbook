@@ -91,28 +91,20 @@ export const ICONOS = {
   bota: '⛹', pasa: '➜', tira: '◎', entra: '⇥', finta: '↯', para: '■',
   corta: '⤳', bloquea: '▮', recoge: '↺', vuelve_a_fila: '⟲', pivota: '↻',
   defiende: '⌒', rodea: '∿', cambia_de_mano: '⇄', protege: '⊙',
+  ayuda: '↔', sobrepasado: '⇢', cambia_marca: '⇆', cierra_rebote: '⊔', dos_contra_uno: '⋀',
+  roba: '✚',
 };
 
 /*
-   Las acciones de defensa que faltan —robar, ser sobrepasado, cambiar
-   de par, cerrar el rebote— NO se inventan aquí, y es deliberado:
+   Lo que un defensor hace distinto (§8.5) está en el catálogo desde el
+   paso 5.6, y robar desde el 5.7: ninguna dibuja un trazo, dicen a qué
+   apunta el defensor mientras dura la fase.
 
-     · «robo» no existe en el vocabulario de la biblioteca, y meter una
-       palabra que la rúbrica no sabe leer rompe la promesa de que el
-       vocabulario es único;
-     · y las tres últimas no dibujan un movimiento: cambian a QUIÉN
-       marca cada uno, que es el modelo de la capa 5.
-
-   Así que salen en el anillo, desactivadas y diciendo por qué. Verlas
-   apagadas es mejor que no verlas: enseña el plan y no se olvidan.
+   Aquí no queda nada pendiente. Se deja el hueco —y esta nota— porque
+   es donde se declara lo que todavía no se puede hacer, con su motivo:
+   verlo apagado en el anillo es mejor que no verlo.
 */
-const PENDIENTES = {
-  roba: { nombre: 'Roba', icono: '✚', motivo: 'llega con la defensa (capa 5): cambia la posesión y los papeles' },
-  ayuda: { nombre: 'Ayuda', icono: '↔', motivo: 'llega con la defensa (capa 5)' },
-  sobrepasado: { nombre: 'Es sobrepasado', icono: '⇢', motivo: 'llega con la defensa (capa 5)' },
-  cambia_marca: { nombre: 'Cambia con…', icono: '⇄', motivo: 'llega con la defensa (capa 5): cambia el emparejamiento' },
-  cierra_rebote: { nombre: 'Cierra el rebote', icono: '⊔', motivo: 'llega con la defensa (capa 5)' },
-};
+const PENDIENTES = {};
 
 export const ANILLO = {
   conBalon: ['bota', 'pasa', 'tira', 'entra', 'finta', 'para'],
@@ -146,10 +138,43 @@ export function anilloDe(estado, catalogo = CATALOGO_SISTEMA) {
   });
 }
 
-/** Todo lo que NO cabe en el anillo, para el «⋯ más». */
+/**
+ * ¿Sale esta acción para una ficha en este estado?
+ *
+ * Se lee de lo que la acción declara en el catálogo —su familia, su
+ * modo, su papel, su símbolo—, no de una lista de slugs: una acción del
+ * club lo hereda sin tocar esto.
+ *
+ *   defensor   lo suyo (las entre dos con papel) y recoger un balón
+ *              suelto. Un corte, un bote o un gesto con balón de un
+ *              defensor es «romper la regla» (§8.8), que no entra.
+ *   atacante   todo menos lo del defensor; y sin balón, tampoco lo que
+ *              necesita balón (pasar, tirar, botar, entrar).
+ */
+export function saleEn(accion, estado) {
+  if (!accion) return false;
+  const p = accion.parametros || {};
+  const deDefensa = accion.familia === 'entre_dos' && (p.rol === 'defensor' || p.rol === 'atacante');
+  if (estado === 'defensor') {
+    if (deDefensa) return true;
+    return accion.familia === 'balon' && p.modo === 'recoge';
+  }
+  if (deDefensa) return false;
+  if (estado === 'sinBalon') {
+    if (accion.familia === 'balon' && (p.modo === 'pase' || p.modo === 'tiro')) return false;
+    if (accion.simbolo === 'carrera_con_balon') return false;
+    /* Y los gestos que son del balón: cambiarlo de mano, protegerlo. */
+    if (accion.familia === 'gesto' && p.balon === 'con') return false;
+  }
+  return true;
+}
+
+/** Lo que NO cabe en el anillo y SÍ vale en este estado, para el
+ *  «⋯ más». Antes salía el catálogo entero: sin balón se ofrecía pasar,
+ *  y a un defensor, botar. */
 export function resto(estado, catalogo = CATALOGO_SISTEMA) {
   const dentro = new Set(ANILLO[estado] || []);
-  return catalogo.filter((a) => !dentro.has(a.slug));
+  return catalogo.filter((a) => !dentro.has(a.slug) && saleEn(a, estado));
 }
 
 /* ── El anillo exterior: las variantes ─────────────────────── */
@@ -207,12 +232,78 @@ export const VARIANTES = {
   ],
 };
 
-/** Las variantes de una acción, o lista vacía si no tiene. */
-export const variantesDe = (slug) => VARIANTES[slug] || [];
+/* ── Las variantes del club (§4.3) ──
+   Las que va añadiendo el club (tabla `variantes`, migración 044) van
+   detrás de las de serie, y solo en las acciones que ya tienen. Las pone
+   quien las carga —la Pizarra al abrirse— y desde ese momento las ven el
+   anillo, la frase y el panel del trazo. */
+let delClub = [];
+let version = 0;
+/* Las de serie de una acción, o null: sin mirar lo que un objeto hereda
+   («constructor» no es una acción con variantes). */
+const deSerie = (accion) => (typeof accion === 'string' && Object.hasOwn(VARIANTES, accion) ? VARIANTES[accion] : null);
+
+/** Pone las variantes del club: [{ accion, slug, nombre, descripcion }].
+ *  Lo que no vale (sin nombre, de una acción sin variantes, o que pisa
+ *  una de serie) se deja fuera. */
+export function ponerVariantesDelClub(lista = []) {
+  const vistas = new Set();
+  delClub = [];
+  version++;
+  for (const v of Array.isArray(lista) ? lista : []) {
+    if (!v || !deSerie(v.accion) || typeof v.slug !== 'string' || !v.slug) continue;
+    if (typeof v.nombre !== 'string' || !v.nombre.trim()) continue;
+    if (deSerie(v.accion).some((s) => s.slug === v.slug) || vistas.has(`${v.accion}/${v.slug}`)) continue;
+    vistas.add(`${v.accion}/${v.slug}`);
+    delClub.push({ accion: v.accion, slug: v.slug, nombre: v.nombre.trim(), tag: null, descripcion: v.descripcion || '', video: null, delClub: true });
+  }
+}
+
+/** Las variantes del club que hay puestas. */
+export const variantesDelClub = () => [...delClub];
+/** Cambia cada vez que se ponen: quien recuerda algo que depende de
+ *  ellas (la frase) sabe así que tiene que volver a calcularlo. */
+export const versionDeVariantes = () => version;
+
+/** Las variantes de una acción —las de serie y detrás las del club—, o
+ *  lista vacía si no tiene. */
+export const variantesDe = (slug) => (deSerie(slug) ? [...deSerie(slug), ...delClub.filter((v) => v.accion === slug)] : []);
 export const tieneVariantes = (slug) => variantesDe(slug).length > 0;
+/** Una variante de una acción, de serie o del club; null si no está. */
+export const varianteDe = (accion, slug) => (slug == null ? null : variantesDe(accion).find((v) => v.slug === slug) || null);
 
 /** La variante por defecto: la primera, la de toda la vida. */
 export const variantePorDefecto = (slug) => variantesDe(slug)[0] || null;
+
+/* ── «Pincha a quién» (§4.4) ───────────────────────────────── */
+
+/**
+ * Por qué esta ficha NO vale como la otra de una acción entre dos, o
+ * `null` si vale. El motivo va detrás del nombre de la ficha («B1 es del
+ * otro equipo…»), así que empieza en minúscula y sin sujeto.
+ *
+ * Sale de la relación que declara el catálogo (`simbolo_relacion`), no
+ * del nombre de la acción: un bloqueo se le pone a alguien del MISMO
+ * equipo. Las relaciones de la defensa llegan con los pasos 5.3 y 5.6.
+ */
+export function porQueNoCompanero(accion, actor, candidato) {
+  if (!candidato || candidato.kind !== 'jugador') return 'no es un jugador';
+  if (actor && candidato.id === actor.id) return 'no puede hacérselo a sí mismo';
+  const p = (accion && accion.parametros) || {};
+  /* A quién se puede señalar lo DECLARA la acción (`senala`). Una del
+     club que no lo diga cae en lo de siempre: un bloqueo se le pone a un
+     compañero y lo demás, a cualquiera. */
+  const senala = p.senala || (p.simbolo_relacion === 'bloqueo' ? 'companero' : 'cualquiera');
+  if (!actor || senala === 'cualquiera') return null;
+  const mismo = (candidato.equipo || 'A') === (actor.equipo || 'A');
+  if (senala === 'companero' && !mismo) {
+    return p.simbolo_relacion === 'bloqueo'
+      ? 'es del otro equipo, y un bloqueo se le pone a un compañero'
+      : 'es del otro equipo, y esto se hace con un compañero';
+  }
+  if (senala === 'rival' && mismo) return 'es de tu equipo, y esto se le hace a un rival';
+  return null;
+}
 
 /* ── Qué le falta a una acción para poder dibujarse ────────── */
 
@@ -238,7 +329,12 @@ export function necesita(accion) {
     : (familia === 'balon' && p.modo === 'pase');
   return {
     destino: !!destino || pide.has('destino'),
-    companero: familia === 'entre_dos' && (pide.has('companero') || p.companero == null),
+    /* A quién se le hace SOLO se pregunta si la acción lo pide. En esta
+       familia el compañero es opcional —«sin él: cuenta el rol pero no se
+       mueve»—, así que mirar si está fijado haría preguntar también por
+       las que no señalan a nadie: ser sobrepasado o cerrar el rebote es
+       algo que se le hace a su propio par (§8.5). */
+    companero: familia === 'entre_dos' && pide.has('companero'),
     desenlace: familia === 'balon' && (p.modo === 'tiro'),
   };
 }

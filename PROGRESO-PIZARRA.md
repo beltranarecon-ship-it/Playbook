@@ -16,21 +16,955 @@ node taller/tools/eval-fases.mjs   # y el resto de bancos: todos en verde
 
 ## Dónde estamos
 
+**Decisión del entrenador (2026-09-13): NADA se sube a `main` ni se
+publica hasta que estén acabadas TODAS las capas (1 a 10).** Todo sigue
+en la rama `pizarra-v3`. La 043 ya está aplicada.
+
+**Capa 5, decidido (2026-09-13):** ataca el equipo que tiene el balón al
+empezar y los demás defienden (se puede cambiar en los ajustes); los
+ajustes de la defensa van en la pestaña «Ajustes» del panel derecho,
+solo con lo de la defensa; entran además los tiros con su desenlace y
+el «pincha a quién» con el bloqueo; «romper la regla a propósito»
+(§8.8) NO entra en esta capa.
+
 | Capa | Estado | Último commit |
 |---|---|---|
 | 1 · Lienzo, zoom, gestos, fichas | ✅ cerrada | `57255ed` |
 | 2 · Dibujar: anillo, trazo, nodos, encadenado, repaso | ✅ cerrada | `2db2b91` |
 | 3 · Fases: carriles, arranques, «Siguiente fase», línea de tiempo, editar fases anteriores | ✅ cerrada | `63d4cf6` |
-| 4 · El motor | ⏳ en curso — 4.1 a 4.3 hechos, 4.4 a medias: **esperando decisiones** | — |
-| 5 · Defensa | pendiente | — |
-| 6 · Conos y elementos | pendiente | — |
-| 7 · Texto y voz | pendiente | — |
-| 8 · Ramas | pendiente | — |
-| 9 · Variantes y vídeo | pendiente | — |
-| 10 · Plantillas y remate | pendiente | — |
+| 4 · El motor | ✅ cerrada en la rama `pizarra-v3` (043 aplicada) | `1a4097c` |
+| 5 · Defensa | ✅ cerrada en la rama `pizarra-v3` (pasos 5.0 a 5.7) | `fba775b` |
+| 6 · Conos y elementos | ✅ cerrada en la rama `pizarra-v3` (pasos 6.0 a 6.7; los equipos del club, para más adelante) | `1633407` |
+| 7 · Texto y voz | ✅ cerrada en la rama `pizarra-v3` (pasos 7.0 a 7.3, y los arreglos de su revisión) | ver «Capa 7» |
+| 8 · Ramas | ✅ cerrada en la rama `pizarra-v3` (pasos 8.1 a 8.3, y los arreglos de su revisión) | ver «Capa 8» |
+| 9 · Variantes y vídeo | ✅ cerrada en la rama `pizarra-v3` (pasos 9.1 a 9.4, y los arreglos de su revisión). **La migración 044 está sin aplicar** | ver «Capa 9» |
+| 10 · Plantillas y remate | ✅ cerrada en la rama `pizarra-v3` (pasos 10.1 a 10.6, y los arreglos de su revisión). **La migración 045 está sin aplicar** | ver «Capa 10» |
 
-Todo lo cerrado está en `main` en GitHub. Bancos: **59 en verde, 1441
-pruebas**. Arnés para probar de punta a punta: `dev/pizarra-dibujar.html`.
+Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
+`pizarra-v3`, subida, y **no en `main`**, como las siguientes. Bancos:
+**76 en verde, 1937 pruebas**, más el del linter de la biblioteca (`node
+tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
+hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla),
+`dev/pizarra-dibujar.html` y `dev/jugadas.html` (las doce jugadas de
+referencia, §13).
+
+## Capa 5, paso a paso
+
+Plan confirmado por el entrenador el 2026-09-13. Sale de un mapa de solo
+lectura (6 lectores, uno por subsistema, y un crítico que ordenó los
+pasos y separó las preguntas de verdad). Cada paso deja algo que se prueba
+de punta a punta, con sus bancos en verde y commit en la rama.
+
+| Paso | Qué queda funcionando | Estado |
+|---|---|---|
+| 5.0 | Arreglos que la capa destapa, ya fallando en la capa 4: recoger y pasar en la misma fase (el balón volvía al que recogió), tirar-recoger-tirar, tiro sin trazo que sale del sitio del principio. Un módulo puro del INSTANTE (muestreo, posición y dueño en t) compartido por el motor y el repaso. Guion de Equipos: el balón contado por instante | ✅ (61 bancos, 1363 pruebas; las 6 pruebas nuevas fallan con el código viejo) |
+| 5.1 | Tiros con desenlace: Tira → Entra/Falla → al aro; si falla rebota a ~2,5 m por el lado contrario al tirador, si entra cae bajo el aro suelto; «Recoge» lo encuentra. Entra/falla se cambia tocando el tiro | ✅ (61 bancos, 1376 pruebas; probado en la Pizarra: tirar, cambiar el desenlace, recoger el rebote, compilar y reabrir) |
+| 5.2 | «Pincha a quién» y bloqueo: se pincha al COMPAÑERO, el bloqueador va a su sitio, el compañero sale cuando llega. Formato: `bloqueado_id` = compañero + `defensor_id` opcional | ✅ (61 bancos, 1395 pruebas; probado en la Pizarra y en el motor: elegir, avisos, Esc y suelo, Supr, arranque, compilar y reabrir) |
+| 5.3 | Papeles y pares: `motor/defensa.js` + `eval-defensa.mjs`. Quién ataca, pares por dorsal y libre más cercano, situación por fase, arco del defensor y línea discontinua | ✅ (63 bancos, 1432 pruebas; revisión adversarial con 11 hallazgos confirmados, todos arreglados; banco nuevo del Tablero; probado en la Pizarra) |
+| 5.4 | Colocar por regla (las 6 del §8.3), pestaña «Ajustes» del panel derecho (solo defensa) y ver la regla (§8.7) | ✅ (64 bancos, 1474 pruebas; revisión adversarial de 28 hallazgos, arreglados los ciertos; bancos nuevos eval-ajustes y más pruebas de defensa) |
+| 5.5 | Seguimiento continuo (§8.4): la defensa se mueve sola igual en Pizarra y proyector; movimiento «por tiempo» en el motor (aditivo); cierra el rebote automático; carril gris «automático» | ✅ (65 bancos, 1507 pruebas; 16 mutantes, los 16 muertos; probado en la Pizarra y en el motor sobre la misma jugada) |
+| 5.6 | Acciones declaradas del defensor: ayuda y recupera, es sobrepasado, cambia con…, cierra el rebote, va al dos contra uno | ✅ (65 bancos, 1531 pruebas; 23 mutantes, los 23 muertos; probado en la Pizarra: anillo, «pincha a quién», panel y carriles) |
+| 5.7 | Robo, rebote defensivo y canasta: cambio de papeles y de aro desde la fase siguiente. Cierre de la capa | ✅ (65 bancos, 1552 pruebas; 20 mutantes, los 20 muertos; probado en la Pizarra: robar, cambiar de papeles y de aro) |
+
+**Respuestas del entrenador (2026-09-13):**
+
+- Sin atacante claro (nadie tiene el balón, o lo tienen dos equipos):
+  **nadie defiende** hasta elegirlo en Ajustes, que ofrece además
+  «nadie defiende» (ejercicios de dos colores sin oposición).
+- Cambian los papeles: **el robo, el rebote defensivo y la canasta
+  anotada**. El que roba o recoge se queda el balón en ese instante; el
+  resto cambia de papel (y de aro, si hay dos) **desde la fase
+  siguiente** —así casan el §8.2 («nadie cambia a mitad de fase») y el
+  §8.6—.
+- El robo se señala **pinchando al portador (en el bote) o el trazo del
+  pase (intercepción)**; lo que el receptor tuviera dibujado después se
+  marca «ya no encaja».
+- Tras el tiro: si **falla**, rebota solo a ~2,5 m del aro por el lado
+  contrario al tirador; si **entra**, cae bajo el aro y queda suelto.
+- Guion de Equipos: **adaptarlo lo mínimo** (la defensa automática en una
+  frase aparte, desenlace, robo y balón por instante).
+- Números que la especificación no fija, **aceptados** y ajustables por
+  ejercicio: paso hacia el balón de negar = 0,8 m; zona de tiro de
+  retrasa = 6,75 m del aro; «metro largo» de es sobrepasado = 1,2 m;
+  cierra el rebote a 0,8 m de su par hasta el final de la fase.
+- Movimientos automáticos de la defensa al reproducir: **sin flecha**.
+
+**Decidido sin preguntar (se le dijo al entrenador):** bloqueo pinchando
+al compañero; un defensor arrastrado en la fase 1 se queda donde se deja
+y la regla lo lleva desde ahí (al sacarlo del panel sí se coloca solo,
+§8.1); «Defiende a…» y la línea cambian el par desde el principio, y
+«Defiende» del anillo desde esa fase; si el atacante ya tiene defensor,
+se intercambian; con varios balones cada defensor mira el de su par;
+etiquetas de las acciones nuevas con palabras que ya existen; los tramos
+se siguen guardando PLANOS como en la capa 4 (se aparta del §11.1, que
+habla de `args`), y `jugada.defensa` añade `ataca` y usa como preajuste
+una de las cuatro reglas.
+
+**Respuestas del entrenador (2026-09-17 y 2026-09-18):**
+
+- INFERIORIDAD: retrasa **el defensor más cercano al aro que no marca al
+  que tiene el balón**; con uno solo, él.
+- SUPERIORIDAD con varios que sobran: **el primero hace la V** con el
+  defensor del portador; **los demás, entre el balón y el aro a 2 m del
+  balón**.
+- Al soltar un defensor del panel se **recolocan todos los defensores que
+  no se hayan arrastrado a mano**; el que se movió a mano se queda.
+
+**Decidido en el paso 5.4 (dicho al entrenador):**
+
+- El que retrasa **sale al que tiene el balón solo si no le marca nadie**;
+  si ya tiene defensor, se queda protegiendo el aro un paso por detrás.
+  Sin esto los dos acababan en el mismo punto.
+- **Quién retrasa se decide al empezar la fase**, con la escena de salida
+  (§8.2): decidiéndolo por dónde está cada uno, colocar los movía y en la
+  consulta siguiente retrasaba el otro.
+- Los que sobran en superioridad van **sobre el arco de 2 m del balón**,
+  abiertos a los lados para no taparse: así es verdad lo que dice la
+  explicación.
+- La **trampa es de dos**: con un solo defensor —o con la superioridad
+  forzada sin nadie que sobre— cada uno se queda con su regla. Y si la
+  separación pedida no cabe en el círculo de la presión, el segundo se
+  aleja lo justo para que sea la pedida.
+- Solo cuentan los **balones que se pueden jugar**: los de un atacante en
+  juego y los sueltos.
+- El defensor se coloca con **la escena que se está viendo**, que es la
+  misma con la que se explica su regla.
+- El panel **conserva el bloque de números abierto y el foco** al
+  repintarse: si no, escribir dos números seguidos era imposible.
+
+**Revisión adversarial del 5.4 (2026-09-18)**, 3 revisores y 2 escépticos
+por hallazgo: 28 hallazgos (7 de geometría, 9 de integración, 12 de los
+bancos). Dos quedaron confirmados por votación antes de que se agotara el
+límite de sesión y el resto se comprobó leyendo y reproduciendo. Lo
+arreglado: dos defensores en el mismo punto; el papel de retrasar que se
+intercambiaba en cada consulta; el panel que perdía foco y bloque abierto;
+los balones que no se pueden jugar moviendo a la defensa; la separación de
+la trampa y la trampa de uno solo; flotar con un límite menor que 2 m; el
+«lo que saldría solo» de Ajustes calculado con la pista de después de lo
+dibujado; el equipo forzado que desaparecía del desplegable al quedarse
+sin fichas; el gesto de la línea, que cogía la primera y no la más
+cercana, y que borraba la selección con Mayús; y `setDefensa`, que perdía
+los números ya cambiados. Y ocho pruebas que pasaban por casualidad.
+
+**Decidido en el paso 5.5 (dicho al entrenador):**
+
+- **La cuenta de la fase vive en un solo sitio** (`canvas/fotograma.js`):
+  qué pasa en una fase y dónde está cada uno en el instante *t*. La usan
+  el motor de reproducción y el seguimiento de la defensa. Con dos
+  copias, la defensa seguiría a un atacante que en el proyector va por
+  otro sitio.
+- **La Pizarra no calcula su propia defensa: se la pide al compilador**,
+  que es quien la calcula para el proyector. Es una cuenta cara, así que
+  se recuerda mientras la jugada no cambie.
+- Un movimiento automático viene **muestreado en el tiempo** (21 muestras
+  = 20 tramos por fase, §8.4) y se recorre SIN la curva de aceleración:
+  meterle la curva deformaría el retardo recién calculado. No lleva
+  flecha, y el guion de Equipos lo cuenta en **una sola frase**.
+- **Apartarse no es correr**: si su par le pasa por encima más rápido que
+  él, se lo lleva por delante, pero nunca más de lo que se ha movido su
+  par. Así el metro de separación se cumple sin saltos. Con un atacante
+  dibujado a 6 m/s se ve al defensor ser rebasado, que es lo que pasaría
+  en la pista.
+- **Cerrar el rebote es ponerse a 1,0 m de su par**, no a 0,8: menos no
+  cabe, porque el §8.4 no deja acercarse más y el §3.6 avisaría de
+  choque.
+- **Al cambiar de fase, cada defensor se queda donde le deja su
+  seguimiento** (y ese es el arranque que guarda la fase siguiente).
+  Mientras se dibuja una fase, la defensa se ve en su SALIDA: es la
+  posición que se ajusta; el movimiento se ve al reproducir.
+- **El bloqueo se le pone al defensor de verdad** cuando lo hay
+  (`defensor_id` en el tramo y en la animación), y la barra le mira a él
+  esté donde esté. Sin defensa en la pista se sigue usando el supuesto.
+- **Arrastrar un defensor en una fase que no es la primera no se guarda**:
+  la defensa de esa fase la manda el seguimiento, así que al cambiar de
+  fase vuelve a donde le toca. Mover a un defensor «a mano» a mitad de
+  jugada es de las acciones declaradas (5.6).
+
+**Decidido en el paso 5.6 (dicho al entrenador):**
+
+- **Lo que un defensor hace distinto entra en el CATÁLOGO** (familia
+  «entre dos»), no en una lista aparte de la Pizarra: el nombre, los
+  sinónimos, el icono y a quién se señala salen de ahí, y una acción del
+  club lo hereda sin tocar nada.
+- **«ayuda» deja de ser sinónimo de «defiende»**: es otra acción. Un
+  ejercicio que decía «ayuda» se leía como «marca», que es justo lo
+  contrario de lo que hace una ayuda.
+- **No se guardan como tramos, sino como excepciones de la fase**
+  (`fase.defensa`), que es lo que manda el §11.1: no dibujan un camino,
+  dicen a qué apunta el defensor mientras dura la fase.
+- **A quién se puede señalar lo dice la acción** (`senala`: compañero,
+  rival o cualquiera), no una lista de slugs. Y **preguntar a quién sale
+  solo de `pide`**: en «entre dos» el compañero es opcional, así que
+  mirar si estaba fijado hacía preguntar también por las que no señalan a
+  nadie.
+- **Orden de mando al colocar**: lo dicho por el entrenador → el cierre
+  automático del rebote → la situación → la regla de cada uno. Quien ya
+  tiene sitio no se recoloca; de paso se arregla que el que retrasa se
+  ponía encima de lo ya decidido.
+- **Ayuda y recupera**: se pone entre el que tapa y el aro, y vuelve con
+  su par en el último cuarto de la fase.
+- **Es sobrepasado**: al otro lado de su par mirando desde el aro, a
+  1,2 m, hasta el final de la fase.
+- **Va al dos contra uno**: se coloca AL FINAL, junto a donde acaba el
+  defensor que ya está —no junto a un sitio ideal que el otro no ocupa—,
+  a 1,0 m del balón y 1,5 m de él.
+- **«Cambia con…» sigue valiendo en las fases siguientes** (§8.5); las
+  demás son de su fase.
+- **«Defiende» es como se quita lo declarado**: marca a quien se le
+  señale y deja de hacer lo que hubiera dicho.
+- El panel «Ajustes» enseña **«En esta fase»** con las que no hay que
+  señalar a nadie; ayudar y cambiar el par se eligen en el anillo.
+- En la línea de tiempo, **lo dicho por el entrenador se ve en celeste** y
+  lo que sale solo, en gris.
+
+**Revisión de la capa 5 (2026-09-19).** Se lanzó una revisión adversarial
+de los pasos 5.5 y 5.6 con seis revisores; el límite de uso tumbó a cinco
+y a todos los escépticos, así que solo llegó entera la del FORMATO, con 7
+hallazgos, y los he comprobado yo uno a uno. Arreglado (con su prueba y
+su mutante):
+
+- unas `fases` que no son una lista abrían la jugada en blanco **sin un
+  solo aviso**; ahora se dice;
+- una fase rota se caía del filtro **en silencio** y además renumeraba
+  los avisos de las demás («Fase 3» salía como «Fase 2»); ahora se dice
+  cuál era y los números son los que ve el entrenador;
+- dos fases con el mismo nombre podían acabar **las dos con el mismo id**
+  si el nombre inventado ya estaba cogido;
+- una acción de la defensa podía apuntar **a un cono o a sí mismo**, y la
+  Pizarra la dibujaba: ahora tiene que ser un jugador, y se dice;
+- **borrar una ficha que sale en lo que hace la defensa** (la que ayuda o
+  a la que se ayuda) no avisaba y dejaba la fase apuntando a alguien que
+  ya no está: ahora no se puede sin quitarlo antes, y `sinFichas` limpia
+  lo declarado.
+
+Refutado a mano: nada. Queda por comprobar lo que no llegó a revisarse
+—geometría, Pizarra, motor, vocabulario y bancos—: **la revisión de esas
+cinco dimensiones sigue pendiente.**
+
+**Decidido en el paso 5.7 (dicho al entrenador):**
+
+- **Los papeles se cuentan fase a fase** y cambian desde la SIGUIENTE, no
+  a mitad (§8.2 + §8.6): quien acaba una fase con el balón ataca en la
+  siguiente, y una canasta anotada le pasa el ataque al otro equipo. Al
+  cambiar, el emparejamiento **se invierte** (el que era su par pasa a
+  defenderle) y **se ataca al otro aro** si la pista tiene dos.
+- **Lo que haya dicho el entrenador manda**: con «quién ataca» forzado en
+  Ajustes, no cambia nada aunque roben o anoten.
+- **Robar es una acción declarada más** (§8.5), y se señala a quién:
+  · si al señalado le llega un PASE en esa fase, es una **intercepción**:
+    el pase se corta donde se cruza el que roba y el balón es suyo ahí;
+  · si lo lleva él, es un robo **en el bote**: el que roba tarda en
+    llegar lo que tarde a su velocidad (§8.4), y desde ese instante el
+    balón va con él.
+  El entrenador pidió señalar «el trazo del pase» para interceptar;
+  señalar al RECEPTOR hace lo mismo con el gesto que ya existe («pincha a
+  quién»), y es lo que se ha hecho. **Queda por confirmar.**
+- **El que va a robar no se aparta de nadie**: el metro de separación del
+  §8.4 no cuenta para él, porque el robo es justo un contacto.
+- **Lo que el robado tuviera dibujado después ya no encaja**, y lo dice
+  el aviso de siempre: al cambiar los papeles, sus trazos de ataque son
+  de alguien que ahora defiende.
+- **`posesionAlFinal` vive en su propio fichero** (`pizarra/posesion.js`):
+  la necesitan las fases y la defensa, y dejarla en `fases.js` cerraba un
+  círculo de imports que reventaba al abrir la Pizarra.
+
+**Lo que no cuadra, dicho y NO tocado (revisión de la capa 5):**
+
+- **`recalcular` no sabe dónde deja la defensa a cada uno**: encadena las
+  fases con `posicionesFinales`, que solo mueve a quien tiene trazos, y
+  un defensor no dibuja nada. Las entradas que guarda para las fases
+  siguientes se quedan con el sitio de la primera. NO SE VE —al ir a una
+  fase, el Tablero coloca a los defensores donde los deja el seguimiento
+  (`_finDeLaDefensa`), y el fantasma pinta trazos, no entradas—, pero el
+  dato guardado y lo que se ve dicen cosas distintas. Arreglarlo de
+  verdad pide que `fases.js` sepa de la defensa, que hoy vive en el
+  compilador; conviene decidirlo con calma.
+- **Un tramo con una acción que no está en el catálogo se abre y se
+  dibuja, pero no se compila**, y el aviso del compilador no lo lee
+  ninguna pantalla. Es de antes de la capa 5 y toca decidir dónde se
+  enseñan los avisos de compilación.
+
+**Lo que no cuadra, dicho y NO tocado (paso 5.6):**
+
+- **Una acción declarada sola en una fase no se puede cerrar**:
+  «Siguiente fase» pide que haya algo dibujado, y la línea de tiempo no
+  enseña carriles si no hay ningún trazo. Una fase que solo dijera «el 4
+  cierra el rebote» no se puede dejar cerrada. Pendiente de decidir si
+  una fase así debe valer.
+- **Arrastrar un defensor en una fase que no es la primera sigue sin
+  guardarse** (viene del 5.5): la defensa de esa fase la manda el
+  seguimiento.
+
+**Lo que no cuadra, dicho y NO tocado (paso 5.5):**
+
+- **Un bloqueo solo en su fase no llega a enseñar la barra**: el
+  bloqueador llega justo al acabar la fase, así que la barra dura 0 ms.
+  Viene del paso 5.2 (la barra aguanta «hasta que el compañero le pasa»)
+  y solo pasa cuando en esa fase no hay nada más dibujado. Se arregla
+  decidiendo qué se prefiere: que la barra llegue hasta el final de la
+  fase, o que la fase se alargue un poco. Pendiente de que lo diga el
+  entrenador.
+
+**No tocar:** la marca `motor: 3` (lo guardado con la capa 4 dejaría de
+reproducirse); todo lo nuevo del formato de animación, aditivo.
+
+**Decidido en el paso 5.2 (dicho al entrenador al cerrarlo):**
+
+- **Sin defensa todavía, el bloqueador se planta junto a un defensor
+  SUPUESTO**: el que pondría la regla de serie, entre el compañero y el
+  aro (1,2 m si lleva balón, 2,0 si no). Se pone AL LADO de ese defensor,
+  a **0,7 m** (número nuevo, ajustable), en perpendicular a la línea
+  compañero→aro y del lado por el que llega. Primero se probó pararse en
+  su camino, y quien llegaba desde la altura del compañero acababa ficha
+  sobre ficha. En 5.5 el defensor será el de verdad.
+- **La barra sale al plantarse y aguanta** hasta que el bloqueador vuelve
+  a moverse o acaba la fase; mira hacia donde llega (`hacia` en la
+  animación, un punto y no un ángulo, para que el proyector lo gire bien).
+  `defensor_id` no se escribe todavía: llega con la defensa.
+- A un bloqueo **solo le vale un jugador del mismo equipo**; pinchar a
+  otro lo dice y sigue esperando; pinchar el suelo o Esc cancela.
+- Un tramo puede **esperar a varias cosas** a la vez (un pase y un
+  bloqueo): sale cuando han pasado todas. Antes guardaba solo la primera.
+- La barra del bloqueo va **fuera del disco** de la ficha, en la Pizarra y
+  en el motor: a 16 px fijos quedaba tapada en el proyector.
+- Guion de Equipos: el camino del bloqueador no se cuenta aparte, ya lo
+  dice «el 5 bloquea para el 1».
+- Queda sin hacer, y es de este mismo tipo que «entra»: el sitio del
+  bloqueo se calcula al dibujarlo y no se rehace si luego se mueve al
+  compañero en la fase 1 (se corrige pinchando el trazo).
+
+**Respuestas del entrenador (2026-09-14 y 2026-09-17):**
+
+- Bloqueo y continuación: **el bloqueador aguanta hasta que su compañero
+  le pasa** (el punto del trazo del compañero más cercano al bloqueo); su
+  siguiente movimiento sale entonces, y la barra se ve hasta ese instante.
+  En un «mano a mano» (lo siguiente es entregarle el balón) no se aguanta:
+  la entrega es ese momento.
+- Paso 5.4, INFERIORIDAD: retrasa **el defensor más cercano al aro que no
+  marca al que tiene el balón**; los demás siguen con su par; con un solo
+  defensor, retrasa él.
+- Paso 5.4, SUPERIORIDAD con varios sobrantes: **el primero forma la V**
+  con el defensor del portador; **los demás, entre el balón y el aro a 2 m
+  del balón**.
+
+**Decidido en el paso 5.3 (dicho al entrenador):** los pares se deciden
+al empezar la jugada y se mantienen (los cambian las acciones, no el
+sitio); a un defensor, «⋯ más» solo le ofrece recoger un balón suelto;
+«Defiende» del anillo sigue avisando que llega después y se hace en el
+5.6 junto a «Cambia con…»; si al dar el balón a otro equipo un defensor
+se queda con trazos de ataque, se avisa y no se borra nada; con tres o
+cuatro equipos defienden todos los que no tienen el balón; los números
+de la defensa viven en `motor/defensa.js` (`PARAMETROS`) y destino.js los
+lee de ahí.
+
+**Revisión adversarial de 5.2 y 5.3 (2026-09-17)**, 5 revisores y 2
+escépticos por hallazgo: 17 hallazgos, 11 confirmados, 1 dudoso, 5
+refutados. Arreglados: el aviso de «defiende y tiene trazos de ataque»
+llegaba tarde con una sola fase y al reabrir lo tapaba el aviso de la
+carga; la barra del bloqueo duraba 0 ms en bloqueo y continuación (se
+resolvió con la respuesta del entrenador); **un fallo de antes de la capa
+5**: al botar el receptor después de un pase, el final del pase se
+desplazaba y en el proyector el balón volaba al sitio equivocado; y
+pruebas que no vigilaban lo que decían (dorsal a mano, dos «defiende a…»
+al mismo atacante, perpendicular del bloqueo en diagonal, situación
+forzada sin defensa). También, aunque se refutaron por no poder darse
+hoy: claves heredadas en los números de la defensa, números que no son un
+objeto y el empate por redondeo en sitios simétricos. Banco nuevo:
+`eval-tablero.mjs`, un Tablero de verdad sobre un DOM de mentira, para
+los fallos que solo viven en el pegamento.
+
+**Bancos que cambiarán a propósito** (no son regresiones, decirlo al
+tocarlos): `eval-repertorio` (anillo del defensor con pendientes;
+«defender no se pierde»), `eval-fases` (`PENDIENTES.bloqueo`),
+`eval-compilar` (B1 pasa a defender y a moverse), `eval-dibujo` (texto
+del bloqueo) y `eval-acciones` si cambian las mecánicas.
+
+## Capa 10, paso a paso
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 10.1 | Operaciones de fase (§6.8): insertar una fase antes o después, borrarla, duplicarla como otra rama y ponerle nombre. El modelo está en `ramas.js` (`insertarFase`, `borrarFase`); la primera fase guarda la escena al empezar, y si otra pasa a serlo, se la queda. Una fila nueva en la tira, encima de la de las ramas | ✅ `34817a3` |
+| 10.2 | Varios a la vez (§3.2, §4.6): con varios jugadores seleccionados no se abre el anillo de uno; sale «¿Qué hacen los N?» con lo que pueden hacer todos. Los gestos y lo que ya sabe a dónde va, cada uno el suyo; con destino, se dibuja el del primero y los demás van al mismo punto o, «en paralelo», copian el trazo | ✅ `34817a3` |
+| 10.3 | Atajos (§4.7): B, P, T, C, E, R, D, X, F lanzan la acción de la ficha seleccionada (o de todas); N abre la fase siguiente | ✅ `34817a3` |
+| 10.4 | Plantillas (§7.8): `pizarra/plantillas.js` con su banco; la migración **045** (tabla `plantillas`, **sin aplicar**) y `supabase/plantillas.js`. En el panel izquierdo, las colocaciones del club para la pista que hay delante (guardar la de ahora, añadir, sustituir, quitar); en la fila de la fase, «Guardar como plantilla» y «Plantilla…», que pide qué ficha hace cada papel | ✅ `75a6901` |
+| 10.5 | Deshacer y rehacer (§2.2): ↶ ↷ en la barra y Ctrl+Z / Ctrl+Mayús+Z (o Ctrl+Y); Espacio reproduce y G enseña u oculta el fantasma de la fase anterior. Y la limpieza del motor antiguo: fuera `resolverAccion`, `indexar`, `EVENTOS_LEGADO` y `_legado` (`ia/acciones.js`), `supabase/posiciones.js`, `draft.posiciones`, el CSS muerto y los comentarios que hablaban de los pasos viejos | ✅ `be1d6c3` |
+| 10.6 | El banco visual del §13: doce jugadas de referencia (`dev/jugadas-referencia.js`), de un 1x0 de tiro a un 3x3 con ramas, dibujadas sobre un Tablero de verdad; su banco (`eval-referencia.mjs`: se dibujan sin rechazos, compilan sin avisos, tienen su frase y se reabren igual) y el arnés `dev/jugadas.html`, que las enseña animadas y las abre en la Pizarra | ✅ `a5fca1e` |
+
+El «aviso en los ejercicios viejos» que el §14 pone en esta capa ya
+estaba hecho desde la capa 4 (§11.4: la ficha, el proyector, el visor de
+Equipos y la biblioteca).
+
+**Decidido por el entrenador (2026-10-01):**
+
+- **Fases: lo básico** (insertar, borrar, duplicar, nombre). Reordenar
+  arrastrando, las miniaturas en la tira y fijar a mano la duración o la
+  pausa de una fase, no.
+- **Duplicar una fase la abre como otra rama** desde el mismo punto, no
+  como una copia detrás.
+- **Las plantillas, con la migración 045**, que aplica él: son del club.
+- **La limpieza: borrar todo** lo que se había quedado sin usuario.
+
+**Decidido en la capa 10 (detalles, sin preguntar):**
+
+- **«En paralelo» es un botón** junto al grupo, no la tecla Alt del
+  §4.6: Alt ya añade puntos al trazo.
+- **Lo que pueden hacer «los N»** es lo que pueden hacer TODOS: si uno no
+  puede, no se ofrece. Los atajos, igual; y cortan el repaso si lo hay.
+- **Borrar una fase** se lleva lo dibujado en ella; lo de detrás pasa a
+  seguir a lo de delante y se reancla, y si era la primera, la siguiente
+  arranca de donde empezaba la jugada. No se borra una fase de la que
+  salen ramas (antes hay que quitarlas) ni la única que hay: se dice por
+  qué.
+- **Una colocación guardada** se vuelve a poner con las mismas piezas que
+  el panel: se numera sola, coge su balón y rehace su fila. «Sustituir»
+  quita lo dibujado y lo pide dos veces; «Añadir» no toca lo que hay.
+  Solo se ofrecen las de la pista que hay delante.
+- **Una fase guardada lleva papeles, no fichas** (`p1`, `p2`…): al
+  insertarla se dice qué ficha hace cada papel (por defecto, la que se
+  llama igual), cada trazo sale de donde está su ficha, el pase va a
+  quien lo recibe y lo lleva el balón que tenga quien pasa. Lo que no
+  encaja (un tiro sin balón) se quita y se dice. Con algo ya dibujado,
+  va en una fase nueva detrás.
+- **Deshacer y rehacer** no estaban en el §14, pero sí en la barra del
+  §2.2: se guardan fotos de la jugada entera y de la fase que se veía
+  (`history.js`, que se conservó para esto), se apunta cuando la jugada
+  deja de cambiar (400 ms) y reabrir un ejercicio lo empieza de nuevo.
+  Las plantillas y las variantes guardadas no se deshacen: están en la
+  base de datos.
+- **El banco visual va en `dev/jugadas.html`**, con los demás arneses
+  (que Netlify no sirve), y no en `tools/pizarra.html` como dice el §13.
+
+**La revisión adversarial de la capa 10** (2026-10-02 y 03; cuatro revisores
+Opus, uno por bloque —fases, varios y atajos, plantillas con la 045,
+deshacer y limpieza—; 44 hallazgos, 37 reproducidos con un script y el
+resto razonado). Todos los reproducidos eran defectos. Arreglados, cada uno
+con su prueba y comprobando que falla con el código viejo (22 mutantes
+míos, todos muertos tras ampliar tres pruebas):
+
+- **Fases (`ramas.js`)**: borrar la primera fase de una rama cambiaba el
+  camino principal; borrar una rama que se reunía en otra del mismo cruce
+  dejaba un cruce de una sola opción (el proyector se paraba en él);
+  borrar una fase cuya siguiente ya empezaba otra rama rompía el principal.
+  Ahora se vuelve a comprobar el cruce de la borrada y el orden de las
+  ramas no cambia. Y borrar una fase **quita lo que ya no tiene balón**
+  (`posesion.js`: `tramosSinBalon`) y lo dice; si el tramo vale por otro
+  camino de una reunión, no se toca. La fila de la fase numera como la tira.
+- **Varios a la vez y atajos**: una letra de atajo dejaba pendiente el
+  cierre de «Siguiente fase» y la fase se cerraba sola más tarde (también
+  con deshacer y con ▶); una letra que no hace nada ya no corta el repaso;
+  mantener una letra no repite la acción; «Cierra el rebote» y «Es
+  sobrepasado» las declaran todos los defensores del grupo; el botón del
+  grupo se esconde mientras se elige o se dibuja; lo que pueden hacer
+  todos ya no depende de qué ficha se puso antes; y el foco vuelve a la
+  pista tras «en paralelo».
+- **Plantillas**: el nombre de una plantilla de otro entrenador se pintaba
+  como HTML en los avisos (XSS guardado): los avisos pintan como texto y
+  solo dejan `<b>`. Una fila de la base de datos mal formada rompía la
+  Pizarra: se descarta, se cuenta y se dice. Lo que pide balón y la ficha
+  no lo tiene se quita (no solo el tiro); la colocación se numera sola;
+  lo que no viaja (`defensor_id`, la defensa declarada, los rodeos, los
+  `defiende_a` a una fila) se dice; el receptor de un pase es el sitio
+  donde acaba, no el primero; no se comparten nodos con la plantilla.
+- **Deshacer**: el Espacio con el foco en la pista no reproducía y,
+  mantenido, reproducía en bucle; Ctrl+Z en mitad de un arrastre dejaba el
+  gesto vivo y pisaba lo deshecho; pararse medio segundo a mitad de un
+  arrastre apuntaba un paso intermedio; el selector «Ataca a» quedaba
+  desincronizado; ↶ ↷ desactivados no se distinguían, y ↶ tardaba 400 ms en
+  activarse.
+- **Limpieza**: los comentarios que hablaban de módulos ya borrados.
+  `normalizarNombre` se queda (solo la usan los bancos, como `parametroDe`).
+
+**La otra revisión de la capa 10** (rama `arreglos-capa-10`, 2026-10-02,
+hecha en una sesión anterior que no llegó a `pizarra-v3`; fusionada el
+2026-10-03). Arreglaba lo mismo en varios y atajos, teclas y plantillas, y
+además trajo lo que la de arriba no vio:
+
+- **El compilador**: el trazo de quien venía defendiendo se movía solo al
+  reabrir, deshacer o tocar una fase anterior, porque `recalcular` no sabía
+  dónde deja la defensa a cada uno (`alAcabarConDefensa`, `nombreEnLaAnimacion`
+  en `motor/compilar.js`; `alAcabar` en `fases.js`). Reabrir ya no deja
+  marcas de la cuenta (`orden`, `huerfano`) en los tramos.
+- **El repaso avisa de que se cortó** (`onCorte`): es el único sitio que
+  borra el cierre de fase pendiente, se corte como se corte.
+- **El banco de teclas** (`eval-teclas.mjs`): la Pizarra entera con su
+  Lienzo y su Tablero sobre un DOM que recuerda oyentes, árbol y foco.
+- **Plantillas**: las fichas se ponen en su orden y se renumeran (el
+  primero de una fila ya no cambia de dorsal ni cruza a la defensa); lo que
+  tiene su sitio —un bloqueo, una entrada, un tiro— va al sitio de AHORA
+  (`destino`); una colocación añadida cuenta como puesta a mano; un tiro no
+  se pierde si no se puede poner nada.
+- **Otros**: el aro de «Ataca a» entra en la clave de los papeles; el botón
+  del grupo no queda huérfano al cambiar de escena; el foco vuelve al
+  lienzo tras lo dicho a varios.
+
+Al fusionar chocaron seis archivos (`tablero.js`, `pizarra.js`, `lienzo.js`,
+`plantillas.js` y sus dos bancos): casi todo estaba arreglado dos veces con
+el mismo fondo. Se dejó una sola forma de cada cosa. Donde no coincidían:
+con el **pase a varios** manda lo decidido arriba (no se ofrece; la otra
+rama mandaba un balón a cada uno, y sus pruebas se quitaron); en las
+plantillas, lo de saneado, canasta y errores es de la primera revisión y lo
+de orden, destinos y conos (el quiebro de un cono se quita al guardar) es
+de esta.
+
+**Decidido por el entrenador en la revisión (2026-10-03):**
+
+- **Plantillas y canasta**: la plantilla guarda a qué aro atacaba
+  (`datos.canasta`, sin tocar la 045) y se pone en espejo si la jugada
+  ataca al otro. Las guardadas sin ese dato se leen como norte.
+- **Ctrl+Z con un trazo a medias** solo lo cancela (como Esc); el
+  siguiente deshace el paso anterior.
+- **Un pase no se dice a un grupo**: dos pases al mismo receptor dejaban
+  la jugada distinta al reabrirla.
+- **Borrar una fase quita lo que ya no tiene balón y lo dice.**
+
+**Decidido en la revisión (detalle, sin preguntar):** borrar una fase cuya
+siguiente ya empieza otra rama se **rechaza** con su motivo («sepárala
+antes de borrarla»), como ya hace `abrirRama`; la alternativa —borrar y
+perder el nombre de la rama— pierde datos sin avisar.
+
+**Lo que la revisión dejó sin tocar** (no son defectos que rompan nada, o
+piden una decisión): «Sustituir» una colocación devuelve también los
+ajustes de la defensa a los de por defecto sin decirlo; la 045 no tiene un
+`UNIQUE (tipo, pista, nombre)` (dos «1-4 alto» salen como botones iguales);
+con varios seleccionados, Esc no deselecciona (viene de antes); «al mismo
+punto» puede dejar un tramo de longitud 0; si el primero del grupo no puede
+hacer algo con destino, no lo hace nadie y el aviso no dice quién; tras
+deshacer, los defensores colocados solos cuentan como puestos a mano;
+Ctrl+Z no llega si el foco se ha ido de la pista y la barra (tras pinchar
+una fase, o con el foco en un desplegable); deshacer estando en una
+reunión vista desde la segunda rama vuelve al camino principal; duplicar
+una reunión funciona o falla según la rama por la que se llegó, y el
+mensaje no se entiende; el nombre de una fase se guarda en `change` y repinta
+la tira en mitad del clic siguiente (sin comprobar en navegador, media
+confianza).
+
+## Capa 9, paso a paso
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 9.1 | Lo puro (`pizarra/variantes.js`, banco `eval-variantes.mjs`): el vídeo cuelga de la variante (§10.1) con la clave `accion__variante` en `videos_accion`; las variantes del club se añaden detrás de las de serie (`repertorio.js`); qué vídeo enseña cada fase; lo que se escribe en el panel; el clip de la columna (`ia/video.js`). La frase dice una variante del club por su nombre y el compilador pone el nombre en `variantes` | ✅ |
+| 9.2 | La migración **044** (`variantes`: la ve todo el club, edita quien la creó; reserva las de serie) y su cliente `supabase/variantes.js`. **Sin aplicar**: la aplica el entrenador en Supabase; hasta entonces «Nueva variante» dice que falta | ✅ |
+| 9.3 | La pestaña del trazo en el panel derecho (§2.4): al pinchar un trazo, su variante (se cambia sin tocar la geometría), el vídeo de esa variante (poner, cambiar, quitar) y «Nueva variante» (nombre, descripción y vídeo). El proyector enseña el vídeo en una columna (§10.2) y la ficha, los de las variantes del ejercicio | ✅ |
+| 9.4 | Los gestos en el sitio (§4.4): finta, pivote, cambio de mano, proteger y parada se aplican al momento sobre la ficha —un trazo que sale y vuelve—, salen en la frase y se compilan; la ficha no se mueve | ✅ (73 bancos, 1795 pruebas; 54 mutantes, los 54 muertos; probado en el arnés y su proyector, sin guardar nada) |
+
+**Decidido por el entrenador (2026-09-30):**
+
+- **«Nueva variante», ahora**, con la migración 044 que aplica él.
+- **El vídeo de una variante se pone en la Pizarra**, al pinchar un trazo.
+- **Las variantes de serie se quedan como están** (no coinciden del todo
+  con la tabla del §4.3: se eligieron en la capa 2 por las etiquetas de
+  la biblioteca); él irá añadiendo las suyas poco a poco.
+- **En el proyector, la columna por defecto**; tocarla abre el vídeo en
+  grande y para la animación, y al cerrarlo sigue.
+
+**Decidido en la capa 9 (detalles, sin preguntar):**
+
+- **Los vídeos de las variantes van en la tabla de siempre**
+  (`videos_accion`, 021), con la clave `accion__variante`: no hace falta
+  otra tabla y cabe en su regla (40 letras). La 044 solo guarda nombre y
+  descripción de las del club.
+- **Qué vídeo enseña una fase**: el de la variante elegida; si no se eligió
+  ninguna, el de la de siempre (la primera); y si tampoco, el de la acción
+  (lo de antes). Un TikTok no va en la columna (no se puede repetir): sale
+  en los botones de la cabecera y se abre aparte.
+- **La columna** repite los primeros 8 segundos del tramo, muda. Para que
+  el bucle vuelva al principio del tramo y no al segundo 0 se le manda un
+  mensaje al reproductor, sin cargar la librería de YouTube.
+- **Las variantes del club, solo en las acciones que ya tienen variantes**
+  (pasa, bota, tira, entra, corta, bloquea): son las que abren el anillo
+  exterior. En la frase se dicen por su nombre («pasa por detrás»); no
+  llevan etiqueta de la biblioteca, y «llevar» ya no les pone la de la
+  variante de siempre.
+- **«Nueva variante» está en el panel del trazo**, no en el «⋯ más» del
+  anillo como dice el §4.3: es donde ya se elige la variante y se pone su
+  vídeo, y el anillo se queda como estaba. Al crearla se le pone al trazo
+  pinchado.
+- **Los botones de vídeo de la cabecera del proyector** son ahora los de
+  ESTE ejercicio (antes, todo el catálogo con vídeo).
+- **El tramo lleva consigo el nombre de su variante del club**
+  (`variante_nombre`): la frase, el nombre compilado y el panel no
+  dependen de que se hayan cargado las del club (al guardar desde el
+  paso 0 sin abrir la Pizarra, o sin red). Sin elegir variante, la fase
+  compilada dice la de siempre (`de_siempre: true`).
+- **Dos variantes que solo cambian en una tilde, un signo o las
+  mayúsculas son la misma**: «ya está».
+- **Lo que no deja la base de datos se dice**: quitar o cambiar el vídeo
+  que puso otro («solo puede… quien lo puso, o un administrador»).
+- **Lo escrito a medias en el panel** se conserva al repintar solo si es
+  el mismo trazo y el mismo vídeo, y se vacía al guardar.
+- **En vertical o en pantallas estrechas**, la columna del proyector va
+  debajo de la pista.
+
+**Decidido por el entrenador (2026-10-01):** los gestos en el sitio se
+hacen ahora, en la capa 9 (el plan del §14 no los ponía en ninguna).
+
+**Los gestos en el sitio (detalles, sin preguntar):**
+
+- **Su trazo sale hacia el aro y vuelve**: lo que dice la `amplitud` del
+  catálogo, en metros y contada desde el borde de la ficha (así mide lo
+  mismo en las cuatro pistas y la ficha no lo tapa). Debajo del aro, hacia
+  el centro de la pista. La punta de la flecha va en lo más lejos del
+  amago. La dirección se cambia pinchándolo y moviendo su punta; su
+  principio y su final no se mueven.
+- **Dura lo que tarda en recorrerse** a su ritmo (entre medio segundo y
+  uno), como cualquier trazo, y se puede cambiar su variante… si la
+  tuviera: los gestos no tienen variantes de serie.
+- **Van con su ficha**: al moverla en la fase 1 se llevan enteros (y si
+  antes hay un corte, se estira el corte); al cambiar una fase anterior,
+  igual. Quien solo tiene gestos sigue pudiendo cambiar de arranque.
+- **Los que son del balón** (cambiar de mano, proteger) solo se ofrecen a
+  quien lo lleva: lo dice el catálogo (`parametros.balon: 'con'`).
+- **En la frase**, sin destino: «A1 finta y bota hasta el codo derecho»,
+  «A1 para».
+
+**La revisión adversarial de la capa 9** (el límite de uso cortó al
+revisor del proyector y a 17 escépticos): 5 hallazgos confirmados y 16
+sin verificar, comprobados a mano; todos eran defectos (varios, el mismo
+visto dos veces) y están arreglados, con su prueba.
+
+**La segunda revisión** (lo que el corte dejó sin mirar: la columna del
+proyector y los gestos): 11 hallazgos, todos confirmados y arreglados con
+su prueba (`4c25e9f`). La columna guarda un reproductor por clip en vez
+de cargar uno en cada cambio de fase; en vertical va arriba, y un móvil
+apaisado la lleva al lado; con el vídeo en grande las teclas son suyas,
+y al cerrarlo no se contesta solo un cruce; la variante elegida manda
+sobre la de siempre de otro trazo. Gestos: quien solo pasa o tira no
+pierde su gesto al arrastrarlo; «recibe y finta» sigue estirando el
+pase; un gesto no rodea conos; borrar un trazo reancla lo que queda en
+la fase; el bloqueador aguanta aunque su compañero finte antes de salir;
+la defensa no persigue una finta; y el guion de Equipos la llama por su
+nombre. 35 mutantes más, todos muertos.
+
+## Capa 8, paso a paso
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 8.1 | El modelo (§6.7, §11.1; `pizarra/ramas.js` con su banco `eval-ramas.mjs`): la lista plana de fases con `rama_de`, `rama_nombre` y `reune`, sus caminos y el árbol. La jugada guarda y reabre las ramas; el compilador compila camino a camino (`fases` es el principal, y además `fases_rama`, `ramas` y `siguiente`); el motor se para en un cruce si se le pide (`elegirRamas`) | ✅ |
+| 8.2 | El cartel de rama en el proyector (§6.7, §10.2): se toca, o ← → e Intro, o 1, 2, 3; espera a que se elija | ✅ |
+| 8.3 | Las ramas en la Pizarra: el Tablero guarda el árbol y enseña un camino; la tira de fases en árbol; abrir, nombrar, quitar, reunir y separar ramas; «llevar» usa el camino principal | ✅ (72 bancos, 1764 pruebas; 59 mutantes, los 59 muertos; probado en el arnés y su proyector, sin guardar nada) |
+
+**Decidido por el entrenador (2026-09-24):** al abrir una rama, lo que ya
+venía detrás pasa a ser la primera; la tira se abre en árbol; las ramas se
+reúnen con «Reunir con…»; en el proyector, el cruce espera a que se elija.
+
+**Decidido en la capa 8 (detalles, sin preguntar):**
+
+- **El camino principal** es la primera rama de cada cruce. Es lo que
+  enseñan la miniatura, la ficha y el guion de Equipos, y lo que «llevar»
+  pasa al desarrollo. Solo el proyector pregunta en los cruces; la ficha
+  sigue el principal.
+- **Una reunión se dibuja donde se llega a ella primero** (recorriendo los
+  caminos por orden: el principal, si pasa por ella). En la Pizarra se ve,
+  y se guarda, desde la rama por la que se ha llegado: ir a ella desde otra
+  rama la reancla. El compilador reancla todos los caminos, también el
+  principal, así que el proyector nunca hace saltar a nadie.
+- **`reune` con una sola fase** dice de dónde viene una fase cuando el
+  orden de la lista ya no puede decirlo (tras quitar o separar una rama).
+  Así no hace falta reordenar la lista, que es lo que rompía las reuniones.
+- **Separar** se puede desde cualquiera de las ramas que llegan a una
+  reunión, también desde la que ya llegaba antes. Si la reunión empezaba
+  una rama de esa fase, deja de serlo; un cruce que se queda con una sola
+  rama deja de ser cruce, y esa pasa a ser lo que sigue.
+- **Quitar una rama**, solo si no tiene nada dibujado. Si empieza en una
+  reunión, lo que se quita es el paso del cruce a ella: la fase se queda.
+- **No se abren ramas en una fase que sigue por una reunión de otra
+  rama**: se dice que se separe antes.
+- **Como mucho 64 caminos distintos** de principio a fin (cada reunión los
+  multiplica y cada uno se compila entero): no se abre ni se reúne lo que
+  pasaría de ahí. Si llegara una jugada con más, se compilan los 64
+  primeros y se avisa.
+- **Un cruce sin nada dibujado se compila igual** (una fase muda de un
+  instante): es donde el proyector se para y pregunta. Así se puede abrir
+  ramas en la fase 1 sin dibujar nada en ella.
+- **En el proyector**, → fase a fase también se para en el cruce; volver
+  atrás, reiniciar o mover la barra quitan el cartel; darle al play con el
+  cartel delante es seguir por la primera rama.
+- **Quien espera en una fila y sale solo en una rama** es un jugador en
+  todos los caminos (quieto en su puesto donde no sale), y no se cuenta en
+  la cola. Los balones del carro de una rama salen también.
+- **El aviso «defiende y tiene trazos de ataque»** mira todos los caminos:
+  dar el balón al otro equipo en la fase 1 afecta a todas las ramas.
+
+**La revisión adversarial** (18 hallazgos; 11 confirmados por los
+escépticos y 6 que el límite de uso dejó sin verificar, comprobados a
+mano): todos eran defectos y están arreglados, con su prueba.
+
+## Capa 7, paso a paso
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 7.0 | La frase automática de cada fase (§9.1), módulo puro `pizarra/motor/frase.js` con su banco `eval-frase.mjs`. Los nombres de zona («el codo derecho», «la punta») se mudan del guion de Equipos a `canvas/anclas.js` para que los dos digan lo mismo | ✅ |
+| 7.1 | La frase en la Pizarra, debajo de la línea de tiempo (`paneles/descripcion.js`): se reescribe (§9.2), «Volver a la automática», y viaja en la jugada (`fase.texto`) y en la animación (`frase`, `texto`, `audio_url: null`) | ✅ |
+| 7.2 | La voz (§9.3, `pizarra/voz.js`): lee la frase automática al empezar cada fase, en el proyector y en la ficha; interruptor y velocidad en los mandos, recordados | ✅ |
+| 7.3 | «Llevar al paso 3» (§9.4, `wizard/llevar.js`): contenido, etiquetas, material y desarrollo a la ficha; la duración, no | ✅ (71 bancos, 1718 pruebas; 35 mutantes, los 35 muertos; probado en la Pizarra y en el proyector del arnés, sin guardar nada) |
+
+**Decidido por el entrenador (2026-09-24):**
+
+- **La duración de la ficha no se rellena**: lo dibujado dura segundos y la
+  ficha habla de minutos de sesión. Al lado del deslizador sale «una
+  vuelta completa de lo dibujado dura unos N s (todas las fases y
+  rondas)», solo si la animación es de la Pizarra.
+- **La animación espera a la voz**: si al acabar una fase la frase no ha
+  terminado, se queda quieta hasta que termina y entonces sigue (como
+  mucho 20 s, por si el navegador no avisa). Con la voz apagada, todo va
+  como antes.
+
+**Decidido en la capa 7 (detalles, sin preguntar):**
+
+- **La frase cuenta lo que pasa en el orden en que pasa**: lo seguido de
+  un mismo jugador va en una oración («A1 bota hasta el codo derecho y
+  pasa picado a A2»); cuando actúa otro, empieza otra. Así un «dame y va»
+  se cuenta como ocurre. Quien corta para recibir se cuenta en el pase,
+  con la variante y los conos de su corte («…a A2, que ha cortado por la
+  puerta atrás al aro, y corta…»). El sujeto, por su dorsal (A1); quien
+  espera en una fila, «el 2.º de la fila».
+- **El destino**: el cono en el que acaba el trazo (a menos de 0,6 m), si
+  no la zona de la pista, y si no un cono cercano. Un tiro pegado al aro
+  es «finaliza junto al aro»; tras entrar a canasta, «…y anota». Tras un
+  fallo, «coge el rebote»; tras una canasta, «recoge el balón».
+- **La defensa, al final**: cada cosa que ha dicho el entrenador en su
+  oración, y lo que sale sola en una más, según la regla que cumple en
+  ese momento («B1 y B2 siguen a su par por el lado de canasta»). Tras un
+  tiro fallado, «tras el tiro, B1 y B2 cierran el rebote». Quien ha
+  dibujado algo suyo no sale otra vez.
+- **Una fila por rondas se cuenta en una línea** antes de la defensa:
+  «Detrás, lo repiten uno a uno los otros 3 de la fila».
+- **Una fase sin dibujar no tiene frase** (ni de la defensa): es la que
+  abre «Siguiente fase» y el compilador no compila.
+- **La caja de la frase** guarda al poco de dejar de teclear (entra en el
+  borrador aunque se recargue sin salir de ella) y lo escrito va a la
+  fase de la que se escribía aunque la fase cambie con la caja abierta.
+- **La voz empieza apagada**; con ella encendida se lee también la
+  primera fase al abrir, y la que para el vídeo de referencia se lee al
+  seguir. La ficha y el proyector obedecen al mismo interruptor; abrir el
+  proyector para la ficha, que sigue al cerrarlo. La columna del
+  asistente no habla (se reproduce sola mientras se escribe la ficha).
+- **«Llevar al paso 3» se hace al pasar de la Pizarra a Metadatos**, por
+  el botón del pie («Llevar a Metadatos») o por la barra de pasos: el
+  asistente numera sus pasos 0, 1 y 2, y «paso 3» no se ve en ningún
+  sitio. Rellena lo vacío y lo que trajo la vez anterior sin que nadie lo
+  tocara (queda apuntado en el borrador, `traido_de_la_pizarra`, que no
+  se guarda con el ejercicio): al volver a dibujar, lo traído se pone al
+  día; lo escrito a mano no se toca nunca. El puente al chat trata lo
+  traído como hueco, así que su respuesta, más completa, lo sustituye.
+- **Las etiquetas** salen del catálogo (acciones dibujadas y dichas de la
+  defensa, y sus variantes), solo las del vocabulario de la biblioteca;
+  un bloqueo sin variante es «bloqueo directo»; recoger es «rebote
+  ofensivo» o «defensivo» según quién lo coge; la situación se cuenta
+  desde el ataque, como en la biblioteca (un 2c1 es «superioridad»).
+  **Con un tiro de fuera no se ponen las de finalización** (entrada,
+  bandeja…): el linter de la biblioteca exigiría entonces que todos los
+  tiros salieran pegados al aro.
+- **El contenido**, por prioridad: bloqueo o pasar y cortar → juego de dos
+  (como en la biblioteca, aunque acabe en canasta); lo dicho «cierra el
+  rebote» → rebote; entrada; tiro; pase; bote (también con los gestos de
+  bote); juego de pies (finta, parada, pivote); recoger → rebote; y si
+  solo hay defensa, defensa.
+- **El desarrollo** son las frases de las fases dibujadas —la reescrita si
+  la hay—, numeradas si son varias. Si la pizarra no tiene nada que
+  contar, «Traer las frases de las fases» ofrece las líneas del viejo
+  paso 2 de un borrador de antes. Al chat le llega el desarrollo escrito
+  y, si no lo hay, las frases.
+- **Arreglado de paso** (lo destapó la revisión, viene del 6.6): con una
+  fila por rondas los mandos enseñaban «Ronda 1 / 3» y un botón «Ronda
+  siguiente» que no hacía nada. Las rondas de la Pizarra van dentro de
+  cada fase: el motor solo ofrece saltar de ronda con las del modelo
+  antiguo.
+
+**La revisión adversarial** (5 revisores y 3 escépticos por hallazgo; el
+límite de uso cortó a muchos escépticos, así que el resto se comprobó a
+mano): de 45 hallazgos distintos se arreglaron todos los que eran
+defectos, con su prueba. Lo que no se ha tocado va en «Pendiente».
+
+## Capa 6, paso a paso
+
+Plan propuesto el 2026-09-19, **sin confirmar todavía por el entrenador**
+(sigue el mismo criterio que la capa 5: cada paso deja algo que se prueba
+de punta a punta, con sus bancos en verde y su commit en la rama).
+
+| Paso | Qué queda funcionando | Estado |
+|---|---|---|
+| 6.0 | El módulo PURO de «qué hace este cono con este trazo» (§7.4): rodeo, slalom y puerta, con sus números y su banco. Y los arreglos que la capa destape | ✅ (66 bancos, 1577 pruebas; banco nuevo `eval-conos.mjs`, 18 pruebas; 11 mutantes, 10 muertos y 1 equivalente) |
+| 6.1 | Rodear un cono al dibujar: el trazo se curva por el lado de entrada, con su iconito encima; un clic cambia el lado y otro lo anula. Se guarda la intención, así que mover el cono rehace la curva. Compila como `funcion: 'rodear'` y el guion lo cuenta | ✅ (66 bancos, 1594 pruebas; 13 mutantes, los 13 muertos; probado en la Pizarra: dibujar, los tres clics y compilar). El slalom (6.2) ha salido con él: el módulo ya lo leía |
+| 6.2 | Slalom: tres o más conos alineados cerca del trazo, alternando lados desde el de entrada | ✅ con el 6.1 |
+| 6.3 | Puertas (§7.4.1): emparejamiento automático por distancia, la banda, el trazo imantado a pasar por dentro y en rojo si se fuerza por fuera; deshacer el par en el panel | ✅ (66 bancos, 1607 pruebas; 14 mutantes, los 14 muertos; probado en la Pizarra: cruzar, imantar, forzar en rojo, el iconito y deshacerla desde el panel) |
+| 6.4 | El defensor confinado al carril de la puerta: su regla se proyecta sobre el carril | ✅ (66 bancos, 1616 pruebas; 8 mutantes: 7 muertos y 1 equivalente; probado en la Pizarra y con el fotograma del proyector: nunca sale de la puerta y, al cruzarla su par, se aparta 1,0 m deslizándose por ella) |
+| 6.5 | Filas (§7.4.2): un cono es cola —jugadores, equipo, papel, un balón por cabeza—, con su tirador de orientación y su destino de vuelta. Se enciende «Vuelve a la fila», que hoy no puede | ✅ (67 bancos, 1640 pruebas; banco nuevo `eval-filas.mjs`; probado en la Pizarra: hacerla desde el panel, cambiarla, el tirador, mover el cono con su cola, «Vuelve a la fila» y compilar) |
+| 6.6 | Rondas: salen todos uno tras otro, con cadencia. La variación por ronda queda para más adelante (lo decidió el entrenador) | ✅ (68 bancos, 1664 pruebas; banco nuevo `eval-rondas-fila.mjs`, 16 pruebas; 37 mutantes, los 37 muertos; probado en la Pizarra: la línea de tiempo con una barra por ronda, el panel «Salen» y «Cadencia», reproducir, reabrir lo dibujado, y lo mismo en el compilador y en el motor del proyector) |
+| 6.7 | Balones múltiples (§7.3): «Dale un balón» en el panel del jugador y `Ctrl`+clic en una fila, que da uno a cada uno sin rehacerla. Los equipos del club, para más adelante (lo decidió el entrenador). Cierre de la capa: `sw.js` a la v16 | ✅ (68 bancos, 1668 pruebas; 13 mutantes: 12 muertos, y el que vivía destapó una comprobación que sobraba y se quitó; probado en la Pizarra con el ratón de verdad: `Ctrl`+clic en uno de la cola y el botón del panel) |
+
+**Decidido en los pasos 6.1 y 6.2 (dicho al entrenador):**
+
+- **Se guarda la intención y manda ella**: qué cono se sortea y por qué
+  lado. Si el cono se mueve —incluso al otro lado del camino—, la curva
+  se rehace alrededor de su sitio nuevo y **por el mismo lado**; si se
+  aleja más de 1,5 m, deja de sortearse. Un cono que se acerca a un
+  trazo ya dibujado empieza a sortearse por su lado de entrada.
+- **Los tres clics del iconito**: el primero cambia el lado, el segundo
+  lo anula (el trazo pasa recto y el cono ya no se vuelve a leer aunque
+  se mueva) y el tercero lo devuelve a lo que se leería solo.
+- **Un slalom es UNA interpretación**: un solo iconito (⇄), y el clic va
+  para todos sus conos. Sin el tercero —anulando uno de tres— los otros
+  dos quedaban como dos rodeos sueltos.
+- Se pasa a **0,9 m** del cono (número nuevo, ajustable): ni pisándolo
+  ni dando un rodeo que no ha pedido nadie.
+- **Un pase no rodea conos**: vuela. Solo el camino de quien corre.
+- Mover un cono rehace las curvas **de la fase que se está editando**:
+  es lo que se tiene delante, y rehacer las de todas movería trazos que
+  no se ven.
+- Los conos de una PUERTA quedan como decoración al compilar hasta el
+  paso 6.3, que les da su papel.
+
+**Decidido en el paso 6.3 (dicho al entrenador):**
+
+- **Una puerta existe cuando un trazo la cruza**: dos conos a menos de
+  3 m y el trazo pasando entre ellos DE TRAVÉS (45° como mínimo). Así los
+  conos de un slalom apretado —también a menos de 3 m— no salen como
+  puertas: el trazo los recorre a lo largo, no los cruza. El «emparejamiento
+  automático por distancia» del §7.4.1 se ha leído así; si el entrenador
+  quiere puertas que existan aunque nadie las cruce (para la defensa del
+  6.4, por ejemplo), hay que decidirlo.
+- **La banda**: rozar un palo por fuera, a menos de 0,6 m, cuenta como ir
+  por la puerta y el trazo **se imanta** a pasar por el medio. Más lejos
+  ya no es cosa de la puerta.
+- **Forzarlo por fuera a mano** (moviendo sus nodos) deja la puerta
+  FORZADA: el trazo se pinta en rojo y el imán no lo devuelve aunque se
+  muevan conos. Llevándolo otra vez por dentro, deja de estarlo.
+- **Una puerta no tiene lado**: el clic en su iconito (⌷) la anula —los
+  dos palos— y el siguiente la devuelve. Desde el panel, «Deshacer la
+  puerta» la anula en todos los trazos de la fase.
+- Los palos se compilan como `funcion: 'puerta'` y el guion dice «…pasando
+  por la puerta».
+
+**Decidido en el paso 6.4 (dicho al entrenador):**
+
+- **Está «sobre la puerta» el defensor que empieza la fase a menos de
+  0,75 m de la línea entre los dos palos** (número nuevo). Se decide al
+  empezar la fase y no cambia a mitad (§8.2).
+- **Su regla manda y el carril la recorta**: va al punto de la puerta más
+  cercano a donde le pondría su regla —cualquiera, también lo declarado y
+  la situación—, y por ella se mueve a su velocidad de siempre.
+- **Cuando su par cruza la puerta, se aparta deslizándose por ella** hasta
+  quedar a 1,0 m, hacia el lado en el que ya estaba; si la puerta no da
+  para tanto, se queda en su punta. Apartarse de frente le habría sacado
+  de la puerta.
+- **«A menos de 3 m» es estricto**: dos conos a 3,0 m justos ya no son
+  puerta. Probándolo en el navegador con los palos a 3 m exactos no salía
+  la puerta; es lo que dice el §7.4, pero conviene saberlo al colocarlos.
+
+**Decidido en el paso 6.5 (dicho al entrenador):**
+
+- **Los de la cola son jugadores de verdad** (§7.1): el primero, EN el
+  cono y en juego (lleva dorsal y puede defender o atacar); los demás
+  detrás, sin dorsal y sin contar para la defensa. Se ponen justo donde
+  el proyector pinta la cola, así que se ven igual al dibujar y al
+  proyectar.
+- **La fila se hace y se cambia desde el panel del cono**: cuántos (1 a
+  12), equipo, papel, un balón por cabeza, orientación y a qué cola se
+  vuelve. Cambiar cualquier cosa menos la orientación la rehace entera;
+  girarla conserva a los que esperan. Seleccionar a uno que espera
+  enseña la fila de su cono.
+- **El tirador**: un círculo al final de la cola, con la fila
+  seleccionada; se arrastra alrededor del cono, imán cada 15°, libre con
+  Mayús.
+- **Mover el cono se lleva a la cola en el mismo gesto**; quien ya ha
+  salido —tiene algo dibujado— se queda en la punta de su trazo.
+- **Uno de la cola no se quita suelto** (la fila dice cuántos son); el
+  cono se lleva a toda su cola y sus balones. Y no se rehace ni se
+  deshace una fila con alguien que ya tiene algo dibujado.
+- **«Vuelve a la fila»** lleva al final de su cola (un hueco detrás del
+  último) o de la que diga su fila.
+- Al compilar, los que esperan sin hacer nada no son jugadores de la
+  animación: son la cola que el motor ya sabía pintar
+  (`funcion: 'fila'`, `n_jugadores`); sus balones, igual.
+- **El «papel» de la fila se guarda y se enseña, pero todavía no decide
+  quién ataca** —eso lo sigue decidiendo el balón, o los Ajustes—. Si el
+  entrenador quiere que una fila de defensores defienda aunque no haya
+  balón, hay que decidirlo.
+
+**Decidido por el entrenador para el paso 6.6 (2026-09-23):**
+
+1. **Rondas: UNA sola animación** en la que los de la cola salen uno
+   tras otro, con la cadencia que se diga, y la cola se va acortando. Nada
+   de repetir la jugada entera una vez por cabeza.
+2. **La variación por ronda** («el tercero tira en vez de entrar") **queda
+   para más adelante**.
+3. **Los de fuera que juegan con el que sale lo repiten con cada uno**:
+   el que devuelve el pase se lo devuelve a cada uno con su balón, y el
+   que pasa desde fuera tiene un balón para cada uno, como un carro de
+   balones. Lo que hacen por su cuenta, sin el que sale, no se repite.
+
+**Decidido en el paso 6.6 (detalles, sin preguntar):**
+
+- **Las rondas no se guardan: se deducen** de lo dibujado con el primero
+  de la cola (`pizarra/rondas-fila.js`). La Pizarra y el compilador hacen
+  la misma cuenta, así que se ve igual al dibujar y al proyectar.
+- **Una ronda es todo lo dibujado en lo que sale el primero o su balón**:
+  lo que hace él, los pases que le hacen, y lo que cualquiera hace con su
+  balón (el reboteador que recoge su tiro).
+- **Por rondas es lo de serie** en una fila; en el panel del cono,
+  «Salen: todos, uno tras otro / solo el primero». Cambiarlo, o la
+  cadencia, NO rehace la fila: vale aunque el primero ya tenga algo
+  dibujado, y en cualquier fase.
+- **El turno**: sin cadencia, cada uno sale cuando acaba la ronda del
+  anterior en esa fase (contando el balón de un tiro hasta que cae); con
+  cadencia (de 1 a 5 s en el panel), cada tantos segundos aunque el
+  anterior no haya acabado. Cada ronda repite los tiempos de la del
+  primero, así que lo que esperaba un pase lo sigue esperando.
+- **Cada uno sale de su sitio en la cola** —el primero, del cono— y
+  **«vuelve a la fila» le pone detrás del que volvió antes**.
+- **Con varias fases, la cascada va fase a fase**: todos hacen lo de la
+  fase 1, uno tras otro, y luego lo de la fase 2.
+- **Dos colas que juegan entre sí salen a la par** (el segundo de una con
+  el segundo de la otra), tantas rondas como jugadores tenga la más corta;
+  si no son iguales, se avisa.
+- **Quien de la cola ya tiene algo dibujado hace lo suyo** y no repite; su
+  hueco en la cascada se queda para él.
+- **Sin balón**: si la ronda lo necesita (pasar, tirar, botar, recoger el
+  suyo) y alguno no lo tiene, **esa ronda no sale y se avisa**; lo que no
+  necesita balón se repite igual.
+- **Una fase con la duración puesta a mano se alarga** lo que haga falta
+  para que quepan todas las rondas.
+- **En la línea de tiempo**, lo de cada ronda va en gris con un filo azul
+  y no se arrastra (se cambia cambiando lo del primero); los que esperan
+  se ven por su puesto («2.º», «3.º»), y en los mensajes, «el 2.º de la
+  fila».
+- **Al compilar**, los que salen son jugadores sin número (como en la
+  Pizarra), con nombre propio para no chocar entre sí; lo de cada ronda
+  va marcado (`repeticion`) y la animación dice cuántas rondas son
+  (`rondas`), así que **la miniatura y el guion de Equipos cuentan una**.
+  Si alguno de la cola no sale, espera en su sitio (ya no en la cola que
+  pintaba el motor, que le pondría en el cono). En el guion, quien sale
+  de una fila es «uno de la fila».
+- **Arreglado de paso, en el repaso de la Pizarra**: un balón que va a
+  salir en un pase o un tiro va en las manos de quien lo hace hasta que
+  sale. Antes esperaba plantado en el sitio del pase mientras su jugador
+  botaba hasta allí; con las rondas, cada balón de la cola flotaba en el
+  sitio del tiro.
+
+**Decidido por el entrenador para el paso 6.7 (2026-09-24):**
+
+- **«Cargar equipo del club» (§7.2) queda para más adelante.**
+- Cuando se haga, **el segundo equipo se empareja POR POSICIÓN**: el base
+  es el 1, el escolta el 2, el alero el 3, el ala-pívot el 4 y el pívot
+  el 5 (la plantilla del club ya guarda la posición de cada jugador); si
+  hay dos de la misma posición, se hace automático y luego se ajusta a
+  mano.
+
+**Decidido en el paso 6.7 (detalles, sin preguntar):**
+
+- **«Dale un balón»** sale en el panel de un jugador —ataque, defensa o
+  sin papel— solo si se puede: en la fase 1, si no empieza la jugada con
+  balón y no tiene nada dibujado (lo dibujado se hizo sin él). El balón
+  es suyo desde el principio y él sigue seleccionado.
+- **`Ctrl`+clic (o `Cmd`+clic) en una fila** —en su cono o en uno de la
+  cola— da un balón a cada uno que no lo tenga y no haya salido todavía,
+  sin rehacer la fila. «Balones» en el panel de la fila hace lo mismo, y
+  «Sin balón» se los quita a los que no han salido (salvo el que ya se
+  usa en algo dibujado).
+- **El balón va AL LADO de la ficha, no centrado** como dice el §7.3: se
+  decidió en la capa 1 para poder cogerlo con el dedo (0,75 m; ver
+  `SEPARACION_BALON`). El anillo naranja marca a quien lo lleva.
 
 ## Capa 4, paso a paso
 
@@ -40,7 +974,7 @@ pruebas**. Arnés para probar de punta a punta: `dev/pizarra-dibujar.html`.
 | 4.2 | `engine.js` con carriles: varios tramos por ficha y fase, arranques propios, el dueño del balón cambiando a mitad de fase. Sin cambiar cómo se ven las animaciones guardadas | ✅ |
 | 4.3 | Reabrir una jugada guardada y seguir editándola (`Tablero.cargar`), y abrir desde su animación un ejercicio de antes de la Pizarra (§11.4) | ✅ |
 | 4.4a | Guardar aunque falte una columna nueva (`supabase/columnas.js`), y la migración 043 con su comprobación. **La 043 hay que aplicarla a mano** en Supabase | ✅ |
-| 4.4b | Conectar guardar y abrir a una pantalla, y borrar lo viejo — **necesita decisiones**, ver abajo | esperando |
+| 4.4b | La pantalla de la Pizarra, el asistente de tres pasos, lo guardado antes (§11.4) y el borrado del motor viejo (§12) | ✅ en la rama |
 
 En 4.1 salió un fallo de la capa 3: recolocar en la fase 1 una ficha sin
 trazos no cambiaba su arranque, y al pasar de fase o volver a la 1 saltaba
@@ -55,28 +989,184 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
-**Capa 4 · El motor** (§14): compilador nuevo `jugada → animación`,
-`engine.js` con carriles conservando su interfaz pública, guardado de
-jugada + animación, y reabrir para seguir editando.
+**Las diez capas del §14 están acabadas (2026-10-01), y la 10 revisada
+(2026-10-03)**, todas en la rama `pizarra-v3` (en el remoto, hasta el paso
+10.5). Lo que queda no es código:
 
-Tiene tres decisiones que no se pueden tomar solas, porque rompen cosas
-que hoy funcionan o tocan la base de datos en producción:
+1. **Aplicar en Supabase las migraciones 044 (variantes) y 045
+   (plantillas)**: las aplica el entrenador. Hasta entonces la Pizarra
+   funciona igual, pero «Nueva variante» y guardar una plantilla dicen
+   que falta la migración.
+2. **Mirar el banco visual** (`dev/jugadas.html`) y probar la Pizarra con
+   los dedos en una tablet.
+3. **Decidir cuándo pasa a `main`**: Netlify publica `main`, así que
+   fusionar es publicar. No se fusiona sin el visto bueno del entrenador.
 
-1. El §12 borra el creador actual (`wizard/paso1.js`, `paso2.js`) y todo
-   el motor viejo, pero la pantalla de la Pizarra (ruta, paneles) todavía
-   no existe: borrar ahora dejaría la app **sin creador de ejercicios**.
-2. El §11.3 pide `alter table exercises add column jugada jsonb` en
-   Supabase.
-3. El §11.4 dice que las animaciones guardadas hasta hoy se pierden.
+Lo que viene después de esta línea es el siguiente paso de la capa 4,
+que ya está hecho; se deja como historia.
 
-Lo que se puede hacer sin esperar, porque solo añade: el compilador nuevo
-en `taller/js/pizarra/motor/compilar.js` con su banco, y los carriles en
-`engine.js` sin cambiar su interfaz.
+**4.4b**, con dos decisiones ya tomadas (2026-09-11): el creador v2.1 se
+borra ya, como dice el §12, y lo guardado se trata como dice el §11.4.
+
+**Hallazgo al inspeccionar (2026-09-11):** la capa 1 se dio por cerrada,
+pero la PANTALLA de la Pizarra no existe: no hay panel izquierdo
+(`paneles/izquierda.js`, §2.3), así que **no hay forma de añadir fichas**;
+tampoco barra superior con herramientas ni paneles plegables (§2.1-2.2).
+Solo existen los arneses de `dev/`, con una escena fija. Sin eso la
+Pizarra no puede sustituir al paso 1, y borrar primero dejaría la app sin
+creador.
+
+Otras cosas que hay que saber antes de borrar:
+
+- `netlify.toml` publica `main`: lo que se sube a `main` va a producción.
+- Los 204 ejercicios de la biblioteca son todos «de antes»: con el §11.4
+  pierden la animación en la ficha, el proyector y el planificador.
+- Sin la 043 aplicada, lo guardado desde la Pizarra se reabre solo con
+  posiciones (sin sus acciones). Para distinguir viejo de nuevo no se usa
+  la columna `jugada` sino una marca dentro de la animación (`motor: 3`),
+  que se guarda siempre.
+- `pizarra/destino.js` importa dos constantes de `ia/compilador.js`; el
+  paso 3 usa `ia/molde.js`, `ia/puente.js` e `ia/lint.js`; la miniatura y
+  el guion de Equipos usan `soloPrimeraRonda` de `ia/rondas.js`; las
+  herramientas de `tools/biblioteca` usan el compilador viejo y `lint.js`.
+- Bancos que dependen del motor viejo: `eval-animacion`, `eval-frase`,
+  `eval-gestos`, `eval-rondas` (se van) y `eval-cargar`, `eval-video`,
+  `eval-acciones`, `eval-destino`, `eval-molde` (se adaptan). El recuento
+  de pruebas bajará, y no es una regresión.
+
+**Plan CONFIRMADO el 2026-09-11**, con estas respuestas:
+
+- Orden: pantalla → asistente → §11.4 → borrado. Todo en `pizarra-v3`
+  subida a GitHub como rama; **a `main` solo al final**, con los bancos en
+  verde, probado en el navegador y la 043 aplicada.
+- Pantalla: **lo imprescindible** (fichas, recuento, ayuda, zoom, encajar,
+  ▶, Supr, canasta). Zonas, «Traer» y las pestañas Fases/Texto, en sus
+  capas (6, 7, 10).
+- Equipos, ejercicio viejo: colocación quieta, aviso y **sin narración**.
+- `tools/biblioteca`: **siguen, solo con posiciones**; el linter de
+  fichas se muda junto al paso 3.
+
+Los pasos:
+
+1. Pantalla de la Pizarra: `pizarra/pizarra.js` + panel izquierdo con
+   fichas y recuento + barra superior. Solo añade. **Escrita**
+   (`pizarra.js`, `paneles/izquierda.js`, arnés `dev/pizarra.html`); el
+   Tablero ya pone fichas, las quita con Supr (se niega si tienen
+   trazos), borra un trazo (Supr sin nodo elegido), cambia la canasta y
+   da el balón al soltarlo encima de alguien. Bancos: 63 en verde, 1522
+   pruebas. La prueba en el navegador encontró que al reabrir no se
+   adoptaba la canasta de la jugada: arreglado.
+2. El asistente pasa a tres pasos: Identificación · Pizarra · Metadatos.
+   Guardar = jugada + animación compilada con marca; abrir = `cargar`.
+   **Escrito** (commit de la pantalla: `bea3089`): `wizard.js` reescrito
+   con la Pizarra a todo el ancho y viva mientras vive el asistente; al
+   salir de ella o al guardar se vuelca `draft.jugada` + `compilar()`.
+   Un ejercicio viejo abierto y sin tocar la pizarra se guarda con su
+   animación de antes. `compilar` lleva la marca `motor: 3`
+   (`esDeLaPizarra`) y no compila fases vacías. `ejercicios.js` guarda
+   `jugada`; `cargar.js` la devuelve; el paso 3 cuenta desde la Pizarra.
+   **Probado en el navegador, sin tocar la base de datos:** crear
+   (colocar, pase, Metadatos con la animación en marcha), volver a la
+   Pizarra sin perder nada, abrir un ejercicio viejo (fixture de dev
+   `window.__demoEjercicio`) sin tocar y tocándolo, y retomar un
+   borrador de la v2.1. Salieron y se arreglaron: `pizarra.css` no se
+   cargaba en `taller/index.html`, y el motor pintaba a todos en el
+   centro cuando la animación no tiene fases (ya pasaba antes con lo
+   guardado «sin animación»; con la Pizarra pasa con toda colocación sin
+   trazos). Bancos: 63 en verde, 1529 pruebas. ✅ commit `32477f3`
+   (rama `pizarra-v3`, subida; `main` sin tocar).
+3. §11.4 en la ficha, el proyector, el visor de Equipos y la lista.
+   **Escrito:** `pizarra/motor/marca.js` (`esDeLaPizarra`, `paraVer`,
+   `soloColocacion`, `perdioLaAnimacion`; sin dependencias, probado en
+   eval-compilar). La ficha enseña lo de antes quieto, con aviso y
+   «Rehacer la pizarra» (ruta nueva `/ejercicios/:id/rehacer`, que abre
+   el asistente en la Pizarra). El proyector y el visor de Equipos
+   enseñan `paraVer(...)`; el visor dice que es de antes y no narra
+   fases. La biblioteca pide `motor:animacion->motor` y solo anima al
+   pasar el ratón la miniatura de lo de la Pizarra; `sw.js` pasa a v14.
+   El proyector no repintaba al tomar tamaño: con una colocación sola
+   salía la pista vacía. Probado en el navegador: ficha, «Rehacer»,
+   visor (arnés `dev/planner.html`). **Sin probar en vivo:** la lista de
+   la biblioteca, porque el navegador de pruebas ya no tiene sesión real.
+   ✅ commit `795af81` (rama `pizarra-v3`, subida).
+4. **Borrado del §12** (en curso, 2026-09-12). El mapa lo hicieron 7
+   agentes de solo lectura y un crítico: no falta ningún importador por
+   prever, y las 14 contradicciones entre bloques están resueltas.
+   Decisiones del entrenador: las dos reglas del linter que miran el
+   movimiento (conos de rodear, oposición sin defensor) solo saltan si
+   la ficha tiene fases; los `.json` de la biblioteca NO se regeneran y
+   `importar.mjs --actualizar` deja de escribir la columna `animacion`;
+   `elementosDeAnimacion` se borra sin portar filas ni zonas («los
+   ejercicios actuales me importan poco, quiero el motor nuevo para
+   rehacerlos a mano»); y los nombres de las anclas se guardan en
+   `canvas/anclas.js`. Lo demás lo decidí yo: las dos distancias de
+   `pizarra/destino.js` salen del catálogo de `ia/acciones.js`, de
+   `rondas.js` solo sobrevive `soloPrimeraRonda`, y se borran
+   `canvas/palette.js` y los cinco arneses del creador viejo.
+
+   **Hecho (2026-09-12).** Primero las mudanzas: `lint.js`, `molde.js` y
+   `puente.js` con `git mv` a `taller/js/wizard/`; `soloPrimeraRonda` a
+   `taller/js/pizarra/motor/rondas.js`; `NOMBRE_ANCLA` a
+   `canvas/anclas.js` con su prueba en `eval-medidas`; y `destino.js`
+   tomando las distancias del catálogo. Después, siete agentes en
+   paralelo, cada uno con sus archivos y su banco: `eval-acciones` (fuera
+   las 12 pruebas de `normalizarIntent`, dentro 5 de catálogo rescatadas
+   de `eval-gestos` y `eval-frase`), `eval-video`, `cargar.js` sin
+   `elementosDeAnimacion`, 3 pruebas rescatadas de `eval-animacion` (2 de
+   geometría a `eval-trazo`, 1 del balón en el aro tras un tiro a
+   `eval-motor`), `stage.js` reducido a reproducir, el CSS muerto de
+   `canvas.css` y `wizard.css`, y la biblioteca. El agente de la
+   biblioteca se cortó por el límite de uso; lo rematé yo, corrigiendo
+   una desviación: había quitado `animacion` también del ALTA de
+   `importar.mjs`, y una ficha nueva habría entrado sin colocación.
+   Resultado de la biblioteca, medido con `lint-tanda` sin escribir nada:
+   las 18 tandas y el piloto, **0 errores**.
+   Por último, el borrado: 24 archivos. Comprobado: ningún archivo que se
+   queda importa nada borrado (los 728 imports relativos del repo
+   resuelven), 60 bancos y 1351 pruebas en verde, y en el navegador —sin
+   tocar la base de datos— crear con un pase, Metadatos con la
+   animación, la ficha y el proyector de uno viejo, «Rehacer», la ficha
+   de uno de la Pizarra (reproduce y se pausa tocando) y «Editar».
+   ✅ commit `4351ebf`.
+
+   **Revisión adversarial del borrado** (6 revisores + un escéptico por
+   hallazgo): 8 confirmados, ninguno refutado; 6 distintos, todos
+   arreglados. El importante, metido en este mismo borrado:
+   `importar.mjs --actualizar` seguía sellando `marco = 3` sin reescribir
+   la animación, y una ficha que siga en marco 2 se habría pintado
+   descolocada sin aviso. Ahora `marco` solo viaja con `animacion`, en el
+   alta, y `eval-marco` lo vigila. Los otros: una prueba de `eval-cargar`
+   que comparaba la animación consigo misma; la columna del asistente,
+   que seguía reproduciendo oculta mientras se dibuja; los mandos, que
+   se acumulaban en el motor en cada ida y vuelta entre pasos (nuevo
+   `off` en el motor y `destroy` en los mandos); el montaje, que perdía
+   la canasta sur y los ids de los balones de las tandas; y la
+   justificación de dos pruebas rescatadas. 60 bancos, 1352 pruebas; el
+   linter 52/52; las 204 fichas, 0 errores. Probado en el navegador.
 
 ## Pendiente de decidir o de arreglar (no se toca sin avisar)
 
-- `resto()` ofrece *Pasa* y *Tira* en «⋯ más» a quien no lleva balón. Hoy
-  avisa al elegirlos; no debería ofrecerlos.
+Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
+
+- **Cobertura que se ha ido con el motor viejo** y que la Pizarra tendrá
+  que volver a vigilar cuando haga esas cosas: las invariantes de los
+  gestos (que acaben donde empezaron, que el trazo no quede tapado por la
+  ficha, la amplitud igual en las cuatro pistas) → hecho en la capa 9
+  (`eval-destino`, `eval-trazo`, `eval-fases`); las rondas
+  con cadencia y la fusión de sus acciones → capa 6; qué desplegables
+  declara cada acción → capa 7.
+- ~~Comentarios que todavía nombran el motor viejo y código que se queda
+  sin usuario (`resolverAccion`, `indexar`, `EVENTOS_LEGADO`,
+  `draft.posiciones`, `supabase/posiciones.js`, el CSS muerto).~~ Limpiado
+  en la 10.5. `supabase/videos.js` y `history.js` vuelven a tener usuario
+  (los vídeos de las variantes y deshacer). Queda `parametroDe` en
+  `ia/acciones.js`, que hoy solo usa su banco.
+- `.claude/worktrees/jolly-chatelet-6ef063/` guarda una copia vieja de
+  `stage.js`, `detalle.js` y `wizard.js`: sale en cualquier búsqueda y
+  despista.
+
+- ~~`resto()` ofrece *Pasa* y *Tira* en «⋯ más» a quien no lleva balón.~~
+  Arreglado en la 5.3 (`saleEn`), salvo los gestos con balón (ver abajo).
 - El anillo promete «o pincha ya en la pista» y su velo se come ese clic.
 - `fichas.js`: abortar el arrastre de un balón no se lo devuelve a su
   portador, ni restaura la selección que cambió el `pointerdown`.
@@ -87,13 +1177,99 @@ en `taller/js/pizarra/motor/compilar.js` con su banco, y los carriles en
 - `engine.js:239` usa `view.w` donde `rotate: 90` necesita `view.h`: los
   símbolos del proyector salen un 50 % más grandes en pista entera.
 - Probar los gestos con dedos en una tablet de verdad.
+- **Capa 6, filas:** quién ataca cuenta también a los que esperan (`en_juego:
+  false`). Con una fila de atacantes con balón y un defensor en pista es lo
+  que se quiere (ataca la fila); pero si en una fila espera alguien del otro
+  equipo con balón, nadie defendería. Decidirlo con el entrenador al hacer
+  las filas (lo señaló la revisión de la 5.3).
+- ~~«⋯ más» ofrece «Cambia de mano» y «Protege el balón» a quien no lleva
+  balón.~~ Arreglado en la capa 9: el catálogo lo dice
+  (`parametros.balon: 'con'`).
+- **Capa 9:** el anillo exterior no tiene «＋ nueva variante» (el §4.3 la
+  pone en «⋯ más»): se crea desde el panel del trazo.
+- **Capa 9:** los gestos en el sitio no tienen variantes de serie (finta
+  de tiro, de salida…); se pueden añadir a `VARIANTES` cuando el
+  entrenador diga cuáles, y entonces el club podrá añadir las suyas.
+- **Capa 9:** las variantes del club no se pueden renombrar ni borrar
+  desde la app (sí en Supabase); el tramo guarda el nombre que tenía.
 - Una vez, en una prueba automatizada, apareció un aviso de «Defiende» que
   nadie eligió. No se ha podido reproducir; se comprobó que las 12 casillas
   de los anillos disparan exactamente su acción.
+- **Capa 6, rondas (6.6):** en la Pizarra, al pasar a la fase siguiente,
+  los de la cola se ven en su sitio aunque en el proyector ya hayan
+  salido: el arranque de la fase 2 cuenta lo dibujado, no las rondas. El
+  repaso de la jugada entera y el proyector sí lo hacen bien. Solo
+  importa si se dibuja algo DESPUÉS de las rondas; decidir si hace falta.
+- **Capa 6, rondas:** mientras salen, los de la cola se pintan
+  semitransparentes en la Pizarra (como mientras esperan); en el proyector
+  van opacos.
+- **Capa 6, rondas:** si lo dibujado con el primero no le lleva de vuelta,
+  todos acaban en el mismo sitio, unos encima de otros. Es lo dibujado;
+  se arregla dibujando «vuelve a la fila» o, más adelante, con la
+  variación por ronda.
+- Un jugador fuera de juego que NO está en una fila sigue sin dorsal y el
+  compilador lo llama «A0»; dos así chocarían. Viene de antes de las
+  filas; a los de las filas ya no les pasa.
+- **Capa 7:** hay dos narradores de una animación: la frase de la Pizarra
+  (que va dentro de la animación, `fase.frase` y `fase.texto`) y el guion
+  del planificador de Equipos, que la sigue contando a su manera («El 1
+  bota hacia…»). Comparten los nombres de zona, pero no la redacción. Si
+  el entrenador quiere que Equipos enseñe la frase de la Pizarra (y la
+  reescrita) cuando la haya, es un cambio pequeño en Equipos.
+- **Capa 7:** el error del linter de la biblioteca para una finalización
+  lejos del aro dice «usa hacia: 'aro'», que es la sintaxis del compilador
+  viejo. Por eso «llevar» no pone etiquetas de finalización si hay un
+  tiro de fuera; el texto del linter habría que cambiarlo.
+- **Capa 7:** si la canasta cambia y las zonas quedan lejos, la frase se
+  queda sin destinos («A1 pasa a A2, que ha cortado, y corta.»). Es
+  verdad, pero pobre; se podría decir hacia dónde (arriba, al fondo).
+- **Capa 8:** en la tira, «Fase N» es el número por donde se llega primero
+  a esa fase; vista desde otra rama que se reúne con ella, esa misma fase
+  puede ser la 3 en un camino y la 4 en otro.
+- **Capa 8:** en el proyector, Reiniciar (R) cuando la fase 1 tiene un
+  vídeo de referencia sin ver arranca la animación debajo del vídeo (el
+  motor anuncia la fase antes de reproducir). Es lo mismo que se ha
+  arreglado al elegir una rama; viene de antes de las ramas.
+- **Capa 10, fases (§6.8):** quedan fuera, porque el entrenador pidió lo
+  básico: reordenar las fases arrastrando, las miniaturas en la tira y
+  fijar a mano la duración o la pausa de una fase.
+- **Capa 10, plantillas (§7.8):** se guarda UNA fase, no un grupo de
+  fases; y las plantillas no se pueden renombrar (sí quitar y volver a
+  guardar).
+- **Del §2.2, sin hacer:** el indicador del imán en la barra y la voz
+  dentro de la Pizarra (la narración está en la ficha y en el proyector).
+- **Aplazado por el entrenador:** «Cargar equipo del club» (§7.2) y la
+  variación por ronda (§7.6).
+- **El banco visual** (`dev/jugadas.html`) hay que mirarlo con los ojos:
+  los bancos dicen que las doce jugadas compilan sin avisos, no que se
+  vean bien.
 
 ---
 
 ## Incidentes
+
+### 2026-09-11 · Un ejercicio de prueba guardado en la base de datos real
+
+**Qué pasó.** Probando el asistente nuevo en el navegador, se pulsó
+«Guardar» creyendo que no había sesión: se buscaron claves `sb-…` en
+`localStorage` y la sesión del Playbook se guarda en `cbp-auth`. El
+guardado llegó a Supabase de verdad y creó el ejercicio **«Prueba
+Pizarra pase»** (id `4d4408b1-02af-4de0-bb7b-202e67674ef3`, autor
+Beltrán). En la consola salió un 400, pero **su origen no está
+confirmado**: vuelve a salir al abrir cualquier ficha, así que puede ser
+de la ficha y no del guardado. No se sabe si la `jugada` llegó a
+guardarse (es decir, si la 043 está aplicada): la comprobación de solo
+lectura falló porque `dev/planner.html` había cambiado la sesión de
+`cbp-auth` por la suya, falsa. Desde entonces ese navegador de pruebas
+no tiene sesión real.
+
+**Decidido (2026-09-11).** El entrenador lo archiva él; aquí no se
+toca. Y el guardado se prueba **siempre sin red**.
+
+**Qué se ha aprendido.** En el navegador de pruebas HAY sesión (clave
+`cbp-auth`): nada de pulsar «Guardar», «Eliminar» ni «Favorito» en el
+Taller. Lo que se guardaría se comprueba con `aRegistro` o
+interceptando la red, nunca contra la base de datos.
 
 ### 2026-09-10 · Cierre brusco con el trabajo recién subido
 

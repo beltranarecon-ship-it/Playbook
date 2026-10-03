@@ -12,11 +12,11 @@
    ============================================================ */
 
 import {
-  FAMILIAS, FAMILIA_KEYS, CATALOGO_SISTEMA, EVENTOS_LEGADO, REFERENCIAS,
-  validarAccion, normalizarNombre, indexar, resolverAccion, fusionarCatalogo, parametroDe,
+  FAMILIAS, FAMILIA_KEYS, CATALOGO_SISTEMA, REFERENCIAS,
+  validarAccion, normalizarNombre, fusionarCatalogo, parametroDe,
 } from '../js/ia/acciones.js';
 import { TAGS } from '../../tools/biblioteca/vocabulario.mjs';
-import { normalizarIntent } from '../js/ia/intencion.js';
+import { MOV_TO_ARROW } from '../js/canvas/arrows.js';
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -69,20 +69,6 @@ test('ningún parámetro pide coordenadas', () => {
 });
 
 console.log('\n· el catálogo del sistema');
-
-test('las nueve acciones del motor anterior están cubiertas', () => {
-  // Es el criterio de aceptación del Tramo 2.5.
-  const cubiertos = new Set(CATALOGO_SISTEMA.map((a) => a._legado).filter(Boolean));
-  const faltan = EVENTOS_LEGADO.filter((e) => !cubiertos.has(e));
-  ok(!faltan.length, `sin equivalencia en el catálogo: ${faltan.join(', ')}`);
-});
-
-test('no hay equivalencias inventadas', () => {
-  const sobran = CATALOGO_SISTEMA
-    .map((a) => a._legado).filter(Boolean)
-    .filter((e) => !EVENTOS_LEGADO.includes(e));
-  ok(!sobran.length, `_legado apunta a eventos que no existían: ${[...new Set(sobran)].join(', ')}`);
-});
 
 test('todas las del sistema pasan su propio validador', () => {
   for (const a of CATALOGO_SISTEMA) {
@@ -243,32 +229,7 @@ test('sin acciones de club, el catálogo es el del sistema', () => {
   eq(fusionarCatalogo().acciones.length, CATALOGO_SISTEMA.length);
 });
 
-console.log('\n· resolver lo que se escribe a mano');
-
-const idx = indexar(CATALOGO_SISTEMA);
-
-test('el nombre, el slug y los sinónimos resuelven a la misma acción', () => {
-  for (const t of ['Tira', 'tira', 'tiro', 'lanzamiento', 'tira a canasta']) {
-    eq(resolverAccion(t, idx)?.slug, 'tira', t);
-  }
-});
-
-test('tildes, mayúsculas y artículos dan igual', () => {
-  eq(resolverAccion('  DA EL BALÓN ', idx)?.slug, 'pasa');
-  eq(resolverAccion('el rebote', idx)?.slug, 'recoge');
-});
-
-test('una frase larga encuentra la acción que lleva dentro', () => {
-  eq(resolverAccion('luego vuelve a la fila corriendo', idx)?.slug, 'vuelve_a_fila');
-});
-
-test('lo que no reconoce devuelve null, no una acción cualquiera', () => {
-  // Que devuelva null es lo correcto: el paso 2 preguntará, igual que
-  // hace con una posición que no conoce.
-  for (const t of ['', '   ', 'hace la croqueta', null, undefined]) {
-    eq(resolverAccion(t, idx), null, JSON.stringify(t));
-  }
-});
+console.log('\n· comparar nombres');
 
 test('normalizarNombre deja el texto comparable', () => {
   eq(normalizarNombre('  Bloqueó, y  DESPUÉS...  '), 'bloqueo y despues');
@@ -286,119 +247,52 @@ test('un parámetro que no existe devuelve undefined', () => {
   eq(parametroDe(CATALOGO_SISTEMA[0], 'no_existe'), undefined);
 });
 
-console.log('\n· traducción del dialecto antiguo');
+console.log('\n· la familia de los gestos');
 
-/** Atajo: normaliza una sola fase y devuelve sus eventos resueltos. */
-const norm = (eventos) => normalizarIntent({ canasta: 'norte', fases: [{ eventos }] });
-const uno = (eventos) => norm(eventos).fases[0].eventos[0];
+/* Las tres pruebas que siguen venían del banco de gestos, que se fue con el
+   motor de animación anterior. Miran solo el catálogo, así que siguen
+   valiendo tal cual. Y hacían falta: la familia `gesto` se declaró con todo
+   su contrato en el Tramo 2.5 y el catálogo tardó en tener acciones dentro,
+   así que una finta o un pivote se podían escribir y no eran nada. Esto es
+   lo que impide que la familia se vuelva a quedar vacía en silencio. */
+const GESTOS = CATALOGO_SISTEMA.filter((a) => a.familia === 'gesto');
 
-test('«bote hacia canasta» avanza un trozo; «bote hacia aro» llega', () => {
-  // Las dos mitades del error de las trece fichas, ahora con nombre propio.
-  const avanza = uno([{ jugador: 'A1', tipo: 'bote', hacia: 'canasta' }]);
-  eq(avanza.accion.slug, 'bota');
-  eq(avanza.params.alcance, 'parcial');
-  eq(avanza.params.avance, 0.55);
-
-  const llega = uno([{ jugador: 'A1', tipo: 'bote', hacia: 'aro' }]);
-  eq(llega.accion.slug, 'entra');
-  eq(llega.params.alcance, 'pegado');
+test('el catálogo tiene acciones de gesto', () => {
+  ok(GESTOS.length >= 4, `solo hay ${GESTOS.length}; la familia se quedó declarada y vacía`);
 });
 
-test('un corte hacia el aro también llega hasta él', () => {
-  // Es la continuación al aro tras un bloqueo. Se escapó en la primera
-  // versión de la traducción —solo el bote miraba 'aro'— y el que rodaba
-  // se quedaba a 2,8 m de la canasta. Lo cazó el banco de animación.
-  const roll = uno([{ jugador: 'A2', tipo: 'corte', hacia: 'aro' }]);
-  eq(roll.accion.slug, 'corta');
-  eq(roll.params.alcance, 'pegado');
-  ok(roll.params.separacion <= 1.2, 'tiene que morir pegado al aro');
-});
-
-test('un destino concreto se recorre entero', () => {
-  const ev = uno([{ jugador: 'A1', tipo: 'bote', hacia: { x: 0.3, y: 0.4 } }]);
-  eq(ev.params.destino, { x: 0.3, y: 0.4 });
-  eq(ev.params.alcance, 'completo');
-});
-
-test('los nueve eventos de siempre se traducen todos', () => {
-  const eventos = [
-    { jugador: 'A1', tipo: 'bote', hacia: 'canasta' },
-    { jugador: 'A2', tipo: 'corte' },
-    { jugador: 'A1', tipo: 'pase', a: 'A2' },
-    { jugador: 'A2', tipo: 'tiro' },
-    { jugador: 'A3', tipo: 'bloqueo', bloqueado_id: 'B1' },
-    { jugador: 'B1', tipo: 'defiende', marca: 'A1' },
-    { jugador: 'A2', tipo: 'vuelve_a_fila' },
-    { jugador: 'A2', tipo: 'recoge' },
-  ];
-  const r = norm(eventos);
-  eq(r.descartados.length, 0, JSON.stringify(r.descartados));
-  eq(r.fases[0].eventos.map((e) => e.accion.slug),
-    ['bota', 'corta', 'pasa', 'tira', 'bloquea', 'defiende', 'vuelve_a_fila', 'recoge']);
-});
-
-test('el rodeo se pliega dentro del desplazamiento y desaparece como evento', () => {
-  const r = norm([
-    { jugador: 'A1', tipo: 'bote', hacia: 'canasta' },
-    { jugador: 'A1', tipo: 'rodea_cono', cono_id: 'cono_1' },
-    { jugador: 'A1', tipo: 'rodea_cono', cono_id: 'cono_2' },
-  ]);
-  eq(r.fases[0].eventos.length, 1, 'el rodeo ya no es un evento suelto');
-  const ev = r.fases[0].eventos[0];
-  eq(ev.params.trayectoria, 'rodeo');
-  eq(ev.params.sorteando, ['cono_1', 'cono_2']);
-});
-
-test('un rodeo sin desplazamiento al que pegarse no revienta nada', () => {
-  const r = norm([{ jugador: 'A1', tipo: 'rodea_cono', cono_id: 'cono_1' }]);
-  eq(r.fases[0].eventos.length, 0);
-  eq(r.descartados.length, 0);
-});
-
-console.log('\n· el dialecto nuevo, y la puerta cerrada');
-
-test('un evento del paso 2 se resuelve contra el catálogo', () => {
-  const ev = uno([{ jugador: 'A1', accion: 'entra' }]);
-  eq(ev.accion.slug, 'entra');
-  eq(ev.familia, 'desplazamiento');
-  eq(ev.params.alcance, 'pegado');
-});
-
-test('los args del uso pisan lo que fija la acción', () => {
-  // El vocabulario dice qué significa la palabra; la frase concreta puede
-  // matizarla: «corta, pero hasta el codo derecho».
-  const ev = uno([{ jugador: 'A1', accion: 'corta', args: { destino: 'codo_der', alcance: 'completo' } }]);
-  eq(ev.params.destino, 'codo_der');
-  eq(ev.params.alcance, 'completo');
-});
-
-test('una acción que no está en el catálogo se descarta con su porqué', () => {
-  const r = norm([{ jugador: 'A1', accion: 'teletransporte' }]);
-  eq(r.fases[0].eventos.length, 0);
-  eq(r.descartados.length, 1);
-  ok(/catálogo/.test(r.descartados[0].motivo), r.descartados[0].motivo);
-});
-
-test('un tipo antiguo desconocido se descarta con su porqué', () => {
-  const r = norm([{ jugador: 'A1', tipo: 'mate' }]);
-  eq(r.descartados.length, 1);
-  ok(/desconocida/.test(r.descartados[0].motivo), r.descartados[0].motivo);
-});
-
-test('basura no llega nunca al compilador', () => {
-  // Es la invariante del Tramo 0: el compilador jamás recibe algo que no
-  // sepa dibujar. Aquí es donde se cierra la puerta.
-  const r = norm([null, undefined, 42, {}, { tipo: 'bote' }, { jugador: 'A1' }]);
-  eq(r.fases[0].eventos.length, 0);
-  ok(r.descartados.length >= 4, `se esperaban descartes; hubo ${r.descartados.length}`);
-});
-
-test('un intent vacío o roto devuelve una estructura utilizable', () => {
-  for (const v of [null, undefined, {}, { fases: null }, { fases: [{}] }]) {
-    const r = normalizarIntent(v);
-    ok(Array.isArray(r.fases), `con ${JSON.stringify(v)} debería devolver fases`);
-    ok(Array.isArray(r.descartados));
+test('su símbolo tiene flecha asignada', () => {
+  /* Sin entrada en el mapa cae en 'cut' —discontinua, de corte— y un
+     gesto se dibujaría como un desplazamiento sin desplazamiento. */
+  for (const a of GESTOS) {
+    ok(MOV_TO_ARROW[a.simbolo], `${a.slug}: el símbolo "${a.simbolo}" no está en MOV_TO_ARROW`);
   }
+});
+
+test('simulacion sigue siendo una familia sin acciones', () => {
+  /* Esta prueba no protege un acierto: DEJA CONSTANCIA de un hueco. La
+     familia `simulacion` (1vs1, 2vs1, 2vs2, 3vs2 con el desenlace
+     declarado) está diseñada con sus parámetros y no tiene ni una acción,
+     igual que le pasaba a `gesto`.
+
+     El día que se implemente, esta prueba se pondrá roja y habrá que
+     cambiarla. Eso es lo que se busca: que el hueco no se olvide por no
+     estar escrito en ningún sitio. */
+  ok(FAMILIA_KEYS.includes('simulacion'), 'la familia ha desaparecido del contrato');
+  const n = CATALOGO_SISTEMA.filter((a) => a.familia === 'simulacion').length;
+  ok(n === 0,
+    `¡Bien! La familia «simulacion» ya tiene ${n} acción(es). Comprueba que el `
+    + 'motor las resuelva y actualiza esta prueba: ya no es un hueco.');
+});
+
+console.log('\n· lo que no debe cambiar');
+
+test('el rol defensor sigue saliendo del catálogo, no de una lista aparte', () => {
+  /* Tampoco lo lee hoy la app: la Pizarra saca los papeles de su propio
+     repertorio. Se vigila porque es un dato que declara el catálogo, que
+     se conserva (§12). */
+  eq(parametroDe(CATALOGO_SISTEMA.find((a) => a.slug === 'defiende'), 'rol'), 'defensor');
+  eq(parametroDe(CATALOGO_SISTEMA.find((a) => a.slug === 'bloquea'), 'rol'), 'sin_cambio');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /* ============================================================
-   construir.mjs — junta todas las tandas, compila sus animaciones
+   construir.mjs — junta todas las tandas, monta sus posiciones
    y revisa el conjunto.
+
+   Las fichas salen SOLO CON POSICIONES: el movimiento ya no se
+   calcula aquí, se dibuja en la Pizarra.
 
    Las invariantes del mapa (proporción con oposición, tope de
    densidad baja, duplicados) solo tienen sentido sobre la biblioteca
@@ -71,9 +74,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const destino = join(AQUI, 'biblioteca.json');
   writeFileSync(destino, JSON.stringify(fichas, null, 2), 'utf8');
 
-  const animadas = fichas.filter((f) => f.animacion?.fases?.length).length;
+  /* El recuento de «cuántas van animadas» se cayó con el motor viejo:
+     ahora es siempre cero y un cero fijo no informa de nada. Lo que sí
+     dice algo es cuántas llevan jugadores puestos. */
+  const conJugadores = fichas.filter((f) => f.animacion?.jugadores?.length).length;
   console.log(`\n${fichas.length} de ${OBJETIVO_TOTAL} fichas → ${destino}`);
-  console.log(`  ${animadas} con animación · ${fichas.length - animadas} solo montaje`);
+  console.log(`  ${conJugadores} con jugadores colocados · la animación se dibuja en la Pizarra`);
   for (const t of TANDAS) console.log(`  · ${t.nombre}: ${t.fichas.length}`);
 
   if (process.argv.includes('--resumen')) {

@@ -245,6 +245,70 @@
 }
 .proyector.is-pausado .proy-pausa { opacity: 1; }
 
+/* ---- La columna del vídeo en el proyector (ESPEC-PIZARRA-v3 §10.2) ----
+   A la derecha, el clip de la variante de la fase: mudo, en bucle, los
+   primeros segundos. Sin clip se pliega y la pista ocupa todo. Tocarla
+   abre el vídeo en grande (la capa de siempre) y para la animación. */
+.proyector { --ancho-columna: min(28vw, 440px); }
+.proy-columna { display: none; }
+.proyector.con-columna .proy-columna {
+  display: grid; gap: 8px; position: absolute; z-index: 2;
+  right: 1rem; top: 50%; transform: translateY(-50%); width: var(--ancho-columna);
+}
+.proyector.con-columna .proyector__stage { padding-right: calc(var(--ancho-columna) + 24px); }
+.proyector.con-columna.proyector--full .court { width: min(calc(97vw - var(--ancho-columna) - 24px), calc(94vh * var(--court-aspect, 1.5))); }
+.proy-columna__t { font-size: 1.1rem; font-weight: 700; }
+.proy-columna__video {
+  width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px;
+  background: #111; pointer-events: none;
+}
+.proy-columna__video[hidden] { display: none; }
+.proy-columna__mas { font-size: 0.8rem; opacity: 0.6; transition: opacity 0.3s ease; }
+.proyector.is-idle .proy-columna__mas { opacity: 0; }
+.proy-columna__tocar {
+  position: absolute; inset: 0; border: 0; border-radius: 10px;
+  background: transparent; cursor: pointer;
+}
+.proy-columna__tocar:focus-visible { outline: 2px solid #F97316; outline-offset: 2px; }
+/* En vertical no cabe al lado: va ARRIBA, encima de la pista, que cede
+   sitio. Abajo no, que están los mandos y se quedaría con sus toques. Un
+   móvil apaisado, por estrecho que sea, la lleva al lado. */
+@media (orientation: portrait) {
+  .proyector { --ancho-columna: min(72vw, 360px); }
+  .proyector.con-columna .proy-columna { right: auto; left: 50%; top: 64px; transform: translateX(-50%); }
+  .proyector.con-columna .proyector__stage {
+    padding-right: 0;
+    padding-top: calc(var(--ancho-columna) * 0.5625 + 110px);
+    padding-bottom: 96px;
+  }
+  .proyector.con-columna.proyector--full .court {
+    width: min(97vw, calc((100vh - var(--ancho-columna) * 0.5625 - 250px) * var(--court-aspect, 1.5)));
+  }
+}
+
+/* ---- El cartel de rama en el proyector (ESPEC-PIZARRA-v3 §6.7) ----
+   Sobre la pista, grande: se lee desde el fondo de la pista y se toca
+   con el dedo. */
+.proy-cartel {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 6; min-width: min(560px, 86vw); max-width: 92vw;
+  padding: 18px 20px; border-radius: 14px;
+  background: rgba(10, 16, 28, 0.92); color: #fff; text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.proy-cartel[hidden] { display: none; }
+.proy-cartel__t { margin: 0 0 12px; font-size: 1.3rem; font-weight: 700; }
+.proy-cartel__opciones { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.proy-cartel__op {
+  display: inline-flex; align-items: center; gap: 10px;
+  min-height: 56px; padding: 10px 18px; border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.08);
+  color: #fff; font: inherit; font-size: 1.15rem; cursor: pointer;
+}
+.proy-cartel__op.is-marcada, .proy-cartel__op:hover { border-color: #F97316; background: rgba(249, 115, 22, 0.2); }
+.proy-cartel__n { opacity: 0.7; }
+
+
 /* La capa del vídeo. Cuelga del proyector (no del body) para que se vea
    por encima de la pantalla completa. */
 /* `fixed` y no `absolute`: la capa se abre también desde la FICHA, donde
@@ -285,3 +349,15 @@
 }
 .chip--video { cursor: pointer; }
 .chip--video small { opacity: .7; font-weight: 400; }
+
+/* ---- Lo de antes de la Pizarra (ESPEC-PIZARRA-v3 §11.4) ----- */
+.detalle-aviso {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-3); padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--color-border); border-left: 3px solid var(--color-warn);
+  border-radius: var(--r-md); background: var(--color-surface);
+  font-size: var(--fs-300); color: var(--color-text-muted);
+}
+.detalle-aviso p { flex: 1 1 18rem; margin: 0; }
+.detalle-aviso b { color: var(--color-text); }

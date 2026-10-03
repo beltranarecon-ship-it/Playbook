@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEV · las doce jugadas de referencia</title>
+<!--
+  Banco VISUAL de la Pizarra (ESPEC-PIZARRA-v3 §13). NO se sirve en
+  producción.
+
+  Doce jugadas de referencia —de un 1x0 de tiro a un 3x3 con ramas—
+  para mirar con los ojos lo que los bancos miden. Cada una se DIBUJA
+  aquí mismo sobre un Tablero de verdad (dev/jugadas-referencia.js), se
+  compila y se enseña como la verá el jugador: la animación, la frase de
+  cada fase y los avisos del compilador, que tienen que ser ninguno.
+
+  «Abrirla en la Pizarra» la carga en una Pizarra para ver sus trazos y
+  tocarla. No hay base de datos por ningún lado: nada de lo que se haga
+  aquí se guarda.
+
+  Lo que se mira, jugada a jugada:
+    · que nadie se teletransporta ni atraviesa a otro;
+    · que el balón sale de la mano y llega cuando llega el que recibe;
+    · que la defensa acompaña sin adelantarse;
+    · que la frase dice lo que se ve.
+-->
+<link rel="stylesheet" href="/taller/css/tokens.css">
+<link rel="stylesheet" href="/taller/css/base.css">
+<link rel="stylesheet" href="/taller/css/canvas.css">
+<link rel="stylesheet" href="/taller/css/pizarra.css">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; display: flex; flex-direction: column; background: var(--color-bg); font-family: var(--font-body); color: var(--color-text); }
+  .dev {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 6px 12px;
+    font-size: var(--fs-300); color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border); background: var(--surface-2);
+  }
+  .dev button { font: inherit; padding: 3px 8px; }
+  #cuerpo { flex: 1 1 auto; min-height: 0; display: flex; }
+  #lista { flex: 0 0 280px; overflow: auto; border-right: 1px solid var(--color-border); padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+  #lista button {
+    font: inherit; font-size: var(--fs-300); text-align: left; padding: 8px 10px; cursor: pointer;
+    border: 1px solid var(--color-border); border-radius: 8px; background: var(--surface-1); color: inherit;
+  }
+  #lista button[aria-current="true"] { border-color: var(--color-primary); font-weight: 600; }
+  #lista button.con-avisos::after { content: ' ⚠'; color: var(--color-danger, #c0392b); }
+  #vista { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+  #escena { flex: 1 1 auto; min-height: 0; display: flex; position: relative; }
+  #escena > .court-wrap, #escena > .pz-pantalla { flex: 1 1 auto; min-height: 0; }
+  #cruce { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); display: flex; gap: 8px; z-index: 5; }
+  #cruce[hidden] { display: none; }
+  #cruce button { font: inherit; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--color-primary); background: var(--surface-1); color: inherit; cursor: pointer; }
+  #pie { flex: 0 0 auto; max-height: 34%; overflow: auto; border-top: 1px solid var(--color-border); padding: 8px 14px; font-size: var(--fs-300); }
+  #pie ol { margin: 0; padding-left: 22px; }
+  #pie li { margin: 2px 0; }
+  #pie li.ahora { font-weight: 600; }
+  #pie .rama { color: var(--color-text-muted); }
+  #pie .avisos { color: var(--color-danger, #c0392b); margin: 6px 0 0; }
+  #pie .limpio { color: var(--color-text-muted); margin: 6px 0 0; }
+  #taller { position: absolute; left: -9999px; top: 0; width: 900px; height: 640px; display: flex; }
+  @media (max-width: 760px) {
+    #cuerpo { flex-direction: column; }
+    #lista { flex: 0 0 auto; flex-direction: row; border-right: 0; border-bottom: 1px solid var(--color-border); }
+    #lista button { white-space: nowrap; }
+  }
+</style>
+</head>
+<body>
+  <div class="dev">
+    <b>DEV</b> · las doce jugadas de referencia
+    <button id="modo" type="button">Abrirla en la Pizarra</button>
+    <span id="estado"></span>
+  </div>
+  <div id="cuerpo">
+    <nav id="lista" aria-label="Jugadas de referencia"></nav>
+    <div id="vista">
+      <div id="escena"><div id="cruce" hidden></div></div>
+      <div id="pie"></div>
+    </div>
+  </div>
+  <div id="taller" aria-hidden="true"></div>
+
+<script type="module">
+import { Pizarra } from '/taller/js/pizarra/pizarra.js';
+import { compilar } from '/taller/js/pizarra/motor/compilar.js';
+import { CourtView } from '/taller/js/canvas/court.js';
+import { AnimationEngine } from '/taller/js/canvas/engine.js';
+import { controls } from '/taller/js/canvas/controls.js';
+import { JUGADAS_DE_REFERENCIA } from '/dev/jugadas-referencia.js';
+
+const $ = (id) => document.getElementById(id);
+const elLista = $('lista'), elEscena = $('escena'), elPie = $('pie'), elCruce = $('cruce');
+const elModo = $('modo'), elEstado = $('estado'), elTaller = $('taller');
+const crear = (tag, props = {}, ...hijos) => { const n = Object.assign(document.createElement(tag), props); n.append(...hijos); return n; };
+
+/* Cada jugada se dibuja UNA vez, en una Pizarra que no se ve, con los
+   gestos de dev/jugadas-referencia.js. Lo que sale es lo que guardaría. */
+function dibujar(j) {
+  const p = new Pizarra({ pista: j.pista });
+  elTaller.append(p.el);
+  p.medir();
+  let jugada = null, error = null;
+  try { j.montar(p.tablero); p.tablero.cerrar(); jugada = JSON.parse(JSON.stringify(p.jugada())); }
+  catch (e) { error = e; console.error(j.nombre, e); }
+  p.destroy();
+  p.el.remove();
+  const anim = jugada ? compilar(jugada) : null;
+  return { ...j, jugada, anim, error, avisos: error ? [`No se pudo dibujar: ${error.message}`] : (anim.warnings || []) };
+}
+const jugadas = JUGADAS_DE_REFERENCIA.map(dibujar);
+window.__jugadas = jugadas;
+
+let actual = 0, enPizarra = false;
+let escena = null;   // lo que hay montado: { destroy }
+
+function limpiar() {
+  escena?.destroy();
+  escena = null;
+  elCruce.hidden = true;
+  elCruce.replaceChildren();
+  for (const n of [...elEscena.children]) if (n !== elCruce) n.remove();
+}
+
+/* La animación, como la verá el jugador; en un cruce se para y pregunta. */
+function verAnimacion(j) {
+  const view = new CourtView({ pista: j.anim.pista || j.pista });
+  const slot = crear('div', { className: 'court-controls-slot' });
+  const caja = crear('div', { className: 'court-wrap' }, view.root, slot);
+  elEscena.append(caja);
+  const engine = new AnimationEngine(view, j.anim, { autoplay: true, loop: true, elegirRamas: true });
+  view.onResize = () => engine.render();
+  const mandos = controls(engine, {});
+  slot.append(mandos.el);
+  engine.on('cruce', ({ opciones }) => {
+    elCruce.replaceChildren(...opciones.map((o, i) => crear('button', { type: 'button', textContent: o.nombre || `Opción ${i + 1}`, onclick: () => { elCruce.hidden = true; engine.elegirRama(i); } })));
+    elCruce.hidden = false;
+  });
+  /* La frase de la fase que se está viendo, en negrita. El motor anuncia
+     la primera al crearse, antes de que nadie escuche: se marca a mano. */
+  const marcar = (k) => {
+    const id = engine.fases[k]?.id;
+    for (const li of elPie.querySelectorAll('li')) li.classList.toggle('ahora', !!id && li.dataset.fase === id);
+  };
+  engine.on('phase', (info) => { elCruce.hidden = true; marcar(info.k); });
+  marcar(engine.k);
+  window.__motor = engine;
+  escena = { destroy() { mandos.destroy(); engine.destroy(); view.destroy(); } };
+}
+
+/* La misma jugada, en la Pizarra: sus trazos, su línea de tiempo. */
+function verPizarra(j) {
+  const p = new Pizarra({ pista: j.pista });
+  elEscena.append(p.el);
+  p.medir();
+  p.cargar(JSON.parse(JSON.stringify(j.jugada)));
+  window.__pizarra = p;
+  escena = { destroy() { p.destroy(); p.el.remove(); } };
+}
+
+function pintarPie(j) {
+  elPie.replaceChildren();
+  if (!j.anim) { elPie.append(crear('p', { className: 'avisos', textContent: j.avisos.join(' · ') })); return; }
+  const lista = crear('ol');
+  for (const f of j.anim.fases || []) lista.append(Object.assign(crear('li', { textContent: `${f.frase}  (${(f.duracion_ms / 1000).toFixed(1)} s)` }), {}));
+  [...lista.children].forEach((li, i) => { li.dataset.fase = j.anim.fases[i].id; });
+  for (const f of j.anim.fases_rama || []) {
+    const li = crear('li', { className: 'rama', textContent: `(otra rama) ${f.frase}  (${(f.duracion_ms / 1000).toFixed(1)} s)` });
+    li.dataset.fase = f.id;
+    lista.append(li);
+  }
+  elPie.append(lista);
+  elPie.append(j.avisos.length
+    ? crear('p', { className: 'avisos', textContent: `Avisos del compilador: ${j.avisos.join(' · ')}` })
+    : crear('p', { className: 'limpio', textContent: 'Compila sin avisos.' }));
+}
+
+function ver(i) {
+  actual = i;
+  const j = jugadas[i];
+  limpiar();
+  [...elLista.children].forEach((b, k) => b.setAttribute('aria-current', String(k === i)));
+  pintarPie(j);
+  if (!j.anim) return;
+  if (enPizarra) verPizarra(j); else verAnimacion(j);
+}
+
+jugadas.forEach((j, i) => {
+  const b = crear('button', { type: 'button', textContent: j.nombre, onclick: () => ver(i) });
+  if (j.avisos.length) b.classList.add('con-avisos');
+  elLista.append(b);
+});
+elModo.addEventListener('click', () => {
+  enPizarra = !enPizarra;
+  elModo.textContent = enPizarra ? 'Ver la animación' : 'Abrirla en la Pizarra';
+  ver(actual);
+});
+const conAvisos = jugadas.filter((j) => j.avisos.length).length;
+elEstado.textContent = conAvisos ? `${conAvisos} de ${jugadas.length} con avisos` : `${jugadas.length} jugadas, todas sin avisos`;
+ver(0);
+</script>
+</body>
+</html>

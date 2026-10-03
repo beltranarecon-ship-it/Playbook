@@ -11,9 +11,9 @@
    media ficha propia se usa una vez.
    ============================================================ */
 
-import { fichaDeBorrador, revisarBorrador, requisitosSugeridos } from '../js/ia/molde.js';
-import { armarEnvio, extraerJSON, volcar } from '../js/ia/puente.js';
-import { revisaFicha } from '../js/ia/lint.js';
+import { fichaDeBorrador, revisarBorrador, requisitosSugeridos } from '../js/wizard/molde.js';
+import { armarEnvio, extraerJSON, volcar } from '../js/wizard/puente.js';
+import { revisaFicha } from '../js/wizard/lint.js';
 import { TAGS, BLOQUE_KEYS, NIVELES_EXIGENCIA, REQUISITOS_OBLIGATORIOS } from '../js/ia/vocabulario.js';
 import { nuevoDraft, aRegistro } from '../js/wizard/draft.js';
 
@@ -199,6 +199,20 @@ test('una respuesta completa deja la ficha lista para entrar', () => {
   ok(!res.error, res.error);
   ok(res.puestos.length >= 20, `debería colocar el molde entero; colocó ${res.puestos.length}`);
   eq(revisarBorrador(d).errores, [], 'y la ficha resultante pasa el linter');
+});
+
+test('lo traído de la pizarra sin tocar es un hueco para el chat', () => {
+  const d = nuevoDraft();
+  d.descripcion_texto = 'A1 pasa a A2.';
+  d.traido_de_la_pizarra = { descripcion_texto: 'A1 pasa a A2.' };
+  const res = volcar(d, JSON.stringify({ descripcion_texto: 'Montaje y reglas.' }));
+  eq(d.descripcion_texto, 'Montaje y reglas.');
+  eq(res.puestos, ['descripcion_texto']);
+  const lo = nuevoDraft();
+  lo.descripcion_texto = 'Lo retoqué yo.';
+  lo.traido_de_la_pizarra = { descripcion_texto: 'A1 pasa a A2.' };
+  volcar(lo, JSON.stringify({ descripcion_texto: 'Del chat.' }));
+  eq(lo.descripcion_texto, 'Lo retoqué yo.', 'retocado a mano ya no es traído:');
 });
 
 test('no pisa lo que el entrenador ya había escrito', () => {

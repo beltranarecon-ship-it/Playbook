@@ -71,6 +71,11 @@ function traducir(error) {
   if (error?.code === 'PGRST205' || /Could not find the table/i.test(m)) {
     return 'todavía no está la tabla de vídeos. Hay que aplicar la migración 021 en Supabase.';
   }
+  /* Cambiar el vídeo que puso otro: la política de la 021 lo rechaza, y
+     Postgres lo cuenta en inglés. */
+  if (error?.code === '42501' || /row-level security/i.test(m)) {
+    return 'ese vídeo lo puso otro entrenador: solo puede cambiarlo quien lo puso, o un administrador.';
+  }
   return m || 'error desconocido';
 }
 

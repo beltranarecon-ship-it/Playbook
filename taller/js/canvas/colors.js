@@ -18,6 +18,9 @@ export const COLORS = {
   white: '#FFFFFF',
   arrowRun: '#FFFFFF',   // carrera con balón
   arrowPass: '#EA580C',  // pase / tiro
+  /* Lo que el ejercicio quiere corregir (§7.4.1): un trazo forzado por
+     fuera de una puerta. El mismo rojo que --color-danger. */
+  mal: '#DC2626',
 };
 
 // Nombre visible de cada equipo. Internamente seguimos usando A/B/C/D (claves de

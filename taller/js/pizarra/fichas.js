@@ -32,7 +32,7 @@
 import { COLORS } from '../canvas/colors.js';
 import { drawPlayer, drawBall, drawCone, drawPelotaTenis, drawEscalera, drawZona } from '../canvas/symbols.js';
 import { contornoDe, centroDe } from '../canvas/zonas.js';
-import { mover, seguirAlPortador, soltarBalon, numeroDe, llevaBalon } from './elementos.js';
+import { mover, seguirAlPortador, soltarBalon, asignarBalon, numeroDe, llevaBalon } from './elementos.js';
 import { acierto, marcoDesde, enMarco, alPinchar, alMarcar } from './seleccion.js';
 import { puntosDeIman, imantar } from './iman.js';
 import { guiasDe, hayGuias } from './guias.js';
@@ -66,6 +66,14 @@ export class Fichas {
     this.puedeMover = null;    // (elemento) -> null si se puede, o el motivo
     this.onVeto = null;        // (elemento, motivo) para poder decirlo
     this.onArrastrado = null;  // (ids) quien ha recolocado el entrenador, al soltar
+    /* Soltar un balón suelto encima de un jugador se lo da (§7.3), con
+       veto como el de mover: quién tiene el balón al empezar decide lo
+       que se puede dibujar, y si ese balón ya sale en algún trazo,
+       dárselo a otro dejaría pases de alguien que no lo tiene. */
+    this.puedeAsignar = null;  // (balon, jugador) -> null si se puede, o el motivo
+    /* Quién defiende lo sabe el Tablero, que es quien tiene los papeles
+       (motor/defensa.js): aquí solo se pregunta, para pintar el arco. */
+    this.esDefensor = null;    // (elemento) -> true si defiende
 
     this._marco = null;        // el marco de selección mientras se arrastra
     this._guias = null;        // las guías mientras se mueve algo
@@ -137,7 +145,7 @@ export class Fichas {
     return {
       mover: () => { if (!dicho) { dicho = true; this.onVeto?.(agarrado, motivo); } },
       soltar: () => {},
-      tocar: (p) => { this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero }); },
+      tocar: (p) => { this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero, ctrl: !!(p.ctrl || p.meta) }); },
       abortar: () => {},
     };
   }
@@ -192,14 +200,16 @@ export class Fichas {
         this._cambio(mover(this.elementos, destinos));
       },
       soltar: () => {
-        this._guias = null; this._pegado = null; this.lienzo.pintar();
+        this._guias = null; this._pegado = null;
+        if (agarrado.kind === 'balon' && desfase.size === 1) this._darSiCae(agarrado.id);
+        this.lienzo.pintar();
         /* Se avisa AL SOLTAR y no en cada cambio: quien necesita saber
            que el entrenador ha recolocado algo no puede fiarse de
            `onCambio`, que también salta cuando se dibuja un tramo o
            cuando alguien recoge un balón. */
         this.onArrastrado?.([...desfase.keys()]);
       },
-      tocar: (p) => { this._guias = null; this._pegado = null; this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero }); },
+      tocar: (p) => { this._guias = null; this._pegado = null; this.onTocarFicha?.(agarrado, { tipoPuntero: p.tipoPuntero, ctrl: !!(p.ctrl || p.meta) }); },
       abortar: () => {
         /* No ha pasado: todo vuelve a donde estaba. Es lo que hace que
            apoyar el meñique a mitad de un arrastre no deje la ficha en
@@ -210,6 +220,24 @@ export class Fichas {
         this._cambio(mover(this.elementos, destinos));
       },
     };
+  }
+
+  /**
+   * §7.3: un balón SUELTO que se suelta encima de un jugador es suyo.
+   * Sin esto no había manera de darle un balón a nadie desde la pista: el
+   * balón se quedaba a su lado y el anillo le seguía ofreciendo cortar en
+   * vez de botar. Un jugador lleva como mucho uno, así que encima de
+   * quien ya tiene balón no pasa nada.
+   */
+  _darSiCae(balonId) {
+    const pista = this.lienzo.vista.pistaKey;
+    const balon = this.elementos.find((e) => e.id === balonId);
+    if (!balon || balon.portador_id) return;
+    const jugador = acierto(this.elementos.filter((e) => e.kind === 'jugador'), balon, { pista });
+    if (!jugador || llevaBalon(this.elementos, jugador.id)) return;
+    const veto = this.puedeAsignar?.(balon, jugador);
+    if (veto) { this.onVeto?.(balon, veto); return; }
+    this._cambio(asignarBalon(this.elementos, balonId, jugador.id, pista));
   }
 
   /** Marco de selección sobre el suelo vacío. */
@@ -233,7 +261,9 @@ export class Fichas {
   /* ---- dibujo ------------------------------------------------ */
 
   _dibujar({ ctx, vista, R, toPx, seVe }) {
-    const orden = [...this.elementos].sort((a, b) => (ORDEN[a.kind] ?? 9) - (ORDEN[b.kind] ?? 9));
+    /* `extras`: lo que se pinta sin estar en la pista —los balones del
+       carro de las rondas mientras se reproduce (§7.4.2)—. */
+    const orden = [...this.elementos, ...(this.extras?.() || [])].sort((a, b) => (ORDEN[a.kind] ?? 9) - (ORDEN[b.kind] ?? 9));
     for (const e of orden) {
       if (e.kind === 'zona') { this._dibujarZona(ctx, vista, e, R); continue; }
       /* `donde` deja que otro diga en qué punto pintar una ficha SIN
@@ -252,6 +282,7 @@ export class Fichas {
           drawPlayer(ctx, px, py, R.jugador, {
             color: COLORS[e.equipo] || COLORS.A,
             label: numeroDe(e),
+            defender: !!this.esDefensor?.(e),
             selected: sel,
             carrying: llevaBalon(this.elementos, e.id),
             alpha: e.en_juego === false ? 0.45 : 1,

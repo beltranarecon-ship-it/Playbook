@@ -45,6 +45,17 @@
 }
 .ac-pill:hover { color: var(--accent-soft); }
 .ac-pill.is-active { background: var(--color-accent); color: #fff; }
+/* La narración (§9.3): el altavoz se enciende como el bucle, y su
+   velocidad solo se ve con la voz encendida. */
+.ac-voz-grupo { display: inline-flex; align-items: center; gap: 4px; margin-left: var(--sp-2); }
+.ac-voz.is-active { color: var(--color-ball); }
+.ac-voz-vel {
+  height: 26px; padding: 0 4px; border: 1px solid rgba(255,255,255,.25); border-radius: var(--r-sm);
+  background: rgba(255,255,255,.06); color: #CBD5E1; color-scheme: dark;
+  font-family: var(--font-mono); font-size: var(--fs-300);
+}
+.ac-voz-vel[hidden] { display: none; }
+.ac-voz-vel option { color: #111; }
 
 .ac-phase { margin-left: auto; color: #6B7280; font-size: var(--fs-300); }
 

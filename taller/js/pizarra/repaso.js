@@ -33,7 +33,9 @@
    del trazo. Va por fotograma y por reloj, y gana el primero.
    ============================================================ */
 
-import { makeSampler, easeInOut } from '../canvas/geometry.js';
+/* La misma cuenta del instante que usa el motor de reproducción: lo que
+   se ve al dibujar tiene que ser lo que se ve al proyectar. */
+import { muestreador, muestreadorPorTiempo, posicionEn } from '../canvas/instante.js';
 import { longitudMetros, duracionDe } from './trazo.js';
 import { sitioDelBalon } from './elementos.js';
 
@@ -52,13 +54,20 @@ export function duracionRepaso(trazo, pista = 'entera', ritmo = 'normal') {
 }
 
 export class Repaso {
-  /** @param onFin () — terminó; no hay nada que recolocar */
-  constructor(lienzo, { onFin } = {}) {
+  /** @param onFin   () — terminó; no hay nada que recolocar
+   *  @param onCorte () — se cortó a medias: lo que esperaba a que acabase
+   *                      ya no tiene que pasar */
+  constructor(lienzo, { onFin, onCorte } = {}) {
     this.lienzo = lienzo;
     this.onFin = onFin;
+    this.onCorte = onCorte;
     this.activo = null;   // { porElemento, dur, t0 }
     this._raf = null;
     this._reloj = null;
+    /* Los balones que se pintan solo mientras se reproduce (el carro de
+       las rondas, §7.4.2), y cómo encontrar una ficha que no se mueve. */
+    this.extras = [];
+    this.fichaDe = null;
   }
 
   get corriendo() { return !!this.activo; }
@@ -101,15 +110,22 @@ export class Repaso {
    * segundo reloj significaría un segundo sitio donde equivocarse con
    * las cancelaciones, y ya costó caro una vez.
    *
-   * @param tramos  [{ corre_id, trazo, inicio_ms, duracion_ms }]
+   * Un carril puede venir DIBUJADO (un `trazo`) o MUESTREADO en el
+   * tiempo (`muestras`, cada una con su `t`): así entra la defensa que
+   * se mueve sola (§8.4), que no tiene trazo porque nadie lo ha
+   * dibujado. Lo muestreado se recorre en el tiempo, sin la curva de
+   * aceleración, igual que en el proyector.
+   *
+   * @param tramos  [{ corre_id, trazo | muestras, inicio_ms, duracion_ms }]
    * @param velocidad  1 = a su ritmo (una fase); 1,5 lo trae ya hecho
    *                   el repaso de un tramo en su duración
    */
   reproducirFase({ tramos, velocidad = 1 }) {
     this.parar();
     const pista = this.lienzo.vista.pistaKey;
-    const buenos = (tramos || []).filter((t) => t && t.trazo && t.trazo.length > 1
-      && t.corre_id && longitudMetros(t.trazo, pista) >= 1e-6);
+    const muestreado = (t) => Array.isArray(t.muestras) && t.muestras.length > 1;
+    const buenos = (tramos || []).filter((t) => t && t.corre_id && (muestreado(t)
+      || (t.trazo && t.trazo.length > 1 && longitudMetros(t.trazo, pista) >= 1e-6)));
     if (!buenos.length) { this.onFin?.(); return; }
 
     /* Agrupados por QUIEN VIAJA, y en orden: para saber dónde pintar a
@@ -118,10 +134,16 @@ export class Repaso {
        primero, y antes del primero, en su arranque. */
     const porElemento = new Map();
     for (const t of buenos) {
+      /* Lo muestreado trae el tiempo dentro: si no se dice otra cosa,
+         empieza y dura lo que dicen sus propias muestras. */
+      const m = muestreado(t) ? t.muestras : null;
+      const inicio_ms = Number.isFinite(t.inicio_ms) ? t.inicio_ms : (m ? m[0].t : 0);
+      const duracion_ms = Number.isFinite(t.duracion_ms) ? t.duracion_ms : (m ? m[m.length - 1].t - m[0].t : 0);
       const paso = {
-        muestra: makeSampler(t.trazo),
-        inicio: Math.max(0, t.inicio_ms || 0) / velocidad,
-        dur: Math.max(1, t.duracion_ms || 0) / velocidad,
+        sampler: m ? muestreadorPorTiempo(m) : muestreador(t.trazo),
+        inicio: Math.max(0, inicio_ms) / velocidad,
+        dur: Math.max(1, duracion_ms) / velocidad,
+        manos: t.manos || null,
       };
       paso.fin = paso.inicio + paso.dur;
       if (!porElemento.has(t.corre_id)) porElemento.set(t.corre_id, []);
@@ -131,7 +153,7 @@ export class Repaso {
 
     this.activo = {
       porElemento,
-      dur: Math.max(...buenos.map((t) => (Math.max(0, t.inicio_ms || 0) + Math.max(1, t.duracion_ms || 0)) / velocidad)),
+      dur: Math.max(...[...porElemento.values()].flat().map((p) => p.fin)),
       t0: this._ahora(),
     };
     this._latir();
@@ -145,7 +167,7 @@ export class Repaso {
     this._raf = null; this._reloj = null;
     const habia = !!this.activo;
     this.activo = null;
-    if (habia) this.lienzo.pintar();
+    if (habia) { this.lienzo.pintar(); this.onCorte?.(); }
   }
 
   /**
@@ -187,15 +209,16 @@ export class Repaso {
     const suyos = id === undefined ? [...a.porElemento.values()][0] : a.porElemento.get(id);
     if (!suyos || !suyos.length) return null;
     const t = this._ahora() - a.t0;
-
-    let ultimoAcabado = null;
-    for (const p of suyos) {
-      if (t < p.inicio) break;
-      if (t < p.fin) return p.muestra(easeInOut((t - p.inicio) / p.dur));
-      ultimoAcabado = p;
+    /* UN BALÓN QUE ESPERA A SALIR va en las manos de quien lo va a pasar
+       o a tirar, y con él. Si no, se quedaba plantado donde sale su
+       tramo mientras su jugador botaba hasta allí —y en una fila por
+       rondas, cada balón de la cola flotaba en el sitio del tiro—. */
+    const siguiente = suyos.find((x) => t < x.inicio);
+    if (siguiente && siguiente.manos && siguiente.manos !== id && !suyos.some((x) => t >= x.inicio && t <= x.fin)) {
+      const p = this.posicion(siguiente.manos) || this.fichaDe?.(siguiente.manos);
+      if (p && Number.isFinite(p.x)) return sitioDelBalon({ x: p.x, y: p.y }, this.lienzo.vista.pistaKey);
     }
-    if (ultimoAcabado) return ultimoAcabado.muestra(1);
-    return suyos[0].muestra(0);
+    return posicionEn(suyos, t);
   }
 
   _ahora() { return typeof performance !== 'undefined' ? performance.now() : Date.now(); }

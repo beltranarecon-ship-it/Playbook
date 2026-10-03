@@ -283,6 +283,56 @@ test('un tramo sin longitud no arrastra a los demás: se descarta él solo', () 
   } finally { banco.soltar(); }
 });
 
+/* ── La defensa, que no tiene trazo sino muestras (§8.4) ── */
+
+test('UN CARRIL MUESTREADO SE RECORRE EN EL TIEMPO, sin la curva de aceleración', () => {
+  const banco = bancoDePruebas();
+  try {
+    const r = new Repaso(lienzoDeMentira());
+    /* Cuatro décimas paradas y luego un metro largo: si le metiera la
+       curva encima, a mitad ya se habría movido. */
+    r.reproducirFase({ tramos: [
+      { corre_id: 'B1', muestras: [{ t: 0, x: 0.5, y: 0.5 }, { t: 800, x: 0.5, y: 0.5 }, { t: 1000, x: 0.5, y: 0.4 }] },
+    ] });
+    eq(r.activo.dur, 1000, 'dura lo que dicen sus muestras:');
+    aprox(r.posicion('B1').y, 0.5, 1e-3, 'al principio, quieto:');
+    r.activo.t0 -= 500;
+    aprox(r.posicion('B1').y, 0.5, 1e-3, 'a mitad, todavía quieto:');
+    r.activo.t0 -= 400;
+    aprox(r.posicion('B1').y, 0.45, 1e-3, 'y a los 0,9 s, a mitad del último tramo:');
+    r.destroy();
+  } finally { banco.soltar(); }
+});
+
+test('lo muestreado y lo dibujado se reproducen A LA VEZ, cada uno a lo suyo', () => {
+  const banco = bancoDePruebas();
+  try {
+    const r = new Repaso(lienzoDeMentira());
+    r.reproducirFase({ tramos: [
+      { corre_id: 'A1', trazo: nuevoTrazo({ x: 0.2, y: 0.8 }, { x: 0.2, y: 0.2 }), inicio_ms: 0, duracion_ms: 1000 },
+      { corre_id: 'B1', muestras: [{ t: 0, x: 0.2, y: 0.6 }, { t: 1000, x: 0.2, y: 0.1 }], inicio_ms: 0, duracion_ms: 1000 },
+    ] });
+    eq(r.activo.dur, 1000);
+    r.activo.t0 -= 500;
+    aprox(r.posicion('B1').y, 0.35, 1e-3, 'el defensor, por la mitad de su recorrido:');
+    ok(r.posicion('A1').y < 0.6, 'y el atacante, ya bajando');
+    r.destroy();
+  } finally { banco.soltar(); }
+});
+
+test('unas muestras que no llevan a ningún sitio no se descartan: alguien puede quedarse quieto', () => {
+  const banco = bancoDePruebas();
+  try {
+    const r = new Repaso(lienzoDeMentira());
+    r.reproducirFase({ tramos: [
+      { corre_id: 'B1', muestras: [{ t: 0, x: 0.5, y: 0.5 }, { t: 1000, x: 0.5, y: 0.5 }] },
+    ] });
+    ok(r.corriendo, 'la fase se reproduce igual');
+    aprox(r.posicion('B1').x, 0.5, 1e-9);
+    r.destroy();
+  } finally { banco.soltar(); }
+});
+
 test('una fase sin nada que reproducir avisa y no se queda corriendo', () => {
   const banco = bancoDePruebas();
   try {

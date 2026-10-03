@@ -15,54 +15,16 @@
    tabla de ANCLAS medidas del Taller, que es un objeto de datos puro.
    ============================================================ */
 
-import { posicionesDe, aroExacto } from '../../../taller/js/canvas/anclas.js';
+import { aroExacto, zonaDe } from '../../../taller/js/canvas/anclas.js';
 import { metrosEntre } from '../../../taller/js/canvas/escala.js';
-import { soloPrimeraRonda } from '../../../taller/js/ia/rondas.js';
+import { soloPrimeraRonda } from '../../../taller/js/pizarra/motor/rondas.js';
+import { cruceConPuerta } from '../../../taller/js/pizarra/conos.js';
 
 /* ── Nombres de zona ──────────────────────────────────────────
-   Se escriben ENTEROS (con artículo y género ya resueltos) en vez de
-   componer "base + lado": en castellano "la esquina izquierda" y "el
-   codo izquierdo" no comparten terminación, y una tabla plana es más
-   barata de leer que un motor de concordancia. */
-const ZONA = {
-  aro:            'el aro',
-  tiro_libre:     'la línea de tiros libres',
-  base:           'la punta',
-  centro:         'el centro del campo',
-  poste_bajo_izq: 'el poste bajo izquierdo',
-  poste_bajo_der: 'el poste bajo derecho',
-  poste_alto_izq: 'el poste alto izquierdo',
-  poste_alto_der: 'el poste alto derecho',
-  codo_izq:       'el codo izquierdo',
-  codo_der:       'el codo derecho',
-  escolta_izq:    'el 45 izquierdo',
-  escolta_der:    'el 45 derecho',
-  alero_izq:      'el alero izquierdo',
-  alero_der:      'el alero derecho',
-  esquina_izq:    'la esquina izquierda',
-  esquina_der:    'la esquina derecha',
-};
-
-/* Radio de "esto ES esa zona", en coordenadas normalizadas [0-1] del
-   lienzo. 0.09 ≈ 2,5 m en una pista entera: más lejos, nombrar la zona
-   sería mentir, y preferimos no decir nada a decir algo falso. */
-const RADIO_ZONA = 0.09;
-
-/** Nombre humano de la zona más cercana a un punto, o null si ninguna
- *  ancla queda dentro del radio. Exportada para el banco de pruebas. */
-export function zonaDe(pista, canasta, punto) {
-  if (!punto) return null;
-  const anclas = posicionesDe(pista || 'entera', canasta || 'norte');
-  if (!anclas) return null;
-  let mejor = null, mejorD = Infinity;
-  for (const [slug, xy] of Object.entries(anclas)) {
-    if (!ZONA[slug]) continue;
-    const d = Math.hypot(punto.x - xy[0], punto.y - xy[1]);
-    // empate: gana el slug alfabéticamente menor → guion determinista
-    if (d < mejorD || (d === mejorD && slug < mejor)) { mejorD = d; mejor = slug; }
-  }
-  return mejorD <= RADIO_ZONA ? ZONA[mejor] : null;
-}
+   Viven en canvas/anclas.js desde la capa 7 de la Pizarra: la frase
+   automática (§9.1) los necesita iguales. Se reexporta `zonaDe` porque
+   aquí es donde lo buscaba todo el mundo. */
+export { zonaDe } from '../../../taller/js/canvas/anclas.js';
 
 /* ── Nombres de jugador ─────────────────────────────────────── */
 
@@ -95,6 +57,8 @@ function referencias(jugadores) {
     const nombre = String(j.nombre || '').trim();
     if (nombre) { ref.set(j.id, { txt: nombre, propio: true }); continue; }
     const e = etiquetaJugador(j);
+    /* Quien sale de una fila no lleva número (§7.1 de la Pizarra). */
+    if (e === '') { ref.set(j.id, { txt: 'uno de la fila', propio: false }); continue; }
     const ambiguo = (veces.get(e)?.size ?? 0) > 1;
     const eq = EQUIPO_ORDINAL[j.equipo] || '1';
     ref.set(j.id, { txt: ambiguo ? `el ${e} del equipo ${eq}` : `el ${e}`, propio: false });
@@ -124,11 +88,24 @@ function posesionPorFase(anim) {
   const porFase = [];
   for (const f of anim.fases || []) {
     porFase.push({ ...owner });
-    for (const p of f.pases || []) owner[p.balon_id] = p.a_id || null;
-    for (const t of f.tiros || []) owner[t.balon_id] = null;
+    /* Los cambios de manos EN EL ORDEN EN QUE PASAN, como el motor: con
+       carriles, «recoge y pasa» en la misma fase es lo normal, y contando
+       primero los pases y luego las recogidas, el balón acababa en el que
+       lo recogió en vez de en el que lo recibió. Lo de antes no trae
+       instantes: todo cae al final de la fase, y el orden estable deja
+       el de siempre —pases, tiros y recogidas—, así que se narra igual. */
+    const dur = f.duracion_ms || 1000;
+    const finDe = (x) => (Number.isFinite(x && x.inicio_ms)
+      ? x.inicio_ms + (Number.isFinite(x.duracion_ms) && x.duracion_ms > 0 ? x.duracion_ms : Math.max(1, dur - x.inicio_ms))
+      : dur);
+    const cambios = [];
+    for (const p of f.pases || []) cambios.push({ t: finDe(p), balon: p.balon_id, quien: p.a_id || null });
+    for (const t of f.tiros || []) cambios.push({ t: finDe(t), balon: t.balon_id, quien: null });
     // el rebote devuelve la posesión: sin esto, quien coge su propio
     // tiro y vuelve botando aparecería "cortando" en la fase siguiente.
-    for (const r of f.recogidas || []) owner[r.balon_id] = r.jugador_id || null;
+    for (const r of f.recogidas || []) cambios.push({ t: Number.isFinite(r.t_ms) ? r.t_ms : dur, balon: r.balon_id, quien: r.jugador_id || null });
+    cambios.sort((a, z) => a.t - z.t);
+    for (const c of cambios) owner[c.balon] = c.quien;
   }
   return porFase;
 }
@@ -193,6 +170,22 @@ function esFinalizacion(pista, canasta, punto) {
   return metrosEntre(pista, punto, aro) <= METROS_ENTRADA;
 }
 
+/* ¿Cruza este camino por dentro de alguna puerta? Dos conos de puerta a
+   menos de 3 m, con el camino pasando entre ellos. */
+function pasaPorPuerta(path, conos, pista) {
+  const palos = (conos || []).filter((c) => c.funcion === 'puerta' && c.posicion);
+  for (let i = 0; i < palos.length; i++) {
+    for (let k = i + 1; k < palos.length; k++) {
+      const a = { x: palos[i].posicion[0], y: palos[i].posicion[1] };
+      const b = { x: palos[k].posicion[0], y: palos[k].posicion[1] };
+      if (metrosEntre(pista, a, b) > 3.0) continue;
+      const cruce = cruceConPuerta(path, a, b, pista);
+      if (cruce && cruce.dentro) return true;
+    }
+  }
+  return false;
+}
+
 function conosSorteados(path, conos) {
   if (!path || path.length < 3) return 0;
   const rodear = (conos || []).filter((c) => c.funcion === 'rodear' && c.posicion);
@@ -217,6 +210,22 @@ function conosSorteados(path, conos) {
  *   fases: [{ n, ms, lineas: string[] }]  // n empieza en 1
  * }}
  */
+/* Cómo se cuenta lo que un defensor hace distinto (§8.5). Una frase por
+   acción, en el mismo tono que el resto del guion: lo que se vería desde
+   la banda. */
+/* Cómo se dice cada gesto en el sitio (ESPEC-PIZARRA-v3 §4.4). */
+const VERBO_GESTO = {
+  finta: 'finta', pivota: 'pivota', cambia_de_mano: 'cambia de mano', protege: 'protege el balón', para: 'se para',
+};
+
+const FRASE_DEFENSA = {
+  ayuda: (q, o) => (o ? `${q} ayuda sobre ${o} y recupera` : `${q} ayuda y recupera`),
+  sobrepasado: (q) => `${q} es superado y persigue por detrás`,
+  cambia_marca: (q, o) => `${q} cambia el marcaje${o ? ` con ${o}` : ''}`,
+  cierra_rebote: (q) => `${q} cierra el rebote`,
+  dos_contra_uno: (q) => `${q} va al dos contra uno sobre el balón`,
+};
+
 export function guionDeAnimacion(anim) {
   /* De un ejercicio de seis en fila se narra UNA ronda (Tramo 2.8). Las
      seis son la misma, y un guion que repita seis veces «sale el
@@ -273,7 +282,19 @@ export function guionDeAnimacion(anim) {
     for (const m of f.movimientos || []) {
       if (m.tipo_elemento === 'balon') continue;      // el balón se narra en pases/tiros
       if (recogen.has(m.elemento_id)) continue;
+      // el camino del bloqueador ya lo cuenta su bloqueo (punto 1):
+      // «bloquea para el 1» y «corta hacia el codo» serían el mismo camino
+      if (m.tipo_movimiento === 'bloqueo') continue;
+      /* La defensa que se mueve sola (§8.4) no se narra jugador a jugador:
+         serían tantas líneas como defensores en cada fase, y todas
+         diciendo lo mismo. Va en UNA frase al final. */
+      if (m.automatico) continue;
       const r = ref.get(m.elemento_id);
+      /* UN GESTO EN EL SITIO (§4.4) no va a ningún lado: se dice el gesto. */
+      if (m.tipo_movimiento === 'gesto_en_sitio') {
+        lineas.push(`${txt(r)} ${VERBO_GESTO[m.gesto] || 'hace un gesto en el sitio'}`);
+        continue;
+      }
       const conBalon = m.tipo_movimiento === 'carrera_con_balon' || lleva.has(m.elemento_id);
       if (vuelveAFila(m.path, conos, defensores.has(m.elemento_id))) {
         lineas.push(`${txt(r)} vuelve al final de su fila${conBalon ? ' con el balón' : ''}`);
@@ -282,13 +303,50 @@ export function guionDeAnimacion(anim) {
       const destino = zonaDe(pista, canastaGlobal, nodoFin(m.path));
       const hacia = destino ? ` hacia ${destino}` : '';
       const nConos = conosSorteados(m.path, conos);
-      const sorteo = nConos > 1 ? ' sorteando los conos' : nConos === 1 ? ' rodeando el cono' : '';
+      /* Por una puerta se PASA (§7.4.1): se cuenta si el camino cruza por
+         dentro de dos palos de puerta. */
+      const porPuerta = pasaPorPuerta(m.path, conos, pista);
+      const sorteo = porPuerta ? ' pasando por la puerta'
+        : nConos > 1 ? ' sorteando los conos' : nConos === 1 ? ' rodeando el cono' : '';
       const verbo = defensores.has(m.elemento_id) ? 'ajusta el marcaje' : conBalon ? 'bota' : 'corta';
       lineas.push(`${txt(r)} ${verbo}${hacia}${sorteo}`);
     }
 
+    /* 2b) LO QUE UN DEFENSOR HACE DISTINTO (§8.5) SÍ SE CUENTA: lo ha
+       dicho el entrenador, y es lo que hay que ver en ese ejercicio. */
+    const dichas = f.defensa || {};
+    for (const [d, a] of Object.entries(dichas)) {
+      const quien = txt(ref.get(d));
+      if (!quien) continue;
+      const otro = a.objetivo_id ? txt(ref.get(a.objetivo_id)) : null;
+      /* UN ROBO se cuenta con lo que cambia (§8.6), y cómo ha sido lo
+         dice el pase: si le llegaba uno, se lo han interceptado. */
+      if (a.accion === 'roba') {
+        const intercepta = (f.pases || []).some((p) => p && p.interceptado && p.a_id === d);
+        const suyo = a.objetivo_id ? ref.get(a.objetivo_id) : null;
+        lineas.push(intercepta
+          ? `${quien} intercepta el pase${suyo ? ` para ${txt(suyo)}` : ''} y su equipo pasa a atacar`
+          : `${quien} le roba el balón${suyo ? ` ${aRef(suyo)}` : ''} y su equipo pasa a atacar`);
+        continue;
+      }
+      lineas.push(FRASE_DEFENSA[a.accion] ? FRASE_DEFENSA[a.accion](quien, otro) : `${quien} ajusta el marcaje`);
+    }
+
+    /* Y la defensa que se mueve sola, en UNA frase: jugador a jugador
+       serían tantas líneas como defensores, todas diciendo lo mismo. */
+    const automaticos = (f.movimientos || []).filter((m) => m && m.automatico && m.tipo_elemento !== 'balon' && !dichas[m.elemento_id]);
+    if (automaticos.length) {
+      const quienes = automaticos.map((m) => txt(ref.get(m.elemento_id))).filter(Boolean);
+      lineas.push(quienes.length === 1
+        ? `${quienes[0]} ajusta el marcaje`
+        : `la defensa ajusta el marcaje (${quienes.join(', ')})`);
+    }
+
     // 3) pases
     for (const p of f.pases || []) {
+      /* Un pase interceptado ya lo ha contado el robo: contarlo otra vez
+         diría que el balón iba para quien se lo quedó. */
+      if (p && p.interceptado) continue;
       const de = ref.get(p.de_id);
       const para = ref.get(p.a_id);
       const donde = zonaDe(pista, canastaGlobal, nodoFin(p.path));
@@ -304,19 +362,24 @@ export function guionDeAnimacion(anim) {
       const salida = nodoIni(t.path);
       // pegado al aro no es un tiro, es una entrada: "tira desde el aro"
       // no lo dice ningún entrenador.
+      // lo que ha pasado, si se sabe: lo guardado de antes no lo dice
+      const final = t.desenlace === 'entra' ? ' y anota' : t.desenlace === 'falla' ? ' y falla' : '';
       if (esFinalizacion(pista, canasta, salida)) {
-        lineas.push(r ? `${txt(r)} entra a canasta` : 'entrada a canasta');
+        lineas.push((r ? `${txt(r)} entra a canasta` : 'entrada a canasta') + final);
         continue;
       }
       const desde = zonaDe(pista, canasta, salida);
-      lineas.push(r
+      lineas.push((r
         ? `${txt(r)} tira${desde ? ` desde ${desde}` : ' a canasta'}`
-        : `tiro a canasta${desde ? ` desde ${desde}` : ''}`);
+        : `tiro a canasta${desde ? ` desde ${desde}` : ''}`) + final);
     }
 
     // 5) recogidas: el rebote. Va al final porque cierra la acción — y
     //    porque de dónde sale el balón ya lo ha contado el tiro.
     for (const rec of f.recogidas || []) {
+      /* La de un robo no se cuenta aquí: ya lo ha contado el robo, y
+         «recoge el balón» se quedaría corto para lo que ha pasado. */
+      if (rec.robo) continue;
       const r = ref.get(rec.jugador_id);
       if (!r) continue;
       // si el balón venía de un tiro (de esta fase o de la anterior) es un

@@ -8,11 +8,10 @@
    de dos, defensa, contraataque, un juego reducido y psicomotricidad.
    Si el molde falla, falla dieciocho veces y no doscientas.
 
-   Las animaciones NO cuestan API: se declara la INTENCIÓN como
-   entrenador y compilarAnimacion() calcula la geometría de forma
-   determinista. Los juegos abiertos llevan solo el montaje, sin
-   fases, por decisión del entrenador: un 3c3 con límite de botes
-   puede acabar de mil maneras y animar una sola sería mentir.
+   Las fichas salen SOLO CON POSICIONES: el movimiento ya no se
+   calcula aquí, se dibuja en la Pizarra. La INTENCIÓN sigue escrita
+   ficha a ficha y se ignora al montar; se conserva porque es lo que
+   el entrenador quería que se viera cuando toque dibujarlo.
 
      node tools/biblioteca/piloto.mjs            → escribe piloto.json
      node tools/biblioteca/piloto.mjs --lint     → lo escribe y lo revisa
@@ -913,8 +912,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   writeFileSync(destino, JSON.stringify(fichas, null, 2), 'utf8');
   console.log(`${fichas.length} fichas → ${destino}`);
 
-  const conAnimacion = fichas.filter((f) => f.animacion?.fases?.length).length;
-  console.log(`  ${conAnimacion} con animación · ${fichas.length - conAnimacion} solo montaje`);
+  const conJugadores = fichas.filter((f) => f.animacion?.jugadores?.length).length;
+  console.log(`  ${conJugadores} con jugadores colocados · la animación se dibuja en la Pizarra`);
 
   if (process.argv.includes('--lint')) {
     const { lint } = await import('./lint.mjs');

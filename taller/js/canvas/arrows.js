@@ -5,17 +5,19 @@
      pass = pase / tiro         (naranja punteada 3.5, punta rellena)
      cut  = corte sin balón     (blanca discontinua 65%, punta hueca)
      gesto = gesto en el sitio  (blanca fina, va y vuelve, punta hueca)
-     bloqueo = rectángulo perpendicular (pick)
+     bloqueo = el camino del bloqueador: como un corte pero SIN punta,
+               porque acaba en la barra del bloqueo (drawBloqueo)
    ============================================================ */
 
 import { COLORS } from './colors.js';
 
 /* ── El símbolo de cada movimiento ────────────────────────────
    Vive AQUÍ, con los tipos que dibuja, y no copiado en cada lienzo.
-   Estaba escrito dos veces —engine.js y editor-canvas.js— con las
-   mismas tres entradas: añadir un símbolo nuevo en uno y olvidarlo en
-   el otro se ve como que la flecha aparece al animar y desaparece al
-   editar, que es de las cosas más difíciles de atribuir.
+   Estuvo escrito dos veces —en el motor y en el editor de flechas del
+   creador viejo, que ya no existe— con las mismas tres entradas:
+   añadir un símbolo nuevo en uno y olvidarlo en el otro se veía como
+   que la flecha aparece al animar y desaparece al editar, que es de
+   las cosas más difíciles de atribuir.
 
    Lo que no esté en el mapa cae en `run`, que es el trazo neutro. */
 export const MOV_TO_ARROW = {
@@ -23,6 +25,10 @@ export const MOV_TO_ARROW = {
   carrera_sin_balon: 'cut',
   corte: 'cut',
   gesto_en_sitio: 'gesto',
+  /* El bloqueador va a su sitio sin balón, como un corte, pero su camino
+     no acaba en punta: acaba en la barra, que es lo que dice a qué ha ido.
+     Con la punta encima, la barra quedaría tapada. */
+  bloqueo: 'bloqueo',
 };
 
 function arrowhead(ctx, from, to, size, { fill, stroke, lineWidth }) {
@@ -46,16 +52,37 @@ const STYLE = {
   /* El gesto va y vuelve al mismo sitio, así que su trazo se cruza
      consigo mismo: fino y sin discontinuo para que las dos patas se
      distingan, y punta hueca porque no llega a ningún sitio nuevo. */
-  gesto: { w: 2.6, dash: [],    color: COLORS.arrowRun,  alpha: 0.85, head: 'hollow' },
+  gesto: { w: 3,   dash: [],    color: COLORS.arrowRun,  alpha: 1,    head: 'hollow' },
+  bloqueo: { w: 3.5, dash: [8, 5], color: COLORS.arrowRun, alpha: 0.65, head: null },
 };
 
-export function drawArrow(ctx, pts, type, scale = 1) {
+/** El índice del punto más lejano del primero: la punta de un trazo que
+ *  va y vuelve. */
+export function puntaDe(pts) {
+  let k = 0, lejos = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const d = Math.hypot(pts[i].x - pts[0].x, pts[i].y - pts[0].y);
+    if (d > lejos) { lejos = d; k = i; }
+  }
+  return k;
+}
+
+export function drawArrow(ctx, pts, type, scale = 1, { color = null } = {}) {
   if (!pts || pts.length < 2) return;
-  const s = STYLE[type] || STYLE.run;
-  const last = pts[pts.length - 1], prev = pts[pts.length - 2];
+  /* `color` pinta la flecha de otro color sin tocar su estilo: es como
+     se marca en rojo un trazo forzado por fuera de una puerta. */
+  const s = color ? { ...(STYLE[type] || STYLE.run), color } : (STYLE[type] || STYLE.run);
+  let last = pts[pts.length - 1], prev = pts[pts.length - 2];
+  /* UN GESTO EN EL SITIO va y vuelve: su final cae debajo de la ficha, y
+     una punta ahí no se vería nunca. Va en la punta del amago —el punto
+     más lejano de donde sale—, que es lo que dice hacia dónde se hace. */
+  if (type === 'gesto') {
+    const k = puntaDe(pts);
+    if (k > 0) { last = pts[k]; prev = pts[k - 1]; }
+  }
   ctx.save();
   ctx.lineJoin = 'round';
-  ctx.lineCap = type === 'cut' ? 'butt' : 'round';
+  ctx.lineCap = type === 'cut' || type === 'bloqueo' ? 'butt' : 'round';
 
   const trace = () => {
     ctx.beginPath();
@@ -79,16 +106,22 @@ export function drawArrow(ctx, pts, type, scale = 1) {
   ctx.setLineDash([]);
   const hsz = 10 * scale;
   if (s.head === 'fill') arrowhead(ctx, prev, last, hsz, { fill: s.color });
-  else arrowhead(ctx, prev, last, hsz, { stroke: s.color, lineWidth: 2.5 * scale });
+  else if (s.head) arrowhead(ctx, prev, last, hsz, { stroke: s.color, lineWidth: 2.5 * scale });
   ctx.restore();
 }
 
-/** Bloqueo / pick (§9.2): rectángulo perpendicular junto al bloqueador. */
-export function drawBloqueo(ctx, a, b, scale = 1) {
+/** Bloqueo / pick (§9.2): rectángulo perpendicular junto al bloqueador.
+ *
+ *  `radio` es el de la ficha del bloqueador, en píxeles. La barra va justo
+ *  FUERA del disco: a 16 px fijos quedaba debajo de la ficha en cuanto la
+ *  pista se pinta pequeña, y el motor —que pinta los jugadores encima—
+ *  la tapaba casi entera, mientras la Pizarra la enseñaba. */
+export function drawBloqueo(ctx, a, b, scale = 1, radio = 0) {
   const ang = Math.atan2(b.y - a.y, b.x - a.x);
   const perp = ang + Math.PI / 2;
-  const cx = a.x + Math.cos(ang) * 16 * scale;
-  const cy = a.y + Math.sin(ang) * 16 * scale;
+  const lejos = Math.max(16 * scale, radio + 6 * scale);
+  const cx = a.x + Math.cos(ang) * lejos;
+  const cy = a.y + Math.sin(ang) * lejos;
   const half = 15 * scale;
   ctx.save();
   ctx.strokeStyle = COLORS.arrowRun;

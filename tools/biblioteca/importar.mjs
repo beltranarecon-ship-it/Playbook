@@ -22,7 +22,8 @@
      node tools/biblioteca/importar.mjs --solo-nuevas             → ensayo
      node tools/biblioteca/importar.mjs --solo-nuevas --confirmar → escribe
 
-   Y para corregir fichas YA importadas (una animación mal, una errata):
+   Y para corregir fichas YA importadas (una errata, un requisito que
+   cambia). Ojo: el dibujo NO se toca desde aquí, ver CAMPOS:
      node tools/biblioteca/importar.mjs --actualizar             → ensayo
      node tools/biblioteca/importar.mjs --actualizar --confirmar → escribe
 
@@ -41,7 +42,7 @@ const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '..', '..');
 const DIR_MANIFIESTOS = join(AQUI, 'manifiestos');
 const URL_BASE = 'https://tsskjoewviqixnwonpkx.supabase.co';
-const LOTE = 20;   // las fichas llevan animación jsonb: lotes cortos
+const LOTE = 20;   // lotes cortos: un fallo a medias deja menos ids sueltos
 
 /* ---- clave ------------------------------------------------------ */
 
@@ -114,12 +115,32 @@ if (r.nErrores) {
 }
 
 /* Campos que se escriben, en un solo sitio: los usan el alta y la
-   actualización, y si divergen la corrección deja fichas a medias. */
+   actualización, y si divergen la corrección deja fichas a medias.
+
+   `animacion` NO está, y es a propósito. Desde que la Pizarra es la
+   dueña del dibujo, las fases de un ejercicio se dibujan en la app y
+   viven solo en la base. Las tandas de aquí ya no las traen: montan
+   POSICIONES. Si `animacion` siguiera en la lista, un `--actualizar`
+   de rutina —hecho para corregir una errata— machacaría con ese
+   montaje suelto el trabajo hecho en la Pizarra, y las fichas de antes
+   perderían además el aviso de «rehacer la pizarra» (§11.4), que sale
+   de las fases que todavía guardan.
+
+   El ALTA sí la escribe (ver «filas», más abajo): una ficha nueva no
+   tiene nada en la base que machacar, y sin su colocación entraría con
+   la pista vacía.
+
+   `marco` TAMPOCO está, por lo mismo: dice en qué dibujo de pista están
+   las coordenadas de la animación, así que solo puede viajar con ella.
+   Sellar marco 3 en un `--actualizar` sin reescribir la animación
+   dejaría una ficha que sigue en marco 2 marcada como 3: dejaría de
+   recolocarse al leerla (canvas/marco-lectura.js) y se pintaría fuera de
+   sitio sin que nada lo corrigiera. */
 const CAMPOS = [
   'type', 'category', 'difficulty', 'intensidad', 'duration_min', 'duration_max',
-  'description', 'tags', 'animacion', 'tipo_pista', 'categoria_rama',
+  'description', 'tags', 'tipo_pista', 'categoria_rama',
   'categoria_nivel', 'objetivos', 'descripcion_texto', 'variantes', 'notas',
-  'requisitos', 'autor_nombre', 'marco',
+  'requisitos', 'autor_nombre',
 ];
 
 /* En qué dibujo de pista están las coordenadas que salen de las tandas.
@@ -139,8 +160,7 @@ const MARCO_ACTUAL = 3;
    Se veía como una actualización que decía "97 con cambios" una y otra
    vez después de haber escrito — el actualizador no podía VACIAR nada.
    Salió al mover el contenido de `variantes` a `requisitos.niveles`. */
-const contenidoDe = (f) => Object.fromEntries(
-  CAMPOS.map((k) => [k, k === 'marco' ? MARCO_ACTUAL : (f[k] ?? null)]));
+const contenidoDe = (f) => Object.fromEntries(CAMPOS.map((k) => [k, f[k] ?? null]));
 
 /* Comparación estable para saber qué ha cambiado de verdad.
    PostgreSQL guarda `jsonb` con las claves REORDENADAS (las suyas, no
@@ -168,9 +188,11 @@ const igual = (a, b) => JSON.stringify(estable(a ?? null)) === JSON.stringify(es
 
 if (process.argv.includes('--actualizar')) {
   const escribir = process.argv.includes('--confirmar');
-  /* `marco` entró en CAMPOS con la migración 038. Sin ella, PostgREST
-     rechaza el SELECT entero y Node escupe su volcado, que no le dice
-     a nadie qué hacer. Se traduce. */
+  /* Si a la base le falta una columna de CAMPOS, PostgREST rechaza el
+     SELECT entero y Node escupe su volcado, que no le dice a nadie qué
+     hacer. El caso que ya pasó fue el de `marco`, antes de la 038: hoy
+     `marco` no se lee aquí (solo se escribe al dar de alta), pero la
+     traducción se queda por si vuelve a pasar con otra columna. */
   let enBase;
   try {
     enBase = await (await pedir(`exercises?select=id,name,${CAMPOS.join(',')}`)).json();
@@ -302,6 +324,10 @@ if (!soloNuevas && repetidas.length) {
 const filas = fichas.map((f) => ({
   name: f.name,
   ...contenidoDe(f),
+  // la colocación, solo al dar de alta, y con ella su marco: ver el
+  // comentario de CAMPOS
+  animacion: f.animacion ?? null,
+  marco: MARCO_ACTUAL,
   created_by: autor,
   favorito: false,
   is_archived: false,

@@ -24,10 +24,16 @@
    ============================================================ */
 
 import { VERSION_JUGADA } from './compilar.js';
+import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
+import { normalizarDefensa, normalizarDeclaradas, REGLAS } from './defensa.js';
+import { normalizarFila } from '../filas.js';
+import { sinEnlacesDeMas } from '../ramas.js';
+
+const DE_TIRO = new Set(CATALOGO_SISTEMA.filter((a) => a.parametros && a.parametros.modo === 'tiro').map((a) => a.slug));
 
 const finito = (v) => Number.isFinite(v);
 const nodoBueno = (n) => !!n && finito(n.x) && finito(n.y);
-const faseVacia = (id = 'f1') => ({ id, nombre: null, duracion_ms: null, pausa_post_ms: null, tramos: [] });
+const faseVacia = (id = 'f1') => ({ id, nombre: null, duracion_ms: null, pausa_post_ms: null, tramos: [], defensa: {}, texto: null, rama_de: null, rama_nombre: null, reune: [] });
 
 /**
  * Deja una jugada guardada en condiciones de abrirse.
@@ -63,20 +69,70 @@ export function normalizarJugada(bruta) {
     ids.add(e.id);
     elementos.push({ ...e });
   }
+  const esJugador = new Set(elementos.filter((e) => e.kind === 'jugador').map((e) => e.id));
   for (const b of elementos) {
     if (b.kind === 'balon' && b.portador_id && !ids.has(b.portador_id)) {
       avisos.push('Un balón era de alguien que ya no está: se ha quedado suelto.');
       b.portador_id = null;
     }
+    /* La defensa puesta a mano (§8.1): a quién defiende y con qué regla.
+       Lo que no vale se quita y se dice; y el jugador vuelve a
+       emparejarse solo. */
+    if (b.kind === 'jugador') {
+      if (b.defiende_a != null && (!esJugador.has(b.defiende_a) || b.defiende_a === b.id)) {
+        avisos.push('Un defensor defendía a alguien que ya no está: se empareja solo.');
+        b.defiende_a = null;
+      }
+      if (b.regla_defensa != null && !REGLAS.includes(b.regla_defensa)) {
+        avisos.push('Un defensor tenía una regla que no se conoce: usa la del ejercicio.');
+        b.regla_defensa = null;
+      }
+    }
   }
+  /* LAS FILAS (§7.4.2): un cono que es cola, y los que esperan en ella.
+     Una fila rota se queda como cono suelto, y quien esperaba en una que
+     ya no existe pasa a ser un jugador más —en juego—, y se dice. */
+  const filas = new Set();
+  for (const c of elementos) {
+    if (c.kind !== 'cono' || c.fila == null) continue;
+    const f = normalizarFila(c.fila);
+    if (!f) { avisos.push('Una fila guardada estaba rota: el cono se queda suelto.'); c.fila = null; continue; }
+    c.fila = f;
+    filas.add(c.id);
+  }
+  for (const j of elementos) {
+    if (j.kind !== 'jugador' || j.fila_de == null) continue;
+    if (!filas.has(j.fila_de)) {
+      avisos.push('Alguien esperaba en una fila que ya no está: pasa a jugar suelto.');
+      delete j.fila_de; delete j.puesto;
+      j.en_juego = true;
+      continue;
+    }
+    if (!(Number.isInteger(j.puesto) && j.puesto >= 0)) j.puesto = 0;
+  }
+  const { defensa, avisos: deDefensa } = normalizarDefensa(bruta.defensa);
+  avisos.push(...deDefensa);
 
   /* ── las fases y sus tramos ── */
+  /* Quién es JUGADOR: lo que un defensor hace distinto (§8.5) se le hace
+     a un jugador, no a un cono ni a un balón. */
+  const idsJugadores = new Set(elementos.filter((e) => e.kind === 'jugador').map((e) => e.id));
   const deTramo = new Set();
   const deFase = new Set();
   let mayor = 0;
+  /* LAS FASES QUE SE CAEN SE DICEN, Y CON SU NÚMERO. Antes se filtraban
+     en silencio y el `.map` numeraba sobre la lista ya filtrada: un
+     aviso de la fase 3 salía como «Fase 2» y una jugada con las fases
+     rotas se abría en blanco sin que nadie dijera nada. */
+  if (bruta.fases != null && !Array.isArray(bruta.fases)) {
+    avisos.push('Las fases de la jugada estaban rotas: se abre con una fase vacía.');
+  }
   let fases = (Array.isArray(bruta.fases) ? bruta.fases : [])
-    .filter((f) => f && typeof f === 'object')
     .map((f, i) => {
+      if (!f || typeof f !== 'object') {
+        avisos.push(`Fase ${i + 1}: estaba rota y se ha dejado fuera.`);
+        return null;
+      }
       const tramos = [];
       for (const t of Array.isArray(f.tramos) ? f.tramos : []) {
         if (!t || typeof t !== 'object' || !t.id || !t.accion || !t.elemento_id) {
@@ -95,21 +151,64 @@ export function normalizarJugada(bruta) {
         /* Sin protagonista SE CONSERVA (§6.5): lo marcará el recálculo
            de fases y el entrenador decidirá si lo quita. */
         if (!ids.has(t.elemento_id)) avisos.push(`Fase ${i + 1}: un tramo de «${t.accion}» se ha quedado sin protagonista.`);
+        /* Y un bloqueo sin el compañero al que se ponía, igual: se conserva
+           y se dice. */
+        if (t.companero_id && !ids.has(t.companero_id)) avisos.push(`Fase ${i + 1}: un bloqueo se ha quedado sin el compañero al que se ponía.`);
         const n = /(\d+)$/.exec(String(t.id));
         if (n) mayor = Math.max(mayor, Number(n[1]));
-        tramos.push({ ...t, trazo: t.trazo.map((x) => ({ ...x })) });
+        /* Un tiro sabe si entra o falla (§4.4). Guardado sin eso, se abre
+           como «entra» y se dice: es lo que se veía, con el balón en el aro. */
+        const extra = {};
+        if (DE_TIRO.has(t.accion) && t.desenlace !== 'entra' && t.desenlace !== 'falla') {
+          extra.desenlace = 'entra';
+          avisos.push(`Fase ${i + 1}: un tiro guardado sin desenlace se abre como «entra».`);
+        }
+        tramos.push({ ...t, ...extra, trazo: t.trazo.map((x) => ({ ...x })) });
       }
       let id = f.id || `f${i + 1}`;
-      if (deFase.has(id)) id = `f${i + 1}_${deFase.size}`;
+      /* Y si el nombre inventado también estaba cogido, se sigue
+         buscando: renombrando una sola vez salían dos fases iguales. */
+      for (let n = 1; deFase.has(id); n++) id = `f${i + 1}_${n}`;
       deFase.add(id);
+      /* Lo que un defensor hace distinto en esta fase (§8.5). No son
+         tramos —no dibujan un camino—, así que se guardan aparte, y lo
+         que no se entienda se queda fuera y se dice. */
+      const declaradas = normalizarDeclaradas(f.defensa, { ids, jugadores: idsJugadores, fase: i });
+      avisos.push(...declaradas.avisos);
       return {
         id,
         nombre: f.nombre ?? null,
         duracion_ms: finito(f.duracion_ms) ? f.duracion_ms : null,
         pausa_post_ms: finito(f.pausa_post_ms) ? f.pausa_post_ms : null,
         tramos,
+        defensa: declaradas.declaradas,
+        /* La frase reescrita a mano (§9.2); null = la automática. */
+        texto: typeof f.texto === 'string' && f.texto.trim() ? f.texto.trim() : null,
+        /* Las ramas (§6.7): se comprueban abajo, con todas las fases. */
+        rama_de: f.rama_de ?? null,
+        rama_nombre: f.rama_nombre ?? null,
+        reune: Array.isArray(f.reune) ? f.reune : [],
       };
-    });
+    })
+    .filter(Boolean);
+  /* LAS RAMAS (§6.7): de qué fase cuelga cada una —si no está, sigue a la
+     anterior—, su nombre —obligatorio: sin él se le pone uno y se dice— y
+     las que desembocan en una reunión. */
+  const idsFase = new Set(fases.map((f) => f.id));
+  let sinNombre = 0;
+  fases = fases.map((f, i) => {
+    const rama_de = f.rama_de != null && idsFase.has(f.rama_de) && f.rama_de !== f.id ? f.rama_de : null;
+    if (f.rama_de != null && !rama_de) avisos.push(`Fase ${i + 1}: colgaba de una fase que no está; sigue a la anterior.`);
+    let rama_nombre = rama_de && typeof f.rama_nombre === 'string' && f.rama_nombre.trim() ? f.rama_nombre.trim() : null;
+    if (rama_de && !rama_nombre) {
+      rama_nombre = `Rama ${++sinNombre}`;
+      avisos.push(`Fase ${i + 1}: una rama sin nombre se abre como «${rama_nombre}».`);
+    }
+    const reune = [...new Set(f.reune.filter((id) => idsFase.has(id) && id !== f.id))];
+    return { ...f, rama_de, rama_nombre, reune };
+  });
+  /* Un solo enlace que ya dice el orden de la lista sobra. */
+  fases = sinEnlacesDeMas(fases);
   /* Una jugada sin fases no se puede editar: siempre hay por lo menos
      la primera, aunque esté vacía. */
   if (!fases.length) fases = [faseVacia()];
@@ -121,6 +220,7 @@ export function normalizarJugada(bruta) {
       canasta: bruta.canasta === 'sur' ? 'sur' : 'norte',
       elementos,
       fases,
+      defensa,
     },
     avisos,
     siguienteTramo: mayor + 1,

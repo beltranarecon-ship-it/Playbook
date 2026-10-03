@@ -90,6 +90,8 @@ test('un dorsal puesto a mano manda y no se lo lleva la renumeración', () => {
 test('los cuatro equipos existen y uno inventado cae en el primero', () => {
   eq(EQUIPOS, ['A', 'B', 'C', 'D']);
   eq(crear({ kind: 'jugador', equipo: 'Z' }).equipo, 'A');
+  const j = crear({ kind: 'jugador', equipo: 'B' });
+  eq([j.defiende_a, j.regla_defensa], [null, null], 'un jugador nuevo se empareja solo y usa la regla del ejercicio:');
 });
 
 /* ── 2. El balón ─────────────────────────────────────────── */
@@ -293,6 +295,14 @@ test('el recuento no cuenta a los que esperan', () => {
   eq(recuento(l), { jugadores: 3, balones: 1, conos: 1, material: 0, zonas: 0 });
   l = enJuego(l, l[0].id, false);
   eq(recuento(l).jugadores, 2);
+});
+
+test('AL QUITAR A UN ATACANTE, QUIEN LO DEFENDÍA A MANO VUELVE A EMPAREJARSE SOLO', () => {
+  const l = [
+    { id: 'a1', kind: 'jugador', equipo: 'A', label: '1', en_juego: true, x: 0.2, y: 0.2, defiende_a: null },
+    { id: 'b1', kind: 'jugador', equipo: 'B', label: '1', en_juego: true, x: 0.3, y: 0.3, defiende_a: 'a1' },
+  ];
+  eq(quitar(l, 'a1')[0].defiende_a, null);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

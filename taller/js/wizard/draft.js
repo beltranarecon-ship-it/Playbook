@@ -1,7 +1,7 @@
 /* ============================================================
    draft.js — modelo del ejercicio en construcción (§13) y
-   validaciones. Las posiciones de los elementos viven en el Board;
-   aquí va el resto de la ficha.
+   validaciones. Lo que se dibuja vive en la jugada de la Pizarra
+   (ESPEC-PIZARRA-v3 §11.1); aquí va el resto de la ficha.
    ============================================================ */
 
 import { dificultadDe } from '../config.js';
@@ -20,13 +20,13 @@ export function nuevoDraft() {
        guardar (`_fases_texto`), para que reabrir el ejercicio devuelva
        el paso 2 tal como se dejó. */
     fases_texto: [{ texto: '', duracion_ms: null, pausa_post_ms: null }],
-    /* Sitios marcados con un clic en la pista, { slug: [x,y] }. Valen
-       en este ejercicio desde el primer momento; guardarlos para el
-       club es una decisión aparte y explícita. */
-    posiciones: {},
     canasta: null,           // aro al que ataca; null = el más cercano a lo colocado
-    ediciones: [],           // retoques manuales de flechas (Tramo 6)
     animacion: null,         // JSON §10 una vez generada
+    /* La jugada de la Pizarra (ESPEC-PIZARRA-v3 §11.1): lo que se
+       dibujó, para poder reabrirlo y seguir. `animacion` se compila
+       desde ella. null = nada dibujado todavía, o un ejercicio de antes
+       de la Pizarra (§11.4). */
+    jugada: null,
     dificultad_valor: 3,
     dificultad_sugerida: null,
     intensidad: 3,           // intensidad física por defecto 1-5 (carga · módulo Sesiones)
@@ -146,6 +146,7 @@ export function aRegistro(d) {
     notas: d.notas,
     descripcion_texto: d.descripcion_texto,
     animacion: d.animacion,
+    jugada: d.jugada ?? null,
     tipo_pista: d.tipo_pista,
     requisitos: d.requisitos,
     favorito: false,
