@@ -354,6 +354,8 @@
   font: inherit; font-size: 16px; line-height: 1; cursor: pointer;
 }
 .pz-arriba__b:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.pz-arriba__b:disabled { opacity: 0.4; cursor: default; }
+.pz-arriba__b:disabled:hover { border-color: var(--color-border); color: var(--color-text); }
 .pz-arriba__b:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .pz-arriba__sep { align-self: stretch; width: 1px; margin: 4px; background: var(--color-border); }
 .pz-arriba__canasta { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-muted); }

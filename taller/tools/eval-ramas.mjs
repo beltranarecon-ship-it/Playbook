@@ -338,6 +338,71 @@ test('BORRAR CON RAMAS: la rama la empieza lo que venía detrás; si era lo úni
   eq(todosLosCaminos(d), [['f1', 'f2', 'f3', 'f4', 'f6'], ['f1', 'f2', 'f4', 'f6']], 'borrada la b entera, el cruce sigue directo a la reunión:');
 });
 
+/* Lo que no puede pasar nunca: una rama que cuelga de algo que no es un
+   cruce, o un cruce del que sale algo que no es rama suya (iría el primero
+   y cambiaría el camino principal). */
+const malEnlazadas = (fases) => {
+  const g = grafoDe(fases);
+  const mal = [];
+  for (const f of fases) {
+    if (f.rama_de == null) continue;
+    const sale = g.despues.get(f.rama_de) || [];
+    if (!sale.includes(f.id) || sale.length < 2) mal.push(`${f.id} es rama de ${f.rama_de}, que no es su cruce`);
+  }
+  for (const [id, sale] of g.despues) {
+    if (sale.length > 1) for (const s of sale) if (g.porId.get(s).rama_de !== id) mal.push(`del cruce ${id} sale ${s} sin ser rama suya`);
+  }
+  return mal;
+};
+
+test('BORRAR LA PRIMERA FASE DE LA PRIMERA RAMA, con la otra rama antes en la lista: el camino principal no cambia', () => {
+  let f = abrirRama([F('f1')], 'f1', { primera: 'a', nueva: 'b', crear }).fases;   // f1 → f2 (a) | f3 (b)
+  f = abrirRama(f, 'f2', { primera: 'x', nueva: 'y', crear }).fases;              // f2 → f4 (x) | f5 (y)
+  f = borrarFase(f, 'f5').fases;                                                 // f4 sigue a f2, al final de la lista
+  eq([ids(f), de(f, 'f4').reune], [['f1', 'f2', 'f3', 'f4'], ['f2']], 'de partida, f4 va detrás de la b en la lista:');
+  const r = borrarFase(f, 'f2').fases;
+  eq([caminoPrincipal(r), siguientesDe(r, 'f1')], [['f1', 'f4'], ['f4', 'f3']], 'la a sigue siendo la primera rama:');
+  eq([de(r, 'f4').rama_de, de(r, 'f4').rama_nombre, ids(r)], ['f1', 'a', ['f1', 'f4', 'f3']], 'f4 empieza la a, en su sitio:');
+  eq(arbolDe(r).ramas.map((x) => x.nombre), ['a', 'b']);
+  /* Lo que va detrás de f4 sin más se va con ella: la lista no gana enlaces. */
+  const g = borrarFase(insertarDetras(f, 'f4', F('f6')), 'f2').fases;
+  eq([ids(g), caminoPrincipal(g), de(g, 'f6').reune], [['f1', 'f4', 'f6', 'f3'], ['f1', 'f4', 'f6'], []]);
+  eq([...malEnlazadas(r), ...malEnlazadas(g)], []);
+});
+
+test('BORRAR UNA RAMA QUE SE REUNÍA EN OTRA DEL MISMO CRUCE: se juntan, y un cruce con una sola deja de serlo', () => {
+  let f = abrirRama([F('f1'), F('f2')], 'f1', { primera: 'a', nueva: 'b', crear }).fases;   // f1 → f2 (a) | f3 (b)
+  f = insertarDetras(reunir(f, 'f3', 'f2').fases, 'f2', F('f4'));                           // la b sigue por f2; f2 → f4
+  const r = borrarFase(f, 'f3');
+  eq([todosLosCaminos(r.fases), r.sigue], [[['f1', 'f2', 'f4']], 'f2']);
+  eq([tieneRamas(r.fases), de(r.fases, 'f2').rama_de, de(r.fases, 'f2').rama_nombre, esCruce(r.fases, 'f1')], [false, null, null, false],
+    'ni una rama suelta, que el proyector tomaría por un cruce:');
+  /* Con tres ramas, el cruce sigue con las otras dos, cada una con su nombre. */
+  const q = borrarFase(abrirRama(f, 'f1', { nueva: 'c', crear }).fases, 'f3').fases;          // f5 (c)
+  eq([siguientesDe(q, 'f1'), arbolDe(q).ramas.map((x) => x.nombre), caminoPrincipal(q)], [['f2', 'f5'], ['a', 'c'], ['f1', 'f2', 'f4']]);
+  eq([...malEnlazadas(r.fases), ...malEnlazadas(q)], []);
+});
+
+test('BORRAR UNA RAMA QUE SIGUE POR UNA REUNIÓN QUE YA EMPIEZA OTRA RAMA: no colgaría de dos cruces; separada, sí', () => {
+  // f1 ─┬─ f2 (si le dejan) ─┬─ f4 (tira)
+  //     │                    └─ f5 (pasa)
+  //     └─ f3 (si le niegan) ···→ f4
+  let f = abrirRama([F('f1'), F('f2')], 'f1', { primera: 'si le dejan', nueva: 'si le niegan', crear }).fases;
+  f = reunir(insertarDetras(f, 'f2', F('f4')), 'f3', 'f4').fases;
+  f = abrirRama(f, 'f2', { primera: 'tira', nueva: 'pasa', crear }).fases;
+  eq(borrarFase(f, 'f3').motivo, 'esta fase sigue por una reunión que ya empieza otra rama: sepárala antes de borrarla');
+  const s = borrarFase(separar(f, 'f3', 'f4').fases, 'f3').fases;
+  eq([caminoPrincipal(s), todosLosCaminos(s), esCruce(s, 'f1')], [['f1', 'f2', 'f4'], [['f1', 'f2', 'f4'], ['f1', 'f2', 'f5']], false]);
+  eq([de(s, 'f4').rama_de, de(s, 'f4').rama_nombre, de(s, 'f2').rama_de], ['f2', 'tira', null]);
+  /* Una fase de en medio de esa rama sí se borra: no empieza ninguna. */
+  let h = abrirRama([F('f1'), F('f2')], 'f1', { primera: 'a', nueva: 'b', crear }).fases;   // f2 | f3
+  h = reunir(insertarDetras(insertarDetras(h, 'f2', F('f4')), 'f3', F('f6')), 'f6', 'f4').fases;
+  h = abrirRama(h, 'f2', { primera: 'a1', nueva: 'a2', crear }).fases;                      // f4 (a1) | f7 (a2)
+  const m = borrarFase(h, 'f6').fases;
+  eq([caminoPrincipal(m), todosLosCaminos(m)], [['f1', 'f2', 'f4'], [['f1', 'f2', 'f4'], ['f1', 'f2', 'f7'], ['f1', 'f3', 'f4']]]);
+  eq([...malEnlazadas(s), ...malEnlazadas(m)], []);
+});
+
 test(`COMO MUCHO ${MAX_CAMINOS} CAMINOS: no se abre ni se reúne lo que pasaría de ahí`, () => {
   /* Cada vuelta: un cruce de dos que se reúnen detrás. Dobla los caminos. */
   const doblar = (fases, veces) => {

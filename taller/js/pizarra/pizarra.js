@@ -43,6 +43,16 @@ const NOMBRE_CANASTA = { norte: 'Canasta 1', sur: 'Canasta 2' };
  *  con calma, y no tanto como para tapar la pista. */
 const AVISO_MS = 6000;
 
+/** El HTML de un aviso: el texto escapado, salvo las negritas <b></b> con
+ *  las que los avisos resaltan. Lo que venga de los datos —el nombre de una
+ *  plantilla de otro entrenador, un dorsal, un mensaje de error— se pinta
+ *  como texto. */
+export function htmlDeAviso(texto) {
+  return String(texto ?? '')
+    .replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+    .replace(/&lt;(\/?)b&gt;/g, '<$1b>');
+}
+
 /** Lo que se espera sin cambios antes de apuntar un punto al que volver
  *  con «deshacer»: arrastrar una ficha son decenas de cambios seguidos, y
  *  deshacer tiene que devolverla a donde estaba, no un píxel atrás. */
@@ -133,6 +143,7 @@ export class Pizarra {
       },
       onSinSoporte: (a) => this.avisar(`<b>«${a.nombre}»</b> todavía no se puede dibujar en la Pizarra: llega en una capa posterior.`),
       onNoPuede: (a, motivo) => this.avisar(`<b>«${a.nombre}»</b> no se puede: ${motivo}.`),
+      onAviso: (html) => this.avisar(html),
       onEscena: (elementos) => { this.panel.recuento(recuento(elementos)); this.descripcion?.refrescar(); this._cambio(); },
       onSeleccion: () => this._refrescarAjustes(),
       onEditando: () => this._refrescarAjustes(),
@@ -188,27 +199,12 @@ export class Pizarra {
        pulsada, pinchar la pista significa eso y nada más. */
     this._quitarGesto = this.lienzo.gesto('colocar', (i) => this._atenderColocar(i), { orden: 200 });
 
-    this._onTecla = (ev) => {
-      if (ev.key === 'Escape' && this.panel.armada) { ev.preventDefault(); this.panel.armar(null); return; }
-      if (ev.defaultPrevented) return;
-      /* Escribiendo en una casilla, las teclas son suyas (también Ctrl+Z). */
-      const en = ev.target && ev.target.tagName;
-      if (en === 'INPUT' || en === 'TEXTAREA' || en === 'SELECT') return;
-      const k = String(ev.key || '').toLowerCase();
-      if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (k === 'z' || k === 'y')) {
-        ev.preventDefault();
-        if (k === 'y' || ev.shiftKey) this.rehacer(); else this.deshacer();
-        return;
-      }
-      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
-      /* Espacio reproduce y G enseña u oculta el fantasma (§2.2). Mientras
-         se dibuja o se corrige un trazo, no: ahí las teclas son de eso. */
-      const t = this.tablero;
-      if (t.dibujo.dibujando || t.nodos.editando || t.companero.eligiendo) return;
-      if (ev.key === ' ') { ev.preventDefault(); this.ver(); }
-      else if (k === 'g') { ev.preventDefault(); t.verFantasma(!t.fantasma); }
-    };
+    this._onTecla = (ev) => this._atenderTecla(ev);
     this.el.addEventListener('keydown', this._onTecla);
+    /* Con el foco en la pista, el Espacio es también el modo mano (para
+       desplazarla): el Lienzo lo atiende primero, y solo si al soltarlo no
+       ha movido nada era un «reproducir». */
+    this.lienzo.alEspacioSolo = () => this._espacioSolo();
 
     this.tablero.poner([]);
     this.panel.recuento(recuento([]));
@@ -227,6 +223,9 @@ export class Pizarra {
       this.datos.cargarPlantillas ? this.datos.cargarPlantillas().catch(() => null) : null,
     ]);
     if (Array.isArray(plantillas)) {
+      /* Una fila que no se entiende no rompe la lista, pero se dice. */
+      const n = plantillas.descartadas || 0;
+      if (n) this.avisar(n === 1 ? 'Una plantilla del club no se ha podido leer y no sale.' : `${n} plantillas del club no se han podido leer y no salen.`);
       const tocadas = this._plantillasTocadas || new Map();
       this.plantillas = [...plantillas.filter((p) => !tocadas.has(p.id)), ...[...tocadas.values()].filter(Boolean)];
       this._pintarPlantillas();
@@ -414,8 +413,7 @@ export class Pizarra {
     const r = this.tablero.cargar(jugada, { animacion });
     /* El Tablero adopta la canasta de la jugada: el selector tiene que
        decir lo mismo, o enseñaría un aro y se atacaría el otro. */
-    const sel = this.el.querySelector('.pz-arriba__canasta select');
-    if (sel) sel.value = this.tablero.canasta;
+    this._sincronizarCanasta();
     this.panel.recuento(recuento(this.tablero.fichas.elementos));
     this.linea.refrescar();
     this.descripcion.refrescar();
@@ -434,6 +432,13 @@ export class Pizarra {
 
   /** La jugada tal y como se guarda (§11.1). */
   jugada() { return this.tablero.jugada(); }
+
+  /* El selector de la canasta dice lo mismo que el Tablero: al reabrir o
+     al deshacer, el Tablero puede haber vuelto a otro aro. */
+  _sincronizarCanasta() {
+    const sel = this.el.querySelector('.pz-arriba__canasta select');
+    if (sel) sel.value = this.tablero.canasta;
+  }
 
   /* ---- deshacer y rehacer (§2.2) ----------------------------- */
 
@@ -459,6 +464,7 @@ export class Pizarra {
     try {
       t.cargar(JSON.parse(foto.jugada));
       if (foto.fase) t.irAFaseId(foto.fase);
+      this._sincronizarCanasta();
       this.panel.recuento(recuento(t.fichas.elementos));
       this.linea?.refrescar();
       this.descripcion?.refrescar();
@@ -479,15 +485,16 @@ export class Pizarra {
     const h0 = this.historial;
     const ultima = h0.stack[h0.idx];
     const ahora = this._foto();
-    if (ultima && ultima.jugada === ahora.jugada) { h0.stack[h0.idx] = ahora; return; }
+    if (ultima && ultima.jugada === ahora.jugada) { h0.stack[h0.idx] = ahora; this._pintarHistorial(); return; }
     h0.push();
   }
 
-  /** Vuelve a como estaba antes de lo último que se hizo. */
+  /** Vuelve a como estaba antes de lo último que se hizo. Con un trazo a
+   *  medias, lo que se deshace es ese trazo —como Esc— y no el paso de antes. */
   deshacer() {
     if (!this.historial) return false;
     this._apuntar();   // lo que estuviera a medias cuenta como un paso
-    this.tablero.cerrar();
+    if (this._cancelarLoQueHayEntreManos()) return true;
     if (!this.historial.undo()) { this.avisar('No hay nada que deshacer.'); return false; }
     return true;
   }
@@ -496,13 +503,55 @@ export class Pizarra {
   rehacer() {
     if (!this.historial) return false;
     this._apuntar();
-    this.tablero.cerrar();
+    if (this._cancelarLoQueHayEntreManos()) return true;
     if (!this.historial.redo()) { this.avisar('No hay nada que rehacer.'); return false; }
     return true;
   }
 
+  /* Corta los gestos vivos —un arrastre a medias seguiría moviendo fichas
+     ya restauradas— y cierra lo abierto. Devuelve si había un trazo a
+     medias o una elección en marcha: entonces no se retrocede ningún paso. */
+  _cancelarLoQueHayEntreManos() {
+    const t = this.tablero;
+    const aMedias = t.dibujo.dibujando || t.companero.eligiendo;
+    this.lienzo?.cancelarGestos?.();
+    t.cerrar();
+    return !!aMedias;
+  }
+
+  /* Las teclas de la Pizarra (§2.2): deshacer, rehacer, reproducir y el fantasma. */
+  _atenderTecla(ev) {
+    if (ev.key === 'Escape' && this.panel.armada) { ev.preventDefault(); this.panel.armar(null); return; }
+    if (ev.defaultPrevented) return;
+    /* Escribiendo en una casilla, las teclas son suyas (también Ctrl+Z). */
+    const en = ev.target && ev.target.tagName;
+    if (en === 'INPUT' || en === 'TEXTAREA' || en === 'SELECT') return;
+    const k = String(ev.key || '').toLowerCase();
+    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (k === 'z' || k === 'y')) {
+      ev.preventDefault();
+      if (k === 'y' || ev.shiftKey) this.rehacer(); else this.deshacer();
+      return;
+    }
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    /* Espacio reproduce y G enseña u oculta el fantasma (§2.2). Mientras
+       se dibuja o se corrige un trazo, no: ahí las teclas son de eso. */
+    const t = this.tablero;
+    if (t.dibujo.dibujando || t.nodos.editando || t.companero.eligiendo) return;
+    /* Mantener la tecla pulsada no repite: una pulsación, una vez. */
+    if (ev.key === ' ') { ev.preventDefault(); if (!ev.repeat) this.ver(); }
+    else if (k === 'g') { ev.preventDefault(); if (!ev.repeat) t.verFantasma(!t.fantasma); }
+  }
+
+  /* El Espacio suelto, sin haber movido la pista, reproduce. */
+  _espacioSolo() {
+    const t = this.tablero;
+    if (t.dibujo.dibujando || t.nodos.editando || t.companero.eligiendo) return;
+    this.ver();
+  }
+
   _pintarHistorial() {
-    if (this._bDeshacer) this._bDeshacer.disabled = !this.historial.canUndo();
+    /* Con un cambio por apuntar, ↶ ya vale: deshacer lo apunta antes. */
+    if (this._bDeshacer) this._bDeshacer.disabled = !this.historial.canUndo() && !this._relojHistorial;
     if (this._bRehacer) this._bRehacer.disabled = !this.historial.canRedo();
   }
 
@@ -521,7 +570,10 @@ export class Pizarra {
    *  dice aquí. */
   avisar(html) {
     clearTimeout(this._relojAviso);
-    this.elAviso.innerHTML = html;
+    /* El aviso resalta con <b> y nada más: lo demás —el nombre de una
+       plantilla de otro entrenador, un dorsal, un mensaje de error— se
+       pinta como texto, no como HTML. */
+    this.elAviso.innerHTML = htmlDeAviso(html);
     this.elAviso.hidden = false;
     this._relojAviso = setTimeout(() => { this.elAviso.hidden = true; }, AVISO_MS);
   }
@@ -532,9 +584,21 @@ export class Pizarra {
     /* Un punto al que volver, cuando deje de cambiar (§2.2). */
     if (this.historial && !this._restaurando) {
       clearTimeout(this._relojHistorial);
-      this._relojHistorial = setTimeout(() => this._apuntar(), ESPERA_HISTORIAL_MS);
+      this._relojHistorial = setTimeout(() => this._apuntarSiSuelto(), ESPERA_HISTORIAL_MS);
+      this._pintarHistorial();
     }
     this.onCambio?.();
+  }
+
+  /* Con un dedo o el ratón arrastrando no se apunta: pararse a mitad de un
+     arrastre no es el final, y un solo «deshacer» tiene que devolver la
+     ficha a donde estaba antes de cogerla. Se espera a que se suelte. */
+  _apuntarSiSuelto() {
+    if (this.lienzo?.gestoVivo) {
+      this._relojHistorial = setTimeout(() => this._apuntarSiSuelto(), ESPERA_HISTORIAL_MS);
+      return;
+    }
+    this._apuntar();
   }
 
   /* La pestaña «Ajustes», con lo seleccionado ahora. El panel solo se

@@ -19,12 +19,11 @@
    rehacerla a mano (§11.4). Por eso la animación se pasa entera y sin
    tocar: no es de aquí de donde sale el dibujo.
 
-   ── LO QUE SE GUARDÓ PENSANDO EN ESTE MOMENTO ───────────────
-   Las líneas de las fases viajan DENTRO de la animación
-   (`_fases_texto`), no fuera. Sin ellas,
-   reabrir un ejercicio devolvería el dibujo pero no lo que se escribió,
-   y el paso 3 se quedaría sin las líneas con las que arma la
-   descripción.
+   ── LO QUE GUARDARON LOS EJERCICIOS DE ANTES ───────────────
+   Los ejercicios de antes de la Pizarra guardaron las líneas de las fases
+   DENTRO de la animación (`_fases_texto`): aquí se leen, para que reabrir
+   uno devuelva el dibujo y también lo que se escribió. La Pizarra ya no
+   las escribe: la frase de cada fase viaja en la jugada (`fase.texto`).
    ============================================================ */
 
 import { nuevoDraft } from './draft.js';

@@ -437,9 +437,13 @@ export function insertarFase(fases, id, fase, donde = 'despues') {
 /**
  * BORRA UNA FASE (§6.8), con lo dibujado en ella. Lo que venía detrás
  * pasa a seguir a lo que había delante; si empezaba una rama, la empieza
- * lo que venía detrás, y si era lo único de la rama, la rama se va. No
- * se borra una fase de la que salen ramas (antes hay que quitarlas), ni
- * la única que hay.
+ * lo que venía detrás —en el mismo puesto entre las ramas de su cruce—,
+ * y si era lo único de la rama, la rama se va. Si lo de detrás ya era
+ * otra rama del mismo cruce (la borrada se reunía en ella), las dos se
+ * juntan en una. No se borra una fase de la que salen ramas (antes hay
+ * que quitarlas), ni la única que hay, ni la que empieza una rama que
+ * sigue por una reunión que ya empieza otra rama de otro cruce: una fase
+ * no puede colgar de dos cruces (antes hay que separarla).
  *
  * @returns { fases, sigue } — `sigue`, la fase que ocupa su sitio (o null)
  */
@@ -453,22 +457,57 @@ export function borrarFase(fases, id) {
   const todas = explicitar(lista);
   const x = todas.find((f) => f.id === id);
   const sigue = sale[0] ?? null;
+  const cruce = x.rama_de != null && g.porId.has(x.rama_de) ? x.rama_de : null;
+  const detras = sigue == null ? null : g.porId.get(sigue);
+  /* La rama que ya empezaba lo de detrás (la que colgara de la borrada
+     no cuenta: se quedaría colgando de nada). */
+  const deDetras = detras && detras.rama_de != null && detras.rama_de !== id && g.porId.has(detras.rama_de) ? detras.rama_de : null;
+  if (cruce != null && deDetras != null && deDetras !== cruce) {
+    return { motivo: 'esta fase sigue por una reunión que ya empieza otra rama: sepárala antes de borrarla' };
+  }
+  /* Lo de detrás hereda la rama si no empieza ya una (del mismo cruce). */
+  const hereda = cruce != null && detras != null && deDetras == null;
   let salida = todas.filter((f) => f.id !== id).map((f) => {
     if (f.id !== sigue) return f;
     const reune = [...new Set(f.reune.flatMap((r) => (r === id ? x.reune : [r])))];
-    /* Hereda la rama que empezaba la borrada. */
-    const rama = x.rama_de != null && f.rama_de == null ? { rama_de: x.rama_de, rama_nombre: x.rama_nombre } : {};
+    const rama = hereda ? { rama_de: cruce, rama_nombre: x.rama_nombre } : deDetras == null ? { rama_de: null, rama_nombre: null } : {};
     return { ...f, ...rama, reune };
   });
+  /* Y va donde estaba la borrada: el orden de la lista es el de las ramas
+     del cruce, y el camino principal va por la primera. */
+  if (hereda) salida = alSitioDe(salida, todas, id, sigue);
   /* Era la primera: la que seguía pasa a serlo, y va la primera. */
   if (lista[0].id === id) {
     const k = salida.findIndex((f) => f.id === sigue);
     const primera = { ...salida[k], rama_de: null, rama_nombre: null, reune: [] };
     salida = [primera, ...salida.slice(0, k), ...salida.slice(k + 1)];
   }
-  /* Era lo único de una rama: el cruce se queda con una de menos. */
-  if (sigue == null && x.rama_de != null) salida = unaSolaNoEsRama(salida, x.rama_de);
+  /* Los cruces de los que colgaba se miran otra vez: si la rama se ha ido
+     —era lo único— o se ha juntado con otra, alguno puede quedarse con
+     una sola, que deja de ser rama. */
+  for (const c of new Set([...x.reune, cruce].filter((c) => c != null))) salida = unaSolaNoEsRama(salida, c);
   return { fases: sinEnlacesDeMas(salida), sigue };
+}
+
+/* Pone `sigue` —con lo que va detrás de ella sin más: cada una con una
+   sola de la que viene, la anterior, que no sigue por otro lado— donde
+   estaba la fase borrada `id`. Con los enlaces escritos del todo, mover
+   esas fases en la lista solo cambia su puesto entre las ramas del cruce. */
+function alSitioDe(salida, todas, id, sigue) {
+  const k = salida.findIndex((f) => f.id === sigue);
+  const salen = (p) => salida.filter((f) => (f.reune || []).includes(p)).length;
+  const bloque = [salida[k]];
+  for (let j = k + 1; j < salida.length; j++) {
+    const f = salida[j];
+    const previa = salida[j - 1];
+    if (f.rama_de != null || f.reune.length !== 1 || f.reune[0] !== previa.id || salen(previa.id) !== 1) break;
+    bloque.push(f);
+  }
+  const movidas = new Set(bloque.map((f) => f.id));
+  const delante = new Set(todas.slice(0, todas.findIndex((f) => f.id === id)).map((f) => f.id));
+  const resto = salida.filter((f) => !movidas.has(f.id));
+  const corte = resto.findIndex((f) => !delante.has(f.id));
+  return corte < 0 ? [...resto, ...bloque] : [...resto.slice(0, corte), ...bloque, ...resto.slice(corte)];
 }
 
 /**

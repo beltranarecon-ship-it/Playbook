@@ -300,6 +300,9 @@ export class Lienzo {
    */
   agarre(radioDibujadoPx, tipoPuntero) { return radioAcierto(radioDibujadoPx, tipoPuntero); }
 
+  /** Si hay un gesto en curso: un dedo o el ratón arrastrando algo. */
+  get gestoVivo() { return this._duenos.size > 0; }
+
   /** Aborta todo gesto vivo. Para Escape, para cuando se abre un
    *  modal, para cuando cambia la fase. */
   cancelarGestos() {
@@ -455,8 +458,12 @@ export class Lienzo {
     };
     this._onKeyUp = (ev) => {
       if (ev.code !== 'Space') return;
+      /* Si no llegó a desplazar nada, era un «reproducir»: lo decide quien
+         escucha, que es el que sabe qué hay entre manos. */
+      const suelto = this._espacio && !this._espacioUsado;
       this._espacio = false;
       el.classList.remove('is-mano');
+      if (suelto) this.alEspacioSolo?.();
     };
     el.addEventListener('keydown', this._onKeyDown);
     el.addEventListener('keyup', this._onKeyUp);

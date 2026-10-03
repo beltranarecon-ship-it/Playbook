@@ -68,6 +68,7 @@ import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, s
 import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo, esGesto, trazoDeGesto } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
+import { tramosSinBalon } from './posesion.js';
 import { compilar } from './motor/compilar.js';
 import { frasesDeJugada } from './motor/frase.js';
 import {
@@ -93,13 +94,14 @@ export class Tablero {
    * @param onAyuda       (html|null) — qué tiene que decir la barra de arriba
    * @param onSinSoporte  (accion) — se ha elegido algo que esta capa no hace
    * @param onNoPuede     (accion, motivo) — se ha elegido algo imposible
+   * @param onAviso       (html) — algo que decir que no es un «no se puede»
    * @param onFases       (fases, enCurso) — ha cambiado el número de fases
    * @param onEscena      (elementos) — se ha puesto, quitado o movido algo
    * @param onSeleccion   (ids) — ha cambiado lo que está seleccionado
    * @param onEditando    (tramo|null) — se ha pinchado un trazo, o se ha soltado
    */
   constructor(lienzo, {
-    canasta = 'norte', posiciones = {}, onTramos, onAyuda, onSinSoporte, onNoPuede, onFases, onEscena, onSeleccion, onEditando,
+    canasta = 'norte', posiciones = {}, onTramos, onAyuda, onSinSoporte, onNoPuede, onAviso, onFases, onEscena, onSeleccion, onEditando,
   } = {}) {
     this.lienzo = lienzo;
     this.canasta = canasta;
@@ -107,6 +109,7 @@ export class Tablero {
     this.onAyuda = onAyuda;
     this.onSinSoporte = onSinSoporte;
     this.onNoPuede = onNoPuede;
+    this.onAviso = onAviso;
     this.onFases = onFases;
     this.onEscena = onEscena;
     this.onSeleccion = onSeleccion;
@@ -188,7 +191,7 @@ export class Tablero {
          todo ya en su sitio, así que no da vueltas—. */
       const conColas = this._colasEnSuSitio(elementos);
       if (conColas !== elementos) { this.fichas._cambio(conColas); return; }
-      this.repaso.parar();
+      this._pararRepaso();
       this._seguirALasFichas(elementos);
       this._rehacerSorteos();
       this._recordarDonde(elementos);
@@ -297,6 +300,8 @@ export class Tablero {
          acción sin abrir el anillo; N abre la fase siguiente. Sin Ctrl ni
          Alt, que son de otros (deshacer, el menú del navegador). */
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      /* Mantener la letra pulsada no repite la acción: una pulsación, un atajo. */
+      if (ev.repeat) return;
       if (this.atajo(ev.key)) ev.preventDefault();
     };
     lienzo.el.addEventListener('keydown', this._onTecla);
@@ -311,7 +316,7 @@ export class Tablero {
        corregirlos, y al mover su último nodo se buscaría un dueño que
        no está. */
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     this.defensa = defensaPorDefecto();
     this._reiniciarFases([{
       ...nuevaFase('f1'),
@@ -402,7 +407,7 @@ export class Tablero {
       return null;
     }
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     const pista = this.lienzo.vista.pistaKey;
     let lista = anadir(this.fichas.elementos, spec, x, y);
     const nueva = lista[lista.length - 1];
@@ -509,7 +514,7 @@ export class Tablero {
       return false;
     }
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     this._todas = sinFichas(this._todas, ids);
     this.fichas.seleccion = new Set();
     this.fichas._cambio(quitar(this.fichas.elementos, ids));
@@ -527,7 +532,7 @@ export class Tablero {
   borrarTramo(id) {
     if (!this.tramos.some((t) => t.id === id)) return false;
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     this.tramos = this.tramos.filter((t) => t.id !== id);
     /* Lo que queda en la fase detrás del borrado sale de donde queda cada
        uno: sin esto, tras quitar un bote su finta se quedaba en el sitio
@@ -966,7 +971,7 @@ export class Tablero {
     if (j.canasta !== this.canasta) this.setCanasta(j.canasta);
 
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     /* Los nombres nuevos siguen DESPUÉS de los guardados: empezando otra
        vez desde 1, la primera ficha o el primer tramo que se añadiera se
        llamaría igual que uno de los que ya hay, y se moverían juntos. */
@@ -1624,8 +1629,7 @@ export class Tablero {
     this.cerrar();
     const { tramos, tiempos } = this.conRondasEn();
     const defensa = this._defensaDeLasFases();
-    this._repasar(this._paraRepaso(tramos, tiempos, 0, defensa[this.iFase]));
-    this._cerrarFaseAlAcabar = true;
+    this._repasar(this._paraRepaso(tramos, tiempos, 0, defensa[this.iFase]), { cerrarFase: true });
     return true;
   }
 
@@ -1694,10 +1698,20 @@ export class Tablero {
     return true;
   }
 
-  /* Reproduce con los balones del carro de las rondas a mano. */
-  _repasar(tramos) {
+  /* Reproduce con los balones del carro de las rondas a mano. El cierre
+     de la fase que pide «Siguiente fase» va con SU repaso: cualquier otro
+     lo borra, para que una fase no se cierre sola más tarde. */
+  _repasar(tramos, { cerrarFase = false } = {}) {
     this.repaso.extras = this.rondas().balones;
+    this._cerrarFaseAlAcabar = cerrarFase;
     this.repaso.reproducirFase({ tramos });
+  }
+
+  /* Corta el repaso, y con él el cierre de fase que esperaba a su final:
+     si el repaso no acaba solo, la fase no se cierra. */
+  _pararRepaso() {
+    this._cerrarFaseAlAcabar = false;
+    this.repaso.parar();
   }
 
   /**
@@ -1877,7 +1891,7 @@ export class Tablero {
   irAFase(i) {
     const n = Math.max(0, Math.min(this.fases.length - 1, i | 0));
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     this.iFase = n;
     this._ponerCanastaDeTrabajo();
     const { fase } = this.faseEnCurso();
@@ -2020,7 +2034,7 @@ export class Tablero {
   /* ---- plantillas: colocaciones y fases guardadas (§7.8) ----- */
 
   /** La colocación de ahora: la escena al empezar, sin lo dibujado. */
-  colocacion() { return colocacionDe(this.jugada().elementos); }
+  colocacion() { return colocacionDe(this.jugada().elementos, { canasta: this.canasta }); }
 
   /**
    * PONE UNA COLOCACIÓN guardada. `sustituir` empieza de nuevo con ella
@@ -2031,10 +2045,11 @@ export class Tablero {
   ponerColocacion(datos, modo = 'anadir') {
     const pista = this.lienzo.vista.pistaKey;
     if (modo === 'sustituir') {
-      const r = ponerLaColocacion([], datos, pista);
+      const r = ponerLaColocacion([], datos, pista, this.canasta, { nombreDe: (e) => this.nombreDe(e) });
       if (!r.puestas) { this.onNoPuede?.({ nombre: 'Poner la colocación' }, 'está vacía'); return 0; }
       this.poner(r.elementos);
       this.onEscena?.(this.fichas.elementos);
+      if ((r.avisos || []).length) this.onAviso?.(r.avisos.join(' '));
       return r.puestas;
     }
     if (this.iFase !== 0) {
@@ -2042,15 +2057,16 @@ export class Tablero {
       return 0;
     }
     this.cerrar();
-    const r = ponerLaColocacion(this.fichas.elementos, datos, pista);
+    const r = ponerLaColocacion(this.fichas.elementos, datos, pista, this.canasta, { nombreDe: (e) => this.nombreDe(e) });
     if (!r.puestas) { this.onNoPuede?.({ nombre: 'Añadir la colocación' }, 'está vacía'); return 0; }
     this._conFichasNuevas(r.elementos);
+    if ((r.avisos || []).length) this.onAviso?.(r.avisos.join(' '));
     return r.puestas;
   }
 
   /** La fase que se edita, como plantilla: { datos, avisos }. */
   plantillaDeFase() {
-    return plantillaDeLaFase(this.fases[this.iFase], this.fichas.elementos, { entrada: this.entrada || {}, nombreDe: (e) => this.nombreDe(e) });
+    return plantillaDeLaFase(this.fases[this.iFase], this.fichas.elementos, { entrada: this.entrada || {}, nombreDe: (e) => this.nombreDe(e), canasta: this.canastaEnCurso });
   }
 
   /** A qué ficha le toca cada papel de una fase guardada, de entrada. */
@@ -2067,16 +2083,16 @@ export class Tablero {
   insertarPlantilla(datos, mapa) {
     const pista = this.lienzo.vista.pistaKey;
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     /* Se comprueba ANTES de abrir una fase nueva: si no se puede, que no
        quede una fase vacía de más. */
-    const prueba = tramosDePlantilla(datos, mapa, { entrada: this._dondeAcabaEstaFase(), posesion: {}, pista, nuevoId: () => 'x' });
+    const prueba = tramosDePlantilla(datos, mapa, { entrada: this._dondeAcabaEstaFase(), posesion: {}, pista, canasta: this.canastaEnCurso, nuevoId: () => 'x' });
     if (prueba.motivo) { this.onNoPuede?.({ nombre: 'Insertar la fase' }, prueba.motivo); return { ok: false, avisos: [] }; }
     if (this.tramos.length && !this.insertarFase('despues')) return { ok: false, avisos: [] };
     const i = this.iFase;
     const posesion = i === 0 ? (this.fases[0].posesion || {}) : posesionAlFinal(this.fases, i - 1, this.fases[0].posesion || {});
     const r = tramosDePlantilla(datos, mapa, {
-      entrada: this.entrada || {}, posesion, pista,
+      entrada: this.entrada || {}, posesion, pista, canasta: this.canastaEnCurso,
       nuevoId: () => `tr${siguiente++}`,
       nombreDe: (id) => this.nombreDe(this.fichas.elementos.find((e) => e.id === id) || { id }),
     });
@@ -2130,7 +2146,7 @@ export class Tablero {
    */
   insertarFase(donde = 'despues') {
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     const i = this.iFase;
     const raiz = this._todas[0];
     const nueva = { ...nuevaFase(nuevoIdDeFase(this._todas)), tramos: [], entrada: {} };
@@ -2151,14 +2167,17 @@ export class Tablero {
    */
   borrarFase() {
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     const i = this.iFase;
     const raiz = this._todas[0];
     const id = this.fases[i].id;
     const r = borrarLaFase(this._todas, id);
     if (r.motivo) { this.onNoPuede?.({ nombre: 'Borrar la fase' }, r.motivo); return false; }
     this._todas = this._conLaEscenaEn(r.fases, raiz);
-    if (this._todas[0].id !== raiz.id) this._reanclarLaPrimera();
+    /* Lo de detrás pasa a seguir a lo de delante: si se llevó el pase, quien
+       botaba ya no tiene balón. Eso se quita, y se dice. */
+    const quitados = this._quitarLosSinBalon();
+    if (this._todas[0].id !== raiz.id || quitados.length) this._reanclarLaPrimera();
     this._camino = this._camino.filter((x) => x !== id);
     /* Al sitio de la borrada: lo que la seguía, o la anterior si era la
        última; y el camino, por donde siga desde ahí. */
@@ -2166,7 +2185,54 @@ export class Tablero {
     this._seguirDesdeAqui();
     this._huerfanos = this._recalcularArbol(null);
     this.irAFase(this.iFase);
+    if (quitados.length) this._avisarDeLosQuitados(quitados);
     return true;
+  }
+
+  /**
+   * Lo que pide balón —botar, pasar, tirar— hecho por quien ya no lo tiene,
+   * porque se ha borrado la fase donde lo recibía, se quita. Solo si le falta
+   * por TODOS los caminos que pasan por ese tramo: en una reunión que se
+   * alcanza con balón por una rama, no se toca lo que vale.
+   * @returns los tramos quitados
+   */
+  _quitarLosSinBalon() {
+    /* Pide balón lo que sale con él y no sin él: lo dice el catálogo, la
+       misma regla que decide qué ofrece el anillo. */
+    const conBalon = estadoDe({ llevaBalon: true });
+    const sinBalon = estadoDe({ llevaBalon: false });
+    const necesita = (t) => {
+      const a = this._accionDe(t.accion);
+      return !!a && saleEn(a, conBalon) && !saleEn(a, sinBalon);
+    };
+    const inicial = this._todas[0].posesion || {};
+    const mal = new Map();    // tramo → por cuántos caminos le falta el balón
+    const pasa = new Map();   // tramo → por cuántos caminos se pasa
+    for (const ids of todosLosCaminos(this._todas)) {
+      const fases = ids.map((x) => this.faseDeId(x));
+      for (const f of fases) for (const t of f.tramos || []) pasa.set(t.id, (pasa.get(t.id) || 0) + 1);
+      for (const { tramo } of tramosSinBalon(fases, inicial, necesita)) mal.set(tramo.id, (mal.get(tramo.id) || 0) + 1);
+    }
+    const fuera = new Set([...mal].filter(([id, n]) => n === pasa.get(id)).map(([id]) => id));
+    if (!fuera.size) return [];
+    const quitados = [];
+    this._todas = this._todas.map((f) => {
+      const sobran = (f.tramos || []).filter((t) => fuera.has(t.id));
+      if (!sobran.length) return f;
+      quitados.push(...sobran);
+      return { ...f, tramos: f.tramos.filter((t) => !fuera.has(t.id)) };
+    });
+    return quitados;
+  }
+
+  _avisarDeLosQuitados(quitados) {
+    const nombre = (t) => {
+      const ficha = this.fichas.elementos.find((e) => e.id === t.elemento_id);
+      const accion = this._accionDe(t.accion);
+      return `«${ficha ? `${this.nombreDe(ficha)} ` : ''}${accion ? accion.nombre.toLowerCase() : t.accion}»`;
+    };
+    const n = quitados.length;
+    this.onAviso?.(`<b>Borrar la fase:</b> se ${n > 1 ? 'han quitado' : 'ha quitado'} ${quitados.map(nombre).join(', ')}, porque ya no ${n > 1 ? 'llevan' : 'lleva'} el balón.`);
   }
 
   /**
@@ -2179,7 +2245,7 @@ export class Tablero {
     const i = this.iFase;
     if (i === 0) { this.onNoPuede?.({ nombre: 'Duplicar' }, 'la primera fase no tiene una anterior de la que salir otra vez'); return false; }
     this.cerrar();
-    this.repaso.parar();
+    this._pararRepaso();
     const x = this.fases[i];
     const anterior = this.fases[i - 1].id;
     const r = abrirLaRama(this._todas, anterior, {
@@ -2335,14 +2401,27 @@ export class Tablero {
     return g.length > 1 ? g : [];
   }
 
-  /** Lo que pueden hacer TODOS los del grupo: lo del anillo del primero
-   *  que también salga para los demás. Lo de dos fichas —bloquear,
-   *  defender a alguien— no: hay que señalar a quién, de uno en uno. */
+  /** Lo que se dice de uno en uno y no a varios: lo de dos fichas
+   *  —bloquear, defender a alguien— porque hay que señalar a quién, y el
+   *  pase, porque dos pases al mismo sitio dejan dos balones en una mano. */
+  _deUnoEnUno(accion) {
+    return necesita(accion).companero || (accion.parametros && accion.parametros.modo) === 'pase';
+  }
+
+  /** Lo que pueden hacer TODOS los del grupo: lo que sale en el anillo de
+   *  alguno de ellos y que todos pueden. Sale el mismo grupo se haya
+   *  puesto antes una ficha u otra. */
   accionesDelGrupo(miembros = this.grupo()) {
     if (!miembros.length) return [];
     const estados = miembros.map((m) => estadoDe(this.estadoDe(m)));
-    return anilloDe(estados[0]).filter((o) => o.accion
-      && !necesita(o.accion).companero
+    const vistas = new Set();
+    const candidatas = [];
+    for (const e of estados) {
+      for (const o of anilloDe(e)) {
+        if (o.accion && !vistas.has(o.slug)) { vistas.add(o.slug); candidatas.push(o); }
+      }
+    }
+    return candidatas.filter((o) => !this._deUnoEnUno(o.accion)
       && estados.every((e) => saleEn(o.accion, e))
       && miembros.every((m) => !this._porQueNo(o.accion, m)));
   }
@@ -2355,9 +2434,11 @@ export class Tablero {
   abrirAnilloDeGrupo() {
     const miembros = this.grupo();
     if (miembros.length < 2) return false;
+    /* Con un trazo a medias o un nodo en corrección no se abre otro anillo. */
+    if (this.dibujo.dibujando || this.nodos.editando || this.companero.eligiendo) return false;
     const comunes = this.accionesDelGrupo(miembros);
     if (!comunes.length) {
-      this.onNoPuede?.({ nombre: `Los ${miembros.length} a la vez` }, 'no hay nada que puedan hacer todos (lo de dos jugadores se dice de uno en uno)');
+      this.onNoPuede?.({ nombre: `Los ${miembros.length} a la vez` }, 'no hay nada que puedan hacer todos (pasar, bloquear o defender a alguien se dice de uno en uno)');
       return false;
     }
     this.nodos.soltar();
@@ -2375,6 +2456,9 @@ export class Tablero {
   setEnParalelo(on) {
     this._enParalelo = !!on;
     this._pintarGrupo();
+    /* El botón pulsado se rehace con otra etiqueta y el foco se cae a
+       `document.body`: sin devolverlo al lienzo, los atajos no llegarían. */
+    this.lienzo.el.focus?.({ preventScroll: true });
   }
 
   /* Los demás del grupo hacen lo mismo que el primero. */
@@ -2460,23 +2544,32 @@ export class Tablero {
     const k = String(tecla || '').toLowerCase();
     if (this.dibujo.dibujando || this.nodos.editando || this.companero.eligiendo) return false;
     if (k !== 'n' && !ATAJOS[k]) return false;
-    /* Un repaso a medias se corta, como con cualquier otra cosa que se haga. */
-    this.repaso.parar();
+    /* «Siguiente fase» arranca su propio repaso. */
     if (k === 'n') { this.siguienteFase(); return true; }
     const slug = ATAJOS[k];
     const accion = this._accionDe(slug);
     const jugadores = this.fichas.elementos.filter((e) => e.kind === 'jugador' && this.fichas.seleccion.has(e.id));
     if (!accion || !jugadores.length) return false;
     if (jugadores.length > 1) {
-      if (!this.accionesDelGrupo(jugadores).some((o) => o.slug === slug)) {
+      /* La misma regla que con una ficha: lo que sale para todos, aunque
+         no esté en el anillo de ninguno. */
+      if (this._deUnoEnUno(accion)) {
+        this.onNoPuede?.(accion, 'se dice de uno en uno, no a varios a la vez');
+        return true;
+      }
+      if (jugadores.some((m) => !saleEn(accion, estadoDe(this.estadoDe(m))) || this._porQueNo(accion, m))) {
         this.onNoPuede?.(accion, 'no lo pueden hacer todos los seleccionados');
         return true;
       }
       const centro = { x: jugadores.reduce((s, m) => s + m.x, 0) / jugadores.length, y: jugadores.reduce((s, m) => s + m.y, 0) / jugadores.length };
       this._grupo = { resto: jugadores.slice(1).map((m) => m.id), paralelo: this._enParalelo };
       this._ancla = { elemento: jugadores[0], en: centro, estado: estadoDe(this.estadoDe(jugadores[0])) };
-      this._pintarGrupo();
+      /* Un repaso a medias se corta, pero solo si la letra va a hacer algo. */
+      this._pararRepaso();
       this._elegir(slug, {});
+      /* El botón del grupo se pinta DESPUÉS: con el anillo o el trazo ya
+         abiertos se esconde, y si el atajo ya está hecho, vuelve. */
+      this._pintarGrupo();
       return true;
     }
     const elemento = jugadores[0];
@@ -2487,6 +2580,7 @@ export class Tablero {
       this.onNoPuede?.(accion, estado === 'defensor' ? 'está defendiendo' : estado === 'sinBalon' ? 'no lleva balón' : 'ahora no es cosa suya');
       return true;
     }
+    this._pararRepaso();
     this._conDedo = false;
     this._ancla = { elemento, en: elemento, estado };
     this._elegir(slug, {});
@@ -2621,7 +2715,18 @@ export class Tablero {
         this._pintarAyuda();
         return;
       }
-      if (!pide.companero) { this._declarar(elemento, accion, null); return; }
+      if (!pide.companero) {
+        /* Varios a la vez (§4.6): cada defensor lo declara por su cuenta. */
+        const grupo = this._grupo;
+        this._grupo = null;
+        this._declarar(elemento, accion, null);
+        for (const id of grupo ? grupo.resto : []) {
+          const m = this.fichas.elementos.find((e) => e.id === id);
+          if (m) this._declarar(m, accion, null);
+        }
+        this._pintarGrupo();
+        return;
+      }
       this._enCurso = { elemento, accion, variante };
       this.companero.empezar({
         elemento, accion, variante, conDedo: this._conDedo,
@@ -3274,6 +3379,7 @@ export class Tablero {
     this._quitarGestoTirador?.();
     this._quitarCapaAnillo?.();
     this._quitarCapaDesenlace?.();
+    this._quitarCapaGrupo?.();
     this._cerrarDesenlace();
     this.repaso.destroy();
     this.nodos.destroy();

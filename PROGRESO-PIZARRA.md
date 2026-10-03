@@ -38,14 +38,15 @@ el «pincha a quién» con el bloqueo; «romper la regla a propósito»
 | 7 · Texto y voz | ✅ cerrada en la rama `pizarra-v3` (pasos 7.0 a 7.3, y los arreglos de su revisión) | ver «Capa 7» |
 | 8 · Ramas | ✅ cerrada en la rama `pizarra-v3` (pasos 8.1 a 8.3, y los arreglos de su revisión) | ver «Capa 8» |
 | 9 · Variantes y vídeo | ✅ cerrada en la rama `pizarra-v3` (pasos 9.1 a 9.4, y los arreglos de su revisión). **La migración 044 está sin aplicar** | ver «Capa 9» |
-| 10 · Plantillas y remate | pendiente | — |
+| 10 · Plantillas y remate | ✅ cerrada en la rama `pizarra-v3` (pasos 10.1 a 10.6, y los arreglos de su revisión). **La migración 045 está sin aplicar** | ver «Capa 10» |
 
 Las capas 1 a 3 están en `main` en GitHub; la 4 está en la rama
-`pizarra-v3`, subida, y **no en `main`**. Bancos: **73 en verde, 1795
-pruebas**, más el del linter de la biblioteca (`node
+`pizarra-v3`, subida, y **no en `main`**, como las siguientes. Bancos:
+**75 en verde, 1906 pruebas**, más el del linter de la biblioteca (`node
 tools/biblioteca/lint.prueba.mjs`, 52/52), que no entra en el recuento y
-hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla) y
-`dev/pizarra-dibujar.html`.
+hay que lanzar aparte. Arneses: `dev/pizarra.html` (la pantalla),
+`dev/pizarra-dibujar.html` y `dev/jugadas.html` (las doce jugadas de
+referencia, §13).
 
 ## Capa 5, paso a paso
 
@@ -378,6 +379,133 @@ tocarlos): `eval-repertorio` (anillo del defensor con pendientes;
 `eval-compilar` (B1 pasa a defender y a moverse), `eval-dibujo` (texto
 del bloqueo) y `eval-acciones` si cambian las mecánicas.
 
+## Capa 10, paso a paso
+
+| Paso | Qué | Estado |
+|---|---|---|
+| 10.1 | Operaciones de fase (§6.8): insertar una fase antes o después, borrarla, duplicarla como otra rama y ponerle nombre. El modelo está en `ramas.js` (`insertarFase`, `borrarFase`); la primera fase guarda la escena al empezar, y si otra pasa a serlo, se la queda. Una fila nueva en la tira, encima de la de las ramas | ✅ `34817a3` |
+| 10.2 | Varios a la vez (§3.2, §4.6): con varios jugadores seleccionados no se abre el anillo de uno; sale «¿Qué hacen los N?» con lo que pueden hacer todos. Los gestos y lo que ya sabe a dónde va, cada uno el suyo; con destino, se dibuja el del primero y los demás van al mismo punto o, «en paralelo», copian el trazo | ✅ `34817a3` |
+| 10.3 | Atajos (§4.7): B, P, T, C, E, R, D, X, F lanzan la acción de la ficha seleccionada (o de todas); N abre la fase siguiente | ✅ `34817a3` |
+| 10.4 | Plantillas (§7.8): `pizarra/plantillas.js` con su banco; la migración **045** (tabla `plantillas`, **sin aplicar**) y `supabase/plantillas.js`. En el panel izquierdo, las colocaciones del club para la pista que hay delante (guardar la de ahora, añadir, sustituir, quitar); en la fila de la fase, «Guardar como plantilla» y «Plantilla…», que pide qué ficha hace cada papel | ✅ `75a6901` |
+| 10.5 | Deshacer y rehacer (§2.2): ↶ ↷ en la barra y Ctrl+Z / Ctrl+Mayús+Z (o Ctrl+Y); Espacio reproduce y G enseña u oculta el fantasma de la fase anterior. Y la limpieza del motor antiguo: fuera `resolverAccion`, `indexar`, `EVENTOS_LEGADO` y `_legado` (`ia/acciones.js`), `supabase/posiciones.js`, `draft.posiciones`, el CSS muerto y los comentarios que hablaban de los pasos viejos | ✅ `be1d6c3` |
+| 10.6 | El banco visual del §13: doce jugadas de referencia (`dev/jugadas-referencia.js`), de un 1x0 de tiro a un 3x3 con ramas, dibujadas sobre un Tablero de verdad; su banco (`eval-referencia.mjs`: se dibujan sin rechazos, compilan sin avisos, tienen su frase y se reabren igual) y el arnés `dev/jugadas.html`, que las enseña animadas y las abre en la Pizarra | ✅ `a5fca1e` |
+
+El «aviso en los ejercicios viejos» que el §14 pone en esta capa ya
+estaba hecho desde la capa 4 (§11.4: la ficha, el proyector, el visor de
+Equipos y la biblioteca).
+
+**Decidido por el entrenador (2026-10-01):**
+
+- **Fases: lo básico** (insertar, borrar, duplicar, nombre). Reordenar
+  arrastrando, las miniaturas en la tira y fijar a mano la duración o la
+  pausa de una fase, no.
+- **Duplicar una fase la abre como otra rama** desde el mismo punto, no
+  como una copia detrás.
+- **Las plantillas, con la migración 045**, que aplica él: son del club.
+- **La limpieza: borrar todo** lo que se había quedado sin usuario.
+
+**Decidido en la capa 10 (detalles, sin preguntar):**
+
+- **«En paralelo» es un botón** junto al grupo, no la tecla Alt del
+  §4.6: Alt ya añade puntos al trazo.
+- **Lo que pueden hacer «los N»** es lo que pueden hacer TODOS: si uno no
+  puede, no se ofrece. Los atajos, igual; y cortan el repaso si lo hay.
+- **Borrar una fase** se lleva lo dibujado en ella; lo de detrás pasa a
+  seguir a lo de delante y se reancla, y si era la primera, la siguiente
+  arranca de donde empezaba la jugada. No se borra una fase de la que
+  salen ramas (antes hay que quitarlas) ni la única que hay: se dice por
+  qué.
+- **Una colocación guardada** se vuelve a poner con las mismas piezas que
+  el panel: se numera sola, coge su balón y rehace su fila. «Sustituir»
+  quita lo dibujado y lo pide dos veces; «Añadir» no toca lo que hay.
+  Solo se ofrecen las de la pista que hay delante.
+- **Una fase guardada lleva papeles, no fichas** (`p1`, `p2`…): al
+  insertarla se dice qué ficha hace cada papel (por defecto, la que se
+  llama igual), cada trazo sale de donde está su ficha, el pase va a
+  quien lo recibe y lo lleva el balón que tenga quien pasa. Lo que no
+  encaja (un tiro sin balón) se quita y se dice. Con algo ya dibujado,
+  va en una fase nueva detrás.
+- **Deshacer y rehacer** no estaban en el §14, pero sí en la barra del
+  §2.2: se guardan fotos de la jugada entera y de la fase que se veía
+  (`history.js`, que se conservó para esto), se apunta cuando la jugada
+  deja de cambiar (400 ms) y reabrir un ejercicio lo empieza de nuevo.
+  Las plantillas y las variantes guardadas no se deshacen: están en la
+  base de datos.
+- **El banco visual va en `dev/jugadas.html`**, con los demás arneses
+  (que Netlify no sirve), y no en `tools/pizarra.html` como dice el §13.
+
+**La revisión adversarial de la capa 10** (2026-10-02 y 03; cuatro revisores
+Opus, uno por bloque —fases, varios y atajos, plantillas con la 045,
+deshacer y limpieza—; 44 hallazgos, 37 reproducidos con un script y el
+resto razonado). Todos los reproducidos eran defectos. Arreglados, cada uno
+con su prueba y comprobando que falla con el código viejo (22 mutantes
+míos, todos muertos tras ampliar tres pruebas):
+
+- **Fases (`ramas.js`)**: borrar la primera fase de una rama cambiaba el
+  camino principal; borrar una rama que se reunía en otra del mismo cruce
+  dejaba un cruce de una sola opción (el proyector se paraba en él);
+  borrar una fase cuya siguiente ya empezaba otra rama rompía el principal.
+  Ahora se vuelve a comprobar el cruce de la borrada y el orden de las
+  ramas no cambia. Y borrar una fase **quita lo que ya no tiene balón**
+  (`posesion.js`: `tramosSinBalon`) y lo dice; si el tramo vale por otro
+  camino de una reunión, no se toca. La fila de la fase numera como la tira.
+- **Varios a la vez y atajos**: una letra de atajo dejaba pendiente el
+  cierre de «Siguiente fase» y la fase se cerraba sola más tarde (también
+  con deshacer y con ▶); una letra que no hace nada ya no corta el repaso;
+  mantener una letra no repite la acción; «Cierra el rebote» y «Es
+  sobrepasado» las declaran todos los defensores del grupo; el botón del
+  grupo se esconde mientras se elige o se dibuja; lo que pueden hacer
+  todos ya no depende de qué ficha se puso antes; y el foco vuelve a la
+  pista tras «en paralelo».
+- **Plantillas**: el nombre de una plantilla de otro entrenador se pintaba
+  como HTML en los avisos (XSS guardado): los avisos pintan como texto y
+  solo dejan `<b>`. Una fila de la base de datos mal formada rompía la
+  Pizarra: se descarta, se cuenta y se dice. Lo que pide balón y la ficha
+  no lo tiene se quita (no solo el tiro); la colocación se numera sola;
+  lo que no viaja (`defensor_id`, la defensa declarada, los rodeos, los
+  `defiende_a` a una fila) se dice; el receptor de un pase es el sitio
+  donde acaba, no el primero; no se comparten nodos con la plantilla.
+- **Deshacer**: el Espacio con el foco en la pista no reproducía y,
+  mantenido, reproducía en bucle; Ctrl+Z en mitad de un arrastre dejaba el
+  gesto vivo y pisaba lo deshecho; pararse medio segundo a mitad de un
+  arrastre apuntaba un paso intermedio; el selector «Ataca a» quedaba
+  desincronizado; ↶ ↷ desactivados no se distinguían, y ↶ tardaba 400 ms en
+  activarse.
+- **Limpieza**: los comentarios que hablaban de módulos ya borrados.
+  `normalizarNombre` se queda (solo la usan los bancos, como `parametroDe`).
+
+**Decidido por el entrenador en la revisión (2026-10-02):**
+
+- **Plantillas y canasta**: la plantilla guarda a qué aro atacaba
+  (`datos.canasta`, sin tocar la 045) y se pone en espejo si la jugada
+  ataca al otro. Las guardadas sin ese dato se leen como norte.
+- **Ctrl+Z con un trazo a medias** solo lo cancela (como Esc); el
+  siguiente deshace el paso anterior.
+- **Un pase no se dice a un grupo**: dos pases al mismo receptor dejaban
+  la jugada distinta al reabrirla.
+- **Borrar una fase quita lo que ya no tiene balón y lo dice.**
+
+**Decidido en la revisión (detalle, sin preguntar):** borrar una fase cuya
+siguiente ya empieza otra rama se **rechaza** con su motivo («sepárala
+antes de borrarla»), como ya hace `abrirRama`; la alternativa —borrar y
+perder el nombre de la rama— pierde datos sin avisar.
+
+**Lo que la revisión dejó sin tocar** (no son defectos que rompan nada, o
+piden una decisión): «Sustituir» una colocación devuelve también los
+ajustes de la defensa a los de por defecto sin decirlo; la 045 no tiene un
+`UNIQUE (tipo, pista, nombre)` (dos «1-4 alto» salen como botones iguales);
+con varios seleccionados, Esc no deselecciona (viene de antes); «al mismo
+punto» puede dejar un tramo de longitud 0; si el primero del grupo no puede
+hacer algo con destino, no lo hace nadie y el aviso no dice quién; tras
+deshacer, los defensores colocados solos cuentan como puestos a mano;
+Ctrl+Z no llega si el foco se ha ido de la pista y la barra (tras pinchar
+una fase, o con el foco en un desplegable); deshacer estando en una
+reunión vista desde la segunda rama vuelve al camino principal; duplicar
+una reunión funciona o falla según la rama por la que se llegó, y el
+mensaje no se entiende; el nombre de una fase se guarda en `change` y repinta
+la tira en mitad del clic siguiente (sin comprobar en navegador, media
+confianza).
+
 ## Capa 9, paso a paso
 
 | Paso | Qué | Estado |
@@ -461,6 +589,19 @@ hacen ahora, en la capa 9 (el plan del §14 no los ponía en ninguna).
 revisor del proyector y a 17 escépticos): 5 hallazgos confirmados y 16
 sin verificar, comprobados a mano; todos eran defectos (varios, el mismo
 visto dos veces) y están arreglados, con su prueba.
+
+**La segunda revisión** (lo que el corte dejó sin mirar: la columna del
+proyector y los gestos): 11 hallazgos, todos confirmados y arreglados con
+su prueba (`4c25e9f`). La columna guarda un reproductor por clip en vez
+de cargar uno en cada cambio de fase; en vertical va arriba, y un móvil
+apaisado la lleva al lado; con el vídeo en grande las teclas son suyas,
+y al cerrarlo no se contesta solo un cruce; la variante elegida manda
+sobre la de siempre de otro trazo. Gestos: quien solo pasa o tira no
+pierde su gesto al arrastrarlo; «recibe y finta» sigue estirando el
+pase; un gesto no rodea conos; borrar un trazo reancla lo que queda en
+la fase; el bloqueador aguanta aunque su compañero finte antes de salir;
+la defensa no persigue una finta; y el guion de Equipos la llama por su
+nombre. 35 mutantes más, todos muertos.
 
 ## Capa 8, paso a paso
 
@@ -816,12 +957,21 @@ dibujado desde el principio.
 
 ## Siguiente paso
 
-**Hoy (2026-10-01): la capa 10, plantillas y remate** (§14: colocaciones
-y fases guardadas, selección múltiple, atajos, limpieza del motor antiguo,
-aviso en los ejercicios viejos). Las capas 6 a 9 están cerradas; **la
-migración 044 hay que aplicarla en Supabase** para poder crear variantes. Lo que viene después de
-esta línea es el siguiente paso de la capa 4, que ya está hecho; se deja
-como historia.
+**Las diez capas del §14 están acabadas (2026-10-01), y la 10 revisada
+(2026-10-03)**, todas en la rama `pizarra-v3` (en el remoto, hasta el paso
+10.5). Lo que queda no es código:
+
+1. **Aplicar en Supabase las migraciones 044 (variantes) y 045
+   (plantillas)**: las aplica el entrenador. Hasta entonces la Pizarra
+   funciona igual, pero «Nueva variante» y guardar una plantilla dicen
+   que falta la migración.
+2. **Mirar el banco visual** (`dev/jugadas.html`) y probar la Pizarra con
+   los dedos en una tablet.
+3. **Decidir cuándo pasa a `main`**: Netlify publica `main`, así que
+   fusionar es publicar. No se fusiona sin el visto bueno del entrenador.
+
+Lo que viene después de esta línea es el siguiente paso de la capa 4,
+que ya está hecho; se deja como historia.
 
 **4.4b**, con dos decisiones ya tomadas (2026-09-11): el creador v2.1 se
 borra ya, como dice el §12, y lo guardado se trata como dice el §11.4.
@@ -973,18 +1123,12 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
   (`eval-destino`, `eval-trazo`, `eval-fases`); las rondas
   con cadencia y la fusión de sus acciones → capa 6; qué desplegables
   declara cada acción → capa 7.
-- Comentarios que todavía nombran el motor viejo: la cabecera de
-  `eval-acciones.mjs`, el de `.court-wrap.is-tocable` en `canvas.css`
-  («en el paso 1 y en el paso 2»), `cargar.js` («el conteo del tablero»)
-  y `supabase/posiciones.js` (líneas 14-15 y 49).
-- Código que se queda sin usuario: en `ia/acciones.js`, `resolverAccion`,
-  `indexar`, `parametroDe` y `EVENTOS_LEGADO` (los leían la frase y el
-  compilador viejos; `eval-acciones` los sigue vigilando porque el
-  catálogo se conserva); `draft.posiciones` (solo lo leía el
-  paso 2), `supabase/posiciones.js` y `supabase/videos.js`,
-  `taller/js/history.js`, `.btn.is-loading` en `wizard.css`, y en
-  `base.css` las clases `.stub`, `.canvas-stub` y `.editor-*`, que ya
-  estaban muertas desde antes.
+- ~~Comentarios que todavía nombran el motor viejo y código que se queda
+  sin usuario (`resolverAccion`, `indexar`, `EVENTOS_LEGADO`,
+  `draft.posiciones`, `supabase/posiciones.js`, el CSS muerto).~~ Limpiado
+  en la 10.5. `supabase/videos.js` y `history.js` vuelven a tener usuario
+  (los vídeos de las variantes y deshacer). Queda `parametroDe` en
+  `ia/acciones.js`, que hoy solo usa su banco.
 - `.claude/worktrees/jolly-chatelet-6ef063/` guarda una copia vieja de
   `stage.js`, `detalle.js` y `wizard.js`: sale en cualquier búsqueda y
   despista.
@@ -1054,6 +1198,19 @@ Salido del borrado del motor viejo (avisos de los agentes, 2026-09-12):
   vídeo de referencia sin ver arranca la animación debajo del vídeo (el
   motor anuncia la fase antes de reproducir). Es lo mismo que se ha
   arreglado al elegir una rama; viene de antes de las ramas.
+- **Capa 10, fases (§6.8):** quedan fuera, porque el entrenador pidió lo
+  básico: reordenar las fases arrastrando, las miniaturas en la tira y
+  fijar a mano la duración o la pausa de una fase.
+- **Capa 10, plantillas (§7.8):** se guarda UNA fase, no un grupo de
+  fases; y las plantillas no se pueden renombrar (sí quitar y volver a
+  guardar).
+- **Del §2.2, sin hacer:** el indicador del imán en la barra y la voz
+  dentro de la Pizarra (la narración está en la ficha y en el proyector).
+- **Aplazado por el entrenador:** «Cargar equipo del club» (§7.2) y la
+  variación por ronda (§7.6).
+- **El banco visual** (`dev/jugadas.html`) hay que mirarlo con los ojos:
+  los bancos dicen que las doce jugadas compilan sin avisos, no que se
+  vean bien.
 
 ---
 

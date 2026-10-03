@@ -7,9 +7,8 @@
    las anclas: tiene que estar disponible sin una llamada de red. Esta
    tabla guarda lo que añade el club, y aquí se fusionan.
 
-   Mismo reparto que con las posiciones: el motor (ia/acciones.js) es
-   PURO y el banco Node lo importa tal cual; la persistencia vive aquí
-   y se inyecta.
+   El motor (ia/acciones.js) es PURO y el banco Node lo importa tal
+   cual; la persistencia vive aquí y se inyecta.
    ============================================================ */
 
 import { supabase } from './client.js';

@@ -166,7 +166,7 @@ export class LineaTiempo {
     const nombre = h('input', { class: 'pz-ramas__nombre', type: 'text', value: f.nombre || '', maxlength: '40', placeholder: 'sin nombre', 'aria-label': 'Nombre de la fase' });
     nombre.addEventListener('change', () => t.renombrarFase(nombre.value));
     caja.append(
-      h('label', { class: 'pz-ramas__campo' }, `Fase ${t.numeroDeFase}:`, nombre),
+      h('label', { class: 'pz-ramas__campo' }, `Fase ${t.numeroEnSuCamino(f.id)}:`, nombre),
       accion('＋ antes', 'Mete una fase vacía antes de esta', () => { this._formulario = null; t.insertarFase('antes'); }),
       accion('＋ después', 'Mete una fase vacía después de esta', () => { this._formulario = null; t.insertarFase('despues'); }),
     );
@@ -183,7 +183,7 @@ export class LineaTiempo {
     if (this._formulario === 'borrar') {
       const n = (f.tramos || []).length;
       caja.append(h('div', { class: 'pz-ramas__form' },
-        h('span', null, `¿Borrar la fase ${t.numeroDeFase}${n ? ` y ${n === 1 ? 'su trazo' : `sus ${n} trazos`}` : ''}?`),
+        h('span', null, `¿Borrar la fase ${t.numeroEnSuCamino(f.id)}${n ? ` y ${n === 1 ? 'su trazo' : `sus ${n} trazos`}` : ''}?`),
         accion('Sí, borrarla', 'Borra la fase', () => { this._formulario = null; if (!t.borrarFase()) this.refrescar(); }, 'pz-ramas__b--quitar'),
         accion('No', 'La deja como está', () => { this._formulario = null; this.refrescar(); })));
     }

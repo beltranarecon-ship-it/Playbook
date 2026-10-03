@@ -52,3 +52,36 @@ export function posesionAlFinal(fases, hasta, inicial = {}) {
   }
   return duenos;
 }
+
+/**
+ * Los tramos que necesitan el balón —botar, pasar, tirar— hechos por quien
+ * NO lo tiene en ese momento. Salen al borrar una fase: lo de detrás se
+ * reancla a lo de delante, y si se llevó el pase, el que botaba ya no tiene
+ * balón con el que botar.
+ *
+ * Repasa lo dibujado en orden, como `posesionAlFinal`, pero un tramo que no
+ * vale no mueve nada: lo que venga detrás lo ve como si no estuviera, así
+ * que la cuenta es la de la jugada ya sin esos tramos.
+ *
+ * @param fases          las de UN camino de la jugada (§11.1)
+ * @param inicial        { [balon]: jugador|null } al empezar la jugada
+ * @param necesitaBalon  (tramo) => true si el tramo pide balón a quien lo hace
+ * @returns [{ fase, tramo }]
+ */
+export function tramosSinBalon(fases, inicial = {}, necesitaBalon = () => false) {
+  const duenos = { ...inicial };
+  const r = [];
+  (fases || []).forEach((f, i) => {
+    for (const t of (f && f.tramos) || []) {
+      if (!t) continue;
+      if (necesitaBalon(t) && !Object.values(duenos).includes(t.elemento_id)) { r.push({ fase: i, tramo: t }); continue; }
+      if (t.corre_id && t.corre_id !== t.elemento_id && t.corre_id in duenos) duenos[t.corre_id] = t.receptor_id || null;
+      if (t.balon_id) duenos[t.balon_id] = t.elemento_id;
+    }
+    for (const [quien, a] of Object.entries((f && f.defensa) || {})) {
+      if (!a || a.accion !== 'roba' || !a.objetivo_id) continue;
+      for (const b of Object.keys(duenos)) if (duenos[b] === a.objetivo_id) duenos[b] = quien;
+    }
+  });
+  return r;
+}

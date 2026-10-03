@@ -469,7 +469,8 @@ export function validarAccion(a) {
 
 /* ── 4. Comparar nombres ───────────────────────────────────── */
 
-/** minúsculas, sin tildes, sin signos, sin artículos. */
+/** minúsculas, sin tildes y sin signos. Hoy solo lo usan los bancos, para
+ *  comparar etiquetas. */
 export function normalizarNombre(s) {
   return String(s ?? '')
     .toLowerCase()

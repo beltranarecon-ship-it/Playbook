@@ -30,6 +30,7 @@ import {
   tramosConFicha, balonEnJuego, conFichaNueva, sinFichas, esTiro, TRAS_EL_TIRO_MS,
 } from '../js/pizarra/fases.js';
 import { trasElTiro } from '../js/pizarra/destino.js';
+import { tramosSinBalon } from '../js/pizarra/posesion.js';
 import { duracionDe, longitudMetros, nuevoTrazo, fraccionMasCercana, trazoDeIdaYVuelta } from '../js/pizarra/trazo.js';
 import { muestreador, tiempoDeRecorrido } from '../js/canvas/instante.js';
 import { easeInOut } from '../js/canvas/geometry.js';
@@ -744,6 +745,35 @@ test('QUITAR UNA FICHA LIMPIA LO QUE LA DEFENSA HACÍA CON ELLA (§8.5)', () => 
   eq(sinFichas(fases, ['B2'])[0].defensa, { B1: { accion: 'ayuda', objetivo_id: 'A3' } }, 'y al irse el que lo hacía, lo suyo:');
   eq(sinFichas([{ id: 'f1', tramos: [], entrada: {} }], ['A3'])[0].defensa, undefined,
     'una fase sin nada declarado no se llena de huecos:');
+});
+
+test('LOS TRAMOS QUE PIDEN BALÓN Y NO LO TIENEN SE ENCUENTRAN, y los de detrás se cuentan sin ellos', () => {
+  const pideBalon = (t) => ['bota', 'pasa', 'tira'].includes(t.accion);
+  const inicial = { bal: 'A1' };
+  /* A1 pasa a A2 y A2 bota: todo vale. */
+  const bien = [{ tramos: [
+    { id: 't1', elemento_id: 'A1', corre_id: 'bal', receptor_id: 'A2', accion: 'pasa' },
+    { id: 't2', elemento_id: 'A2', corre_id: 'A2', accion: 'bota' },
+  ] }];
+  eq(tramosSinBalon(bien, inicial, pideBalon), [], 'con su balón, nada que quitar:');
+  /* Sin el pase (se borró la fase que lo tenía), A2 bota sin balón. */
+  const sin = [{ tramos: [{ id: 't2', elemento_id: 'A2', corre_id: 'A2', accion: 'bota' }] }];
+  eq(tramosSinBalon(sin, inicial, pideBalon).map((x) => [x.fase, x.tramo.id]), [[0, 't2']], 'A2 bota sin balón:');
+  /* Un corte no pide balón, lo tenga o no. */
+  eq(tramosSinBalon([{ tramos: [{ id: 't3', elemento_id: 'A2', corre_id: 'A2', accion: 'corta' }] }], inicial, pideBalon), []);
+  /* Un pase que no vale no mueve el balón: lo de detrás lo cuenta sin él. */
+  const cadena = [{ tramos: [
+    { id: 'p1', elemento_id: 'A3', corre_id: 'bal', receptor_id: 'A2', accion: 'pasa' },   // A3 no lo tiene
+    { id: 'b1', elemento_id: 'A2', corre_id: 'A2', accion: 'bota' },                      // y A2 tampoco llega a tenerlo
+    { id: 'b2', elemento_id: 'A1', corre_id: 'A1', accion: 'bota' },                      // A1 sigue con él
+  ] }];
+  eq(tramosSinBalon(cadena, inicial, pideBalon).map((x) => x.tramo.id), ['p1', 'b1'], 'en cadena:');
+  /* En otra fase, y un robo cambia de manos. */
+  const robo = [
+    { tramos: [], defensa: { B1: { accion: 'roba', objetivo_id: 'A1' } } },
+    { tramos: [{ id: 'x1', elemento_id: 'A1', corre_id: 'A1', accion: 'bota' }, { id: 'x2', elemento_id: 'B1', corre_id: 'B1', accion: 'bota' }] },
+  ];
+  eq(tramosSinBalon(robo, inicial, pideBalon).map((x) => [x.fase, x.tramo.id]), [[1, 'x1']], 'tras el robo, bota B1 y no A1:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

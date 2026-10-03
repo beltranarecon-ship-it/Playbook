@@ -44,7 +44,7 @@ globalThis.cancelAnimationFrame = () => {};
 globalThis.getComputedStyle = () => ({});
 
 const { Tablero } = await import('../js/pizarra/tablero.js');
-const { Pizarra } = await import('../js/pizarra/pizarra.js');
+const { Pizarra, htmlDeAviso } = await import('../js/pizarra/pizarra.js');
 const { anadir, asignarBalon, reiniciarIds } = await import('../js/pizarra/elementos.js');
 const { nuevoTrazo } = await import('../js/pizarra/trazo.js');
 const defensaMod = await import('../js/pizarra/motor/defensa.js');
@@ -88,6 +88,7 @@ function montar(pista = 'entera') {
     canasta: 'norte',
     onNoPuede: (a, motivo) => avisos.push(['noPuede', a && a.nombre, motivo]),
     onSinSoporte: (a) => avisos.push(['sinSoporte', a && a.nombre, null]),
+    onAviso: (html) => avisos.push(['aviso', html]),
   });
   const p = Object.create(Pizarra.prototype);
   Object.assign(p, {
@@ -1118,10 +1119,94 @@ test('LOS ATAJOS (§4.7): la letra lanza la acción de la ficha seleccionada; N,
   seleccionar(t, a2.id, a3.id);
   const n = t.tramos.length;
   eq([t.atajo('f'), t.tramos.length - n], [true, 2]);
-  eq([t.atajo('x'), avisos.at(-1)[2]], [true, 'no lo pueden hacer todos los seleccionados']);
+  eq([t.atajo('x'), avisos.at(-1)[2]], [true, 'se dice de uno en uno, no a varios a la vez']);
   /* N cierra la fase. */
   t.repaso.parar();
   eq(t.atajo('n'), true);
+});
+
+test('LO QUE PUEDEN HACER TODOS NO DEPENDE DE QUÉ FICHA SE PUSO ANTES, y el atajo sigue la regla de una ficha', () => {
+  const { t, a1, a2 } = tresAtacantes();
+  const slugs = (miembros) => t.accionesDelGrupo(miembros).map((o) => o.slug).sort();
+  eq(slugs([a1, a2]), slugs([a2, a1]), 'el mismo grupo en el orden contrario:');
+  seleccionar(t, a1.id, a2.id);
+  eq(t.atajo('c'), true);
+  eq(t.anillo.abierto, true, 'C, corta: lo pueden hacer los dos, con balón y sin él:');
+  t.cerrar();
+  /* El gesto «solo con balón» no lo pueden hacer los dos. */
+  eq(t.atajo('f'), true);
+  ok(t.tramos.length === 2, 'la finta sí, a los dos');
+});
+
+test('UN PASE NO SE DICE A VARIOS: dos pases al mismo sitio dejaban dos balones en una mano', () => {
+  const { t, a1, a2, avisos } = tresAtacantes();
+  t.anadirFicha({ kind: 'balon' }, { x: ficha(t, a2.id).x, y: ficha(t, a2.id).y });
+  seleccionar(t, a1.id, a2.id);
+  eq(t.grupo().length, 2);
+  ok(!t.accionesDelGrupo().some((o) => o.slug === 'pasa'), `el grupo no ofrece «Pasa»: ${t.accionesDelGrupo().map((o) => o.slug)}`);
+  const n = t.tramos.length;
+  eq([t.atajo('p'), t.tramos.length - n, t.anillo.abierto], [true, 0, false], 'ni con la P:');
+  eq(avisos.at(-1)[2], 'se dice de uno en uno, no a varios a la vez');
+});
+
+test('«CIERRA EL REBOTE» Y «ES SOBREPASADO» LOS DECLARAN TODOS LOS DEFENSORES DEL GRUPO', () => {
+  const { t, b1, b2 } = conDefensa();
+  seleccionar(t, b1.id, b2.id);
+  ok(t.abrirAnilloDeGrupo(), 'se abre el anillo común');
+  ok(t.accionesDelGrupo().some((o) => o.slug === 'cierra_rebote'), 'se ofrece');
+  t._elegir('cierra_rebote', {});
+  eq(Object.keys(t.declaradas()).sort(), [b1.id, b2.id].sort(), 'los dos lo declaran:');
+  eq(t._grupo, null, 'y el grupo no queda puesto:');
+});
+
+test('EL BOTÓN DEL GRUPO SE ESCONDE MIENTRAS SE ELIGE O SE DIBUJA, también con un atajo', () => {
+  const { t, a2, a3 } = tresAtacantes();
+  seleccionar(t, a2.id, a3.id);
+  t._pintarGrupo();
+  ok(t._botonGrupo, 'con el grupo y nada abierto, el botón está');
+  eq(t.atajo('c'), true);
+  ok(t.anillo.abierto, 'el atajo abre el anillo del cómo');
+  eq(t._botonGrupo, null, 'y el botón no se queda a la vista:');
+  t.cerrar();
+  t._pintarGrupo();
+  t.dibujo.empezar({ elemento: ficha(t, a2.id), accion: t._accionDe('corta'), variante: null, conDedo: false });
+  eq(t.abrirAnilloDeGrupo(), false, 'en mitad de un trazo no se abre otro anillo:');
+  t.cerrar();
+});
+
+test('MANTENER UNA LETRA NO REPITE EL ATAJO: una pulsación, una acción', () => {
+  const { t, a2 } = tresAtacantes();
+  seleccionar(t, a2.id);
+  const ev = (repeat) => ({ key: 'f', repeat, ctrlKey: false, metaKey: false, altKey: false, defaultPrevented: false, preventDefault() {} });
+  t._onTecla(ev(false));
+  t.cerrar();
+  t._onTecla(ev(true));
+  t.cerrar();
+  t._onTecla(ev(true));
+  eq(t.tramos.map((x) => x.accion), ['finta'], 'una sola finta:');
+});
+
+test('UN ATAJO NO DEJA UN CIERRE DE FASE PENDIENTE: N y luego otra cosa, la fase no se cierra sola', () => {
+  const { t, a2 } = tresAtacantes();
+  corta(t, a2.id, { x: 0.6, y: 0.3 });
+  t.cerrar();
+  eq(t.fases.length, 1);
+  /* N arranca su repaso; una letra que no hace nada no lo corta. */
+  seleccionar(t);
+  eq(t.atajo('n'), true);
+  ok(t.repaso.corriendo, 'el repaso de N está en marcha');
+  eq([t.atajo('c'), t.repaso.corriendo], [false, true], 'una letra sin nadie seleccionado no lo corta:');
+  /* Una letra que sí hace algo lo corta Y cancela el cierre. */
+  seleccionar(t, a2.id);
+  eq(t.atajo('f'), true);
+  t.repaso.onFin();
+  eq(t.fases.length, 1, 'al acabar el repaso de la finta, la fase sigue siendo la misma:');
+  /* Y sin cortarlo, al acabar sí se cierra. */
+  t.cerrar();
+  seleccionar(t);
+  t.atajo('n');
+  t.repaso.onFin();
+  eq(t.fases.length, 2, 'N, sin interrupciones, cierra la fase:');
 });
 
 console.log('\n· insertar, duplicar, borrar y renombrar fases (§6.8)');
@@ -1212,6 +1297,58 @@ test('BORRAR UNA FASE CON RAMAS: no la del cruce; y borrar lo único de una rama
   t.irAFaseId(b);
   ok(t.borrarFase(), 'la rama b, aunque tenga algo dibujado');
   eq([t.todasLasFases.some((f) => f.rama_de != null), t.fases.map((f) => f.id).slice(0, 2), t.iFase], [false, [f1, f2], 0], 'ya no hay ramas, y se queda en el cruce:');
+});
+
+test('BORRAR UNA FASE QUITA LO QUE YA NO TIENE BALÓN, y lo dice; lo que vale se queda', () => {
+  const { t, a1, a2, avisos } = conAtaque();
+  const pasa = (de, a) => t._trazoHecho({ elemento: ficha(t, de), accion: t._accionDe('pasa'), variante: null, trazo: nuevoTrazo(ficha(t, de), ficha(t, a)), tipo: 'pass' });
+  const bota = (id, hasta) => t._trazoHecho({ elemento: ficha(t, id), accion: t._accionDe('bota'), variante: null, trazo: nuevoTrazo(ficha(t, id), hasta), tipo: 'run' });
+  pasa(a1.id, a2.id);
+  t.cerrar();
+  t._cerrarFase();
+  bota(a2.id, { x: 0.6, y: 0.3 });
+  corta(t, a1.id, { x: 0.3, y: 0.2 });         // el corte de A1 no pide balón
+  t.cerrar();
+  t.irAFase(0);
+  avisos.length = 0;
+  ok(t.borrarFase(), 'se borra la fase del pase');
+  eq(t.todasLasFases.length, 1);
+  eq(t.tramos.map((x) => [x.elemento_id, x.accion]), [[a1.id, 'corta']], 'el bote de A2 se va; el corte de A1 se queda:');
+  const dicho = avisos.find((x) => x[0] === 'aviso');
+  ok(dicho && /A2 bota/.test(dicho[1]) && /ya no lleva el balón/.test(dicho[1]), `lo dice: ${JSON.stringify(dicho)}`);
+  /* Y si el balón sigue siendo suyo, no se quita nada. */
+  const m = conAtaque();
+  m.t._trazoHecho({ elemento: ficha(m.t, m.a1.id), accion: m.t._accionDe('bota'), variante: null, trazo: nuevoTrazo(ficha(m.t, m.a1.id), { x: 0.4, y: 0.3 }), tipo: 'run' });
+  m.t.cerrar();
+  m.t._cerrarFase();
+  m.t._trazoHecho({ elemento: ficha(m.t, m.a1.id), accion: m.t._accionDe('bota'), variante: null, trazo: nuevoTrazo(ficha(m.t, m.a1.id), { x: 0.5, y: 0.2 }), tipo: 'run' });
+  m.t.cerrar();
+  m.t.irAFase(0);
+  m.avisos.length = 0;
+  ok(m.t.borrarFase());
+  eq([m.t.tramos.map((x) => x.accion), m.avisos.filter((x) => x[0] === 'aviso').length], [['bota'], 0], 'con balón, el bote sigue y no hay aviso:');
+});
+
+test('SI EL BALÓN LLEGA POR UNA RAMA Y POR LA OTRA NO, no se quita lo que vale por una de ellas', () => {
+  const { t, a1, a2 } = conAtaque();
+  const pasa = (de, a) => t._trazoHecho({ elemento: ficha(t, de), accion: t._accionDe('pasa'), variante: null, trazo: nuevoTrazo(ficha(t, de), ficha(t, a)), tipo: 'pass' });
+  const bota = (id, hasta) => t._trazoHecho({ elemento: ficha(t, id), accion: t._accionDe('bota'), variante: null, trazo: nuevoTrazo(ficha(t, id), hasta), tipo: 'run' });
+  corta(t, a2.id, { x: 0.7, y: 0.4 });
+  t.cerrar();
+  t._cerrarFase();
+  pasa(a1.id, a2.id);                          // la a: A1 pasa a A2
+  t.cerrar();
+  t._cerrarFase();
+  bota(a2.id, { x: 0.6, y: 0.3 });             // y A2 bota: con balón
+  t.cerrar();
+  t.irAFase(0);
+  t.abrirRama({ primera: 'a', nueva: 'b' });
+  bota(a1.id, { x: 0.4, y: 0.3 });             // la b: A1 se queda con el balón
+  t.cerrar();
+  const [, , f3] = t.todasLasFases.map((f) => f.id);
+  ok(t.reunirCon(f3), 'la b se reúne con la a en la fase 3');
+  eq(t._quitarLosSinBalon(), [], 'A2 bota con balón por la a y sin él por la b: no se toca:');
+  ok(t.faseDeId(f3).tramos.some((x) => x.accion === 'bota'), 'el bote sigue');
 });
 
 test('REABRIR UNA JUGADA CON RAMAS: se abre por el camino principal y cada rama sale de su sitio', () => {
@@ -1435,7 +1572,184 @@ test('REABRIR UNA JUGADA EMPIEZA EL HISTORIAL: no se deshace hasta antes de abri
   eq([t.fantasma, pintados], [false, 1], 'apagado, no se pinta:');
 });
 
+/* Una Pizarra de pruebas con el historial montado y un selector de canasta. */
+function conHistorial() {
+  const m = sinAtacante();
+  const select = { value: 'norte' };
+  Object.assign(m.p, {
+    derecha: { pintar() {} },
+    el: { querySelector: (s) => (s === '.pz-arriba__canasta select' ? select : null) },
+  });
+  m.p._montarHistorial();
+  return { ...m, select };
+}
+
+test('DESHACER Y REHACER DEJAN EL SELECTOR DE CANASTA DICIENDO LO MISMO QUE EL TABLERO', () => {
+  const { t, p, select } = conHistorial();
+  select.value = 'sur'; t.setCanasta('sur'); p._cambio(); p._apuntar();
+  p.deshacer();
+  eq([t.canasta, select.value], ['norte', 'norte'], 'tras deshacer:');
+  p.rehacer();
+  eq([t.canasta, select.value], ['sur', 'sur'], 'tras rehacer:');
+});
+
+test('CTRL+Z CON UN TRAZO A MEDIAS SOLO LO CANCELA: no se pierde el paso de antes', () => {
+  const { t, p, a1, a2 } = conHistorial();
+  corta(t, a1.id, { x: 0.2, y: 0.3 });
+  p._apuntar();
+  t.dibujo.empezar({ elemento: ficha(t, a2.id), accion: t._accionDe('corta'), variante: null, conDedo: false });
+  ok(t.dibujo.dibujando, 'se está dibujando el corte de A2');
+  eq(p.deshacer(), true);
+  eq([t.dibujo.dibujando, t.tramos.filter((x) => x.elemento_id === a1.id).length], [false, 1], 'el trazo a medias se va y el corte de A1 sigue:');
+  ok(p.deshacer());
+  eq(t.tramos.filter((x) => x.elemento_id === a1.id).length, 0, 'el siguiente Ctrl+Z sí deshace el corte:');
+});
+
+test('DESHACER CORTA LOS GESTOS VIVOS: un arrastre a medias no pisa lo deshecho', () => {
+  const { t, p, a2 } = conHistorial();
+  let cortados = 0;
+  p.lienzo = { gestoVivo: true, cancelarGestos() { cortados++; } };
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  p._apuntar();
+  p.deshacer();
+  eq(cortados, 1, 'deshacer corta los gestos:');
+  p.rehacer();
+  eq(cortados, 2, 'y rehacer también:');
+});
+
+test('NO SE APUNTA UN PASO MIENTRAS SE ARRASTRA: pararse a mitad no es el final', () => {
+  const { t, p, a2 } = conHistorial();
+  const n = p.historial.stack.length;
+  p.lienzo = { gestoVivo: true, cancelarGestos() {} };
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  p._apuntarSiSuelto();
+  eq(p.historial.stack.length, n, 'con el gesto vivo no se apunta:');
+  ok(p._relojHistorial, 'y se vuelve a mirar más tarde');
+  p.lienzo.gestoVivo = false;
+  p._apuntarSiSuelto();
+  eq(p.historial.stack.length, n + 1, 'soltado, se apunta de una vez:');
+  p.deshacer();
+  eq(t.tramos.length, 1, 'y un solo deshacer vuelve a antes del arrastre:');
+});
+
+test('«SIGUIENTE FASE» Y DESHACER: el cierre de fase pendiente se va con el repaso', () => {
+  const { t, p, a1 } = conHistorial();
+  corta(t, a1.id, { x: 0.2, y: 0.3 });
+  p._apuntar();
+  eq(t.siguienteFase(), true);
+  ok(t.repaso.corriendo, 'el repaso de la fase está en marcha');
+  p.deshacer();
+  ok(!t.repaso.corriendo, 'deshacer corta el repaso');
+  t.repaso.onFin();
+  eq(t.todasLasFases.length, 1, 'y su final no abre una fase que nadie pidió:');
+  /* Ni ▶ después de una «Siguiente fase» cortada a medias. */
+  t.siguienteFase();
+  t.reproducirFase();
+  t.repaso.onFin();
+  eq(t.todasLasFases.length, 1, 'ver la fase con ▶ no la cierra:');
+});
+
+test('EL ESPACIO REPRODUCE UNA VEZ, y mantenido no repite; el suelto de la pista también reproduce', () => {
+  const { p } = conHistorial();
+  let veces = 0;
+  p.ver = () => { veces++; };
+  const tecla = (extra) => p._atenderTecla({ key: ' ', ctrlKey: false, metaKey: false, altKey: false, defaultPrevented: false, preventDefault() {}, target: { tagName: 'DIV' }, ...extra });
+  tecla({ repeat: false });
+  tecla({ repeat: true });
+  tecla({ repeat: true });
+  eq(veces, 1, 'una pulsación, una reproducción:');
+  p._espacioSolo();
+  eq(veces, 2, 'el Espacio soltado sin haber movido la pista reproduce:');
+  p.tablero.dibujo.empezar({ elemento: p.tablero.fichas.elementos[0], accion: p.tablero._accionDe('corta'), variante: null, conDedo: false });
+  p._espacioSolo();
+  eq(veces, 2, 'pero no mientras se dibuja:');
+  p.tablero.cerrar();
+});
+
+test('↶ VALE NADA MÁS CAMBIAR ALGO, sin esperar a que se apunte', () => {
+  const { t, p, a2 } = conHistorial();
+  p._bDeshacer = { disabled: true };
+  p._bRehacer = { disabled: true };
+  p._pintarHistorial();
+  eq(p._bDeshacer.disabled, true, 'sin cambios, desactivado:');
+  corta(t, a2.id, { x: 0.6, y: 0.2 });
+  p._cambio();
+  eq(p._bDeshacer.disabled, false, 'con un cambio por apuntar, activado:');
+  p._apuntar();
+  eq(p._bDeshacer.disabled, false, 'y apuntado, también:');
+  clearTimeout(p._relojHistorial);
+});
+
+test('LOS AVISOS PINTAN COMO TEXTO lo que viene de los datos, y solo dejan las negritas', () => {
+  eq(htmlDeAviso('<b>«A1»</b> no puede'), '<b>«A1»</b> no puede');
+  eq(htmlDeAviso('«<img src=x onerror=alert(1)>» no se ha quitado'), '«&lt;img src=x onerror=alert(1)&gt;» no se ha quitado');
+  eq(htmlDeAviso('<b>«<svg onload=alert(2)>»</b>'), '<b>«&lt;svg onload=alert(2)&gt;»</b>');
+  eq(htmlDeAviso('Pepe & "Ana"'), 'Pepe &amp; &quot;Ana&quot;');
+  eq(htmlDeAviso(null), '');
+});
+
 console.log('\n· plantillas: colocaciones y fases guardadas (§7.8)');
+
+test('LAS PLANTILLAS RECUERDAN A QUÉ ARO ATACABAN, y se ponen en espejo si la jugada ataca al otro', () => {
+  const montado = (canasta) => {
+    reiniciarIds();
+    const m = montar();
+    m.t.setCanasta(canasta);
+    let l = [];
+    l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.30, 0.20);
+    l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.70, 0.30);
+    l = anadir(l, { kind: 'balon' }, 0.34, 0.20);
+    m.t.poner(asignarBalon(l, l[2].id, l[0].id, 'entera'));
+    return m;
+  };
+  const norte = montado('norte');
+  const col = JSON.parse(JSON.stringify(norte.t.colocacion()));
+  eq(col.canasta, 'norte', 'la colocación guarda el aro:');
+  /* Puesta en una pizarra que ataca al norte, queda igual. */
+  const igual = montado('norte');
+  igual.t.ponerColocacion(col, 'sustituir');
+  eq(igual.t.fichas.elementos.filter((e) => e.kind === 'jugador').map((e) => [e.x, e.y]), [[0.3, 0.2], [0.7, 0.3]]);
+  /* En una que ataca al sur, en espejo: lo de arriba pasa abajo. */
+  const sur = montado('sur');
+  sur.t.ponerColocacion(col, 'sustituir');
+  const ys = sur.t.fichas.elementos.filter((e) => e.kind === 'jugador').map((e) => Number(e.y.toFixed(3)));
+  eq(ys, [0.8, 0.7], 'al otro lado de la pista:');
+  /* Guardada atacando al sur, y puesta en una que ataca al norte: también en espejo. */
+  const desdeSur = montado('sur');
+  const colSur = JSON.parse(JSON.stringify(desdeSur.t.colocacion()));
+  eq(colSur.canasta, 'sur', 'y recuerda que era el sur:');
+  const aNorte = montado('norte');
+  aNorte.t.ponerColocacion(colSur, 'sustituir');
+  eq(aNorte.t.fichas.elementos.filter((e) => e.kind === 'jugador').map((e) => Number(e.y.toFixed(3))), [0.8, 0.7], 'de vuelta al otro lado:');
+  /* Lo que no se entiende de una colocación se dice, y el resto se pone. */
+  const rota = { ...col, elementos: [...col.elementos, { kind: 'jugador', equipo: 'A', x: 'aquí', y: null }] };
+  const conAvisos = montado('norte');
+  conAvisos.avisos.length = 0;
+  ok(conAvisos.t.ponerColocacion(rota, 'sustituir') >= 2, 'se ponen las que valen');
+  ok(conAvisos.avisos.some((x) => x[0] === 'aviso'), `y se dice lo que no se ha entendido: ${JSON.stringify(conAvisos.avisos)}`);
+  const sumando = montado('norte');
+  sumando.avisos.length = 0;
+  ok(sumando.t.ponerColocacion(rota, 'anadir') >= 2);
+  ok(sumando.avisos.some((x) => x[0] === 'aviso'), 'también al añadirla a lo que hay');
+  /* Y una fase guardada atacando al norte, puesta en una que ataca al sur. */
+  const f = montado('norte');
+  const a1 = f.t.fichas.elementos.find((e) => e.kind === 'jugador');
+  corta(f.t, a1.id, { x: 0.5, y: 0.1 });
+  f.t.cerrar();
+  const { datos } = f.t.plantillaDeFase();
+  eq(datos.canasta, 'norte', 'la fase guarda el aro:');
+  /* Una fase guardada atacando al sur recuerda su aro. */
+  const fs = montado('sur');
+  corta(fs.t, fs.t.fichas.elementos.find((e) => e.kind === 'jugador').id, { x: 0.5, y: 0.9 });
+  fs.t.cerrar();
+  eq(fs.t.plantillaDeFase().datos.canasta, 'sur', 'la fase guarda el aro, sea cual sea:');
+  const g = montado('sur');
+  const mapa = Object.fromEntries(datos.papeles.map((p) => [p.clave, g.t.fichas.elementos.filter((e) => e.kind === 'jugador')[datos.papeles.indexOf(p)].id]));
+  const r = g.t.insertarPlantilla(datos, mapa);
+  ok(r.ok, 'se inserta');
+  const fin = g.t.tramos[0].trazo.at(-1);
+  ok(Math.abs(fin.y - 0.9) < 1e-6, `el corte acaba al otro lado: ${fin.y}`);
+});
 
 test('UNA COLOCACIÓN GUARDADA SE AÑADE A LO QUE HAY (en la fase 1) O LO SUSTITUYE TODO', () => {
   const { t, a2, avisos } = conAtaque();
