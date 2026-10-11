@@ -66,6 +66,15 @@ export function ritmoDe(accion) {
   return RITMOS[r] ? r : 'normal';
 }
 
+/** ¿Se le puede cambiar el ritmo a un tramo de esta acción? (§6.2:
+ *  «ajustable por tramo, panel derecho»). Solo a las que lo declaran en
+ *  el catálogo —los desplazamientos: corta, bota, entra, rodea…—. Un pase
+ *  o un tiro van al ritmo del balón y un gesto dura lo que dice la acción:
+ *  a esos no se les ofrece. */
+export function ritmoAjustable(accion) {
+  return !!(accion && accion.parametros && Object.prototype.hasOwnProperty.call(accion.parametros, 'ritmo'));
+}
+
 /** Cuánto hay que dejar el dedo quieto para que sea «marca un punto»
  *  y no «termina aquí». 400 ms es lo que usan las listas de iOS y
  *  Android para su menú contextual: por debajo se dispara sin querer al

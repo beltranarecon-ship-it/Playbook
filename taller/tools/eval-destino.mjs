@@ -283,8 +283,22 @@ test('«VUELVE A LA FILA» VA AL FINAL DE SU COLA, o a la que diga su fila (§7.
   ok(r.punto.y > cono.y, 'por detrás, que es hacia abajo');
   const aOtra = destinoDe(vuelve, j, { pista: 'entera', elementos: [{ ...cono, fila: { ...cono.fila, vuelta: 'c2' } }, otra, j] });
   aprox(metrosEntre('entera', aOtra.punto, otra), 2 * 1.95 * 0.65, 1e-9, 'y a la otra, si su fila lo dice:');
-  const suelto = destinoDe(vuelve, { id: 'j9', kind: 'jugador', x: 0.4, y: 0.4 }, { pista: 'entera', elementos: [cono] });
-  ok(!suelto.punto && /fila/.test(suelto.motivo), `quien no salió de una fila no tiene a dónde volver: ${suelto.motivo}`);
+  /* Quien no salió de ninguna fila va a la ÚNICA que hay (el que recibe un
+     mano a mano y se pone a la cola del que se lo dio); con varias, no se
+     elige por él. */
+  const suelto = { id: 'j9', kind: 'jugador', x: 0.4, y: 0.4 };
+  const aLaUnica = destinoDe(vuelve, suelto, { pista: 'entera', elementos: [cono] });
+  ok(aLaUnica.punto, aLaUnica.motivo);
+  aprox(metrosEntre('entera', aLaUnica.punto, cono), 3 * 1.95 * 0.65, 1e-9, 'a la única fila que hay:');
+  const variasF = destinoDe(vuelve, suelto, { pista: 'entera', elementos: [cono, otra] });
+  ok(!variasF.punto && /fila/.test(variasF.motivo), `con varias filas no se elige por él: ${variasF.motivo}`);
+  /* Con varias, a la de quien le entregó el balón (y a la que diga su vuelta). */
+  const deLaOtra = destinoDe(vuelve, suelto, { pista: 'entera', elementos: [cono, otra], filaDe: 'c2' });
+  aprox(metrosEntre('entera', deLaOtra.punto, otra), 2 * 1.95 * 0.65, 1e-9, 'a la de quien le entregó:');
+  const cruzada = destinoDe(vuelve, suelto, { pista: 'entera', elementos: [{ ...cono, fila: { ...cono.fila, vuelta: 'c2' } }, otra], filaDe: 'c1' });
+  aprox(metrosEntre('entera', cruzada.punto, otra), 2 * 1.95 * 0.65, 1e-9, 'y si su fila manda a la otra, a la otra:');
+  const sinFilas = destinoDe(vuelve, suelto, { pista: 'entera', elementos: [] });
+  ok(!sinFilas.punto && /fila/.test(sinFilas.motivo), `sin ninguna no hay a dónde volver: ${sinFilas.motivo}`);
 });
 
 test('con el compañero en el aro se acerca por su camino; sin compañero o sin aro, no se inventa', () => {

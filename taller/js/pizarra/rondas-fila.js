@@ -43,12 +43,16 @@
 
 import { carrilesDesde, tiemposDe, recalcular, esTiro, TRAS_EL_TIRO_MS } from './fases.js';
 import { deLaFila, FILAS, normalizarGrados } from './filas.js';
-import { escalaDe } from '../canvas/escala.js';
+import { escalaDe, metrosEntre } from '../canvas/escala.js';
 import { CATALOGO_SISTEMA } from '../ia/acciones.js';
 
 /* Lo que se hace CON el balón en la mano (botar, entrar): quien no tiene
    balón no lo puede repetir. Sale del catálogo, no de una lista. */
 const EN_LA_MANO = new Set(CATALOGO_SISTEMA.filter((a) => a.simbolo === 'carrera_con_balon').map((a) => a.slug));
+
+/* A cuánto del sitio de quien recibe tiene que acabar el primero para que
+   el receptor sea, en la ronda siguiente, el primero de la ronda anterior. */
+const RELEVO_M = 1.5;
 
 export const AVISOS_RONDAS = Object.freeze({
   sinBalon: 'Una fila sale por rondas y la ronda necesita balón: dale un balón por cabeza para que salgan todos.',
@@ -60,7 +64,8 @@ export const AVISOS_RONDAS = Object.freeze({
 function puesto(cono, k, pista) {
   const e = escalaDe(pista);
   const rad = (normalizarGrados(cono.fila.orientacion) * Math.PI) / 180;
-  return { x: cono.x + (Math.cos(rad) * FILAS.hueco * k) / e.x, y: cono.y + (Math.sin(rad) * FILAS.hueco * k) / e.y };
+  const paso = (cono.fila && cono.fila.hueco_m) || FILAS.hueco;
+  return { x: cono.x + (Math.cos(rad) * paso * k) / e.x, y: cono.y + (Math.sin(rad) * paso * k) / e.y };
 }
 
 /**
@@ -98,10 +103,34 @@ export function conRondas(fases = [], elementos = [], { pista = 'entera', canast
     for (const j of q.cola.slice(1)) esperando.add(j.id);
   }
 
+  /* EL RELEVO: quien recibe del primero (un mano a mano, un pase) y el
+     primero acaba su ronda DONDE ESTABA ÉL, es en la ronda siguiente el
+     receptor otra vez, pero hecho por el primero de la ronda anterior:
+     «el que entrega pasa a ser el siguiente en recibir». Todo lo suyo en
+     la jugada es de la ronda (entra, tira, coge su rebote, vuelve a la
+     fila), y en cada ronda lo hace uno distinto. Si el primero acaba
+     lejos, es el de siempre: un receptor fijo, que repite con cada uno. */
+  const relevoDe = new Map();      // el receptor -> el primero al que releva
+  for (const q of colas) {
+    const suyos = [];
+    for (const f of fases || []) for (const t of (f && f.tramos) || []) if (t && t.elemento_id === q.primero) suyos.push(t);
+    const ultimo = suyos[suyos.length - 1];
+    const fin = ultimo && Array.isArray(ultimo.trazo) && ultimo.trazo.length ? ultimo.trazo[ultimo.trazo.length - 1] : null;
+    if (!fin) continue;
+    for (const t of suyos) {
+      const r = t.receptor_id ? porId.get(t.receptor_id) : null;
+      if (!r || r.kind !== 'jugador' || cabeza.has(r.id) || esperando.has(r.id) || relevoDe.has(r.id)) continue;
+      if (metrosEntre(pista, fin, r) <= RELEVO_M) relevoDe.set(r.id, q.primero);
+    }
+  }
+
   /* De qué primeros es un tramo: en los que sale él o su balón. */
   const primerosDe = (t) => {
     const s = new Set();
-    for (const id of [t.elemento_id, t.corre_id, t.receptor_id, t.companero_id]) if (cabeza.has(id)) s.add(id);
+    for (const id of [t.elemento_id, t.corre_id, t.receptor_id, t.companero_id]) {
+      if (cabeza.has(id)) s.add(id);
+      if (relevoDe.has(id)) s.add(relevoDe.get(id));
+    }
     for (const id of [t.corre_id, t.balon_id]) if (suBalon.has(id)) s.add(suBalon.get(id));
     return s;
   };
@@ -125,6 +154,7 @@ export function conRondas(fases = [], elementos = [], { pista = 'entera', canast
   const rondas = {};
   const balones = [];
   const nuevos = (fases || []).map(() => []);
+  const colasConRondas = [];       // las colas que salen, con sus tramos de la primera ronda
   /* Los tiempos de cada fase TAL Y COMO SE DIBUJÓ: la ronda k es la del
      primero, corrida k turnos. */
   const tiempos = (fases || []).map((f) => tiemposDe({ ...f, carriles: carrilesDesde((f && f.tramos) || []) }, { pista }));
@@ -133,6 +163,8 @@ export function conRondas(fases = [], elementos = [], { pista = 'entera', canast
     const suyas = colas.filter((q) => raiz(q.primero) === g);
     const tramosDelGrupo = deRonda.map((ts) => ts.filter((t) => grupoDe(t) === g));
     if (!tramosDelGrupo.some((ts) => ts.length)) continue;
+    const ronda0 = new Set(tramosDelGrupo.flat().map((t) => t.id));
+    for (const q of suyas) { q.ronda0 = ronda0; colasConRondas.push(q); }
     const cuantas = Math.min(...suyas.map((q) => q.cola.length)) - 1;
     if (suyas.some((q) => q.cola.length - 1 !== cuantas)) avisos.add(AVISOS_RONDAS.desiguales);
     const usa = new Set(tramosDelGrupo.flat().flatMap((t) => [t.corre_id, t.balon_id]).filter(Boolean));
@@ -171,6 +203,11 @@ export function conRondas(fases = [], elementos = [], { pista = 'entera', canast
         else if (necesitaSuyo(q)) falta = true;
       }
       if (falta) { avisos.add(AVISOS_RONDAS.sinBalon); continue; }
+      /* El relevo: en la ronda k recibe quien entregó en la anterior. */
+      for (const [recibe, primero] of relevoDe) {
+        const q = cabeza.get(primero);
+        if (suyas.includes(q)) cambio.set(recibe, k === 1 ? q.primero : q.cola[k - 1].id);
+      }
       /* El carro: un balón más para cada ronda, donde empezaba el suyo
          —en las manos de quien lo pasa, o en el suelo si se recoge—. */
       for (const id of deFuera) {
@@ -188,7 +225,7 @@ export function conRondas(fases = [], elementos = [], { pista = 'entera', canast
           const id = `${t.id}_r${k}`;
           let trazo = t.trazo;
           /* Quien vuelve a la fila se pone detrás del que volvió antes. */
-          const q = cabeza.get(t.elemento_id);
+          const q = cabeza.get(t.elemento_id) || (relevoDe.has(t.elemento_id) ? cabeza.get(relevoDe.get(t.elemento_id)) : null);
           if (t.accion === 'vuelve_a_fila' && q && Array.isArray(trazo) && trazo.length) {
             const vuelta = (q.cono.fila.vuelta && lista.find((e) => e.id === q.cono.fila.vuelta && e.kind === 'cono' && e.fila)) || q.cono;
             const fin = puesto(vuelta, (vuelta.fila.n | 0) + k, pista);
@@ -216,11 +253,100 @@ export function conRondas(fases = [], elementos = [], { pista = 'entera', canast
   }
   if (!Object.keys(rondas).length) return { ...nada, avisos: [...avisos] };
 
+  /* LA COLA AVANZA: cuando sale el primero, los de detrás avanzan un puesto,
+     y quien vuelve se pone al final de lo que QUEDA —de su fila o de la que
+     diga `vuelta`, como el que remata y va a la fila del otro lado—, no
+     donde estaba el último al empezar. Se simulan TODAS las colas a la vez en
+     el tiempo (quién sale, quién vuelve, cuándo y adónde), y de ahí salen los
+     pasos adelante y el sitio de cada vuelta. Solo si todo ocurre en una
+     misma fase; si no, se queda como estaba (un puesto fijo por vuelta). */
+  const finales = new Map();                       // tramo -> dónde acaba
+  const avances = (fases || []).map(() => []);     // los pasos adelante
+  simulacion: {
+    const filasSim = new Map();                    // cono -> los ids que hay en su cola, en orden
+    const conoDe = new Map();
+    const destinoDeVuelta = (q) => (q.cono.fila.vuelta && lista.find((e) => e.id === q.cono.fila.vuelta && e.kind === 'cono' && e.fila)) || q.cono;
+    const registrar = (cono) => {
+      if (filasSim.has(cono.id)) return;
+      conoDe.set(cono.id, cono);
+      filasSim.set(cono.id, deLaFila(lista, cono.id).map((j) => j.id));
+    };
+    for (const q of colasConRondas) { registrar(q.cono); registrar(destinoDeVuelta(q)); }
+
+    const eventos = [];
+    const fasesDeEventos = new Set();
+    for (const q of colasConRondas) {
+      const delGrupo = [];                         // { t, i, original }
+      (fases || []).forEach((f, i) => {
+        for (const t of (f && f.tramos) || []) if (t && q.ronda0 && q.ronda0.has(t.id)) delGrupo.push({ t, i, original: true });
+        for (const t of nuevos[i]) if (rondas[t.id] && rondas[t.id].fila === q.cono.id) delGrupo.push({ t, i, original: false });
+      });
+      const inicioDe = ({ t, i, original }) => (original ? (tiempos[i].tramos[t.id] || {}).inicio_ms : t.inicio_ms);
+      const duracionDe = ({ t, i, original }) => (tiempos[i].tramos[original ? t.id : rondas[t.id].de] || {}).duracion_ms;
+      const sale = new Map();                      // jugador -> cuándo sale de la cola
+      for (const g of delGrupo) {
+        const id = g.t.elemento_id;
+        if (!q.cola.some((j) => j.id === id)) continue;
+        const t0 = inicioDe(g);
+        if (Number.isFinite(t0) && (!sale.has(id) || t0 < sale.get(id).t)) sale.set(id, { t: t0, i: g.i });
+      }
+      for (const [id, v] of sale) { eventos.push({ t: v.t, i: v.i, tipo: 0, id }); fasesDeEventos.add(v.i); }
+      for (const x of delGrupo) {
+        if (x.t.accion !== 'vuelve_a_fila' || !Number.isFinite(inicioDe(x)) || !Number.isFinite(duracionDe(x))) continue;
+        eventos.push({ t: inicioDe(x) + duracionDe(x), i: x.i, tipo: 1, id: x.t.elemento_id, tramo: x.t.id, hacia: destinoDeVuelta(q).id });
+        fasesDeEventos.add(x.i);
+      }
+    }
+    if (!eventos.length || fasesDeEventos.size > 1) break simulacion;      // en una sola fase
+    eventos.sort((a, b) => a.t - b.t || a.tipo - b.tipo);
+
+    const aplicar = { finales: new Map(), pasos: [] };
+    for (const e of eventos) {
+      if (e.tipo === 0) {
+        const cono = [...filasSim.keys()].find((c) => filasSim.get(c).includes(e.id));
+        if (!cono) continue;                       // sale quien no estaba en ninguna cola
+        const fila = filasSim.get(cono);
+        if (fila[0] !== e.id) break simulacion;    // sale quien no es el primero: se deja como estaba
+        fila.shift();
+        const c = conoDe.get(cono);
+        fila.forEach((id, k) => {
+          const p0 = puesto(c, k + 1, pista), p1 = puesto(c, k, pista);
+          aplicar.pasos.push({
+            id: `av_${id}_${Math.round(e.t)}`, elemento_id: id, corre_id: id, receptor_id: null,
+            accion: 'corta', tipo: 'run', ritmo: 'andando', manual: true, avance: true, inicio_ms: e.t,
+            trazo: [{ x: p0.x, y: p0.y, tipo_nodo: 'lineal', handle_in: null, handle_out: null }, { x: p1.x, y: p1.y, tipo_nodo: 'lineal', handle_in: null, handle_out: null }],
+            i: e.i, fila: cono,
+          });
+        });
+      } else {
+        const fila = filasSim.get(e.hacia);
+        aplicar.finales.set(e.tramo, puesto(conoDe.get(e.hacia), fila.length, pista));
+        fila.push(e.id);
+      }
+    }
+    for (const [id, p] of aplicar.finales) finales.set(id, p);
+    for (const { i, fila, ...paso } of aplicar.pasos) {
+      avances[i].push(paso);
+      rondas[paso.id] = { ronda: 1, de: null, fila, avance: true };
+    }
+  }
+  const conFinal = (t) => {
+    const p = finales.get(t.id);
+    return p && Array.isArray(t.trazo) && t.trazo.length
+      ? { ...t, trazo: t.trazo.map((n, x, a) => (x === a.length - 1 ? { ...n, x: p.x, y: p.y } : n)) }
+      : t;
+  };
+  if (finales.size || avances.some((a) => a.length)) {
+    for (let i = 0; i < nuevos.length; i++) {
+      nuevos[i] = [...nuevos[i].map(conFinal), ...avances[i]].sort((a, b) => (a.inicio_ms || 0) - (b.inicio_ms || 0));
+    }
+  }
+
   /* Cada uno sale de DONDE ESTÁ: el de la cola, de su sitio; el que
      devuelve el pase, de donde le dejó lo anterior. Y lo dibujado para
      después de las rondas, también: quien ha recogido el tiro de cada
      uno no está donde estaba al dibujar la fase siguiente. */
-  const conCopias = (fases || []).map((f, i) => ({ ...f, tramos: [...((f && f.tramos) || []), ...nuevos[i]] }));
+  const conCopias = (fases || []).map((f, i) => ({ ...f, tramos: [...((f && f.tramos) || []).map(conFinal), ...nuevos[i]] }));
   const entrada = Object.fromEntries([...lista, ...balones].map((e) => [e.id, { x: e.x, y: e.y }]));
   const rc = recalcular(conCopias.map((f) => ({ ...f, carriles: carrilesDesde(f.tramos) })), entrada, pista, { canasta, canastaDe });
   const salida = conCopias.map((f, i) => {

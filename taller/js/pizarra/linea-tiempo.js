@@ -118,7 +118,6 @@ export class LineaTiempo {
       class: 'pz-fase pz-fase--mas', type: 'button',
       title: 'Reproduce lo dibujado, deja a todos donde acaban y abre la fase nueva', 'aria-label': 'Siguiente fase',
     }, h('span', null, 'Siguiente fase'), icono('flecha', { size: 16 }));
-    mas.disabled = !t.tramos.length;
     mas.addEventListener('click', () => t.siguienteFase());
     return mas;
   }

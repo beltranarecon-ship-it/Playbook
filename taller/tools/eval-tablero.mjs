@@ -499,6 +499,48 @@ test('y el clic se atiende con el gesto, por encima de las fichas', () => {
   ok(cono, 'y el cono sigue en la pista');
 });
 
+test('EL ICONITO DE CADA RODEO VA EN EL NODO QUE PUSO EL CONO: dos rodeos del mismo cono, uno por cada lado', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.48, 0.80);
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.52, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.50, 0.50);
+  const [a1, a2] = l;
+  t.poner(l);
+  corta(t, a1.id, { x: 0.48, y: 0.2 });
+  corta(t, a2.id, { x: 0.52, y: 0.2 });
+  eq(t.tramos.map((x) => x.sorteando[0].tipo), ['rodeo', 'rodeo'], 'dos rodeos:');
+  const iconos = t.iconosDeConos();
+  eq(iconos.length, 2);
+  iconos.forEach((i, k) => {
+    const nodo = t.tramos[k].trazo.find((n) => n.por_cono === i.cono);
+    ok(i.punto.x === nodo.x && i.punto.y === nodo.y, `el del tramo ${k + 1}, en el nodo que puso el cono`);
+  });
+});
+
+test('«TOCA EL CONO» DIBUJADO HASTA EL CONO NO LO RODEA, y la «corta» de después sale de él', () => {
+  reiniciarIds();
+  const { t } = montar();
+  let l = [];
+  l = anadir(l, { kind: 'jugador', equipo: 'A' }, 0.50, 0.80);
+  l = anadir(l, { kind: 'cono' }, 0.50, 0.50);
+  const [a1, cono] = l;
+  t.poner(l);
+  t._trazoHecho({ elemento: ficha(t, a1.id), accion: t._accionDe('toca'), variante: null, trazo: nuevoTrazo(ficha(t, a1.id), { x: cono.x, y: cono.y }), tipo: 'cut' });
+  t.cerrar();
+  corta(t, a1.id, { x: 0.30, y: 0.40 });
+  t.cerrar();
+  const [toca, sale] = t.tramos;
+  eq([toca.accion, sale.accion], ['toca', 'corta']);
+  eq([toca.sorteando, sale.sorteando].map((x) => (x || []).length), [0, 0], 'el cono es el destino de uno y el origen del otro: ni se rodea ni pone nodos:');
+  eq(toca.trazo.at(-1), { ...toca.trazo.at(-1), x: cono.x, y: cono.y }, 'acaba en el cono:');
+  eq([sale.trazo[0].x, sale.trazo[0].y], [cono.x, cono.y], 'y lo siguiente empieza ahí:');
+  eq(t.iconosDeConos(), [], 'sin iconitos:');
+  eq(toca.ritmo, 'normal', 'con el ritmo de las de desplazamiento:');
+  ok(/toca el cono \d+ y corta/.test(t.frases()[0]), `la frase lo dice: ${t.frases()[0]}`);
+});
+
 /* A1 abajo y una puerta de 2 m cruzada por el centro de la pista. */
 function conPuerta(dxA = -1.0, dxB = 1.0) {
   reiniciarIds();
@@ -684,14 +726,15 @@ test('LAS RONDAS SE VEN EN LA PIZARRA CON LA MISMA CUENTA QUE EN EL PROYECTOR (�
   t.hacerFila(cono.id, { n: 3, orientacion: 90 });
   const cola = filasMod.deLaFila(t.fichas.elementos, cono.id);
   corta(t, cola[0].id, { x: 0.5, y: 0.3 });
-  const { tramos, tiempos, rondas } = t.conRondasEn();
+  const { tramos: todos, tiempos, rondas } = t.conRondasEn();
+  const tramos = todos.filter((x) => !x.avance);   // los pasos adelante de la cola van aparte
   eq(tramos.map((x) => x.elemento_id), cola.map((j) => j.id), 'el primero y, detrás, los otros dos:');
-  eq(Object.values(rondas).map((r) => r.ronda), [1, 2]);
+  eq(Object.values(rondas).filter((r) => !r.avance).map((r) => r.ronda), [1, 2]);
   eq(t.tramos.length, 1, 'lo dibujado sigue siendo un tramo:');
   const anim = compilarMod.compilar(t.jugada());
-  const enAnim = anim.fases[0].movimientos.filter((m) => m.tipo_elemento === 'jugador').map((m) => m.inicio_ms);
+  const enAnim = anim.fases[0].movimientos.filter((m) => m.tipo_elemento === 'jugador' && !m.avance).map((m) => m.inicio_ms);
   eq(enAnim, tramos.map((x) => tiempos.tramos[x.id].inicio_ms), 'y salen cuando en el proyector:');
-  eq(t.nombreDe(cola[2]), 'el 3.º de la fila', 'quien espera se nombra por su puesto:');
+  eq(t.nombreDe(cola[2]), 'A3', 'quien espera lleva su número, detrás de los que juegan:');
 });
 
 test('CAMBIAR CÓMO SALE UNA FILA NO LA REHACE, aunque el primero ya tenga algo dibujado', () => {
@@ -703,7 +746,8 @@ test('CAMBIAR CÓMO SALE UNA FILA NO LA REHACE, aunque el primero ya tenga algo 
   eq(filasMod.deLaFila(t.fichas.elementos, cono.id).map((j) => j.id), ids, 'los mismos, en su sitio:');
   eq(t.conRondasEn().tramos.length, 1, 'solo sale el primero:');
   t.ajustarFila(cono.id, { rondas: true, cadencia_ms: 1500 });
-  const { tramos, tiempos } = t.conRondasEn();
+  const { tramos: todos, tiempos } = t.conRondasEn();
+  const tramos = todos.filter((x) => !x.avance);   // los pasos adelante de la cola van aparte
   eq(tramos.slice(1).map((x) => tiempos.tramos[x.id].inicio_ms), [1500, 3000], 'y a la cadencia:');
   eq(ficha(t, cono.id).fila.cadencia_ms, 1500);
   eq(t.ajustarFila('nadie', { rondas: false }), false, 'sin cono de fila no hay nada que cambiar:');
@@ -1102,7 +1146,7 @@ test('LOS ATAJOS (§4.7): la letra lanza la acción de la ficha seleccionada; N,
   eq([t.atajo('f'), t.tramos.map((x) => x.accion)], [true, ['finta']], 'F, finta:');
   t.cerrar();
   eq([t.atajo('b'), avisos.at(-1)], [true, ['noPuede', 'Bota', 'no lleva balón']], 'B sin balón se dice:');
-  eq([t.atajo('C'), t.anillo.abierto], [true, true], 'C, corta: pregunta el cómo y a dibujar:');
+  eq([t.atajo('C'), t.anillo.abierto, t.dibujo.dibujando], [true, false, true], 'C, corta: va directa a dibujar, sin segundo anillo:');
   t.cerrar();
   eq(t.atajo('z'), false, 'una letra que no es atajo no se come:');
   corta(t, a2.id, { x: 0.6, y: 0.3 });
@@ -1111,8 +1155,7 @@ test('LOS ATAJOS (§4.7): la letra lanza la acción de la ficha seleccionada; N,
   t.cerrar();
   t.repaso.parar();
   seleccionar(t, a1.id);
-  eq([t.atajo('e'), t.anillo.abierto], [true, true], 'E, entra a canasta: pregunta el cómo');
-  t._elegir('entra', { variante: 'bandeja' });
+  eq(t.atajo('e'), true, 'E, entra a canasta: se dibuja sola, sin preguntar el cómo:');
   eq([t.tramos.at(-1).accion, t.tramos.at(-1).elemento_id], ['entra', a1.id], 'y se dibuja sola hasta el aro:');
   t.cerrar();
   /* Con varios, se lo dice a todos. */
@@ -1134,13 +1177,42 @@ test('«SIGUIENTE FASE» CON OTRO REPASO EN MARCHA SIGUE CERRANDO LA FASE al aca
   eq(t.fases.length, 2, 'cortar el repaso de antes no se lleva el cierre recién pedido:');
 });
 
+test('«SIGUIENTE FASE» CON LA FASE VACÍA ABRE LA FASE IGUALMENTE: ni se niega ni avisa de «no has dibujado nada»', () => {
+  const { t, avisos } = tresAtacantes();
+  eq([t.tramos.length, t.fases.length], [0, 1]);
+  eq(t.siguienteFase(), true);
+  eq([t.fases.length, t.iFase], [2, 1], 'abre la segunda y se pone en ella:');
+  eq(avisos.filter((a) => a[0] === 'noPuede').length, 0, 'sin avisos:');
+  eq(t.siguienteFase(), true);
+  eq([t.fases.length, t.iFase], [3, 2], 'y otra vez, la tercera:');
+});
+
+test('EL FANTASMA SE PINTA CLARO Y SIN PUNTAS; con una ficha elegida es solo el suyo, y sin ninguna, el de todas', () => {
+  const { t, a2, a3 } = tresAtacantes();
+  corta(t, a2.id, { x: 0.6, y: 0.3 });
+  t.cerrar(); t.repaso.parar();
+  corta(t, a3.id, { x: 0.3, y: 0.3 });
+  t.cerrar(); t.repaso.parar();
+  t._cerrarFase();
+  const pintados = [];
+  t._pintarTramo = (ctx, R, toPx, tr, op) => pintados.push([tr.elemento_id, !!(op && op.fantasma)]);
+  const lienzo = { ctx: { save() {}, restore() {}, globalAlpha: 1 }, R: {}, toPx: () => [0, 0] };
+  seleccionar(t);
+  t._dibujarFantasma(lienzo);
+  eq(pintados.map((x) => x[1]), [true, true], 'sin elegir, el de todos y con el estilo fantasma:');
+  pintados.length = 0;
+  seleccionar(t, a2.id);
+  t._dibujarFantasma(lienzo);
+  eq(pintados.map((x) => x[0]), [a2.id], 'con una elegida, solo el suyo:');
+});
+
 test('LO QUE PUEDEN HACER TODOS NO DEPENDE DE QUÉ FICHA SE PUSO ANTES, y el atajo sigue la regla de una ficha', () => {
   const { t, a1, a2 } = tresAtacantes();
   const slugs = (miembros) => t.accionesDelGrupo(miembros).map((o) => o.slug).sort();
   eq(slugs([a1, a2]), slugs([a2, a1]), 'el mismo grupo en el orden contrario:');
   seleccionar(t, a1.id, a2.id);
   eq(t.atajo('c'), true);
-  eq(t.anillo.abierto, true, 'C, corta: lo pueden hacer los dos, con balón y sin él:');
+  eq(t.dibujo.dibujando, true, 'C, corta: lo pueden hacer los dos, con balón y sin él:');
   t.cerrar();
   /* El gesto «solo con balón» no lo pueden hacer los dos. */
   eq(t.atajo('f'), true);
@@ -1174,7 +1246,7 @@ test('EL BOTÓN DEL GRUPO SE ESCONDE MIENTRAS SE ELIGE O SE DIBUJA, también con
   t._pintarGrupo();
   ok(t._botonGrupo, 'con el grupo y nada abierto, el botón está');
   eq(t.atajo('c'), true);
-  ok(t.anillo.abierto, 'el atajo abre el anillo del cómo');
+  ok(t.dibujo.dibujando, 'el atajo va directo a dibujar');
   eq(t._botonGrupo, null, 'y el botón no se queda a la vista:');
   t.cerrar();
   t._pintarGrupo();
@@ -1276,9 +1348,7 @@ test('EL BOTÓN DEL GRUPO NO ESTÁ MIENTRAS SE ELIGE EL «CÓMO» NI MIENTRAS SE
   const { t, a2, a3 } = tresAtacantes();
   seleccionar(t, a2.id, a3.id);
   ok(t._botonGrupo, 'con dos seleccionados, el botón está');
-  eq([t.atajo('c'), t.anillo.abierto, t._botonGrupo], [true, true, null], 'C: se pregunta el cómo, sin botón:');
-  t._elegir('corta', { variante: variantesDe('corta')[0].slug });
-  eq([t.dibujo.dibujando, t._botonGrupo], [true, null], 'ni al dibujar:');
+  eq([t.atajo('c'), t.dibujo.dibujando, t._botonGrupo], [true, true, null], 'C: va directa a dibujar, sin botón:');
   eq(t.abrirAnilloDeGrupo(), false, 'en mitad de un trazo no se abre otro anillo:');
   /* «En paralelo» cambiado con algo ya en marcha vale para eso mismo. */
   t.setEnParalelo(true);
@@ -1486,6 +1556,43 @@ test('UN TRAZO PINCHADO SE VE EN EL PANEL, y su variante se cambia sin tocar el 
   eq([t.cambiarVariante(tr.id, 'en_v'), t.cambiarVariante(tr.id, 'volando'), t.cambiarVariante('nadie', 'recto')], [false, false, false], 'lo mismo, lo que no es de esa acción o un tramo que no está, no:');
   t.cerrar();
   ok(modelo.tipo !== 'tramo', 'al soltarlo, el panel vuelve a lo de antes');
+});
+
+test('EL RITMO DE UN TRAZO SE ELIGE EN EL PANEL: cambia lo que dura, entra en el historial y se guarda (§6.2)', () => {
+  const { t, p, a2 } = sinAtacante();
+  let modelo = null;
+  p.derecha = { pintar: (m) => { modelo = m; } };
+  p._montarHistorial();
+  t.onEditando = () => p._refrescarAjustes();
+  const tr = t.tramos[0];
+  t._editar(tr);
+  eq([modelo.tipo, modelo.ritmo.valor], ['tramo', 'normal'], 'al pincharlo, el ritmo de la acción:');
+  const dura = () => t.faseEnCurso().tiempos.tramos[tr.id].duracion_ms;
+  const antes = dura();
+  ok(t.cambiarRitmo(tr.id, 'sprint'), 'se cambia');
+  eq([t.tramos[0].ritmo, t.tramoEditado.ritmo, t.nodos.ritmo, modelo.ritmo.valor], ['sprint', 'sprint', 'sprint', 'sprint'], 'en el tramo, en el que se corrige y en el panel:');
+  eq(t.tramos[0].trazo, tr.trazo, 'sin tocar el trazo:');
+  ok(Math.abs(dura() - antes * 4.0 / 6.5) <= 1, `y dura lo que toca a sprint: ${antes} → ${dura()} ms`);
+  eq([t.cambiarRitmo(tr.id, 'sprint'), t.cambiarRitmo(tr.id, 'volando'), t.cambiarRitmo('nadie', 'normal')], [false, false, false], 'lo mismo, un ritmo que no existe o un tramo que no está, no:');
+  /* Deshacer y rehacer (§2.2), como cualquier cambio del panel. */
+  p._apuntar();
+  ok(p.deshacer(), 'se deshace');
+  eq(t.tramos[0].ritmo, 'normal', 'y vuelve al de antes:');
+  ok(p.rehacer());
+  eq(t.tramos[0].ritmo, 'sprint', 'rehecho:');
+  /* Guardado y reabierto, sigue. */
+  const otro = montar().t;
+  ok(otro.cargar(JSON.parse(JSON.stringify(t.jugada()))).ok);
+  eq(otro.tramos[0].ritmo, 'sprint', 'y se guarda y se reabre:');
+  /* Un gesto no tiene ritmo que cambiar. */
+  t.cerrar();
+  t.fichas.seleccionar(new Set([a2.id]));
+  t._tocarFicha(ficha(t, a2.id));
+  t._elegir('finta', {});
+  t.cerrar();
+  const finta = t.tramos.find((x) => x.accion === 'finta');
+  ok(finta, 'la finta se dibuja');
+  eq(t.cambiarRitmo(finta.id, 'sprint'), false, 'un gesto no tiene ritmo:');
 });
 
 /* Lo que habla con la base de datos, de mentira: se apunta qué se pide. */

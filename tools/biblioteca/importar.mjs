@@ -32,70 +32,22 @@
    Borrar y reimportar sería más simple y rompería los planes hechos.
    ============================================================ */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { biblioteca } from './construir.mjs';
 import { lint } from './lint.mjs';
+/* La clave, el autor y el revertir viven en servicio.mjs: los comparte
+   con guardar-video.mjs. `conectar` sale del proceso si la clave no es
+   de servicio, igual que hacía esto antes de estar allí. */
+import { conectar, resolverAutor, revertir, DIR_MANIFIESTOS, LOTE } from './servicio.mjs';
 
-const AQUI = dirname(fileURLToPath(import.meta.url));
-const RAIZ = resolve(AQUI, '..', '..');
-const DIR_MANIFIESTOS = join(AQUI, 'manifiestos');
-const URL_BASE = 'https://tsskjoewviqixnwonpkx.supabase.co';
-const LOTE = 20;   // lotes cortos: un fallo a medias deja menos ids sueltos
-
-/* ---- clave ------------------------------------------------------ */
-
-function claveDeServicio() {
-  if (process.env.SUPABASE_SERVICE_ROLE) return process.env.SUPABASE_SERVICE_ROLE.trim();
-  const env = join(RAIZ, '.env');
-  if (existsSync(env)) {
-    for (const linea of readFileSync(env, 'utf8').split(/\r?\n/)) {
-      const m = linea.match(/^\s*SUPABASE_SERVICE_ROLE\s*=\s*(.+?)\s*$/);
-      if (m) return m[1].replace(/^["']|["']$/g, '');
-    }
-  }
-  return null;
-}
-
-function esDeServicio(k) {
-  if (!k) return false;
-  if (k.startsWith('sb_secret_')) return true;
-  if (k.startsWith('sb_publishable_')) return false;
-  const p = k.split('.');
-  if (p.length !== 3) return false;
-  try { return JSON.parse(Buffer.from(p[1], 'base64').toString('utf8')).role === 'service_role'; }
-  catch { return false; }
-}
-
-const CLAVE = claveDeServicio();
-if (!esDeServicio(CLAVE)) {
-  console.error('\nFalta la clave de servicio en .env, o la que hay no lo es.');
-  console.error('Con una clave pública el insert fallaría por RLS.\n');
-  process.exit(1);
-}
-
-const CABECERAS = { apikey: CLAVE, Authorization: `Bearer ${CLAVE}`, 'Content-Type': 'application/json' };
-
-async function pedir(ruta, opciones = {}) {
-  const r = await fetch(`${URL_BASE}/rest/v1/${ruta}`, { ...opciones, headers: { ...CABECERAS, ...(opciones.headers || {}) } });
-  if (!r.ok) throw new Error(`${opciones.method || 'GET'} ${ruta} → ${r.status}: ${(await r.text()).slice(0, 400)}`);
-  return r;
-}
+const pedir = conectar();
 
 /* ---- revertir --------------------------------------------------- */
 
 const iRev = process.argv.indexOf('--revertir');
 if (iRev >= 0) {
-  const ruta = process.argv[iRev + 1];
-  if (!ruta) { console.error('Falta la ruta del manifiesto.'); process.exit(1); }
-  const man = JSON.parse(readFileSync(ruta, 'utf8'));
-  console.log(`\nRevirtiendo ${man.ids.length} fichas de ${man.generado}…`);
-  for (let i = 0; i < man.ids.length; i += LOTE) {
-    const trozo = man.ids.slice(i, i + LOTE);
-    await pedir(`exercises?id=in.(${trozo.join(',')})`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
-  }
-  console.log('Hecho. La biblioteca vuelve a estar como antes de esa importación.\n');
+  await revertir(process.argv[iRev + 1], pedir);
   process.exit(0);
 }
 
@@ -260,24 +212,10 @@ if (process.argv.includes('--actualizar')) {
 }
 
 /* ---- 2 · autor --------------------------------------------------
-   `exercises.created_by` apunta a profiles(id). Con service_role no
-   hay auth.uid(), así que hay que decir explícitamente de quién son.
-   Se coge el perfil más antiguo, que es el del entrenador que montó
-   el proyecto; si hay varios, se puede fijar con --autor <uuid>. */
+   `exercises.created_by` apunta a profiles(id): el más antiguo, o el de
+   --autor <uuid> (servicio.mjs#resolverAutor). */
 
-const iAutor = process.argv.indexOf('--autor');
-let autor = iAutor >= 0 ? process.argv[iAutor + 1] : null;
-
-if (!autor) {
-  const perfiles = await (await pedir('profiles?select=id,full_name,created_at&order=created_at.asc&limit=5')).json();
-  if (!perfiles.length) {
-    console.error('\n  No hay ningún perfil en la base: no se puede asignar autoría.\n');
-    process.exit(1);
-  }
-  autor = perfiles[0].id;
-  console.log(`  Autor: ${perfiles[0].full_name || '(sin nombre)'} · ${autor}`);
-  if (perfiles.length > 1) console.log(`  (hay ${perfiles.length} perfiles; usa --autor <uuid> para elegir otro)`);
-}
+const autor = await resolverAutor(pedir);
 
 /* ---- 3 · ¿ya están? --------------------------------------------- */
 

@@ -163,6 +163,13 @@ export function normalizarJugada(bruta) {
           extra.desenlace = 'entra';
           avisos.push(`Fase ${i + 1}: un tiro guardado sin desenlace se abre como «entra».`);
         }
+        /* «Tocar el cono» se leyó un tiempo de un nodo dibujado sobre él
+           (`sorteando: [{ cono, tipo: 'toca' }]`). Ya no es una lectura
+           sino una acción del catálogo («toca»), así que esas entradas se
+           quitan sin decir nada: el trazo sigue como se dibujó. */
+        if (Array.isArray(t.sorteando) && t.sorteando.some((x) => x && x.tipo === 'toca')) {
+          extra.sorteando = t.sorteando.filter((x) => !(x && x.tipo === 'toca'));
+        }
         tramos.push({ ...t, ...extra, trazo: t.trazo.map((x) => ({ ...x })) });
       }
       let id = f.id || `f${i + 1}`;
@@ -188,6 +195,8 @@ export function normalizarJugada(bruta) {
         rama_de: f.rama_de ?? null,
         rama_nombre: f.rama_nombre ?? null,
         reune: Array.isArray(f.reune) ? f.reune : [],
+        /* A qué aro se ataca en esta fase, si la jugada lo dice. */
+        ...(f.canasta === 'norte' || f.canasta === 'sur' ? { canasta: f.canasta } : {}),
       };
     })
     .filter(Boolean);

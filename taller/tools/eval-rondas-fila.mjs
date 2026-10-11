@@ -50,7 +50,8 @@ function conFila({ n = 3, balon = true, rondas, cadencia_ms, x = 0.5, y = 0.6 } 
 const balonDe = (l, id) => (l.find((b) => b.kind === 'balon' && b.portador_id === id) || {}).id || null;
 const cola = (l, conoId) => deLaFila(l, conoId);
 const tiemposDeFase = (f) => tiemposDe({ ...f, carriles: carrilesDesde(f.tramos) }, { pista: 'entera' });
-const copias = (r, i = 0) => r.fases[i].tramos.filter((t) => r.rondas[t.id]);
+const copias = (r, i = 0) => r.fases[i].tramos.filter((t) => r.rondas[t.id] && !r.rondas[t.id].avance);
+const avances = (r, i = 0) => r.fases[i].tramos.filter((t) => r.rondas[t.id] && r.rondas[t.id].avance);
 
 /* ── 1. Cuándo hay rondas ─────────────────────────────────── */
 
@@ -131,16 +132,40 @@ test('CON CADENCIA, CADA UNO SALE A LA CADENCIA, aunque el anterior no haya acab
   ok(cerca(c.tr2_r2.inicio_ms, t0.tramos.tr2.inicio_ms + 3000), 'y lo demás de la ronda, con sus mismos tiempos');
 });
 
-test('CADA UNO SALE DE SU SITIO EN LA COLA y llega a donde llegó el primero', () => {
+test('CADA UNO SALE DE SU SITIO EN LA COLA —que avanza— y llega a donde llegó el primero', () => {
   const { l, conoId, q, fases, fin } = botaYTira();
   const r = conRondas(fases, l);
   const c = Object.fromEntries(copias(r).map((t) => [t.id, t]));
-  const sitios = puestosDeFila(l.find((e) => e.id === conoId), 3, 90, 'entera');
-  ok(M(c.tr1_r1.trazo[0], sitios[1]) < 1e-9 && M(c.tr1_r2.trazo[0], sitios[2]) < 1e-9, 'de su puesto, no del cono');
+  const cono = l.find((e) => e.id === conoId);
+  const sitios = puestosDeFila(cono, 3, 90, 'entera');
+  /* Al salir, cada uno ya está en la cabeza de la cola: ha ido avanzando
+     un puesto cada vez que ha salido uno de delante. */
+  ok(M(c.tr1_r1.trazo[0], sitios[0]) < 1e-6 && M(c.tr1_r2.trazo[0], sitios[0]) < 1e-6, 'sale de la cabeza, no de su puesto de partida');
+  const pasos = avances(r).filter((t) => t.elemento_id === q[2].id);
+  eq(pasos.length, 2, 'el último avanza una vez por cada uno que sale:');
+  ok(M(pasos[0].trazo[0], sitios[2]) < 1e-9 && M(pasos[0].trazo[1], sitios[1]) < 1e-9, 'primero al puesto de delante');
+  ok(M(pasos[1].trazo[1], sitios[0]) < 1e-9, 'y luego a la cabeza');
   const u = (t) => t.trazo[t.trazo.length - 1];
   ok(M(u(c.tr1_r1), fin) < 1e-9 && M(u(c.tr1_r2), fin) < 1e-9, 'y acaba donde acabó el primero');
   ok(M(c.tr2_r2.trazo[0], fin) < 1e-9, 'el tiro sale de donde acabó su bote');
   eq(q.map((j) => j.puesto), [0, 1, 2]);
+});
+
+test('CUANDO SALE EL PRIMERO, LOS DE DETRÁS AVANZAN UN PUESTO, a su ritmo y a su hora', () => {
+  const { l, conoId, q, fases } = botaYTira();
+  const r = conRondas(fases, l);
+  const cono = l.find((e) => e.id === conoId);
+  const sitios = puestosDeFila(cono, 3, 90, 'entera');
+  const t0 = tiemposDeFase(fases[0]).tramos.tr1.inicio_ms;
+  const delSegundo = avances(r).filter((t) => t.elemento_id === q[1].id);
+  eq(delSegundo.length, 1, 'el segundo avanza una vez, cuando sale el primero:');
+  ok(cerca(delSegundo[0].inicio_ms, t0), `a la hora en que sale el primero: ${delSegundo[0].inicio_ms}`);
+  eq(delSegundo[0].ritmo, 'andando');
+  ok(M(delSegundo[0].trazo[0], sitios[1]) < 1e-9 && M(delSegundo[0].trazo[1], sitios[0]) < 1e-9, 'del segundo puesto a la cabeza');
+  /* y el que sale no avanza: lo suyo ya lo dice su ronda */
+  eq(avances(r).filter((t) => t.elemento_id === q[0].id), []);
+  /* los pasos adelante no cuentan como una repetición más de la ronda */
+  ok(copias(r).every((t) => !r.rondas[t.id].avance));
 });
 
 test('RECOGER SU PROPIO TIRO: cada uno va a por SU balón', () => {
@@ -259,7 +284,7 @@ test('LO QUE LOS DEMÁS HACEN POR SU CUENTA NO SE REPITE', () => {
 
 console.log('· volver, varias colas, varias fases');
 
-test('VUELVE A LA FILA: CADA UNO SE PONE DETRÁS DEL QUE VOLVIÓ ANTES', () => {
+test('VUELVE A LA FILA: LA COLA AVANZA Y CADA UNO SE PONE AL FINAL DE LO QUE QUEDA', () => {
   const { l, conoId } = conFila({ n: 3 });
   const q = cola(l, conoId);
   const cono = l.find((e) => e.id === conoId);
@@ -274,8 +299,11 @@ test('VUELVE A LA FILA: CADA UNO SE PONE DETRÁS DEL QUE VOLVIÓ ANTES', () => {
   const r = conRondas(fases, l);
   const c = Object.fromEntries(copias(r).map((t) => [t.id, t]));
   const u = (t) => t.trazo[t.trazo.length - 1];
-  ok(cerca(M(u(c.tr2_r1), cono), FILAS.hueco * 4, 1e-6), `el segundo, un hueco detrás del primero: ${M(u(c.tr2_r1), cono)}`);
-  ok(cerca(M(u(c.tr2_r2), cono), FILAS.hueco * 5, 1e-6), 'y el tercero, detrás del segundo');
+  /* Cuando el segundo vuelve, el primero ya salió y los demás han avanzado:
+     el puesto es el de al final de lo que queda, no el de detrás del último
+     que había al empezar. */
+  ok(cerca(M(u(c.tr2_r1), cono), FILAS.hueco * 1, 1e-6), `el segundo, en el primer puesto libre: ${M(u(c.tr2_r1), cono) / FILAS.hueco}`);
+  ok(cerca(M(u(c.tr2_r2), cono), FILAS.hueco * 2, 1e-6), 'y el tercero, detrás del segundo');
   ok(M(c.tr2_r1.trazo[0], fin) < 1e-9, 'saliendo de donde acabó su bote');
 });
 
@@ -341,6 +369,104 @@ test('UNA FASE CON LA DURACIÓN PUESTA A MANO SE ALARGA PARA QUE QUEPAN TODAS', 
   ok(r.fases[0].duracion_ms >= t.duracion_ms && t.duracion_ms > 1000, `${r.fases[0].duracion_ms} para ${t.duracion_ms}`);
   const sin = conRondas([{ ...fases[0], duracion_ms: 99999 }], l);
   eq(sin.fases[0].duracion_ms, 99999, 'y si ya caben, no se toca:');
+});
+
+/* ── EL RELEVO: el que entrega es el siguiente en recibir ─── */
+
+console.log('· el relevo');
+
+function conRelevo() {
+  const { l: base, conoId } = conFila({ n: 3 });
+  const l = anadir(base, { kind: 'jugador' }, 0.3, 0.5);
+  const q = cola(l, conoId);
+  const c = l.filter((e) => e.kind === 'jugador' && !e.fila_de).pop();
+  const suyo = balonDe(l, q[0].id);
+  const fases = [{
+    id: 'f1',
+    tramos: [
+      tr('tr1', c.id, c.id, 'corta', c, P(0.4, 0.55)),
+      tr('tr2', q[0].id, suyo, 'pasa', q[0], P(0.4, 0.55), { tipo: 'pass', receptor_id: c.id }),
+      tr('tr3', q[0].id, q[0].id, 'rodea', P(0.5, 0.6), c),
+      tr('tr4', c.id, c.id, 'entra', P(0.4, 0.55), P(0.5, 0.1)),
+      tr('tr5', c.id, c.id, 'vuelve_a_fila', P(0.5, 0.1), P(0.5, 0.9)),
+    ],
+  }];
+  return { l, conoId, q, c, fases };
+}
+
+test('SI EL QUE ENTREGA ACABA DONDE ESTABA EL QUE RECIBE, EN LA RONDA SIGUIENTE RECIBE EL QUE ENTREGÓ', () => {
+  const { l, q, c, fases } = conRelevo();
+  const r = conRondas(fases, l);
+  eq(r.avisos, []);
+  const t = Object.fromEntries(copias(r).map((x) => [x.id, x]));
+  /* la ronda 1: entrega el segundo y recibe el primero, que acabó en el sitio del receptor */
+  eq(t.tr2_r1.elemento_id, q[1].id, 'entrega el segundo:');
+  eq(t.tr2_r1.receptor_id, q[0].id, 'y recibe el que entregó antes:');
+  eq(t.tr4_r1.elemento_id, q[0].id, 'que es quien entra:');
+  /* la ronda 2: entrega el tercero y recibe el segundo */
+  eq(t.tr2_r2.elemento_id, q[2].id);
+  eq(t.tr2_r2.receptor_id, q[1].id, 'recibe el que entregó en la ronda 1:');
+  eq(t.tr4_r2.elemento_id, q[1].id);
+  ok(!Object.keys(t).some((id) => /_r[3-9]$/.test(id)), 'salen tantas rondas como esperan en la cola');
+  /* lo dibujado con el receptor sigue siendo suyo, una sola vez */
+  eq(r.fases[0].tramos.filter((x) => x.id === 'tr4').length, 1);
+  ok(c.id !== q[0].id);
+});
+
+test('QUIEN VUELVE A LA FILA SIN HABER SALIDO DE ELLA SE PONE DETRÁS DEL QUE VOLVIÓ ANTES', () => {
+  const { l, conoId, fases } = conRelevo();
+  const r = conRondas(fases, l);
+  const cono = l.find((e) => e.id === conoId);
+  const fin = (id) => { const x = copias(r).find((y) => y.id === id); return x.trazo[x.trazo.length - 1]; };
+  /* la cola avanza: cada uno vuelve al final de lo que queda */
+  const sitio = (k) => puestosDeFila(cono, k + 1, 90, 'entera')[k];
+  ok(M(fin('tr5_r1'), sitio(1)) < 1e-6, 'la ronda 1 en el primer puesto libre');
+  ok(M(fin('tr5_r2'), sitio(2)) < 1e-6, 'y la 2, detrás de ese');
+});
+
+test('SI EL QUE ENTREGA ACABA LEJOS, EL RECEPTOR ES EL DE SIEMPRE (sin relevo)', () => {
+  const { l, q, c, fases } = conRelevo();
+  const lejos = fases[0].tramos.map((t) => (t.id === 'tr3' ? tr('tr3', q[0].id, q[0].id, 'corta', P(0.5, 0.6), P(0.9, 0.9)) : t));
+  const r = conRondas([{ ...fases[0], tramos: lejos }], l);
+  const t = Object.fromEntries(copias(r).map((x) => [x.id, x]));
+  eq(t.tr2_r1.receptor_id, c.id, 'recibe siempre el mismo:');
+  ok(!t.tr4_r1, 'y lo que hace por su cuenta no se repite');
+});
+
+test('DOS LADOS: QUIEN REMATA VA A LA FILA DEL OTRO LADO, y las dos colas avanzan', () => {
+  reiniciarIds();
+  let l = anadir([], { kind: 'cono' }, 0.3, 0.6);
+  const ca = l[0].id;
+  l = anadir(l, { kind: 'cono' }, 0.7, 0.6);
+  const cb = l[1].id;
+  l = hacerFila(l, ca, { n: 3, balon: true, orientacion: 90, vuelta: cb }, 'entera');
+  l = hacerFila(l, cb, { n: 3, balon: true, orientacion: 90, vuelta: ca }, 'entera');
+  l = anadir(l, { kind: 'jugador' }, 0.2, 0.5);
+  const xa = l.filter((e) => e.kind === 'jugador' && !e.fila_de).pop();
+  l = anadir(l, { kind: 'jugador' }, 0.8, 0.5);
+  const xb = l.filter((e) => e.kind === 'jugador' && !e.fila_de).pop();
+  const qa = cola(l, ca), qb = cola(l, cb);
+  const lado = (q, x, sufijo, hacia) => {
+    const suyo = balonDe(l, q[0].id);
+    return [
+      tr(`a${sufijo}`, x.id, x.id, 'corta', x, P(x.x + hacia, 0.55)),
+      tr(`b${sufijo}`, q[0].id, suyo, 'pasa', q[0], P(x.x + hacia, 0.55), { tipo: 'pass', receptor_id: x.id }),
+      tr(`c${sufijo}`, q[0].id, q[0].id, 'rodea', P(q[0].x, q[0].y), x),
+      tr(`d${sufijo}`, x.id, x.id, 'entra', P(x.x + hacia, 0.55), P(0.5, 0.1)),
+      tr(`e${sufijo}`, x.id, x.id, 'vuelve_a_fila', P(0.5, 0.1), P(0.5, 0.9)),
+    ];
+  };
+  const fases = [{ id: 'f1', tramos: [...lado(qa, xa, 'A', 0.05), ...lado(qb, xb, 'B', -0.05)] }];
+  const r = conRondas(fases, l);
+  eq(r.avisos, []);
+  const fin = (t) => t.trazo[t.trazo.length - 1];
+  const todos = Object.fromEntries(r.fases[0].tramos.map((t) => [t.id, t]));
+  /* el que remata en el lado A acaba en la fila del lado B, y al revés */
+  ok(Math.abs(fin(todos.eA).x - 0.7) < 1e-6, `el del lado A, en la fila B: ${fin(todos.eA).x}`);
+  ok(Math.abs(fin(todos.eB).x - 0.3) < 1e-6, `el del lado B, en la fila A: ${fin(todos.eB).x}`);
+  /* y los que salen después, también, y se ponen al final de lo que queda */
+  ok(Math.abs(fin(todos.eA_r1).x - 0.7) < 1e-6 && Math.abs(fin(todos.eB_r1).x - 0.3) < 1e-6, 'las rondas siguientes, igual');
+  ok(avances(r).some((t) => t.elemento_id === qa[1].id) && avances(r).some((t) => t.elemento_id === qb[1].id), 'las dos colas avanzan');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

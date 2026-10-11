@@ -143,6 +143,11 @@ export function revisaFicha(f) {
     for (const campo of REQUISITOS_OBLIGATORIOS) {
       if (r[campo] === undefined || r[campo] === null || r[campo] === '') E(`requisitos.${campo} vacío`);
     }
+    /* Los enlaces de los vídeos (opcionales): una lista de direcciones. */
+    if (r.videos !== undefined && r.videos !== null) {
+      if (!Array.isArray(r.videos)) E('requisitos.videos tiene que ser una lista de enlaces');
+      else r.videos.forEach((u, i) => { if (typeof u !== 'string' || !/^https?:\/\//i.test(u.trim())) A(`requisitos.videos[${i}] no parece un enlace (https://…)`); });
+    }
     for (const { campo, cuando, porque } of REQUISITOS_CONDICIONALES) {
       if (cuando(r, f.tags) && !r[campo]) E(`requisitos.${campo} es obligatorio aquí — ${porque}`);
     }
@@ -212,6 +217,21 @@ export function revisaFicha(f) {
 
 /* ---------- capa 2 · la geometría ------------------------------ */
 
+/* Lo que dura la fase sin contar las repeticiones de las rondas. */
+function duracionDeLaPrimera(fase) {
+  const listas = [fase.movimientos, fase.pases, fase.tiros, fase.recogidas, fase.bloqueos];
+  const esRonda = (x) => !!x && x.repeticion >= 1;
+  if (!listas.some((l) => (l || []).some(esRonda))) return fase.duracion_ms;
+  let fin = 0;
+  for (const l of listas) {
+    for (const x of l || []) {
+      if (!x || esRonda(x)) continue;
+      fin = Math.max(fin, (Number.isFinite(x.inicio_ms) ? x.inicio_ms : 0) + (Number.isFinite(x.duracion_ms) ? x.duracion_ms : 0));
+    }
+  }
+  return fin;
+}
+
 export function revisaGeometria(f) {
   const errores = [];
   const avisos = [];
@@ -279,10 +299,18 @@ export function revisaGeometria(f) {
   }
 
   const aro = aroExacto(a.pista || f.tipo_pista, a.canasta || 'norte');
+  /* El aro de CADA tiro: en una transición se ataca a los dos (el tiro lo
+     trae dicho); sin eso, el de la animación. */
+  const aroDelTiro = (t) => (t && (t.canasta === 'norte' || t.canasta === 'sur')
+    ? aroExacto(a.pista || f.tipo_pista, t.canasta) : aro);
 
   for (const fase of a.fases || []) {
-    if (!(fase.duracion_ms >= FASE_MS.min && fase.duracion_ms <= FASE_MS.max)) {
-      errores.push(`${fase.id}: duración ${fase.duracion_ms} ms fuera de ${FASE_MS.min}-${FASE_MS.max}`);
+    /* Con rondas (los de una fila que salen uno tras otro) la fase dura
+       todas las repeticiones juntas: lo que se mide es la primera, que es
+       lo que hay dibujado y lo que enseñan la miniatura y el guion. */
+    const duracion = duracionDeLaPrimera(fase);
+    if (!(duracion >= FASE_MS.min && duracion <= FASE_MS.max)) {
+      errores.push(`${fase.id}: duración ${duracion} ms fuera de ${FASE_MS.min}-${FASE_MS.max}`);
     }
     for (const m of fase.movimientos || []) {
       for (const n of m.path || []) mira(n, `${fase.id} · path de ${m.elemento_id}`);
@@ -297,8 +325,9 @@ export function revisaGeometria(f) {
        iguales": en las medias el aro está a la izquierda, no arriba. */
     for (const t of fase.tiros || []) {
       const fin = (t.path || []).at(-1);
-      if (!fin || !aro) continue;
-      const d = Math.hypot(fin.x - aro[0], fin.y - aro[1]);
+      const aroT = aroDelTiro(t);
+      if (!fin || !aroT) continue;
+      const d = Math.hypot(fin.x - aroT[0], fin.y - aroT[1]);
       if (d > TOLERANCIA_ARO) {
         errores.push(`${fase.id}: el tiro acaba a ${d.toFixed(3)} del aro (tope ${TOLERANCIA_ARO})`);
       }
@@ -336,7 +365,7 @@ export function revisaGeometria(f) {
       for (const t of fase.tiros || []) {
         const ini = (t.path || [])[0];
         if (!ini) continue;
-        const m = metrosEntre(pista, ini, aro);
+        const m = metrosEntre(pista, ini, aroDelTiro(t) || aro);
         if (m > METROS_ENTRADA) {
           errores.push(`${fase.id}: la ficha promete una finalización y el tiro sale a ${m.toFixed(1)} m del aro (tope ${METROS_ENTRADA}); usa hacia: 'aro'`);
         }
@@ -354,7 +383,7 @@ export function revisaGeometria(f) {
       for (const t of fase.tiros || []) {
         const ini = (t.path || [])[0];
         if (!ini) continue;
-        const m = metrosEntre(pista, ini, aro);
+        const m = metrosEntre(pista, ini, aroDelTiro(t) || aro);
         if (m > METROS_TIRO_MAX) avisos.push(`${fase.id}: tiro desde ${m.toFixed(1)} m — muy lejos para minibasket`);
       }
     }

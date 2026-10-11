@@ -12,40 +12,13 @@
    dev/jugadas.html.
    ============================================================ */
 
-function falso() {
-  const datos = { nodeType: 1, style: { setProperty() {} }, dataset: {}, children: [], hidden: false };
-  const clases = { add() {}, remove() {}, toggle() {}, contains() { return false; } };
-  return new Proxy(datos, {
-    get(t, k) {
-      if (k in t) return t[k];
-      if (k === 'classList') return clases;
-      if (k === 'getBoundingClientRect') return () => ({ left: 0, top: 0, right: 800, bottom: 600, width: 800, height: 600 });
-      if (k === 'querySelector') return () => null;
-      if (k === 'querySelectorAll') return () => [];
-      if (k === 'firstChild') return t.children[0] || falso();
-      if (k === 'append' || k === 'appendChild') return (...c) => { t.children.push(...c); return c[0]; };
-      if (typeof k === 'symbol') return undefined;
-      return () => falso();
-    },
-    set(t, k, v) { t[k] = v; return true; },
-  });
-}
-globalThis.document = {
-  createElementNS: () => falso(), createElement: () => falso(), createTextNode: () => falso(),
-  createDocumentFragment: () => falso(), body: falso(), addEventListener() {}, removeEventListener() {},
-};
-globalThis.window = globalThis;
-globalThis.requestAnimationFrame = () => 1;
-globalThis.cancelAnimationFrame = () => {};
-globalThis.getComputedStyle = () => ({});
-
-const { Tablero } = await import('../js/pizarra/tablero.js');
+/* El Tablero en Node, con su DOM de mentira: taller/tools/tablero-node.mjs. */
+const { tableroDe, dibujar } = await import('./tablero-node.mjs');
 const { compilar } = await import('../js/pizarra/motor/compilar.js');
 const { normalizarJugada } = await import('../js/pizarra/motor/jugada.js');
 const { AnimationEngine } = await import('../js/canvas/engine.js');
-const { reiniciarIds } = await import('../js/pizarra/elementos.js');
 const { todosLosCaminos } = await import('../js/pizarra/ramas.js');
-const { JUGADAS_DE_REFERENCIA } = await import('../../dev/jugadas-referencia.js');
+const { JUGADAS_DE_REFERENCIA, sitios, jugador, balon, cono, ficha, va, pasa } = await import('../../dev/jugadas-referencia.js');
 
 let pasan = 0, fallan = 0;
 function test(nombre, fn) {
@@ -57,29 +30,6 @@ const eq = (real, esp, msg = '') => {
   const r = JSON.stringify(real), e = JSON.stringify(esp);
   if (r !== e) throw new Error(`${msg} esperado=${e} real=${r}`);
 };
-
-function tableroDe(pista) {
-  const avisos = [];
-  const t = new Tablero({
-    el: falso(),
-    vista: { pistaKey: pista, toPx: (x, y) => [x * 800, y * 600], vw: 800, vh: 600, hairline: (p) => p },
-    capa: () => () => {}, gesto: () => () => {}, pintar() {}, metros: (px) => px / 100, agarre: (r) => r, cancelarGestos() {},
-  }, {
-    canasta: 'norte',
-    onNoPuede: (a, motivo) => avisos.push(`${a && a.nombre}: ${motivo}`),
-    onSinSoporte: (a) => avisos.push(`${a && a.nombre}: sin soporte`),
-  });
-  t.poner([]);
-  return { t, avisos };
-}
-
-function dibujar(j) {
-  reiniciarIds();
-  const { t, avisos } = tableroDe(j.pista);
-  j.montar(t);
-  t.cerrar();
-  return { t, avisos, jugada: JSON.parse(JSON.stringify(t.jugada())) };
-}
 
 test('SON DOCE, cada una con su nombre', () => {
   eq(JUGADAS_DE_REFERENCIA.length, 12);
@@ -119,6 +69,37 @@ test('LA DE LAS RAMAS tiene su cruce, y la del robo cambia quién ataca', () => 
   const robo = compilar(dibujar(JUGADAS_DE_REFERENCIA[8]).jugada);
   ok(robo.fases[0].pases.some((p) => p.interceptado), 'el pase se intercepta');
   ok(robo.fases[1].defensores.length === 2, `y en la fase siguiente defienden los que atacaban: ${robo.fases[1].defensores}`);
+});
+
+test('«TOCA EL CONO» Y DESPUÉS «CORTA» EN V, con los ayudantes de dev/: una fase, encadenada, sin avisos', () => {
+  let a1, c;
+  const { avisos, jugada } = dibujar({ pista: 'entera', montar(t) {
+    const s = sitios('entera');
+    a1 = jugador(t, 'A', s.base);
+    const a2 = jugador(t, 'A', s.alero_der);
+    balon(t, a1);
+    c = cono(t, { x: 0.32, y: 0.16 });
+    pasa(t, a1, a2, 'pecho');
+    const sitio = ficha(t, c);
+    va(t, a1, 'toca', { x: sitio.x, y: sitio.y });
+    va(t, a1, 'corta', s.alero_izq, 'en_v', 'sprint');
+  } });
+  eq(avisos, [], 'nada se rechaza:');
+  eq(jugada.fases.length, 1, 'una sola fase:');
+  const [, toca, sale] = jugada.fases[0].tramos;
+  eq([toca.accion, sale.accion, sale.variante, sale.ritmo], ['toca', 'corta', 'en_v', 'sprint']);
+  eq([sale.trazo[0].x, sale.trazo[0].y], [toca.trazo.at(-1).x, toca.trazo.at(-1).y], 'el corte empieza donde acaba el toque (§4.5):');
+  eq([toca.sorteando, sale.sorteando].map((x) => (x || []).length), [0, 0], 'y el cono no se rodea:');
+  const anim = compilar(jugada);
+  eq(anim.warnings, [], 'compila sin avisos:');
+  const suyos = anim.fases[0].movimientos.filter((m) => m.elemento_id === 'A1');
+  eq(suyos.length, 2, 'A1 se mueve dos veces:');
+  eq(suyos[1].inicio_ms, suyos[0].inicio_ms + suyos[0].duracion_ms, 'llega al cono y sale cortando, sin hueco:');
+  eq(suyos[0].path.at(-1), toca.trazo.at(-1), 'llega al cono:');
+  eq(anim.conos.find((x) => x.id === c).funcion, 'decorativo', 'un cono que se toca no es de rodear:');
+  const n = /(\d+)$/.exec(c)[1];
+  eq(anim.fases[0].frase, `A1 pasa de pecho a A2, toca el cono ${n} y corta en V al alero izquierdo.`);
+  eq(normalizarJugada(jugada).avisos, [], 'y se reabre sin avisos:');
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

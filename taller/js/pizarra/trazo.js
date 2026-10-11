@@ -61,6 +61,16 @@ export const RITMOS = {
   espalda: 2.0,
 };
 
+/** Cómo se llama cada ritmo, con las palabras del §6.2. Es lo que se
+ *  elige en el panel derecho para un tramo. */
+export const NOMBRE_RITMO = {
+  andando: 'Andando',
+  normal: 'Normal',
+  sprint: 'Sprint',
+  lateral: 'Defensivo lateral',
+  espalda: 'De espaldas',
+};
+
 /** El balón vuela más rápido que nadie, y un pase corto no puede durar
  *  menos de lo que se tarda en verlo salir. */
 export const VELOCIDAD_PASE = 9.0;

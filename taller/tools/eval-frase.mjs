@@ -166,6 +166,46 @@ test('LOS CONOS: rodeando uno por su lado, sorteando varios, pasando por la puer
   eq(con([{ cono: 'cono_2', lado: 'der', tipo: 'rodeo', anulado: true }]), 'A1 corta al aro.', 'lo anulado no se cuenta:');
 });
 
+test('«TOCA EL CONO»: se dice el cono, y encadenado con el corte del mismo jugador va en la misma oración', () => {
+  const el = [jugador('j1', 'A', '1', A.base), jugador('j2', 'A', '2', A.alero_der), balon('b1', 'j1', A.base), cono('cono_1', P(0.32, 0.16))];
+  const f = [
+    tr('j1', 'b1', 'pasa', A.base, A.alero_der, { tipo: 'pass', receptor_id: 'j2', variante: 'pecho' }),
+    tr('j1', 'j1', 'toca', A.base, P(0.32, 0.16)),
+    tr('j1', 'j1', 'corta', P(0.32, 0.16), A.alero_izq, { variante: 'en_v' }),
+  ];
+  eq(fraseDeFase(jugada(el, [f]), 0), 'A1 pasa de pecho a A2, toca el cono 1 y corta en V al alero izquierdo.');
+  eq(fraseDeFase(jugada(el, [[tr('j1', 'j1', 'toca', A.base, P(0.32, 0.16))]]), 0), 'A1 toca el cono 1.', 'sola:');
+  /* Un cono puesto en una zona sigue siendo el cono, aunque el trazo no
+     acabe justo encima. */
+  const enZona = [jugador('j1', 'A', '1', A.base), cono('cono_2', A.codo_der)];
+  eq(fraseDeFase(jugada(enZona, [[tr('j1', 'j1', 'toca', A.base, P(A.codo_der.x + 0.02, A.codo_der.y))]]), 0), 'A1 toca el cono 2.', 'en una zona:');
+  eq(fraseDeFase(jugada([jugador('j1', 'A', '1', A.base)], [[tr('j1', 'j1', 'toca', A.base, A.codo_der)]]), 0), 'A1 toca el cono.', 'sin cono cerca:');
+});
+
+test('LO GUARDADO CON LA LECTURA VIEJA DE «TOCAR» (sorteando tipo toca) no rompe la frase', () => {
+  const el = [jugador('j1', 'A', '1', A.base), cono('cono_2', A.tiro_libre)];
+  const viejo = [tr('j1', 'j1', 'corta', A.base, A.alero_izq, { variante: 'en_v', sorteando: [{ cono: 'cono_2', tipo: 'toca' }] })];
+  ok(/^A1 corta en V al alero izquierdo/.test(fraseDeFase(jugada(el, [viejo]), 0)), fraseDeFase(jugada(el, [viejo]), 0));
+});
+
+test('LA FRASE AGRUPA POR JUGADOR aunque actúen otros entre medias; solo se parte si le llega un balón', () => {
+  const el = [jugador('j1', 'A', '1', A.base), jugador('j2', 'A', '2', A.alero_der), jugador('j3', 'A', '3', A.alero_izq), balon('b1', 'j1', A.base)];
+  const f = [
+    tr('j1', 'b1', 'pasa', A.base, A.alero_der, { tipo: 'pass', receptor_id: 'j2' }),
+    tr('j1', 'j1', 'corta', A.base, A.codo_der),
+    tr('j2', 'b1', 'pasa', A.alero_der, A.alero_izq, { tipo: 'pass', receptor_id: 'j3' }),
+    tr('j2', 'j2', 'corta', A.alero_der, A.poste_bajo_der),
+  ];
+  eq(fraseDeFase(jugada(el, [f]), 0), 'A1 pasa a A2 y corta al codo derecho. A2 pasa a A3 y corta al poste bajo derecho.');
+  /* y si a A1 le LLEGA el balón entre dos acciones suyas, lo segundo va después */
+  const dame = [
+    tr('j1', 'b1', 'pasa', A.base, A.alero_der, { tipo: 'pass', receptor_id: 'j2' }),
+    tr('j2', 'b1', 'pasa', A.alero_der, A.base, { tipo: 'pass', receptor_id: 'j1' }),
+    tr('j1', 'j1', 'corta', A.base, A.codo_der),
+  ];
+  eq(fraseDeFase(jugada(el, [dame]), 0), 'A1 pasa a A2. A2 pasa a A1. A1 corta al codo derecho.');
+});
+
 test('EL DESTINO ES UN CONO si no cae en ninguna zona', () => {
   const lejos = P(0.5, 0.62);
   const el = [jugador('j1', 'A', '1', A.centro), cono('cono_7', lejos)];

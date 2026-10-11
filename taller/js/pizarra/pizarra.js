@@ -139,6 +139,7 @@ export class Pizarra {
       },
       /* El trazo pinchado (§4.3, §10.1). */
       onVariante: (tramo, variante) => { if (this.tablero.cambiarVariante(tramo, variante)) this._cambio(); },
+      onRitmo: (tramo, ritmo) => { if (this.tablero.cambiarRitmo(tramo, ritmo)) this._cambio(); },
       onVideo: (clave, escrito) => this.guardarVideo(clave, escrito),
       onQuitarVideo: (clave) => this.quitarVideo(clave),
       onNuevaVariante: (accion, escrito, tramo) => this.nuevaVariante(accion, escrito, tramo),
@@ -691,6 +692,8 @@ export class Pizarra {
       puertas: t.puertasDeLaFase(),
       porQueNoDarBalon: (id) => t.porQueNoDarBalon(id),
       tramo: t.tramoEditado,
+      // su acción, la del club incluida: dice si se le puede cambiar el ritmo
+      accion: t.tramoEditado ? t._accionDe(t.tramoEditado.accion) : null,
       videos: this.videos,
     }));
   }

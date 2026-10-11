@@ -661,22 +661,28 @@ test('CON RONDAS (§7.4.2) LOS DE LA COLA SALEN UNO TRAS OTRO, sin número y mar
   eq(anim.jugadores.map((x) => x.id), ['A1', 'A_jugador_3', 'A_jugador_4'], 'los que salen, con nombre propio y sin chocar:');
   eq(anim.jugadores.map((x) => x.dorsal), [null, '', ''], 'y sin número, como en la Pizarra:');
   eq(anim.balones.length, 3, 'cada uno con su balón:');
-  const m = anim.fases[0].movimientos.filter((x) => x.tipo_elemento === 'jugador');
+  /* Los pasos adelante de la cola no son una ronda: van aparte. */
+  const m = anim.fases[0].movimientos.filter((x) => x.tipo_elemento === 'jugador' && !x.avance);
   eq(m.map((x) => [x.elemento_id, x.repeticion ?? 0]), [['A1', 0], ['A_jugador_3', 1], ['A_jugador_4', 2]]);
+  ok(anim.fases[0].movimientos.some((x) => x.avance && x.elemento_id === 'A_jugador_3'), 'y la cola avanza cuando sale el primero');
   ok(m[1].inicio_ms > m[0].inicio_ms && cerca(m[2].inicio_ms - m[1].inicio_ms, m[1].inicio_ms - m[0].inicio_ms, 1e-6),
     `salen escalonados, a turnos iguales: ${m.map((x) => x.inicio_ms)}`);
-  ok(cerca(m[1].path[0].y, 0.65, 1e-9) && cerca(m[2].path[0].y, 0.7, 1e-9), 'cada uno sale de su sitio en la cola');
+  /* La cola avanza: cada uno sale ya de la cabeza (0,6) y los pasos adelante
+     parten del puesto de cada uno. */
+  ok(cerca(m[1].path[0].y, 0.6, 1e-6) && cerca(m[2].path[0].y, 0.6, 1e-6), 'cada uno sale de la cabeza, a la que ha ido avanzando');
+  const pasos = anim.fases[0].movimientos.filter((x) => x.avance && x.elemento_id === 'A_jugador_4');
+  ok(pasos.length === 2 && cerca(pasos[0].path[0].y, 0.7, 0.01) && cerca(pasos[0].path[pasos[0].path.length - 1].y, 0.65, 0.01), 'y el último avanza del puesto 3 al 2');
   eq(anim.rondas, 3, 'la animación sabe cuántas rondas son:');
   eq(enElMotor(anim).rondas, 1, 'pero el motor no ofrece saltar de ronda: van dentro de la fase');
   const una = soloPrimeraRonda(anim.fases);
   eq(una[0].movimientos.filter((x) => x.tipo_elemento === 'jugador').map((x) => x.elemento_id), ['A1'], 'la miniatura y el guion cuentan una:');
   ok(anim.fases[0].duracion_ms >= m[2].inicio_ms + m[2].duracion_ms, 'y la fase dura hasta que acaba el último');
   /* Y el motor de verdad lo reproduce así: cuando sale el segundo, el
-     tercero sigue esperando en su sitio, y cada uno lleva su balón. */
+     tercero ha avanzado a la cabeza y espera allí, y cada uno lleva su balón. */
   const motor = enElMotor(anim);
   const f = enElInstante(motor, 0, m[1].inicio_ms + m[1].duracion_ms / 2);
   ok(f.players.A_jugador_3.y < 0.65 && f.players.A_jugador_3.y > 0.3, `el segundo va de camino: ${JSON.stringify(f.players.A_jugador_3)}`);
-  ok(cerca(f.players.A_jugador_4.y, 0.7), `el tercero espera: ${JSON.stringify(f.players.A_jugador_4)}`);
+  ok(cerca(f.players.A_jugador_4.y, 0.6, 1e-6), `el tercero ha avanzado a la cabeza y espera: ${JSON.stringify(f.players.A_jugador_4)}`);
   ok(Math.abs(f.balls.balon_6.y - f.players.A_jugador_3.y) < 0.02, `y el balón del segundo va con él: ${JSON.stringify(f.balls.balon_6)}`);
   const fin = enElInstante(motor, 0, anim.fases[0].duracion_ms);
   ok(['A1', 'A_jugador_3', 'A_jugador_4'].every((id) => cerca(fin.players[id].y, 0.3)), 'al acabar, los tres han llegado');

@@ -240,5 +240,30 @@ test('UN TRAZO PINCHADO: su variante, el vídeo de esa variante y «Nueva varian
   } finally { ponerVariantesDelClub([]); }
 });
 
+test('UN DESPLAZAMIENTO PINCHADO ENSEÑA SU RITMO; un pase, un tiro o un gesto, no (§6.2)', () => {
+  const el = escena();
+  const t = { id: 'tr1', elemento_id: 'A1', corre_id: 'A1', accion: 'corta', variante: null, ritmo: 'normal' };
+  const m = modeloAjustes({ elementos: el, tramo: t });
+  eq(m.ritmo.valor, 'normal', 'el de la acción:');
+  eq(m.ritmo.opciones, [
+    { valor: 'andando', nombre: 'Andando' },
+    { valor: 'normal', nombre: 'Normal (el de la acción)' },
+    { valor: 'sprint', nombre: 'Sprint' },
+    { valor: 'lateral', nombre: 'Defensivo lateral' },
+    { valor: 'espalda', nombre: 'De espaldas' },
+  ]);
+  eq(modeloAjustes({ elementos: el, tramo: { ...t, ritmo: 'sprint' } }).ritmo.valor, 'sprint', 'el elegido:');
+  eq(modeloAjustes({ elementos: el, tramo: { ...t, ritmo: undefined } }).ritmo.valor, 'normal', 'uno guardado sin ritmo, el de la acción:');
+  for (const accion of ['pasa', 'tira', 'recoge', 'finta']) {
+    eq(modeloAjustes({ elementos: el, tramo: { ...t, accion, ritmo: 'pase' } }).ritmo, null, `${accion} no lo ofrece:`);
+  }
+  /* Una acción del club: manda la definición que da quien pinta. */
+  const galopa = { slug: 'galopa', familia: 'desplazamiento', parametros: { destino: null, ritmo: 'sprint' } };
+  const c = modeloAjustes({ elementos: el, tramo: { ...t, accion: 'galopa', ritmo: 'sprint' }, accion: galopa });
+  eq([c.ritmo.valor, c.ritmo.opciones[2].nombre, c.ritmo.opciones[1].nombre], ['sprint', 'Sprint (el de la acción)', 'Normal']);
+  eq(modeloAjustes({ elementos: el, tramo: { ...t, accion: 'galopa' } }).ritmo, null, 'sin su definición no se ofrece:');
+  ok(mismoPanel(m, modeloAjustes({ elementos: el, tramo: { ...t, ritmo: 'sprint' } })), 'cambiar el ritmo no cambia de panel');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

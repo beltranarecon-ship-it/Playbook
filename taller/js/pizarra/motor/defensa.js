@@ -482,6 +482,10 @@ export function papelesDeJugada(jugada) {
   let canasta = canastaInicial;
   let pares = inicio.pares;
   const fases = (j.fases || []).map((f, i) => {
+    /* Una fase puede decir a qué aro se ataca (una transición que va de un
+       aro al otro con el mismo equipo): manda sobre lo que saldría de
+       contar quién tiene el balón, y sigue para las fases siguientes. */
+    if (f && (f.canasta === 'norte' || f.canasta === 'sur')) canasta = f.canasta;
     const acciones = declaradasDe(f);
     pares = conCambiosDeMarca(pares, acciones, papelesDe(ataca).defensores);
     const papeles = {

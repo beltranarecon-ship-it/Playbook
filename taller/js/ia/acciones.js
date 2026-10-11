@@ -222,6 +222,19 @@ export const CATALOGO_SISTEMA = [
     simbolo: 'carrera_con_balon',
   }),
   A({
+    slug: 'toca', nombre: 'Toca el cono', familia: 'desplazamiento', tag: null,
+    sinonimos: ['tocar cono', 'toca el cono', 'tocar el cono', 'va al cono', 'llega al cono'],
+    // Ir hasta un cono y llegar a él: el trazo acaba imantado en el cono,
+    // que es su destino. Es el primer tramo de un corte en V que sale del
+    // cono: «toca el cono 1 y corta en V al alero». Como rodear un cono o
+    // volver a la cola, es mecánica del ejercicio y no un concepto que
+    // evaluar en un jugador (tag null).
+    descripcion: 'Va hasta un cono y llega a él. Lo que haga después sale del cono.',
+    parametros: { destino: 'elemento', alcance: 'completo', trayectoria: 'recta', ritmo: 'normal' },
+    pide: ['destino'],
+    simbolo: 'corte',
+  }),
+  A({
     slug: 'vuelve_a_fila', nombre: 'Vuelve a la fila', familia: 'desplazamiento', tag: null,
     sinonimos: ['vuelve a la cola', 'vuelve', 'a la fila', 'regresa'],
     descripcion: 'Corre hasta el final de la cola de la que salió. Es lo que cierra un ejercicio de fila.',

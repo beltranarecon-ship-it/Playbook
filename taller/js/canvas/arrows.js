@@ -67,7 +67,7 @@ export function puntaDe(pts) {
   return k;
 }
 
-export function drawArrow(ctx, pts, type, scale = 1, { color = null } = {}) {
+export function drawArrow(ctx, pts, type, scale = 1, { color = null, fantasma = false } = {}) {
   if (!pts || pts.length < 2) return;
   /* `color` pinta la flecha de otro color sin tocar su estilo: es como
      se marca en rojo un trazo forzado por fuera de una puerta. */
@@ -91,19 +91,25 @@ export function drawArrow(ctx, pts, type, scale = 1, { color = null } = {}) {
     ctx.stroke();
   };
 
-  // halo oscuro para contraste sobre pista clara (mantiene el color del §9.2)
-  ctx.globalAlpha = s.alpha;
-  ctx.lineWidth = (s.w + 2.4) * scale;
-  ctx.strokeStyle = 'rgba(11,35,48,.45)';
-  ctx.setLineDash(s.dash.map((d) => d * scale));
-  trace();
+  /* EL FANTASMA de la fase anterior (§6.4): solo el rastro, fino y sin
+     halo ni punta. Lo que se dibuja ahora tiene que destacar sobre él. */
+  if (!fantasma) {
+    // halo oscuro para contraste sobre pista clara (mantiene el color del §9.2)
+    ctx.globalAlpha = s.alpha;
+    ctx.lineWidth = (s.w + 2.4) * scale;
+    ctx.strokeStyle = 'rgba(11,35,48,.45)';
+    ctx.setLineDash(s.dash.map((d) => d * scale));
+    trace();
+  }
 
   // trazo de color
-  ctx.lineWidth = s.w * scale;
+  ctx.globalAlpha = s.alpha;
+  ctx.lineWidth = (fantasma ? s.w * 0.7 : s.w) * scale;
   ctx.strokeStyle = s.color;
   ctx.setLineDash(s.dash.map((d) => d * scale));
   trace();
   ctx.setLineDash([]);
+  if (fantasma) { ctx.restore(); return; }
   const hsz = 10 * scale;
   if (s.head === 'fill') arrowhead(ctx, prev, last, hsz, { fill: s.color });
   else if (s.head) arrowhead(ctx, prev, last, hsz, { stroke: s.color, lineWidth: 2.5 * scale });

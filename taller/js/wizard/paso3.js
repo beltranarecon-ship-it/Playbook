@@ -98,6 +98,23 @@ export function paso3(ctx) {
     r[key], (v) => { r[key] = v; cambio(); },
   );
 
+  /* ---- Vídeos de referencia: los enlaces se guardan con la ficha ---- */
+  const videos = Array.isArray(r.videos) ? r.videos : (r.videos = []);
+  const videosHost = h('div', { class: 'flow' });
+  const pintarVideos = () => {
+    mount(videosHost, h('div', { class: 'flow' },
+      ...videos.map((url, i) => h('div', { class: 'row' },
+        h('input', {
+          class: 'input', type: 'url', value: url, placeholder: 'https://… (Reel, TikTok, YouTube)',
+          onInput: (e) => { videos[i] = e.target.value; cambio(); },
+        }),
+        h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => { videos.splice(i, 1); pintarVideos(); cambio(); } }, 'Quitar'),
+      )),
+      h('button', { class: 'btn btn--ghost btn--sm', type: 'button', onClick: () => { videos.push(''); pintarVideos(); cambio(); } }, 'Añadir enlace'),
+    ));
+  };
+  pintarVideos();
+
   /* ---- 1 · La tarjeta -------------------------------------------- */
   const bloque = chipsSingle(
     BLOQUES_CONTENIDO.map((b) => ({ value: b.key, label: b.label })),
@@ -271,6 +288,11 @@ export function paso3(ctx) {
       field('Objetivos', parrafo('objetivos', 'Qué se entrena y PARA QUÉ, con el porqué dentro.'), { required: true }),
       field('Desarrollo', h('div', { class: 'flow' }, desarrollo, traer), { required: true }),
       field('Notas del entrenador', parrafo('notas', 'Qué corregir, qué NO corregir y qué hacer si no sale. Aquí va el oficio.'), { required: true }),
+    ),
+    h('div', { class: 'card flow' },
+      h('p', { class: 'eyebrow' }, 'Vídeos de referencia'),
+      h('p', { class: 'muted' }, 'Los enlaces de los vídeos de donde sale el ejercicio o con los que se explica: Reels, TikTok, YouTube… Se guardan con la ficha.'),
+      videosHost,
     ),
     h('div', { class: 'card flow' },
       h('p', { class: 'eyebrow' }, 'Los tres niveles de exigencia'),

@@ -38,22 +38,22 @@ import { metrosEntre as metrosEntreFichas } from '../canvas/escala.js';
 import { posicionesDe } from '../canvas/anclas.js';
 import { Fichas } from './fichas.js';
 import { Anillo } from './anillo.js';
-import { Dibujo, ritmoDe, tipoFlecha } from './dibujo.js';
+import { Dibujo, ritmoDe, ritmoAjustable, tipoFlecha } from './dibujo.js';
 import { Nodos } from './nodos.js';
 import { Companero } from './companero.js';
 import { Repaso, VELOCIDAD_REPASO, duracionRepaso } from './repaso.js';
 import { drawArrow, drawBloqueo } from '../canvas/arrows.js';
 import { flattenPath } from '../canvas/geometry.js';
 import {
-  estadoDe, anilloDe, resto, variantesDe, tieneVariantes, varianteDe, versionDeVariantes, necesita, ICONOS, porQueNoCompanero, saleEn,
+  estadoDe, anilloDe, resto, varianteDe, versionDeVariantes, necesita, ICONOS, porQueNoCompanero, saleEn,
 } from './repertorio.js';
-import { segmentoEn, moverNodo, nuevoTrazo, trasladar, RADIO_NODO } from './trazo.js';
+import { segmentoEn, moverNodo, nuevoTrazo, trasladar, RADIO_NODO, RITMOS } from './trazo.js';
 import {
   interpretarConos, sorteandoDe, volverASortear, intencionDe, otroLado, respectoAlTrazo, cruceConPuerta, puertasDe,
 } from './conos.js';
 import {
   hacerFila as hacerLaFila, deshacerFila as deshacerLaFila, orientarFila as orientarLaFila,
-  deLaFila, puestosDeFila, orientacionHacia, normalizarFila,
+  deLaFila, puestosDeFila, orientacionHacia, normalizarFila, recolocarFila,
 } from './filas.js';
 import { conRondas } from './rondas-fila.js';
 import { colocacionDe, ponerColocacion as ponerLaColocacion, plantillaDeFase as plantillaDeLaFase, papelesPorDefecto, tramosDePlantilla } from './plantillas.js';
@@ -64,7 +64,7 @@ import {
   insertarFase as insertarLaFase, borrarFase as borrarLaFase,
   renombrarRama as renombrarLaRama,
 } from './ramas.js';
-import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar } from './elementos.js';
+import { llevaBalon, mover, asignarBalon, soltarBalon, numeroDe, continuarIds, seguirAlPortador, anadir, quitar, renumerar } from './elementos.js';
 import { acierto, alPinchar } from './seleccion.js';
 import { tieneDestinoPropio, destinoDe, trasElTiro, esAccionDeBloqueo, sitioDelBloqueo, frenteDelBloqueo, esGesto, trazoDeGesto } from './destino.js';
 import { normalizarJugada, jugadaDesdeAnimacion } from './motor/jugada.js';
@@ -607,6 +607,8 @@ export class Tablero {
         defensa: f.defensa || {},
         // la frase reescrita a mano (§9.2); null = la automática
         texto: f.texto ?? null,
+        // a qué aro se ataca en esta fase, si se ha dicho (transiciones)
+        ...(f.canasta === 'norte' || f.canasta === 'sur' ? { canasta: f.canasta } : {}),
         // las ramas (§6.7): el camino que se calcula ya no las necesita
         ...(camino ? {} : { rama_de: f.rama_de ?? null, rama_nombre: f.rama_nombre ?? null, reune: f.reune || [] }),
       })),
@@ -645,6 +647,7 @@ export class Tablero {
          antes ya no vale. Y lo que mueve el balón cambia quién ataca en
          la fase siguiente (§8.6): pases, tiros y recogidas. */
       this.fases.map((f) => f.defensa || null),
+      this.fases.map((f) => f.canasta ?? null),
       this.fases.map((f) => (f.tramos || []).map((t) => [t.id, t.elemento_id, t.corre_id, t.receptor_id ?? null, t.balon_id ?? null, t.desenlace ?? null])),
       this.fichas.elementos.filter((e) => e.kind === 'jugador').map((e) => [
         e.id, e.equipo, e.label, e.dorsal, e.en_juego, e.defiende_a ?? null,
@@ -939,6 +942,20 @@ export class Tablero {
   siguientesDeFase(id) { return siguientesDe(this._todas, id); }
   /** El árbol, para dibujarlo en la línea de tiempo. */
   arbolDeFases() { return arbolDe(this._todas); }
+
+  /**
+   * A QUÉ ARO SE ATACA EN UNA FASE (§8.6), cuando no sale de quién tiene el
+   * balón: en una transición que va de un aro al otro con el mismo equipo
+   * nadie cambia de papel, y la canasta de la fase siguiente se dice aquí.
+   * Sigue para las fases que vengan después.
+   */
+  ponerCanastaDeFase(canasta, i = this.iFase) {
+    if (canasta !== 'norte' && canasta !== 'sur') return false;
+    this.fases = this.fases.map((f, k) => (k === i ? { ...f, canasta } : f));
+    this._ponerCanastaDeTrabajo();
+    this.onTramos?.(this.tramos);
+    return true;
+  }
 
   get tramos() { return this.fases[this.iFase].tramos; }
   set tramos(v) {
@@ -1245,7 +1262,11 @@ export class Tablero {
     const cono = this.fichas.elementos.find((e) => e.id === conoId && e.kind === 'cono');
     if (!cono || !cono.fila) return false;
     const config = normalizarFila({ ...cono.fila, ...parcial });
-    this.fichas._cambio(this.fichas.elementos.map((e) => (e.id === conoId ? { ...e, fila: config } : e)));
+    let lista = this.fichas.elementos.map((e) => (e.id === conoId ? { ...e, fila: config } : e));
+    /* Más o menos separados: cada uno a su puesto. Y quién lleva dorsal. */
+    if ('hueco_m' in parcial) lista = recolocarFila(lista, conoId, this.lienzo.vista.pistaKey);
+    if ('dorsales' in parcial) lista = renumerar(lista);
+    this.fichas._cambio(lista);
     this._avisarDeFases();
     this.onEscena?.(this.fichas.elementos);
     this.lienzo.pintar();
@@ -1642,7 +1663,10 @@ export class Tablero {
    * corregir sin volver atrás.
    */
   siguienteFase() {
-    if (!this.tramos.length) { this.onNoPuede?.({ nombre: 'Siguiente fase' }, 'no has dibujado nada en esta fase'); return false; }
+    /* CON LA FASE VACÍA no hay nada que reproducir, pero el botón sigue
+       haciendo lo que dice: abre la siguiente. Antes se negaba, y el
+       entrenador pulsaba y no pasaba nada. */
+    if (!this.tramos.length) { this.cerrar(); this._cerrarFase(); return true; }
     this.cerrar();
     const { tramos, tiempos } = this.conRondasEn();
     const defensa = this._defensaDeLasFases();
@@ -1745,6 +1769,15 @@ export class Tablero {
     });
     this._rondasCache = { clave, valor };
     return valor;
+  }
+
+  /** La fila de quien le ha entregado el balón a este jugador en la fase
+   *  que se dibuja: es a la que «vuelve» quien recibe de uno de una fila y
+   *  no salió de ninguna (el que recibe un mano a mano). */
+  _filaDeQuienRecibe(elemento) {
+    const t = (this.tramos || []).find((x) => x.receptor_id === elemento.id);
+    const de = t && this.fichas.elementos.find((e) => e.id === t.elemento_id);
+    return (de && de.fila_de) || null;
   }
 
   /** Los tramos de una fase CON los de las rondas, y sus tiempos: es lo
@@ -2118,7 +2151,7 @@ export class Tablero {
       });
     }
     if (!tieneDestinoPropio(accion)) return null;
-    return destinoDe(accion, { ...ficha, ...desde }, { pista, canasta: this.canastaEnCurso, elementos: lista }).punto || null;
+    return destinoDe(accion, { ...ficha, ...desde }, { pista, canasta: this.canastaEnCurso, elementos: lista, filaDe: this._filaDeQuienRecibe(ficha) }).punto || null;
   }
 
   /** A qué ficha le toca cada papel de una fase guardada, de entrada. */
@@ -2556,7 +2589,7 @@ export class Tablero {
       if (tipo === 'gesto') {
         trazo = trazoDeGesto(accion, m, { pista, canasta: this.canastaEnCurso });
       } else if (tieneDestinoPropio(accion)) {
-        const d = destinoDe(accion, m, { pista, canasta: this.canastaEnCurso, elementos: this.fichas.elementos });
+        const d = destinoDe(accion, m, { pista, canasta: this.canastaEnCurso, elementos: this.fichas.elementos, filaDe: this._filaDeQuienRecibe(m) });
         if (!d.punto) { sin.push(m); continue; }
         trazo = nuevoTrazo(aqui, d.punto);
         balon = d.balon || null;
@@ -2776,21 +2809,10 @@ export class Tablero {
     const motivo = this._porQueNo(accion, elemento);
     if (motivo) { this.anillo.cerrar(); this._soltarGrupo(); this.onNoPuede?.(accion, motivo); this._pintarAyuda(); return; }
 
-    /* Si tiene variantes y todavía no se ha elegido una, sale el
-       segundo anillo (§4.3). Se puede saltar pinchando ya en la
-       pista: eso lo resuelve el velo del anillo, que cierra sin
-       elegir, y entonces se queda la variante por defecto. */
-    if (!variante && tieneVariantes(slug)) {
-      this._abrirAnillo(elemento, en, {
-        opciones: variantesDe(slug).map((v) => ({ slug: v.slug, nombre: v.nombre, icono: v.icono })),
-        nivel: 'exterior',
-        centro: accion.nombre,
-        accion: slug,
-        quien: { icono: slug, familia: accion.familia },
-      });
-      return;
-    }
-
+    /* LAS ACCIONES SE DIBUJAN DIRECTAS: elegir la acción lleva ya al
+       destino, sin segundo anillo de variantes (decidido con el
+       entrenador, 2026-10-04). Sin elegir, se queda la variante de
+       siempre, y quien quiera otra la cambia después en «Ajustes». */
     const pide = necesita(accion);
     /* UN TIRO PREGUNTA SI ENTRA O FALLA (§4.4), con dos botones grandes
        junto al aro: es lo que decide dónde acaba el balón. Va después del
@@ -2862,6 +2884,7 @@ export class Tablero {
         pista: this.lienzo.vista.pistaKey,
         canasta: this.canastaEnCurso,
         elementos: this.fichas.elementos,
+        filaDe: this._filaDeQuienRecibe(elemento),
       });
       if (!d.punto) { this._soltarGrupo(); this.onNoPuede?.(accion, d.motivo); this._pintarAyuda(); return; }
       this._trazoHecho({
@@ -3232,6 +3255,28 @@ export class Tablero {
     return true;
   }
 
+  /**
+   * CAMBIA EL RITMO de un tramo de la fase que se edita (§6.2: «ajustable
+   * por tramo, panel derecho»). Como la variante, no toca la geometría:
+   * cambia cuánto dura, y con eso la línea de tiempo y los arranques de
+   * quien le espera. Solo en las acciones que declaran ritmo
+   * (dibujo.js#ritmoAjustable).
+   */
+  cambiarRitmo(id, ritmo) {
+    const t = this.tramos.find((x) => x.id === id);
+    if (!t || !RITMOS[ritmo] || t.ritmo === ritmo) return false;
+    if (!ritmoAjustable(this._accionDe(t.accion))) return false;
+    this.tramos = this.tramos.map((x) => (x.id === id ? { ...x, ritmo } : x));
+    if (this._editando && this._editando.id === id) {
+      this._editando = this.tramos.find((x) => x.id === id);
+      /* El rótulo de los nodos dice los segundos: con el ritmo nuevo. */
+      this.nodos.ritmo = ritmo;
+      this.lienzo.pintar();
+    }
+    this.onTramos?.(this.tramos);
+    return true;
+  }
+
   _trazoCorregido(trazo) {
     if (!this._editando) return;
     const id = this._editando.id;
@@ -3384,12 +3429,12 @@ export class Tablero {
      mirando al defensor al que se le pone —y si no se sabe cuál es,
      hacia donde llega—. Es lo mismo que pinta el motor al reproducirlo
      (engine.js, bloqueosEn). */
-  _pintarTramo(ctx, R, toPx, t) {
+  _pintarTramo(ctx, R, toPx, t, { fantasma = false } = {}) {
     const flat = flattenPath(t.trazo).map((p) => { const [x, y] = toPx(p.x, p.y); return { x, y }; });
     /* Forzado por fuera de una puerta: en rojo, que es justo lo que el
        ejercicio quiere corregir (§7.4.1). */
-    drawArrow(ctx, flat, t.tipo, R.scale, this.fueraDePuerta(t) ? { color: COLORS.mal } : {});
-    if (!esBloqueo(t) || !flat.length) return;
+    drawArrow(ctx, flat, t.tipo, R.scale, { ...(!fantasma && this.fueraDePuerta(t) ? { color: COLORS.mal } : {}), fantasma });
+    if (fantasma || !esBloqueo(t) || !flat.length) return;
     const suyo = t.defensor_id ? this.fichas.elementos.find((e) => e.id === t.defensor_id) : null;
     const frente = (suyo && (this.fichas.donde?.(suyo) || suyo))
       || frenteDelBloqueo(t.trazo) || this.fichas.elementos.find((e) => e.id === t.companero_id);
@@ -3473,12 +3518,17 @@ export class Tablero {
     this.lienzo.pintar();
   }
 
+  /* Con una ficha elegida, solo SU rastro; sin ninguna, el de todas. Más
+     claro y sin puntas: lo de ahora destaca siempre (decidido con el
+     entrenador, 2026-10-04). */
   _dibujarFantasma({ ctx, R, toPx }) {
     const previa = this.fantasma !== false && this.iFase > 0 ? this.fases[this.iFase - 1] : null;
     if (!previa) return;
+    const sel = this.fichas.seleccion;
+    const deLaElegida = (t) => !sel || !sel.size || sel.has(t.elemento_id) || sel.has(t.corre_id);
     ctx.save();
-    ctx.globalAlpha = 0.28;
-    for (const t of previa.tramos) this._pintarTramo(ctx, R, toPx, t);
+    ctx.globalAlpha = 0.5;
+    for (const t of previa.tramos) if (deLaElegida(t)) this._pintarTramo(ctx, R, toPx, t, { fantasma: true });
     ctx.restore();
   }
 

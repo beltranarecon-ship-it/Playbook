@@ -80,11 +80,38 @@ test('EL FINAL DE LA COLA ES UN HUECO DETRÁS DEL ÚLTIMO: ahí va quien vuelve 
 });
 
 test('UNA FILA EN CONDICIONES: lo que falte, con lo de serie, y sin pasarse', () => {
-  eq(normalizarFila({}), { n: 3, equipo: 'A', papel: 'atacante', balon: false, orientacion: 90, vuelta: null, rondas: true, cadencia_ms: null });
+  eq(normalizarFila({}), { n: 3, equipo: 'A', papel: 'atacante', balon: false, orientacion: 90, vuelta: null, rondas: true, cadencia_ms: null, hueco_m: null, dorsales: 'todos' });
   eq(normalizarFila({ n: 40, equipo: 'Z', papel: 'defensor', balon: 1, orientacion: -15, vuelta: 'cono_9', rondas: false, cadencia_ms: 1500.4 }),
-    { n: 12, equipo: 'A', papel: 'defensor', balon: true, orientacion: 345, vuelta: 'cono_9', rondas: false, cadencia_ms: 1500 });
+    { n: 12, equipo: 'A', papel: 'defensor', balon: true, orientacion: 345, vuelta: 'cono_9', rondas: false, cadencia_ms: 1500, hueco_m: null, dorsales: 'todos' });
+  eq(normalizarFila({ hueco_m: 2.04, dorsales: 'todos' }).hueco_m, 2.05, 'la separación, a veinteavos de metro:');
+  eq(normalizarFila({ hueco_m: 0.2 }).hueco_m, null, 'ni juntos como para pisarse:');
+  eq(normalizarFila({ dorsales: 'raro' }).dorsales, 'todos', 'y los dorsales, todos si no se entiende:');
   eq(normalizarFila({ n: 0 }).n, 1, 'como poco, uno:');
   eq(normalizarFila(null), null);
+});
+
+/* ── 2b. Dorsales y separación ───────────────────────────── */
+
+test('LOS DORSALES DE UNA FILA: solo el primero, todos o ninguno', () => {
+  reiniciarIds();
+  let l = anadir([], { kind: 'cono' }, 0.5, 0.5);
+  const id = l[0].id;
+  const con = (dorsales) => deLaFila(hacerFila(l, id, { n: 3, dorsales, orientacion: 90 }, 'entera'), id).map((j) => j.label);
+  eq(con('primero'), ['1', null, null], 'solo el que juega, como antes:');
+  eq(con('todos'), ['1', '2', '3'], 'todos, del 1 al 3:');
+  eq(con(undefined), ['1', '2', '3'], 'y sin decir nada, todos:');
+  eq(con('ninguno'), [null, null, null], 'o ninguno, tampoco el primero:');
+});
+
+test('LA SEPARACIÓN DE UNA FILA: cada uno, a su hueco en metros', () => {
+  reiniciarIds();
+  const l = anadir([], { kind: 'cono' }, 0.5, 0.5);
+  const id = l[0].id;
+  const de = (hueco_m) => deLaFila(hacerFila(l, id, { n: 3, orientacion: 90, ...(hueco_m ? { hueco_m } : {}) }, 'entera'), id);
+  const sitios = (js) => js.map((j) => M(j, l[0]));
+  ok(cerca(sitios(de(null))[1], FILAS.hueco, 1e-6), 'de serie, el hueco de siempre');
+  const ancha = sitios(de(2.5));
+  ok(cerca(ancha[1], 2.5, 1e-6) && cerca(ancha[2], 5, 1e-6), `con 2,5 m: ${ancha}`);
 });
 
 /* ── 3. La cola en la pista ──────────────────────────────── */
@@ -96,7 +123,7 @@ function conCono() {
   return { l, cono: l[0] };
 }
 
-test('HACER FILA PONE A LOS QUE ESPERAN: el primero en juego, los demás sin dorsal (§7.1)', () => {
+test('HACER FILA PONE A LOS QUE ESPERAN: el primero en juego, y todos con su dorsal a continuación (§7.1)', () => {
   const { l, cono } = conCono();
   const r = hacerFila(l, cono.id, { n: 3, equipo: 'B', orientacion: 90 }, 'entera');
   const suyos = deLaFila(r, cono.id);
@@ -104,7 +131,7 @@ test('HACER FILA PONE A LOS QUE ESPERAN: el primero en juego, los demás sin dor
   eq(suyos.map((j) => j.puesto), [0, 1, 2]);
   eq(suyos.map((j) => j.equipo), ['B', 'B', 'B']);
   eq(suyos.map((j) => j.en_juego), [true, false, false], 'solo el primero está en juego:');
-  eq(suyos.map((j) => j.label), ['1', null, null], 'y solo él lleva dorsal:');
+  eq(suyos.map((j) => j.label), ['1', '2', '3'], 'todos llevan su número, y el primero el 1:');
   eq(r.find((e) => e.id === cono.id).fila.n, 3, 'y el cono sabe que es fila:');
   ok(M(suyos[0], cono) < 1e-9, 'el primero, en el cono');
 });

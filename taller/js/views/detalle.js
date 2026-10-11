@@ -182,6 +182,17 @@ export function render(root, { id } = {}) {
    más largo y más útil— tampoco.
    ============================================================ */
 
+/* Los enlaces de los vídeos de referencia, si los hay y son enlaces. */
+function videosDe(lista) {
+  const enlaces = (Array.isArray(lista) ? lista : []).filter((u) => typeof u === 'string' && /^https?:\/\//i.test(u.trim()));
+  if (!enlaces.length) return null;
+  const nombre = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; } };
+  return h('div', { class: 'ficha-seccion' },
+    h('small', null, 'Vídeos'),
+    h('div', { class: 'flow' }, ...enlaces.map((u) => h('a', { class: 'link', href: u.trim(), target: '_blank', rel: 'noopener noreferrer' }, nombre(u)))),
+  );
+}
+
 function ficha(ej) {
   const dif = ej.difficulty ? dificultadDe(ej.difficulty) : null;
   const r = ej.requisitos || {};
@@ -217,6 +228,7 @@ function ficha(ej) {
     seccion('Está bien hecho cuando', r.criterio_exito),
     seccion('Antes hace falta saber', r.requisito_previo),
     seccion('Se aplica en', r.aplicacion),
+    videosDe(r.videos),
   );
 
   /* --- 3 · subir y bajar el listón ---------------------------- */

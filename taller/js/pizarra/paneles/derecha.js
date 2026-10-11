@@ -48,6 +48,7 @@ export class PanelDerecho {
    *                   (con null) la fila de un cono (§7.4.2)
    * @param onDarBalon (jugador) — «dale un balón» (§7.3)
    * @param onVariante (tramo, variante) — la variante técnica de un trazo (§4.3)
+   * @param onRitmo   (tramo, ritmo) — a qué ritmo se recorre un trazo (§6.2)
    * @param onVideo   (clave, { enlace, desde, hasta }) — poner el vídeo de una variante (§10.1)
    * @param onQuitarVideo (clave)
    * @param onNuevaVariante (accion, { nombre, descripcion, enlace, desde, hasta }) (§4.3)
@@ -55,10 +56,11 @@ export class PanelDerecho {
    */
   constructor({
     onDefensa = null, onParDe = null, onReglaDe = null, onHaceDe = null, onDeshacerPuerta = null, onFila = null, onDarBalon = null,
-    onVariante = null, onVideo = null, onQuitarVideo = null, onNuevaVariante = null, onPlegar = null,
+    onVariante = null, onRitmo = null, onVideo = null, onQuitarVideo = null, onNuevaVariante = null, onPlegar = null,
   } = {}) {
     this.onPlegar = onPlegar;
     this.onVariante = onVariante;
+    this.onRitmo = onRitmo;
     this.onVideo = onVideo;
     this.onQuitarVideo = onQuitarVideo;
     this.onNuevaVariante = onNuevaVariante;
@@ -237,14 +239,15 @@ export class PanelDerecho {
     ];
   }
 
-  /* UN TRAZO PINCHADO: su variante, el vídeo de la variante y «Nueva
-     variante» (§4.3, §10.1). Guardar el vídeo y crear la variante
+  /* UN TRAZO PINCHADO: su variante, su ritmo (§6.2), el vídeo de la
+     variante y «Nueva variante» (§4.3, §10.1). Guardar el vídeo y crear la variante
      escriben para todo el club: lo hace quien pinta el panel. */
   _tramo(m) {
     const texto = (etiqueta, ejemplo = '') => h('input', { type: 'text', 'aria-label': etiqueta, placeholder: ejemplo, class: 'pz-der__texto' });
     const partes = [h('h4', { class: 'pz-der__titulo' }, m.titulo)];
     if (m.variante) partes.push(this._campoSelect('Variante', m.variante, (v) => this.onVariante?.(m.id, v)));
     else partes.push(h('p', { class: 'pz-der__nota' }, 'Esta acción no tiene variantes técnicas.'));
+    if (m.ritmo) partes.push(this._campoSelect('Ritmo', m.ritmo, (v) => this.onRitmo?.(m.id, v)));
     if (m.descripcion) partes.push(h('p', { class: 'pz-der__nota' }, m.descripcion));
     if (m.video) {
       const v = m.video;
@@ -306,6 +309,8 @@ export class PanelDerecho {
       this._campoSelect('Orientación', f.orientacion, cambiar('orientacion', Number)),
       this._campoSelect('Vuelve', f.vuelta, cambiar('vuelta')),
       this._campoSelect('Salen', f.rondas, cambiar('rondas', (v) => v === 'si')),
+      f.dorsales ? this._campoSelect('Números', f.dorsales, cambiar('dorsales')) : null,
+      f.separacion ? this._campoSelect('Separación', f.separacion, cambiar('hueco_m', (v) => (v == null ? null : Number(v)))) : null,
       f.cadencia ? this._campoSelect('Cadencia', f.cadencia, cambiar('cadencia_ms', (v) => (v == null ? null : Number(v)))) : null,
       h('button', { class: 'pz-der__serie', type: 'button', onClick: () => this.onFila?.(m.id, null) }, 'Deshacer la fila'),
     ];

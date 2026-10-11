@@ -63,14 +63,16 @@ export function orientacionHacia(cono, punto, pista = 'entera', opciones = {}) {
  * Dónde espera cada uno de la cola: el puesto 0 en el cono y los demás
  * detrás, a un hueco de distancia, en la orientación de la fila.
  */
-export function puestosDeFila(cono, n, orientacion = 0, pista = 'entera') {
+export function puestosDeFila(cono, n, orientacion = 0, pista = 'entera', hueco = null) {
   const e = escalaDe(pista);
+  /* De uno a otro: el de la fila (`hueco_m`) o el de serie. */
+  const paso = hueco > 0 ? hueco : ((cono && cono.fila && cono.fila.hueco_m) || FILAS.hueco);
   const rad = (normalizarGrados(orientacion) * Math.PI) / 180;
   const dx = Math.cos(rad), dy = Math.sin(rad);
   const cuantos = Math.max(0, Math.min(FILAS.maximo, n | 0));
   const r = [];
   for (let k = 0; k < cuantos; k++) {
-    r.push({ x: cono.x + (dx * FILAS.hueco * k) / e.x, y: cono.y + (dy * FILAS.hueco * k) / e.y });
+    r.push({ x: cono.x + (dx * paso * k) / e.x, y: cono.y + (dy * paso * k) / e.y });
   }
   return r;
 }
@@ -99,6 +101,11 @@ export function normalizarFila(f) {
     rondas: f.rondas !== false,
     /* Cada cuánto sale el siguiente; sin ella, cuando acaba el anterior. */
     cadencia_ms: Number.isFinite(f.cadencia_ms) && f.cadencia_ms > 0 ? Math.round(f.cadencia_ms) : null,
+    /* Cuánto separa a unos de otros, en metros; sin él, el de serie. */
+    hueco_m: Number.isFinite(f.hueco_m) && f.hueco_m >= 0.9 && f.hueco_m <= 5 ? Math.round(f.hueco_m * 20) / 20 : null,
+    /* Quién lleva dorsal: todos (lo normal), solo el primero —el que está en
+       juego— o ninguno. */
+    dorsales: f.dorsales === 'primero' || f.dorsales === 'ninguno' ? f.dorsales : 'todos',
   };
 }
 
@@ -135,7 +142,7 @@ export function hacerFila(lista, conoId, fila, pista = 'entera') {
   const f = normalizarFila(fila);
   if (!cono || !f) return lista;
   let l = deshacerFila(lista, conoId).map((e) => (e.id === conoId ? { ...e, fila: f } : e));
-  puestosDeFila(cono, f.n, f.orientacion, pista).forEach((s, k) => {
+  puestosDeFila(cono, f.n, f.orientacion, pista, f.hueco_m).forEach((s, k) => {
     const j = { ...crear({ kind: 'jugador', equipo: f.equipo }, s.x, s.y), fila_de: conoId, puesto: k, en_juego: k === 0 };
     l = [...l, j];
     if (f.balon) {

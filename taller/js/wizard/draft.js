@@ -78,6 +78,9 @@ export function nuevoDraft() {
       // `justificacion_densidad` si la densidad es baja (D4).
       aplicacion: '',
       justificacion_densidad: '',
+      // Los enlaces de los vídeos de donde sale el ejercicio o con los que se
+      // explica (Reels, TikTok, YouTube…). Opcional.
+      videos: [],
     },
     requisitos_manual: false, // si el conteo de jugadores se editó a mano
   };
@@ -148,7 +151,10 @@ export function aRegistro(d) {
     animacion: d.animacion,
     jugada: d.jugada ?? null,
     tipo_pista: d.tipo_pista,
-    requisitos: d.requisitos,
+    /* Los enlaces, sin espacios y sin los que se quedaron en blanco. */
+    requisitos: d.requisitos && Array.isArray(d.requisitos.videos)
+      ? { ...d.requisitos, videos: d.requisitos.videos.map((u) => String(u || '').trim()).filter(Boolean) }
+      : d.requisitos,
     favorito: false,
   };
 }

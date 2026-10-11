@@ -63,6 +63,10 @@ export function metaDeFase(fase, { jugadores = [], balones = [], escena, aro = (
        antes: quien lo lea desde fuera sigue encontrándolo. */
     movByEl: {}, ballMoves: {},
     bloqueos: fase.bloqueos || [], arrows: [], defenders: new Set(fase.defensores || []),
+    /* ¿La fase trae rondas (los de una fila que salen uno tras otro)? Con
+       todas las flechas a la vez no se ve nada: el motor enseña entonces
+       solo la de lo que se mueve en ese instante. */
+    conRondas: [fase.movimientos, fase.pases, fase.tiros].some((l) => (l || []).some((x) => x && x.repeticion >= 1)),
   };
   const pon = (lista, id, x) => { (lista[id] ||= []).push(x); };
   /* Dónde acaba cada uno se decide por INSTANTE, no por el orden en que
@@ -89,7 +93,7 @@ export function metaDeFase(fase, { jugadores = [], balones = [], escena, aro = (
       /* Lo AUTOMÁTICO no lleva flecha (§8.4): la defensa se mueve sola y
          dibujar su camino llenaría la pista de flechas que nadie ha
          pedido. */
-      if (!mv.automatico) meta.arrows.push({ flat: sampler.flat, type });
+      if (!mv.automatico) meta.arrows.push({ flat: sampler.flat, type, inicio: c.inicio, fin: c.fin });
     }
     acaba(mv.elemento_id, c.fin, porTiempo ? sampler(1) : ultimoNodo(mv.path));
   }
@@ -103,7 +107,7 @@ export function metaDeFase(fase, { jugadores = [], balones = [], escena, aro = (
     const c = cuando(p);
     pon(meta.ballMovs, p.balon_id, { kind: 'pase', sampler, ...c });
     meta.ballMoves[p.balon_id] = { kind: 'pase', sampler };
-    meta.arrows.push({ flat: sampler.flat, type: 'pass' });
+    meta.arrows.push({ flat: sampler.flat, type: 'pass', inicio: c.inicio, fin: c.fin });
     pon(meta.duenos, p.balon_id, { t: c.fin, quien: p.a_id || null });
     acaba(p.balon_id, c.fin, ultimoNodo(effPath));
   }
@@ -117,7 +121,7 @@ export function metaDeFase(fase, { jugadores = [], balones = [], escena, aro = (
     const c = cuando(t);
     pon(meta.ballMovs, t.balon_id, { kind: 'tiro', sampler, ...c });
     meta.ballMoves[t.balon_id] = { kind: 'tiro', sampler };
-    meta.arrows.push({ flat: sampler.flat, type: 'pass' });
+    meta.arrows.push({ flat: sampler.flat, type: 'pass', inicio: c.inicio, fin: c.fin });
     pon(meta.duenos, t.balon_id, { t: c.fin, quien: null });
     // reposo final = último nodo del path EFECTIVO: el balón no salta al
     // aro de la pista al acabar la fase.

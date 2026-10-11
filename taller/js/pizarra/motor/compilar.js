@@ -550,7 +550,7 @@ function compilarFase(f, i, { pista, canasta, de, nombre, warnings, papeles = nu
     /* Lo de una ronda que no es la primera va marcado: la miniatura y el
        guion enseñan una sola (§7.4.2). */
     const k = repeticionDe(t.id);
-    const ronda = k ? { repeticion: k } : {};
+    const ronda = k ? { repeticion: k, ...(t.avance ? { avance: true } : {}) } : {};
     const cuando = { inicio_ms: m.inicio_ms, duracion_ms: m.duracion_ms, ...ronda };
     const modo = accion.parametros && accion.parametros.modo;
 

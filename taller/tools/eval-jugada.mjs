@@ -375,5 +375,39 @@ test('UN ENLACE DE UNA SOLA FASE SE GUARDA si no lo dice el orden de la lista; s
   eq([f.f4, f.f3, f.f5], [['f3'], ['f2'], []]);
 });
 
+test('EL RITMO ELEGIDO PARA UN TRAMO SE CONSERVA AL REABRIR (§6.2)', () => {
+  const b = buena();
+  b.fases[0].tramos[0].ritmo = 'sprint';
+  const { jugada } = normalizarJugada(JSON.parse(JSON.stringify(b)));
+  eq(jugada.fases[0].tramos[0].ritmo, 'sprint');
+});
+
+test('LO GUARDADO CON LA LECTURA VIEJA DE «TOCAR EL CONO» se reabre sin ella, sin avisos, y compila', () => {
+  const b = buena();
+  b.elementos.push({ id: 'cono_9', kind: 'cono', x: 0.5, y: 0.5, nombre: null, fila: null });
+  const t = b.fases[0].tramos[0];
+  t.sorteando = [{ cono: 'cono_9', tipo: 'toca' }, { cono: 'cono_9', lado: 'izq', tipo: 'rodeo' }];
+  const limpia = normalizarJugada(JSON.parse(JSON.stringify(buena())));
+  const r = normalizarJugada(JSON.parse(JSON.stringify(b)));
+  eq(r.avisos, limpia.avisos, 'no se avisa de más:');
+  eq(r.jugada.fases[0].tramos[0].sorteando, [{ cono: 'cono_9', lado: 'izq', tipo: 'rodeo' }], 'se quita solo lo de tocar:');
+  eq(r.jugada.fases[0].tramos[0].trazo, t.trazo, 'el trazo, tal cual:');
+  /* Y sin pasar por aquí, el compilador tampoco se rompe con ella. */
+  ok(Array.isArray(compilar(JSON.parse(JSON.stringify(b))).fases), 'compila la vieja');
+  ok(Array.isArray(compilar(r.jugada).fases), 'y la reabierta');
+});
+
+const { papelesDeJugada } = await import('../js/pizarra/motor/defensa.js');
+test('UNA FASE PUEDE DECIR A QUÉ ARO SE ATACA, se conserva al reabrir y sigue en las siguientes', () => {
+  const bruta = {
+    version: 3, pista: 'entera', canasta: 'norte',
+    elementos: [{ id: 'j1', kind: 'jugador', equipo: 'A', label: '1', x: 0.5, y: 0.5 }],
+    fases: [{ id: 'f1', tramos: [] }, { id: 'f2', canasta: 'sur', tramos: [] }, { id: 'f3', tramos: [] }],
+  };
+  const { jugada } = normalizarJugada(bruta);
+  eq(jugada.fases.map((f) => f.canasta ?? null), [null, 'sur', null], 'lo dicho se conserva, y solo en esa fase:');
+  eq(papelesDeJugada(jugada).fases.map((f) => f.canasta), ['norte', 'sur', 'sur'], 'y se ataca al otro aro desde ahí:');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

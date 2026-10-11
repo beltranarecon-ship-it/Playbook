@@ -111,26 +111,42 @@ export function crear(spec, x = 0.5, y = 0.5) {
 /* ── Dorsales ──────────────────────────────────────────────── */
 
 /**
- * Numera 1..n por equipo, CONTIGUO, y solo a los que están en juego.
+ * Numera 1..n por equipo, CONTIGUO: primero los que están en juego y, a
+ * continuación, los que esperan en una fila.
  *
  * Dos motivos, y los dos vienen de fallos vistos:
  *  · Sin renumerar, «añado A1 A2 A3, borro el 2, añado otro» deja dos
  *    jugadores con el número 3 y uno de los dos se vuelve inalcanzable
  *    para todo lo que los nombre por su número.
- *  · Y quien espera en una fila NO lleva dorsal (§7.1), porque el
- *    emparejamiento de la defensa se hace por dorsal: si los que
- *    esperan numeraran, el defensor 3 no sabría a qué atacante 3
- *    marcar.
+ *  · Y el emparejamiento de la defensa se hace por dorsal entre los que
+ *    ESTÁN EN JUEGO (§7.1): si los que esperan se numeraran entre medias,
+ *    el defensor 3 no sabría a qué atacante 3 marcar. Por eso los que
+ *    esperan llevan SU número, pero después de todos los que juegan: nadie
+ *    en juego cambia de número porque haya una cola.
+ *
+ * Quién lleva número en una fila lo dice `fila.dorsales`: «todos» (lo
+ * normal: que no se vea a unos con número y a otros sin él), «primero» (solo
+ * el que está en juego, como antes) o «ninguno».
  *
  * `dorsal` puesto a mano manda sobre esto y no se toca nunca.
  */
 export function renumerar(lista) {
+  const modo = new Map(lista.filter((c) => c.kind === 'cono' && c.fila).map((c) => [c.id, c.fila.dorsales]));
+  const modoDe = (e) => (e.fila_de ? (modo.get(e.fila_de) || 'todos') : null);
+  const esperan = (e) => e.en_juego === false;
   const cuenta = {};
+  const etiquetas = new Map();
+  const numera = (e) => {
+    cuenta[e.equipo] = (cuenta[e.equipo] || 0) + 1;
+    etiquetas.set(e.id, String(cuenta[e.equipo]));
+  };
+  const jugadores = lista.filter((e) => e.kind === 'jugador');
+  /* Primero los que juegan, por orden; luego los que esperan y llevan número. */
+  for (const e of jugadores) if (!esperan(e) && modoDe(e) !== 'ninguno') numera(e);
+  for (const e of jugadores) if (esperan(e) && modoDe(e) === 'todos') numera(e);
   return lista.map((e) => {
     if (e.kind !== 'jugador') return e;
-    if (e.en_juego === false) return e.label === null ? e : { ...e, label: null };
-    cuenta[e.equipo] = (cuenta[e.equipo] || 0) + 1;
-    const label = String(cuenta[e.equipo]);
+    const label = etiquetas.has(e.id) ? etiquetas.get(e.id) : null;
     return e.label === label ? e : { ...e, label };
   });
 }

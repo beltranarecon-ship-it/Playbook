@@ -193,13 +193,26 @@ function fraseDelAtaque(f, i, { fases, porId, pista, canasta }) {
     cortesDe.set(p.id, cortes);
   }
 
-  /* Las oraciones: lo seguido de un mismo jugador, junto. */
+  /* Las oraciones: todo lo de un jugador junto, aunque entre medias actúen
+     otros («A1 pasa a A2, toca el cono y corta al ala. A2 pasa a A3…»). Se
+     abre otra para el mismo jugador solo cuando le LLEGA un balón entre un
+     tramo suyo y el siguiente: lo que hace después depende de esa recepción
+     y tiene que contarse tras ella («dame y va»: A1 pasa a A2. A2 pasa a A1.
+     A1 tira.). Las oraciones salen por cuándo empieza su primera acción. */
+  const pases = tramos.filter((p) => p.accion === 'pasa' && p.receptor_id);
   const tandas = [];
+  const abierta = new Map();   // jugador -> su oración abierta
   for (const t of [...tramos].sort(antes)) {
     if (enElPase.has(t.id)) continue;
-    const ultima = tandas[tandas.length - 1];
-    if (ultima && ultima.quien === t.elemento_id) ultima.tramos.push(t);
-    else tandas.push({ quien: t.elemento_id, tramos: [t] });
+    const quien = t.elemento_id;
+    const tanda = abierta.get(quien);
+    const ultimo = tanda && tanda.tramos[tanda.tramos.length - 1];
+    const recibe = !!ultimo && pases.some((p) => p.receptor_id === quien && p.elemento_id !== quien
+      && acaba(p) > cuando(ultimo) && acaba(p) <= cuando(t) + 1);
+    if (tanda && !recibe) { tanda.tramos.push(t); continue; }
+    const nueva = { quien, tramos: [t] };
+    tandas.push(nueva);
+    abierta.set(quien, nueva);
   }
   const ctx = { fases, i, porId, pista, canasta, nombre };
   return tandas.map(({ quien, tramos: suyos }) => {
@@ -212,16 +225,22 @@ function fraseDelAtaque(f, i, { fases, porId, pista, canasta }) {
   }).join(' ');
 }
 
-/** El destino por su nombre: el cono en el que acaba, la zona, o el cono
- *  cercano si no cae en ninguna zona. */
-function destinoDe(punto, { porId, pista, canasta }) {
-  if (!punto) return null;
+/* El cono más cercano a un punto, a menos de METROS_AL_CONO: { e, m }. */
+function conoCercano(punto, { porId, pista }) {
   let mejor = null;
   for (const e of porId.values()) {
     if (e.kind !== 'cono') continue;
     const m = metrosEntre(pista, punto, e);
     if (m <= METROS_AL_CONO && (!mejor || m < mejor.m)) mejor = { e, m };
   }
+  return mejor;
+}
+
+/** El destino por su nombre: el cono en el que acaba, la zona, o el cono
+ *  cercano si no cae en ninguna zona. */
+function destinoDe(punto, { porId, pista, canasta }) {
+  if (!punto) return null;
+  const mejor = conoCercano(punto, { porId, pista });
   if (mejor && mejor.m <= METROS_EN_EL_CONO) return nombreEnFrase(mejor.e);
   return zonaDe(pista, canasta, punto) || (mejor ? nombreEnFrase(mejor.e) : null);
 }
@@ -272,6 +291,12 @@ function clausula(t, { anterior, cortes, fases, i, porId, pista, canasta, nombre
       return solo(vieneDeUnFallo(t, fases, i) ? 'coge el rebote' : 'recoge el balón');
     case 'vuelve_a_fila':
       return solo('vuelve al final de la fila');
+    case 'toca': {
+      /* Su destino es un cono: el que toca es el más cercano a donde
+         acaba, aunque caiga dentro de una zona. */
+      const cono = fin ? conoCercano(fin, { porId, pista }) : null;
+      return solo(`toca ${cono ? nombreEnFrase(cono.e) : 'el cono'}`);
+    }
     case 'bloquea': {
       const para = t.companero_id ? nombre(t.companero_id) : null;
       if (t.variante === 'mano_a_mano') return solo(`hace un mano a mano${para ? ` con ${para}` : ''}`);

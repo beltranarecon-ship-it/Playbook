@@ -133,7 +133,8 @@ test('CON UNA FILA, CADA UNO SIGUE CON SU NÚMERO: los pares de la defensa no se
   const r = ponerColocacion([], datos, 'entera').elementos;
   eq(quien(r), antes, 'puesta de nuevo, los mismos números en los mismos sitios:');
   const c = r.find((e) => e.kind === 'cono');
-  eq(deLaFila(r, c.id).map((e) => [e.puesto, e.en_juego, e.label]), [[0, true, '1'], [1, false, null], [2, false, null]], 'y la cola, en su cono y por su orden:');
+  /* Los que esperan llevan número, pero detrás de todos los que juegan: el A2 suelto sigue siendo el 2. */
+  eq(deLaFila(r, c.id).map((e) => [e.puesto, e.en_juego, e.label]), [[0, true, '1'], [1, false, '3'], [2, false, '4']], 'y la cola, en su cono y por su orden:');
   /* Añadida a una escena con un A1: se numera detrás, en el mismo orden. */
   const con = ponerColocacion(anadir([], { kind: 'jugador', equipo: 'A' }, 0.1, 0.1), datos, 'entera').elementos;
   eq(quien(con).map((x) => x[0]), ['A1', 'A2', 'A3', 'B1']);

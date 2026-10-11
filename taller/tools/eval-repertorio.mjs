@@ -313,5 +313,15 @@ test('LOS GESTOS QUE SON DEL BALÓN no se ofrecen a quien no lo lleva; la finta 
   ok(CATALOGO_SISTEMA.filter((a) => a.familia === 'gesto').every((a) => !saleEn(a, 'defensor')), 'y a un defensor, ninguno');
 });
 
+test('«TOCA EL CONO» PIDE DIBUJAR HASTA EL CONO, sin variantes, y sale en «⋯ más» porque el anillo ya tiene sus seis (§4.2)', () => {
+  const toca = CATALOGO_SISTEMA.find((a) => a.slug === 'toca');
+  eq(necesita(toca), { destino: true, companero: false, desenlace: false }, 'se dibuja como un corte:');
+  ok(!tieneVariantes('toca'), 'no tiene «cómo» que elegir');
+  for (const e of ESTADOS) eq(ANILLO[e].length, 6, `el anillo de ${e} sigue con seis:`);
+  ok(!ANILLO.sinBalon.includes('toca'), 'no desplaza a nadie del anillo');
+  ok(resto('sinBalon').some((a) => a.slug === 'toca'), 'sin balón, en «⋯ más»');
+  ok(!resto('defensor').some((a) => a.slug === 'toca'), 'a un defensor no se le ofrece');
+});
+
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);
 process.exit(fallan ? 1 : 0);

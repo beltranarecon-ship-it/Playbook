@@ -85,7 +85,7 @@ export function tieneDestinoPropio(accion) {
  * @returns { punto } si se puede calcular, o { motivo } si no.
  */
 export function destinoDe(accion, elemento, {
-  pista = 'entera', canasta = 'norte', elementos = [],
+  pista = 'entera', canasta = 'norte', elementos = [], filaDe = null,
 } = {}) {
   const p = (accion && accion.parametros) || {};
   if (!elemento || !Number.isFinite(elemento.x)) return { motivo: 'no sé desde dónde sale' };
@@ -97,7 +97,17 @@ export function destinoDe(accion, elemento, {
     /* AL FINAL DE SU FILA (§7.4.2): la del cono del que salió, o la que
        diga su fila como vuelta. Quien no salió de ninguna no tiene a
        dónde volver, y no se inventa. */
-    const suya = elemento.fila_de ? (elementos || []).find((e) => e && e.id === elemento.fila_de && e.kind === 'cono') : null;
+    let suya = elemento.fila_de ? (elementos || []).find((e) => e && e.id === elemento.fila_de && e.kind === 'cono') : null;
+    /* Quien no salió de ninguna fila va a la de quien le entregó el balón
+       en esta fase (`filaDe`: el que recibe un mano a mano y se pone a la
+       cola —o a la que diga su `vuelta`— del que se lo dio) o, sin eso, a la
+       ÚNICA que hay en la pizarra. Con varias y sin saber de quién, no se
+       elige por él. */
+    if (!suya || !suya.fila) {
+      const dada = filaDe ? (elementos || []).find((e) => e && e.id === filaDe && e.kind === 'cono' && e.fila) : null;
+      const filas = (elementos || []).filter((e) => e && e.kind === 'cono' && e.fila);
+      suya = dada || (filas.length === 1 ? filas[0] : null);
+    }
     if (!suya || !suya.fila) return { motivo: 'no ha salido de ninguna fila' };
     const vuelta = suya.fila.vuelta
       ? (elementos || []).find((e) => e && e.id === suya.fila.vuelta && e.kind === 'cono' && e.fila)

@@ -135,7 +135,45 @@ test('las mecánicas del motor son las que se espera', () => {
   // Si mañana alguien pone tag: null en «tira» para saltarse el aviso de
   // arriba, esta prueba lo dice. La lista es corta a propósito.
   const mecanicas = CATALOGO_SISTEMA.filter((a) => a.tag === null).map((a) => a.slug).sort();
-  eq(mecanicas, ['rodea', 'vuelve_a_fila']);
+  eq(mecanicas, ['rodea', 'toca', 'vuelve_a_fila']);
+});
+
+console.log('\n· tocar el cono');
+
+/* Lo que escribe a mano quien dicta un ejercicio, a la acción del
+   catálogo: por su nombre o por uno de sus sinónimos, comparando como
+   compara el catálogo (sin tildes ni mayúsculas). */
+const porNombre = (texto) => CATALOGO_SISTEMA.filter((a) => [a.nombre, ...a.sinonimos]
+  .some((n) => normalizarNombre(n) === normalizarNombre(texto))).map((a) => a.slug);
+
+test('«TOCA EL CONO» ES UNA ACCIÓN DEL CATÁLOGO: de desplazamiento, válida y sin variantes que elegir', () => {
+  const toca = CATALOGO_SISTEMA.find((a) => a.slug === 'toca');
+  ok(toca, 'falta «toca» en el catálogo');
+  eq([toca.nombre, toca.familia, toca.tag], ['Toca el cono', 'desplazamiento', null]);
+  const r = validarAccion(toca);
+  ok(r.ok, r.errores.join('; '));
+  /* Va a un cono y llega a él: el destino es un elemento y se dibuja. */
+  eq([parametroDe(toca, 'destino'), parametroDe(toca, 'alcance'), parametroDe(toca, 'trayectoria')], ['elemento', 'completo', 'recta']);
+  eq(toca.pide, ['destino']);
+  /* El ritmo se puede cambiar, como en las demás de desplazamiento. */
+  eq(parametroDe(toca, 'ritmo'), 'normal');
+  ok(MOV_TO_ARROW[toca.simbolo], `el símbolo «${toca.simbolo}» no tiene flecha`);
+});
+
+test('SE RESUELVE POR SU NOMBRE Y SUS SINÓNIMOS, y nadie más los reclama', () => {
+  for (const texto of ['Toca el cono', 'toca el cono', 'tocar cono', 'Tocar el cono', 'TOCA EL CONO']) {
+    eq(porNombre(texto), ['toca'], `«${texto}»:`);
+  }
+  /* Ningún nombre ni sinónimo sirve para dos acciones: si no, «tocar
+     cono» podría acabar en un corte. */
+  const vistos = new Map();
+  for (const a of CATALOGO_SISTEMA) {
+    for (const n of [a.nombre, ...a.sinonimos]) {
+      const k = normalizarNombre(n);
+      ok(!vistos.has(k) || vistos.get(k) === a.slug, `«${n}» es de ${vistos.get(k)} y de ${a.slug}`);
+      vistos.set(k, a.slug);
+    }
+  }
 });
 
 console.log('\n· validación de acciones nuevas');

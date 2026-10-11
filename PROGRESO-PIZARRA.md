@@ -16,6 +16,135 @@ node taller/tools/eval-fases.mjs   # y el resto de bancos: todos en verde
 
 ## Dónde estamos
 
+**Motor, tras la investigación (2026-10-04, rama `pizarra-motor-capa-3`, sin
+fusionar a `main`).** Se investigaron herramientas de ejercicios de varios
+deportes (`investigacion/INFORME-FINAL.md`) y se diseñó con el entrenador qué
+cambiar; lo decidido está en `investigacion/DISENO-MOTOR.md`. Hecho:
+
+- **Capa 1, diagnóstico:** diez ejercicios clásicos sobre el Tablero real
+  (`investigacion/diagnostico/banco-clasicos.mjs`, no es un banco: informa).
+  Resultado en `RESULTADOS-CAPA1.md`: la entrada no suelta el balón y el pase a
+  quien corta cae a 0,07 del receptor, más once capacidades que faltan
+  (rotación, pase en carrera, colocaciones de serie…).
+- **Capa 3a, dibujar:** «Siguiente fase» activo y creando fase aunque esté
+  vacía; las acciones se dibujan directas, sin el anillo de variantes (la
+  variante se cambia en «Ajustes»); fantasma claro, sin puntas y solo de la
+  ficha elegida. Cambios en `tablero.js`, `linea-tiempo.js` y `arrows.js`;
+  `eval-tablero.mjs` actualizado (128 pruebas) y todos los bancos en verde.
+
+Pendiente, por este orden: balones (hay que reproducir con gestos los fallos
+que cuenta el entrenador), 3b mover una ficha en fases posteriores (corrige
+dónde llega la anterior), rotación de conos, pase en carrera, ritmo del
+movimiento, y colocaciones de serie. El tirador de orientación de fila ya
+aparece al pulsar «Hacer fila»: falta saber en qué flujo no lo ve el
+entrenador.
+
+**Ejercicios desde vídeos (2026-10-10).** La biblioteca de 204 fichas se borró
+de Supabase (copia en `tools/biblioteca/copias/exercises-204-antes-de-borrar-2026-10-10.json`;
+quedan las 36 que no eran suyas) y los ejercicios se construyen ahora a partir
+de Reels/TikTok del entrenador, uno a uno, entrenando el motor. Flujo: enlace →
+Claude in Chrome (fotogramas y texto) → dibujo en `dev/ejercicios-video.js` con
+los gestos de `dev/jugadas-referencia.js` → se ve en `dev/jugadas.html` →
+preguntas con opciones → «perfecto» → ficha y guardado. Hecho con el V1 (Drill
+249, `@500bballdrills`):
+
+- **«Toca el cono» es una acción del catálogo** (`toca`, «Toca el cono», familia
+  desplazamiento, en «⋯ más» del anillo; frase «toca el cono 1», encadenable
+  con «corta» en V). Antes fue una lectura inferida con iconito (⊙, anulable) y
+  se quitó entera a petición del entrenador: `conos.js` y `frase.js` vuelven a
+  como estaban, y `normalizarJugada` tira en silencio las entradas
+  `{tipo:'toca'}` de lo ya guardado (V1 las lleva).
+- **Ayudantes de `dev/`:** `va` acepta una lista de puntos y un ritmo
+  (`sprint`); los ayudantes se exportan para el nuevo archivo.
+- **V1 dibujado y con ficha** (0 errores y 0 avisos del linter de fichas): el
+  ciclo completo de 12 pases de pecho, en 3 fases continuas de 4 pases con
+  cortes en V a sprint, en las que cada jugador pasa por las cuatro posiciones
+  y todos acaban donde empezaron. El entrenador lo dio por perfecto y está
+  subido (abajo).
+- **Lo que no cabía en el motor, resuelto con subagentes Opus (2026-10-10):**
+  el ritmo de un tramo se elige en Ajustes del panel del trazo (`Ritmo`, solo
+  en acciones que lo declaran: corta, bota, entra, rodea, vuelve_a_fila;
+  entra en deshacer/rehacer y se guarda). Pendiente: selector de ritmo en la
+  pestaña Fases (§2.4) y validar el ritmo al reabrir. La frase no dice el
+  ritmo. Los iconitos de «toca el cono» y su reparto en corro se hicieron y
+  se quitaron después: el entrenador no los quiso.
+- **V1 subido a la biblioteca** (2026-10-10, `cf149a50-0e2c-42e3-a1c4-68cff19a913b`,
+  sin miniatura); manifiesto en `tools/biblioteca/manifiestos/video-V1-*.json`.
+  Está guardado con la lectura vieja de «toca» (se reabre bien); en
+  `dev/ejercicios-video.js` ya está rehecho con la acción, y su frase sale más
+  fragmentada (se cuenta en orden cronológico, con cuatro carriles a la vez).
+  Falta `--actualizar` si el entrenador quiere la versión nueva en la base.
+- **V2, borrador** (Continuous DHO Attacking Drill, TikTok `@one.of1.hoops`):
+  una repetición dibujada que se repite sola con la fila. El motor aprendió
+  (sin subagente, el de la rotación se paró): **el relevo** en
+  `rondas-fila.js` (si el primero acaba donde estaba el receptor, en la ronda
+  siguiente recibe el que entregó antes, y todo lo del receptor es de la ronda:
+  entra, tira, rebote, vuelve a la fila); **«vuelve a la fila» para quien no
+  salió de una fila** va a la única que hay (`destino.js`; con varias, sigue
+  sin elegir); y la **frase por jugador** (`frase.js`: una oración por
+  jugador, partida solo si le llega un balón entre dos acciones suyas). El
+  cono de la esquina, que la entrada leía como rodeo, se anula con los dos
+  clics del iconito (no hay regla nueva). **Queda:** la rotación entre filas
+  declarada sobre los conos (§3.15 de `DISENO-MOTOR.md`, «Establecer
+  rotación» y «rotar de fila»), que NO se ha construido; el relevo cubre este
+  drill sin interfaz. Correcciones del entrenador sobre el borrador, hechas:
+  **la cola avanza** un puesto cuando sale el primero y quien vuelve se pone al
+  final de lo que queda (`rondas-fila.js`, tramos `avance`, ritmo andando;
+  afecta a TODAS las filas con rondas); **con rondas, la animación solo
+  dibuja la flecha de lo que se mueve en ese instante** (`fotograma.js`,
+  `engine.js`); el mano a mano dura 0,7 s y entre 1,4 m; el que recibe sale
+  por detrás del que entrega; el que entrega rodea el cono y vuelve a su
+  salida; y los conos, más separados. Segunda tanda (tras volver a ver el
+  vídeo): el de la fila **bota hacia el cono y entrega a medio camino**, la
+  fila **se orienta hacia medio campo**, y todos los trazos son de uno o dos
+  tramos rectos (el rodeo del cono lo curva el motor). Tercera tanda: el
+  ejercicio va **duplicado a los dos lados de la pista** y quien remata coge
+  su rebote y va, con balón, a la fila del OTRO lado: `destino.js` resuelve
+  «vuelve a la fila» de quien recibió de uno de una fila por esa fila (y su
+  `vuelta`), y la cola simula todas las filas a la vez (`rondas-fila.js`). El
+  linter de geometría mide una fase con rondas por su primera ronda
+  (`wizard/lint.js`). Ficha hecha (nombre «Continuous DHO Attacking Drill»,
+  tipo Otro, bloque entrada, Basket, dificultad 3, 8-12 min, 12 = dos lados
+  de fila de 5 + esquina); ensayo de subida limpio. Cuarta tanda: más
+  despacio (cadencia 3 s, ritmo normal), **las entradas entran**, y la fila
+  admite dos ajustes nuevos —`hueco_m` (separación en metros) y `dorsales`
+  («primero» de siempre, «todos» o «ninguno»; panel «Separación» y
+  «Números»)—; V2 usa 1,7 m y todos numerados (A1…A12). Por petición del
+  entrenador, **todos los de una fila llevan número por defecto**: los que
+  esperan se numeran a continuación de los que juegan, así el emparejamiento
+  de la defensa por dorsal no cambia (`renumerar` en `elementos.js`,
+  `fila.dorsales`). El que entrega rodea el cono dibujando la vuelta entera.
+  **Sin subir:** falta el «perfecto» del entrenador.
+- **Guardado por servicio** de los ejercicios de este flujo
+  (`tools/biblioteca/guardar-video.mjs V1`: ensayo por defecto, `--confirmar`
+  da de alta, `--actualizar` hace PATCH por nombre, `--revertir <manifiesto>`).
+  Pasa el linter de fichas y el de geometría y construye la fila como
+  `guardarEjercicio`; lo sin red está en `fila-video.mjs` y lo común con
+  `importar.mjs` en `servicio.mjs` (banco `tools/eval-guardar-video.mjs`, 79
+  bancos en verde). Sin miniatura: en Node no se puede generar; se hace
+  después con `taller/tools/miniaturas.html` con la sesión del autor (la
+  tarjeta sin póster se ve sin imagen, no se rompe).
+
+**Vídeos de referencia en Metadatos (2026-10-10).** El paso Metadatos tiene
+una tarjeta «Vídeos de referencia» (lista de enlaces, añadir y quitar). Se
+guardan en `requisitos.videos` (sin migración: `requisitos` ya es jsonb), la
+ficha del ejercicio los enseña como enlaces y el linter avisa si algo no
+parece un enlace. V1 y V2 llevan el suyo en `dev/ejercicios-video.js`; V1 en la
+base aún no (falta `--actualizar`). **V3** (Cyclone, TikTok
+`@championship_hoops_3191`): borrador de dos jugadas en pista entera (7
+jugadores y 2 conos; en cada una, el que saca a la banda sale en curva
+rodeando el cono hasta el otro aro, recibe el pase largo y anota). El motor
+aprendió **«a qué aro se ataca» por fase** (`fase.canasta`: `norte`/`sur`;
+`ponerCanastaDeFase` en el Tablero, `papelesDeJugada`, `normalizarJugada`):
+con un solo equipo nadie cambia de papel y la canasta no cambiaba. Sin
+interfaz para elegirlo todavía. **Ficha de V3 hecha** («Cyclone Basketball
+Transition Drill», Contraataque, bloque contraataque, Basket, dificultad 2,
+8-10 min; con 12 = dos filas de 5 y dos en la banda): nombre, tipo, nivel y
+reparto son propuestas mías, no confirmadas. El dibujo tiene dos filas con
+`vuelta` cruzada (quien finaliza coge el rebote y va a la de enfrente) y
+cuatro fases; el linter de geometría mira ahora el aro de CADA tiro. Ensayo de
+subida limpio. **Sin subir:** falta el visto bueno del entrenador.
+
 **Publicado (2026-10-03):** las diez capas están en `main` (fusión
 `a938805`) y en GitHub, con las migraciones 043, 044 y 045 ya aplicadas
 por el entrenador. La rama `pizarra-v3` queda como historia. Antes se

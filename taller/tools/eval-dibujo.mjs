@@ -20,8 +20,8 @@
    que esto se quede atrás en silencio.
    ============================================================ */
 
-import { tipoFlecha, ritmoDe } from '../js/pizarra/dibujo.js';
-import { RITMOS, duracionDe } from '../js/pizarra/trazo.js';
+import { tipoFlecha, ritmoDe, ritmoAjustable } from '../js/pizarra/dibujo.js';
+import { RITMOS, NOMBRE_RITMO, duracionDe } from '../js/pizarra/trazo.js';
 import { MOV_TO_ARROW } from '../js/canvas/arrows.js';
 import { CATALOGO_SISTEMA } from '../js/ia/acciones.js';
 
@@ -141,6 +141,15 @@ test('un ritmo que no existe no rompe los segundos: se anda a lo normal', () => 
 test('defender no es pasar, aunque el defensor no lleve balón', () => {
   eq(ritmoDe(de('defiende')), 'normal');
   eq(tipoFlecha(de('defiende')), 'cut');
+});
+
+test('EL RITMO SE ELIGE SOLO EN LO QUE LO DECLARA: los desplazamientos sí; el pase, el tiro y los gestos, no (§6.2)', () => {
+  for (const s of ['corta', 'bota', 'entra', 'rodea', 'vuelve_a_fila']) ok(ritmoAjustable(de(s)), `${s} tiene ritmo`);
+  for (const s of ['pasa', 'tira', 'recoge', 'finta']) ok(!ritmoAjustable(de(s)), `${s} no tiene ritmo`);
+  ok(!ritmoAjustable(null), 'sin acción, no');
+  /* Una acción del club que lo declara, también. */
+  ok(ritmoAjustable({ familia: 'desplazamiento', parametros: { ritmo: 'sprint' } }));
+  for (const r of Object.keys(RITMOS)) ok(NOMBRE_RITMO[r], `el ritmo ${r} tiene nombre para el panel`);
 });
 
 console.log(`\nResumen: ${pasan}/${pasan + fallan} pasaron (${fallan} fallos)`);

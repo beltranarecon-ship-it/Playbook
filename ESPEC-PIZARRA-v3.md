@@ -277,6 +277,13 @@ que haya creado el club).
 
 ### 4.3 Anillo exterior · variantes técnicas
 
+> **Cambio (2026-10-04, decidido con el entrenador).** Las acciones se dibujan
+> **directas**: elegir una acción lleva ya al destino, **sin segundo anillo de
+> variantes**. Se usa la variante de siempre de esa acción, y quien quiera otra la
+> cambia después en la pestaña «Ajustes» al pinchar el trazo. El «¿entra o falla?»
+> de un tiro se mantiene. Lo que sigue describe el anillo exterior original y ya no
+> se abre al elegir la acción.
+
 Al elegir una acción del anillo interior, **el anillo se transforma**: el centro
 pasa a ser la acción elegida («Pasa — clic en la pista para el destino») y
 alrededor aparecen sus variantes:
@@ -445,6 +452,12 @@ cambia y entonces queda marcado como «a mano» (deja de recalcularse).
 2. Deja a cada ficha en su posición final.
 3. Crea la fase siguiente y la selecciona.
 4. La pizarra queda lista para dibujar, con el **fantasma** de la fase anterior.
+
+**Con la fase vacía** el botón sigue activo: no hay nada que reproducir, pero abre
+la fase siguiente igualmente (2026-10-04).
+
+**El fantasma** se pinta **claro, fino y sin puntas de flecha**. Con una ficha elegida
+se ve **solo su rastro**; sin ninguna elegida, el de todas (2026-10-04).
 
 Al lado, «ver desde el principio» reproduce la jugada entera.
 

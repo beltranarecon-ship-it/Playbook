@@ -15,46 +15,50 @@
    ============================================================ */
 
 import { posicionesDe } from '../taller/js/canvas/anclas.js';
-import { nuevoTrazo } from '../taller/js/pizarra/trazo.js';
+import { nuevoTrazo, desdePuntos } from '../taller/js/pizarra/trazo.js';
 import { tipoFlecha } from '../taller/js/pizarra/dibujo.js';
 
 /* ── los gestos del entrenador, en una línea cada uno ─────── */
 
-const sitios = (pista, canasta = 'norte') => Object.fromEntries(
+export const sitios = (pista, canasta = 'norte') => Object.fromEntries(
   Object.entries(posicionesDe(pista, canasta)).map(([k, [x, y]]) => [k, { x, y }]));
-const ficha = (t, id) => t.fichas.elementos.find((e) => e.id === id);
+export const ficha = (t, id) => t.fichas.elementos.find((e) => e.id === id);
 
 /** Pone un jugador (y devuelve su id). */
-function jugador(t, equipo, en) {
+export function jugador(t, equipo, en) {
   const e = t.anadirFicha({ kind: 'jugador', equipo }, en);
   t.cerrar();
   return e.id;
 }
 /** Le da un balón a un jugador. */
-function balon(t, id) {
+export function balon(t, id) {
   const j = ficha(t, id);
   t.anadirFicha({ kind: 'balon' }, { x: j.x, y: j.y });
   t.cerrar();
 }
-function cono(t, en) {
+export function cono(t, en) {
   const e = t.anadirFicha({ kind: 'cono' }, en);
   t.cerrar();
   return e.id;
 }
 /** Una acción con destino: bota, corta. */
-function va(t, id, slug, hasta, variante = null) {
+export function va(t, id, slug, hasta, variante = null, ritmo = null) {
   const e = ficha(t, id);
   const accion = t._accionDe(slug);
-  t._trazoHecho({ elemento: e, accion, variante, trazo: nuevoTrazo({ x: e.x, y: e.y }, hasta), tipo: tipoFlecha(accion) });
+  /* `hasta` puede ser una lista: el camino pasa por esos puntos en orden. */
+  const trazo = Array.isArray(hasta) ? desdePuntos([{ x: e.x, y: e.y }, ...hasta]) : nuevoTrazo({ x: e.x, y: e.y }, hasta);
+  t._trazoHecho({ elemento: e, accion, variante, trazo, tipo: tipoFlecha(accion) });
+  /* El ritmo de un tramo es un dato suyo (§6.2): se fija sobre el que acaba de salir. */
+  if (ritmo) t.tramos = t.tramos.map((x, k, a) => (k === a.length - 1 ? { ...x, ritmo } : x));
   t.cerrar();
 }
 /** Un pase a un compañero. */
-function pasa(t, id, aQuien, variante = null) {
+export function pasa(t, id, aQuien, variante = null) {
   const r = ficha(t, aQuien);
   va(t, id, 'pasa', { x: r.x, y: r.y }, variante);
 }
 /** Lo que no pide destino: entra, tira, recoge, vuelve a la fila, un gesto. */
-function hace(t, id, slug, opciones = {}) {
+export function hace(t, id, slug, opciones = {}) {
   t._tocarFicha(ficha(t, id));
   t._elegir(slug, opciones);
   t.cerrar();
@@ -65,7 +69,7 @@ function bloquea(t, id, aQuien, variante = 'directo') {
   t._companeroElegido(ficha(t, aQuien), { elemento: ficha(t, id), accion: t._accionDe('bloquea'), variante });
   t.cerrar();
 }
-const siguiente = (t) => { t.cerrar(); t.repaso.parar(); t._cerrarFase(); };
+export const siguiente = (t) => { t.cerrar(); t.repaso.parar(); t._cerrarFase(); };
 
 /* ── las doce ──────────────────────────────────────────────── */
 

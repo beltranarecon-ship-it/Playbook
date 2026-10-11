@@ -10,8 +10,9 @@
      un defensor         a quién defiende y con qué regla, y por qué está
                          ahí (§8.7)
      un atacante         quién le defiende
-     un trazo pinchado   su variante técnica, el vídeo de esa variante y
-                         «Nueva variante» (§4.3, §10.1)
+     un trazo pinchado   su variante técnica, su ritmo si es un
+                         desplazamiento (§6.2), el vídeo de esa variante
+                         y «Nueva variante» (§4.3, §10.1)
      otra cosa           una línea que dice dónde están los ajustes
    ============================================================ */
 
@@ -24,6 +25,8 @@ import { CATALOGO_SISTEMA } from '../../ia/acciones.js';
 import { VARIANTES, variantesDe, varianteDe } from '../repertorio.js';
 import { claveDeVideo } from '../variantes.js';
 import { normalizarVideo, textoTramo, urlPublica } from '../../ia/video.js';
+import { RITMOS, NOMBRE_RITMO } from '../trazo.js';
+import { ritmoDe, ritmoAjustable } from '../dibujo.js';
 
 const NOMBRE_DE = new Map(CATALOGO_SISTEMA.map((a) => [a.slug, a.nombre]));
 
@@ -75,9 +78,13 @@ export function mismoPanel(antes, modelo) {
  * si se le pueden añadir variantes. El vídeo cuelga de la variante
  * (§10.1): se pone una vez y sale en todos los ejercicios que la usan.
  */
-export function modeloTramo(tramo, { elementos = [], nombreDe = (e) => e.id, videos = {} } = {}) {
+export function modeloTramo(tramo, { elementos = [], nombreDe = (e) => e.id, videos = {}, definicion = null } = {}) {
   const quien = (elementos || []).find((e) => e && e.id === tramo.elemento_id);
   const accion = tramo.accion;
+  /* EL RITMO (§6.2): solo si la acción lo declara. Sin la definición que
+     da quien pinta —la del club incluida—, la del catálogo del sistema. */
+  const def = definicion || CATALOGO_SISTEMA.find((a) => a.slug === accion) || null;
+  const deSerie = ritmoDe(def);
   const nombreAccion = NOMBRE_DE.get(accion) || accion;
   let vs = variantesDe(accion);
   /* Una variante del club que no se ha cargado (sin red, o borrada) no se
@@ -98,6 +105,10 @@ export function modeloTramo(tramo, { elementos = [], nombreDe = (e) => e.id, vid
     variante: vs.length ? {
       valor: efectiva ? efectiva.slug : null,
       opciones: vs.map((v, i) => opcion(v.slug, `${v.nombre}${i === 0 ? ' (la de siempre)' : v.delClub ? ' · del club' : ''}`)),
+    } : null,
+    ritmo: ritmoAjustable(def) ? {
+      valor: RITMOS[tramo.ritmo] ? tramo.ritmo : deSerie,
+      opciones: Object.keys(RITMOS).map((r) => opcion(r, `${NOMBRE_RITMO[r] || r}${r === deSerie ? ' (el de la acción)' : ''}`)),
     } : null,
     descripcion: (efectiva && efectiva.descripcion) || null,
     video: clave ? {
@@ -124,9 +135,9 @@ const segundosDe = (ms) => `${String(ms / 1000).replace('.', ',')} s`;
 
 export function modeloAjustes({
   seleccion = [], elementos = [], papeles = null, defensa = null, nombreDe = (e) => e.id, explicacion = null,
-  puertas = [], porQueNoDarBalon = null, tramo = null, videos = {},
+  puertas = [], porQueNoDarBalon = null, tramo = null, videos = {}, accion = null,
 } = {}) {
-  if (tramo) return modeloTramo(tramo, { elementos, nombreDe, videos });
+  if (tramo) return modeloTramo(tramo, { elementos, nombreDe, videos, definicion: accion });
   const d = defensa || defensaPorDefecto();
   const p = papeles || { ataca: null, atacantes: [], defensores: [], pares: {}, situacion: null };
   const porId = new Map((elementos || []).filter(Boolean).map((e) => [e.id, e]));
@@ -276,6 +287,17 @@ export function modeloAjustes({
         rondas: {
           valor: f.rondas === false ? 'no' : 'si',
           opciones: [opcion('si', 'Todos, uno tras otro'), opcion('no', 'Solo el primero')],
+        },
+        /* Quién lleva número: todos (lo normal), solo el primero o ninguno. */
+        dorsales: {
+          valor: f.dorsales || 'todos',
+          opciones: [opcion('todos', 'Todos'), opcion('primero', 'Solo el primero'), opcion('ninguno', 'Ninguno')],
+        },
+        /* Cuánto se separan unos de otros, en metros. */
+        separacion: {
+          valor: f.hueco_m ? String(f.hueco_m) : null,
+          opciones: [opcion(null, 'De serie'), ...[1.5, 2, 2.5, 3].map((m) => opcion(String(m), `${String(m).replace('.', ',')} m`))]
+            .concat(f.hueco_m && ![1.5, 2, 2.5, 3].includes(f.hueco_m) ? [opcion(String(f.hueco_m), `${String(f.hueco_m).replace('.', ',')} m`)] : []),
         },
         cadencia: f.rondas === false ? null : {
           valor: f.cadencia_ms ? String(f.cadencia_ms) : null,

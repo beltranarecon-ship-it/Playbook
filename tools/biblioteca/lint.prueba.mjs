@@ -157,10 +157,26 @@ const CASOS = [
     esperaAviso: /no concreta el reparto/,
   },
 
+  // ---- vídeos de referencia (opcionales) ----
+  { que: 'un vídeo que no es un enlace: aviso, no error', mut: (f) => { f.requisitos.videos = ['hola']; }, espera: null, esperaAviso: /no parece un enlace/ },
+  { que: 'los vídeos tienen que ser una lista', mut: (f) => { f.requisitos.videos = 'https://tiktok.com/x'; }, espera: /lista de enlaces/ },
+  { que: 'un enlace de vídeo bueno no dice nada', mut: (f) => { f.requisitos.videos = ['https://www.instagram.com/p/C-E7IxTt_0O/']; }, espera: null },
+
   // ---- capa 2 · geometría ----
   { que: 'jugador fuera de la pista', mut: (f) => { f.animacion.jugadores[0].posicion_inicial = [1.4, 0.3]; }, espera: /fuera de la pista/ },
   { que: 'la pista de la animación no casa con la ficha', mut: (f) => { f.animacion.pista = 'entera'; }, espera: /es de pista/ },
   { que: 'fase con duración imposible', mut: (f) => { f.animacion.fases[0].duracion_ms = 40; }, espera: /fuera de 200-8000/ },
+  {
+    // los de una fila salen uno tras otro DENTRO de la fase: dura lo de todas las
+    // repeticiones, y lo que se mide es la primera (la dibujada).
+    que: 'con rondas, la duración de la fase se mide por la primera ronda',
+    mut: (f) => {
+      const fa = f.animacion.fases[0];
+      fa.duracion_ms = 15000;
+      fa.pases.push({ ...fa.pases[0], id: 'pase_r1', repeticion: 1, inicio_ms: 9000 });
+    },
+    espera: null,
+  },
   { que: 'pase a uno mismo', mut: (f) => { f.animacion.fases[0].pases[0].a_id = 'A1'; }, espera: /a s[íi] mismo/ },
   { que: 'movimiento con un solo nodo', mut: (f) => { f.animacion.fases[1].movimientos[0].path.pop(); }, espera: /menos de dos nodos/ },
   { que: 'cono de fila sin configurar', mut: (f) => { f.animacion.conos.push({ id: 'cono_1', posicion: [0.5, 0.5], funcion: 'fila', fila_config: null }); }, espera: /fila_config/ },

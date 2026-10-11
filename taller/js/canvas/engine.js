@@ -379,7 +379,12 @@ export class AnimationEngine {
     // flechas de la fase activa (bajo las fichas) — en vista previa no se
     // dibujan: el fotograma 0 es el PLANTEAMIENTO estático, sin acciones.
     if (meta && !this.preview) {
-      for (const ar of meta.arrows) drawArrow(ctx, ar.flat.map(toPx), ar.type, R.scale);
+      const ahora = Math.min(this.phaseElapsed, this._dur());
+      for (const ar of meta.arrows) {
+        /* Con rondas, solo la flecha de lo que se mueve ahora. */
+        if (meta.conRondas && !(ahora >= ar.inicio && ahora <= ar.fin)) continue;
+        drawArrow(ctx, ar.flat.map(toPx), ar.type, R.scale);
+      }
       for (const { a, b } of this.bloqueosEn(this.k, Math.min(this.phaseElapsed, this._dur()), f.players)) {
         drawBloqueo(ctx, toPx(a), toPx(b), R.scale, R.jugador);
       }

@@ -88,6 +88,7 @@ import { CourtView } from '/taller/js/canvas/court.js';
 import { AnimationEngine } from '/taller/js/canvas/engine.js';
 import { controls } from '/taller/js/canvas/controls.js';
 import { JUGADAS_DE_REFERENCIA } from '/dev/jugadas-referencia.js';
+import { EJERCICIOS_DE_VIDEO } from '/dev/ejercicios-video.js';
 
 const $ = (id) => document.getElementById(id);
 const elLista = $('lista'), elEscena = $('escena'), elPie = $('pie'), elCruce = $('cruce');
@@ -108,7 +109,7 @@ function dibujar(j) {
   const anim = jugada ? compilar(jugada) : null;
   return { ...j, jugada, anim, error, avisos: error ? [`No se pudo dibujar: ${error.message}`] : (anim.warnings || []) };
 }
-const jugadas = JUGADAS_DE_REFERENCIA.map(dibujar);
+const jugadas = [...EJERCICIOS_DE_VIDEO, ...JUGADAS_DE_REFERENCIA].map(dibujar);
 window.__jugadas = jugadas;
 
 let actual = 0, enPizarra = false;
